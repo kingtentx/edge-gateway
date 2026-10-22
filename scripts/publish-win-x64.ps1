@@ -23,6 +23,8 @@ try {
     Copy-Item LICENSES -Destination $publishDirectory -Recurse -Force
     Copy-Item examples -Destination $publishDirectory -Recurse -Force
     Copy-Item docs -Destination $publishDirectory -Recurse -Force
+    # README links to the reusable development skill and its reference documents.
+    Copy-Item .agents -Destination $publishDirectory -Recurse -Force
     $archive = Join-Path $outputRoot "EdgeGateway-win-x64.zip"
     Compress-Archive -Path (Join-Path $publishDirectory "*") -DestinationPath $archive -Force
     Write-Host "Published: $archive"

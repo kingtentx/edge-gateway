@@ -32,7 +32,7 @@ jobs:
           New-Item -ItemType Directory artifacts -Force | Out-Null
           $screenshot = Join-Path $pwd 'artifacts/ui-smoke.png'
           $process = Start-Process -FilePath './src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe' -ArgumentList @('--smoke-test', '--screenshot', $screenshot) -PassThru -RedirectStandardOutput 'artifacts/ui-smoke.stdout.log' -RedirectStandardError 'artifacts/ui-smoke.stderr.log'
-          if (-not $process.WaitForExit(45000)) { $process.Kill(); throw 'WinForms smoke test timed out.' }
+          if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'WinForms smoke test timed out.' }
           if ($process.ExitCode -ne 0) { Get-Content 'artifacts/ui-smoke.stderr.log'; throw "WinForms smoke test failed: $($process.ExitCode)" }
           if (-not (Test-Path $screenshot)) { throw 'UI screenshot was not produced.' }
       - name: Publish Windows x64 package

@@ -257,17 +257,25 @@ public sealed partial class MainForm : Form
             using (var editor = new DeviceEditor(device, _drivers.Drivers, isNew: true))
             {
                 editor.Show(this);
-                editor.VerifyBindingsForSmoke();
-                VerifyEditorLayout(editor, driver.Id + " device");
-                SaveEditorScreenshot(editor, "device", driver.Id);
+                try
+                {
+                    editor.VerifyBindingsForSmoke();
+                    VerifyEditorLayout(editor, driver.Id + " device");
+                    SaveEditorScreenshot(editor, "device", driver.Id);
+                }
+                catch { SaveEditorScreenshot(editor, "device-failed", driver.Id); throw; }
                 editor.Close();
             }
             using (var editor = new TagEditor(TagEditor.CreateDefaultTag(driver, "点位配置检查"), driver))
             {
                 editor.Show(this);
-                editor.VerifyBindingsForSmoke();
-                VerifyEditorLayout(editor, driver.Id + " tag");
-                SaveEditorScreenshot(editor, "tag", driver.Id);
+                try
+                {
+                    editor.VerifyBindingsForSmoke();
+                    VerifyEditorLayout(editor, driver.Id + " tag");
+                    SaveEditorScreenshot(editor, "tag", driver.Id);
+                }
+                catch { SaveEditorScreenshot(editor, "tag-failed", driver.Id); throw; }
                 editor.Close();
             }
         }
@@ -283,19 +291,33 @@ public sealed partial class MainForm : Form
             PerformLayoutRecursively(editor);
             foreach (var command in editor.SmokeCommands) AssertVisibleBounds(command, context + " action");
             // Long protocol settings pages must allow every field to be brought into view.
-            foreach (var input in Descendants(tab).Where(x => x is TextBoxBase or ComboBox or NumericUpDown or CheckBox))
+            foreach (var input in EditorInputs(tab))
             {
                 if (!input.Visible) continue;
                 for (var parent = input.Parent; parent is not null && parent != editor; parent = parent.Parent)
                     if (parent is ScrollableControl scroll && scroll.AutoScroll) scroll.ScrollControlIntoView(input);
                 PerformLayoutRecursively(editor);
                 AssertVisibleBounds(input, context + " field");
+                // A NumericUpDown is one operator field. Verify its internal edit box after
+                // scrolling the whole control; independently scrolling that implementation
+                // child changes the ancestor offset and can move the composite out of view.
+                foreach (var child in Descendants(input).Where(x => x.Visible && x is TextBoxBase))
+                    AssertVisibleBounds(child, context + " field content");
             }
             foreach (var scroll in Descendants(tab).OfType<ScrollableControl>().Where(x => x.AutoScroll)) scroll.AutoScrollPosition = Point.Empty;
             tab.AutoScrollPosition = Point.Empty;
         }
         editor.SelectedSmokeTab = selected;
         PerformLayoutRecursively(editor);
+    }
+
+    private static IEnumerable<Control> EditorInputs(Control root)
+    {
+        foreach (Control child in root.Controls)
+        {
+            if (child is TextBoxBase or ComboBox or NumericUpDown or CheckBox) yield return child;
+            else foreach (var input in EditorInputs(child)) yield return input;
+        }
     }
 
     private static IEnumerable<Control> Descendants(Control root)
@@ -341,13 +363,13 @@ public sealed partial class MainForm : Form
     private static void AssertVisibleBounds(Control control, string context)
     {
         if (!control.Visible || control.Width <= 0 || control.Height <= 0)
-            throw new InvalidOperationException($"{context}: control '{control.Text}' has no visible area.");
+            throw new InvalidOperationException($"{context}: {control.GetType().Name} '{control.Name}' / '{control.Text}' has no visible area.");
         var bounds = control.Parent!.RectangleToScreen(control.Bounds);
         for (var ancestor = control.Parent; ancestor is not null; ancestor = ancestor.Parent)
         {
             var viewport = ancestor.RectangleToScreen(ancestor.ClientRectangle);
             if (!viewport.Contains(bounds))
-                throw new InvalidOperationException($"{context}: '{control.Text}' ({bounds}) is clipped by {ancestor.GetType().Name} ({viewport}).");
+                throw new InvalidOperationException($"{context}: {control.GetType().Name} '{control.Name}' / '{control.Text}' ({bounds}) is clipped by {ancestor.GetType().Name} ({viewport}).");
         }
     }
 
