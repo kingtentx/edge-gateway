@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <AssemblyName>EdgeGateway.WinForms</AssemblyName>
+    <RootNamespace>EdgeGateway.WinForms</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../EdgeGateway.Model/EdgeGateway.Model.csproj" />
+    <ProjectReference Include="../EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />
+    <ProjectReference Include="../EdgeGateway.DataAccess/EdgeGateway.DataAccess.csproj" />
+    <ProjectReference Include="../EdgeGateway.Service/EdgeGateway.Service.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Simulator/EdgeGateway.Driver.Simulator.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Modbus/EdgeGateway.Driver.Modbus.csproj" />
+  </ItemGroup>
+</Project>

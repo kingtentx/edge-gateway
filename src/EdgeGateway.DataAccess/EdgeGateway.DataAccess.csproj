@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.32" />
+  </ItemGroup>
+</Project>

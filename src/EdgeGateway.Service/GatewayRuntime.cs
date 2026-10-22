@@ -1,0 +1,490 @@
+using System.Collections.Concurrent;
+using System.Globalization;
+using System.Text.Json;
+using System.Threading.Channels;
+using EdgeGateway.Abstractions;
+using EdgeGateway.Model;
+
+namespace EdgeGateway.Service;
+
+/// <summary>
+/// One sequential worker per device; acquisition, history storage and northbound publication are independent.
+/// This instance owns driver sessions, but the caller retains ownership of the store and publisher.
+/// </summary>
+public sealed class GatewayRuntime : IAsyncDisposable
+{
+    private readonly IDriverRegistry _registry;
+    private readonly IGatewayStore _store;
+    private readonly ITelemetryPublisher _publisher;
+    private readonly IGatewayLog _log;
+    private readonly SemaphoreSlim _lifecycle = new(1, 1);
+    private readonly ConcurrentDictionary<Guid, TelemetrySample> _latest = new();
+    private readonly ConcurrentDictionary<Guid, DeviceRuntimeStatus> _statuses = new();
+    private readonly ConcurrentDictionary<Guid, DeviceSession> _sessions = new();
+    private readonly ConcurrentDictionary<Guid, string> _alarmStates = new();
+    private GatewayConfiguration _configuration;
+    private CancellationTokenSource? _runCancellation;
+    private Channel<IReadOnlyList<TelemetrySample>>? _historyChannel;
+    private Task[] _workers = [];
+    private Task? _historyTask;
+    private volatile bool _running;
+    private bool _disposed;
+
+    public GatewayRuntime(GatewayConfiguration configuration, IDriverRegistry registry,
+        IGatewayStore store, ITelemetryPublisher publisher, IGatewayLog log)
+    {
+        _configuration = Clone(configuration);
+        _registry = registry;
+        _store = store;
+        _publisher = publisher;
+        _log = log;
+        ResetStatuses();
+    }
+
+    public bool IsRunning => _running;
+    public bool IsMqttConnected => _publisher.IsConnected;
+
+    public void Configure(GatewayConfiguration configuration)
+    {
+        if (!_lifecycle.Wait(0)) throw new InvalidOperationException("正在启动或停止网关，请稍后修改配置。");
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_running) throw new InvalidOperationException("请先停止采集再应用配置。");
+            var errors = ConfigurationValidator.Validate(configuration, _registry);
+            if (errors.Count > 0) throw new ArgumentException(string.Join(Environment.NewLine, errors), nameof(configuration));
+            _configuration = Clone(configuration);
+            _latest.Clear();
+            ResetStatuses();
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_running) return;
+            var errors = ConfigurationValidator.Validate(_configuration, _registry);
+            if (errors.Count > 0) throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
+            await _store.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            await _store.PruneHistoryAsync(_configuration.HistoryRetentionDays, _configuration.MaxHistoryRows, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            // The Start token cancels startup; the runtime owns its lifetime after successful start.
+            _runCancellation = new CancellationTokenSource();
+            _latest.Clear();
+            _alarmStates.Clear();
+            _sessions.Clear();
+            ResetStatuses();
+            _historyChannel = Channel.CreateBounded<IReadOnlyList<TelemetrySample>>(new BoundedChannelOptions(256)
+            { SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait });
+            foreach (var device in _configuration.Devices.Where(d => d.Enabled))
+                _sessions[device.Id] = new DeviceSession(device);
+            var token = _runCancellation.Token;
+            _running = true;
+            _historyTask = Task.Run(() => StoreHistoryAsync(_historyChannel.Reader));
+            var tasks = _sessions.Values.Select(session => Task.Run(() => CollectDeviceAsync(session, token))).ToList();
+            if (_configuration.Mqtt.Enabled)
+            {
+                tasks.Add(Task.Run(() => QueueTelemetryAsync(token)));
+                tasks.Add(Task.Run(() => SendOutboxAsync(token)));
+            }
+            _workers = tasks.ToArray();
+            _log.Write(GatewayLogLevel.Information, $"采集已启动，启用 {_sessions.Count} 台设备；MQTT 上报{(_configuration.Mqtt.Enabled ? "已启用" : "未启用")}。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task StopAsync()
+    {
+        await _lifecycle.WaitAsync().ConfigureAwait(false);
+        try { await StopCoreAsync().ConfigureAwait(false); }
+        finally { _lifecycle.Release(); }
+    }
+
+    private async Task StopCoreAsync()
+    {
+        if (!_running && _runCancellation is null) return;
+        _running = false;
+        _runCancellation?.Cancel();
+        try { await Task.WhenAll(_workers).ConfigureAwait(false); }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"停止采集任务时发生错误：{ex.Message}"); }
+        // Producer tasks have exited; drain already accepted history before releasing storage ownership.
+        _historyChannel?.Writer.TryComplete();
+        if (_historyTask is not null) await _historyTask.ConfigureAwait(false);
+        foreach (var session in _sessions.Values)
+        {
+            await session.Gate.WaitAsync().ConfigureAwait(false);
+            try { await DisposeDriverAsync(session).ConfigureAwait(false); }
+            finally { session.Gate.Release(); }
+        }
+        _sessions.Clear();
+        foreach (var pair in _latest)
+            _latest[pair.Key] = pair.Value with { Quality = SampleQuality.Uncertain, Error = "采集已停止" };
+        foreach (var device in _configuration.Devices)
+            _statuses[device.Id] = new DeviceRuntimeStatus(device.Id, device.Name, DeviceState.Stopped,
+                _statuses.GetValueOrDefault(device.Id)?.LastSuccess, 0, null);
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await _publisher.DisconnectAsync(timeout.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) { _log.Write(GatewayLogLevel.Warning, $"断开 MQTT 时发生错误：{ex.Message}"); }
+        _runCancellation?.Dispose();
+        _runCancellation = null;
+        _workers = [];
+        _historyTask = null;
+        _log.Write(GatewayLogLevel.Information, "采集已停止，历史缓冲已处理，未确认的上报仍保留在补传队列。");
+    }
+
+    public IReadOnlyList<TelemetrySample> GetLatest() => _latest.Values.OrderBy(s => s.DeviceName).ThenBy(s => s.TagName).ToArray();
+    public IReadOnlyList<DeviceRuntimeStatus> GetDeviceStatuses() => _statuses.Values.OrderBy(s => s.DeviceName).ToArray();
+
+    public async Task WriteAsync(Guid deviceId, Guid tagId, string engineeringValue, CancellationToken cancellationToken = default)
+    {
+        if (!_running || !_sessions.TryGetValue(deviceId, out var session)) throw new InvalidOperationException("设备未处于采集运行状态。");
+        var tag = session.Configuration.Tags.FirstOrDefault(t => t.Id == tagId) ?? throw new ArgumentException("点位不存在。");
+        if (!tag.Enabled || !tag.Writable) throw new InvalidOperationException("点位未启用或不允许写入。");
+        var rawValue = ConvertWriteValue(tag, engineeringValue);
+        var runtimeCancellation = _runCancellation ?? throw new InvalidOperationException("网关已停止。");
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, runtimeCancellation.Token);
+        timeout.CancelAfter(session.Configuration.TimeoutMs);
+        await session.Gate.WaitAsync(timeout.Token).ConfigureAwait(false);
+        try
+        {
+            if (!_running || session.Driver is null) throw new InvalidOperationException("设备尚未连接，请等待采集恢复后再写入。");
+            await session.Driver.WriteAsync(tag, rawValue, timeout.Token).ConfigureAwait(false);
+            _log.Write(GatewayLogLevel.Information, $"写入成功：设备 [{session.Configuration.Name}] 点位 [{tag.Name}]，工程值 {engineeringValue}；待读回确认。");
+            if (_latest.TryGetValue(tag.Id, out var previous))
+                _latest[tag.Id] = previous with { Quality = SampleQuality.Uncertain, Error = "已写入，待读回确认" };
+        }
+        catch (Exception ex)
+        {
+            _log.Write(GatewayLogLevel.Error, $"写入失败：设备 [{session.Configuration.Name}] 点位 [{tag.Name}]：{ex.Message}");
+            await DisposeDriverAsync(session).ConfigureAwait(false);
+            throw;
+        }
+        finally { session.Gate.Release(); }
+    }
+
+    private async Task CollectDeviceAsync(DeviceSession session, CancellationToken cancellationToken)
+    {
+        var device = session.Configuration;
+        var tags = device.Tags.Where(t => t.Enabled).ToArray();
+        var failures = 0;
+        DateTimeOffset? lastSuccess = null;
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var delay = device.PollIntervalMs;
+                IReadOnlyList<TelemetrySample> samples;
+                await session.Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    timeout.CancelAfter(device.TimeoutMs);
+                    if (session.Driver is null)
+                    {
+                        _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Connecting, lastSuccess, failures, null);
+                        session.Driver = _registry.GetFactory(device.DriverId).Create(device);
+                        await session.Driver.ConnectAsync(timeout.Token).ConfigureAwait(false);
+                    }
+                    var reads = await session.Driver.ReadAsync(tags, timeout.Token).ConfigureAwait(false);
+                    var byId = reads.GroupBy(r => r.TagId).ToDictionary(g => g.Key, g => g.First());
+                    var now = DateTimeOffset.UtcNow;
+                    samples = tags.Select(tag => BuildSample(device, tag,
+                        byId.GetValueOrDefault(tag.Id) ?? new TagReadResult(tag.Id, null, SampleQuality.Bad, "驱动未返回此点位"), now)).ToArray();
+                    var hasGoodSample = samples.Any(s => s.Quality == SampleQuality.Good);
+                    if (hasGoodSample || tags.Length == 0)
+                    {
+                        if (failures > 0) _log.Write(GatewayLogLevel.Information, $"设备 [{device.Name}] 连接已恢复。");
+                        failures = 0;
+                        lastSuccess = now;
+                        _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Running, lastSuccess, 0,
+                            samples.Any(s => s.Quality != SampleQuality.Good) ? "部分点位采集失败，请查看点位质量。" : null);
+                    }
+                    else
+                    {
+                        failures++;
+                        var error = samples.FirstOrDefault()?.Error ?? "没有有效采样值";
+                        _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Reconnecting, lastSuccess, failures, error);
+                        delay = Backoff(failures);
+                        await DisposeDriverAsync(session).ConfigureAwait(false);
+                        _log.Write(GatewayLogLevel.Warning, $"设备 [{device.Name}] 无有效采样，将重连：{error}");
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                catch (Exception ex)
+                {
+                    failures++;
+                    var error = ex is OperationCanceledException ? $"采集超过 {device.TimeoutMs} ms" : ex.Message;
+                    samples = tags.Select(tag => BuildSample(device, tag, new TagReadResult(tag.Id, null, SampleQuality.Bad, error), DateTimeOffset.UtcNow)).ToArray();
+                    _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Reconnecting, lastSuccess, failures, error);
+                    _log.Write(GatewayLogLevel.Warning, $"设备 [{device.Name}] 采集失败，第 {failures} 次重连：{error}");
+                    await DisposeDriverAsync(session).ConfigureAwait(false);
+                    delay = Backoff(failures);
+                }
+                finally { session.Gate.Release(); }
+                foreach (var sample in samples)
+                {
+                    _latest[sample.TagId] = sample;
+                    var tag = tags.First(t => t.Id == sample.TagId);
+                    UpdateAlarm(tag, sample);
+                }
+                if (samples.Count > 0) await _historyChannel!.Writer.WriteAsync(samples, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Faulted, lastSuccess, failures, ex.Message);
+            _log.Write(GatewayLogLevel.Error, $"设备 [{device.Name}] 工作循环异常退出：{ex.Message}");
+        }
+        finally
+        {
+            await session.Gate.WaitAsync().ConfigureAwait(false);
+            try { await DisposeDriverAsync(session).ConfigureAwait(false); }
+            finally { session.Gate.Release(); }
+        }
+    }
+
+    private async Task StoreHistoryAsync(ChannelReader<IReadOnlyList<TelemetrySample>> reader)
+    {
+        var nextPrune = DateTimeOffset.UtcNow.AddMinutes(1);
+        await foreach (var batch in reader.ReadAllAsync().ConfigureAwait(false))
+        {
+            try
+            {
+                await _store.AppendSamplesAsync(batch).ConfigureAwait(false);
+                if (DateTimeOffset.UtcNow >= nextPrune)
+                {
+                    await _store.PruneHistoryAsync(_configuration.HistoryRetentionDays, _configuration.MaxHistoryRows).ConfigureAwait(false);
+                    nextPrune = DateTimeOffset.UtcNow.AddMinutes(1);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Keep acquisition alive, but explicitly report that this batch was NOT persisted.
+                _log.Write(GatewayLogLevel.Error, $"历史写入失败，本批 {batch.Count} 条未保存，请检查磁盘：{ex.Message}");
+            }
+        }
+    }
+
+    private async Task QueueTelemetryAsync(CancellationToken cancellationToken)
+    {
+        var capacityWarning = false;
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(_configuration.PublishIntervalMs, cancellationToken).ConfigureAwait(false);
+                var samples = GetLatest();
+                if (samples.Count == 0) continue;
+                var payload = JsonSerializer.Serialize(new
+                {
+                    schemaVersion = 1,
+                    messageId = Guid.NewGuid().ToString("N"),
+                    gatewayId = _configuration.GatewayId,
+                    timestamp = DateTimeOffset.UtcNow,
+                    samples = samples.Select(s => new
+                    {
+                        deviceId = s.DeviceId, deviceName = s.DeviceName, tagId = s.TagId, tagName = s.TagName,
+                        address = s.Address, rawValue = s.RawValue, value = s.Value, unit = s.Unit,
+                        quality = s.Quality.ToString(), timestamp = s.Timestamp, error = s.Error
+                    })
+                });
+                var topic = _configuration.Mqtt.Topic.Replace("{gatewayId}", _configuration.GatewayId, StringComparison.Ordinal);
+                // Keep the same messageId while retrying an unpersisted snapshot; do not evict older messages.
+                while (true)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        if (await _store.EnqueueAsync(topic, payload, _configuration.MaxOutboxMessages, cancellationToken).ConfigureAwait(false))
+                        {
+                            if (capacityWarning) _log.Write(GatewayLogLevel.Information, "补传队列已有可用容量，恢复生成上报快照。");
+                            capacityWarning = false;
+                            break;
+                        }
+                        if (!capacityWarning) _log.Write(GatewayLogLevel.Error, "补传队列已满，暂停生成新的上报快照；已入队数据保留，现场采集及历史记录继续。");
+                        capacityWarning = true;
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                    catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"上报快照无法持久化，将重试：{ex.Message}"); }
+                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"上报快照任务异常：{ex.Message}"); }
+    }
+
+    private async Task SendOutboxAsync(CancellationToken cancellationToken)
+    {
+        var failures = 0;
+        try
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    var messages = await _store.ReadOutboxAsync(50, cancellationToken).ConfigureAwait(false);
+                    if (messages.Count == 0) { await Task.Delay(500, cancellationToken).ConfigureAwait(false); continue; }
+                    foreach (var message in messages)
+                    {
+                        await _publisher.PublishAsync(_configuration.Mqtt, message.Topic, message.Payload, cancellationToken).ConfigureAwait(false);
+                        // QoS 1 acknowledged by the broker. A crash before delete may duplicate delivery, never silently lose it.
+                        await _store.AcknowledgeAsync(message.Id, cancellationToken).ConfigureAwait(false);
+                    }
+                    if (failures > 0) _log.Write(GatewayLogLevel.Information, "MQTT 上报已恢复，继续发送补传队列。");
+                    failures = 0;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                catch (Exception ex)
+                {
+                    failures++;
+                    _log.Write(GatewayLogLevel.Warning, $"MQTT 暂不可用，消息保留待补传（{ex.GetType().Name}）：{Redact(ex.Message)}");
+                    await Task.Delay(Backoff(failures), cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+    }
+
+    private string Redact(string text)
+    {
+        var name = _configuration.Mqtt.PasswordEnvironmentVariable;
+        var password = string.IsNullOrEmpty(name) ? null : Environment.GetEnvironmentVariable(name);
+        return string.IsNullOrEmpty(password) ? text : text.Replace(password, "***", StringComparison.Ordinal);
+    }
+
+    private void UpdateAlarm(TagConfiguration tag, TelemetrySample sample)
+    {
+        if (sample.Quality != SampleQuality.Good || sample.NumericValue is not double value) return;
+        var state = tag.HighLimit is double high && value > high ? "高限报警" :
+            tag.LowLimit is double low && value < low ? "低限报警" : "正常";
+        var previous = _alarmStates.GetValueOrDefault(tag.Id, "正常");
+        _alarmStates[tag.Id] = state;
+        if (previous == state) return;
+        _log.Write(state == "正常" ? GatewayLogLevel.Information : GatewayLogLevel.Warning,
+            $"{state}：设备 [{sample.DeviceName}] 点位 [{sample.TagName}] 当前值 {value.ToString("G", CultureInfo.InvariantCulture)} {sample.Unit}");
+    }
+
+    private static TelemetrySample BuildSample(DeviceConfiguration device, TagConfiguration tag, TagReadResult result, DateTimeOffset timestamp)
+    {
+        object? raw = result.Value;
+        object? value = raw;
+        var quality = result.Quality;
+        var error = result.Error;
+        if (quality == SampleQuality.Good)
+        {
+            try
+            {
+                if (raw is null) throw new InvalidDataException("驱动返回空值。");
+                if (tag.DataType == TagDataType.Boolean)
+                {
+                    if (raw is not bool) throw new InvalidDataException("驱动返回值与布尔类型不符。");
+                }
+                else
+                {
+                    if (raw is bool) throw new InvalidDataException("驱动返回值与数值类型不符。");
+                    var numeric = Convert.ToDouble(raw, CultureInfo.InvariantCulture);
+                    var engineering = numeric * tag.Scale + tag.Offset;
+                    if (!double.IsFinite(numeric) || !double.IsFinite(engineering)) throw new InvalidDataException("点位包含 NaN 或无穷大数值。");
+                    value = engineering;
+                }
+            }
+            catch (Exception ex) when (ex is InvalidDataException or FormatException or InvalidCastException or OverflowException)
+            {
+                raw = null;
+                value = null;
+                quality = SampleQuality.Bad;
+                error = ex.Message;
+            }
+        }
+        else
+        {
+            // Failed reads must never continue publishing an old value as if it were fresh.
+            raw = null;
+            value = null;
+        }
+        return new TelemetrySample(device.Id, device.Name, tag.Id, tag.Name, tag.Address, raw, value, quality, timestamp, tag.Unit, error);
+    }
+
+    private static object ConvertWriteValue(TagConfiguration tag, string text)
+    {
+        if (tag.DataType == TagDataType.Boolean)
+        {
+            if (bool.TryParse(text, out var boolean)) return boolean;
+            return text.Trim() switch { "1" => true, "0" => false, _ => throw new ArgumentException("布尔点位只接受 true、false、1 或 0。") };
+        }
+        if (tag.Scale == 0 || !double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var engineering) || !double.IsFinite(engineering))
+            throw new ArgumentException("请输入有效的有限数值，使用小数点作为分隔符；写入倍率不能为 0。");
+        var raw = (engineering - tag.Offset) / tag.Scale;
+        if (!double.IsFinite(raw)) throw new ArgumentException("反算后的原始值超出范围。");
+        if (tag.DataType is TagDataType.Int16 or TagDataType.UInt16 or TagDataType.Int32 or TagDataType.UInt32)
+        {
+            // Permit only a few representable floating-point steps from an integer, e.g. 0.3 / 0.1.
+            // A fixed decimal epsilon would incorrectly accept genuine fractions near zero or large magnitudes.
+            var rounded = Math.Round(raw);
+            var ulp = Math.Max(Math.Abs(Math.BitIncrement(raw) - raw), Math.Abs(raw - Math.BitDecrement(raw)));
+            if (Math.Abs(raw - rounded) > 4 * ulp)
+                throw new ArgumentException("工程值反算后不是整数，无法写入整数寄存器。");
+            raw = rounded;
+        }
+        return tag.DataType switch
+        {
+            TagDataType.Int16 when raw >= short.MinValue && raw <= short.MaxValue => (object)(short)raw,
+            TagDataType.UInt16 when raw >= ushort.MinValue && raw <= ushort.MaxValue => (object)(ushort)raw,
+            TagDataType.Int32 when raw >= int.MinValue && raw <= int.MaxValue => (object)(int)raw,
+            TagDataType.UInt32 when raw >= uint.MinValue && raw <= uint.MaxValue => (object)(uint)raw,
+            TagDataType.Float32 when Math.Abs(raw) <= float.MaxValue => (object)(float)raw,
+            TagDataType.Float64 => (object)raw,
+            _ => throw new ArgumentOutOfRangeException(nameof(text), "反算后的原始值超出目标数据类型范围。")
+        };
+    }
+
+    private async Task DisposeDriverAsync(DeviceSession session)
+    {
+        if (session.Driver is null) return;
+        try { await session.Driver.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception ex) { _log.Write(GatewayLogLevel.Warning, $"关闭设备 [{session.Configuration.Name}] 时发生错误：{ex.Message}"); }
+        finally { session.Driver = null; }
+    }
+
+    private void ResetStatuses()
+    {
+        _statuses.Clear();
+        foreach (var device in _configuration.Devices ?? [])
+            if (device is not null) _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Stopped, null, 0, null);
+    }
+
+    private static GatewayConfiguration Clone(GatewayConfiguration configuration) =>
+        JsonSerializer.Deserialize<GatewayConfiguration>(JsonSerializer.Serialize(configuration))!;
+    private static int Backoff(int failures) => (int)Math.Min(30000, 1000 * Math.Pow(2, Math.Min(failures - 1, 5)));
+
+    public async ValueTask DisposeAsync()
+    {
+        await _lifecycle.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_disposed) return;
+            await StopCoreAsync().ConfigureAwait(false);
+            _disposed = true;
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    private sealed class DeviceSession(DeviceConfiguration configuration)
+    {
+        public DeviceConfiguration Configuration { get; } = configuration;
+        public SemaphoreSlim Gate { get; } = new(1, 1);
+        public IDeviceDriver? Driver { get; set; }
+    }
+}

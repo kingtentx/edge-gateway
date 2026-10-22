@@ -1,0 +1,83 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{43AF62C6-F277-4611-9E34-D4B5388DE102}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdgeGateway.Model", "src\EdgeGateway.Model\EdgeGateway.Model.csproj", "{9F5A1339-BA61-4326-BA83-A495A6935EF3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdgeGateway.Abstractions", "src\EdgeGateway.Abstractions\EdgeGateway.Abstractions.csproj", "{F1F3A43A-13D5-4BA8-B06F-22EA625F19DD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdgeGateway.DataAccess", "src\EdgeGateway.DataAccess\EdgeGateway.DataAccess.csproj", "{5CCCE6C3-B0D6-4516-A15F-EE6DE88103E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdgeGateway.Service", "src\EdgeGateway.Service\EdgeGateway.Service.csproj", "{4BC772B0-3B32-49F5-A4F0-B213A51BEE76}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdgeGateway.WinForms", "src\EdgeGateway.WinForms\EdgeGateway.WinForms.csproj", "{51950B56-4D06-468B-906B-5500931200C1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins", "Plugins", "{8DD2EF2A-935C-462D-A71E-03064092410A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Drivers", "Drivers", "{EB365C21-C271-4B7B-9298-FEB669EE46D9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdgeGateway.Driver.Modbus", "Plugins\Drivers\EdgeGateway.Driver.Modbus\EdgeGateway.Driver.Modbus.csproj", "{67ACB69F-CF95-4400-825B-A5ACDB2DD4CF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdgeGateway.Driver.Simulator", "Plugins\Drivers\EdgeGateway.Driver.Simulator\EdgeGateway.Driver.Simulator.csproj", "{06F93AC9-DBCE-495A-BA07-767AF32DCA87}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{385630B5-CEC4-424D-B876-6FB1EE28ACF3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EdgeGateway.Tests", "tests\EdgeGateway.Tests\EdgeGateway.Tests.csproj", "{A11D6717-97E9-4726-9EC2-0647B7FDCC2D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9F5A1339-BA61-4326-BA83-A495A6935EF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F5A1339-BA61-4326-BA83-A495A6935EF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F5A1339-BA61-4326-BA83-A495A6935EF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F5A1339-BA61-4326-BA83-A495A6935EF3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1F3A43A-13D5-4BA8-B06F-22EA625F19DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1F3A43A-13D5-4BA8-B06F-22EA625F19DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1F3A43A-13D5-4BA8-B06F-22EA625F19DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1F3A43A-13D5-4BA8-B06F-22EA625F19DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CCCE6C3-B0D6-4516-A15F-EE6DE88103E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CCCE6C3-B0D6-4516-A15F-EE6DE88103E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CCCE6C3-B0D6-4516-A15F-EE6DE88103E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CCCE6C3-B0D6-4516-A15F-EE6DE88103E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4BC772B0-3B32-49F5-A4F0-B213A51BEE76}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4BC772B0-3B32-49F5-A4F0-B213A51BEE76}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4BC772B0-3B32-49F5-A4F0-B213A51BEE76}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4BC772B0-3B32-49F5-A4F0-B213A51BEE76}.Release|Any CPU.Build.0 = Release|Any CPU
+		{51950B56-4D06-468B-906B-5500931200C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51950B56-4D06-468B-906B-5500931200C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51950B56-4D06-468B-906B-5500931200C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51950B56-4D06-468B-906B-5500931200C1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67ACB69F-CF95-4400-825B-A5ACDB2DD4CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67ACB69F-CF95-4400-825B-A5ACDB2DD4CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67ACB69F-CF95-4400-825B-A5ACDB2DD4CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67ACB69F-CF95-4400-825B-A5ACDB2DD4CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06F93AC9-DBCE-495A-BA07-767AF32DCA87}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06F93AC9-DBCE-495A-BA07-767AF32DCA87}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06F93AC9-DBCE-495A-BA07-767AF32DCA87}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06F93AC9-DBCE-495A-BA07-767AF32DCA87}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A11D6717-97E9-4726-9EC2-0647B7FDCC2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A11D6717-97E9-4726-9EC2-0647B7FDCC2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A11D6717-97E9-4726-9EC2-0647B7FDCC2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A11D6717-97E9-4726-9EC2-0647B7FDCC2D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9F5A1339-BA61-4326-BA83-A495A6935EF3} = {43AF62C6-F277-4611-9E34-D4B5388DE102}
+		{F1F3A43A-13D5-4BA8-B06F-22EA625F19DD} = {43AF62C6-F277-4611-9E34-D4B5388DE102}
+		{5CCCE6C3-B0D6-4516-A15F-EE6DE88103E8} = {43AF62C6-F277-4611-9E34-D4B5388DE102}
+		{4BC772B0-3B32-49F5-A4F0-B213A51BEE76} = {43AF62C6-F277-4611-9E34-D4B5388DE102}
+		{51950B56-4D06-468B-906B-5500931200C1} = {43AF62C6-F277-4611-9E34-D4B5388DE102}
+		{EB365C21-C271-4B7B-9298-FEB669EE46D9} = {8DD2EF2A-935C-462D-A71E-03064092410A}
+		{67ACB69F-CF95-4400-825B-A5ACDB2DD4CF} = {EB365C21-C271-4B7B-9298-FEB669EE46D9}
+		{06F93AC9-DBCE-495A-BA07-767AF32DCA87} = {EB365C21-C271-4B7B-9298-FEB669EE46D9}
+		{A11D6717-97E9-4726-9EC2-0647B7FDCC2D} = {385630B5-CEC4-424D-B876-6FB1EE28ACF3}
+	EndGlobalSection
+EndGlobal

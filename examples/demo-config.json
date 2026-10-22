@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "gatewayId": "edge-001",
+  "name": "边缘采集网关",
+  "autoStart": false,
+  "historyRetentionDays": 30,
+  "maxHistoryRows": 1000000,
+  "maxOutboxMessages": 50000,
+  "publishIntervalMs": 5000,
+  "mqtt": {
+    "enabled": false,
+    "host": "localhost",
+    "port": 1883,
+    "useTls": false,
+    "clientId": "edge-001",
+    "username": "",
+    "passwordEnvironmentVariable": "EDGE_MQTT_PASSWORD",
+    "topic": "edge/{gatewayId}/telemetry",
+    "timeoutMs": 10000
+  },
+  "devices": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "name": "演示机组",
+      "group": "模拟设备",
+      "driverId": "simulator",
+      "enabled": true,
+      "pollIntervalMs": 1000,
+      "timeoutMs": 3000,
+      "tags": [
+        {
+          "id": "11111111-1111-1111-1111-111111111101",
+          "name": "出水温度",
+          "address": "sine",
+          "dataType": "Float64",
+          "scale": 0.5,
+          "offset": 15,
+          "unit": "°C",
+          "lowLimit": 32,
+          "highLimit": 48
+        },
+        {
+          "id": "11111111-1111-1111-1111-111111111102",
+          "name": "目标温度",
+          "address": "constant:45",
+          "dataType": "Float64",
+          "unit": "°C",
+          "writable": true
+        }
+      ]
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "name": "Modbus TCP 示例（需配置）",
+      "group": "现场设备",
+      "driverId": "modbus-tcp",
+      "enabled": false,
+      "host": "127.0.0.1",
+      "port": 502,
+      "unitId": 1,
+      "pollIntervalMs": 1000,
+      "timeoutMs": 3000,
+      "tags": [
+        {
+          "id": "22222222-2222-2222-2222-222222222201",
+          "name": "保持寄存器0",
+          "address": "0",
+          "dataType": "UInt16",
+          "area": "HoldingRegister",
+          "byteOrder": "ABCD",
+          "scale": 1,
+          "offset": 0,
+          "writable": false
+        }
+      ]
+    }
+  ]
+}

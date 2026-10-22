@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+artifacts/
+TestResults/
+data/
+*.db
+*.db-shm
+*.db-wal
+gateway.json
+gateway.json.bak
+*.log
+.env
