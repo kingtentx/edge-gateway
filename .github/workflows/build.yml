@@ -49,5 +49,5 @@ jobs:
           name: verification
           path: |
             artifacts/test-results/
-            artifacts/ui-smoke.*
+            artifacts/ui-smoke*
           if-no-files-found: warn

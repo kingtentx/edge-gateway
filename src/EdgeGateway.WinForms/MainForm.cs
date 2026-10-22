@@ -108,19 +108,32 @@ public sealed partial class MainForm : Form
         sidebar.Controls.Add(edition, 0, 8);
 
         var body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         body.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-        var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = Color.White, Padding = new Padding(22, 14, 14, 12), AutoSize = true, Margin = new Padding(0) };
+        var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = Color.White, Padding = new Padding(22, 14, 14, 12), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        var status = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var status = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0) };
         status.Controls.Add(_runState); status.Controls.Add(_savedState);
         _startButton = UiTheme.Button("启动采集", async (_, _) => await RunBusyAsync(StartCollectionAsync), true);
         _stopButton = UiTheme.Button("停止采集", async (_, _) => await RunBusyAsync(async () => { await _runtime.StopAsync(); SetFooter("采集已停止。"); }));
         _saveButton = UiTheme.Button("保存配置", async (_, _) => await RunBusyAsync(PersistConfigurationAsync));
+        // In an AutoSize table column a wrapping FlowLayoutPanel reports a one-button
+        // preferred width. Give header commands their full single-row preferred size.
+        // Page toolbars intentionally keep wrapping to fit narrower content areas.
+        var headerActions = new FlowLayoutPanel
+        {
+            Name = "HeaderActions", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false, FlowDirection = FlowDirection.LeftToRight,
+            Anchor = AnchorStyles.Top | AnchorStyles.Right, Dock = DockStyle.None,
+            Margin = new Padding(16, 0, 0, 0), Padding = new Padding(0)
+        };
+        headerActions.Controls.AddRange(new Control[] { _startButton, _stopButton, _saveButton });
         header.Controls.Add(status, 0, 0);
-        header.Controls.Add(UiTheme.Toolbar(_startButton, _stopButton, _saveButton), 1, 0);
+        header.Controls.Add(headerActions, 1, 0);
         body.Controls.Add(header, 0, 0);
         body.Controls.Add(_pageHost, 0, 1);
         _footer.Dock = DockStyle.Fill; _footer.Padding = new Padding(22, 0, 0, 0);
@@ -195,20 +208,27 @@ public sealed partial class MainForm : Form
             try
             {
                 await RefreshSnapshotsAsync();
+                var originalSize = Size;
+                Width = MinimumSize.Width;
+                PerformLayoutRecursively(this);
+                AssertHeaderActionsFit();
+                Size = originalSize;
                 foreach (var key in _pages.Keys)
                 {
-                    ShowPage(key); PerformLayout(); _pages[key].PerformLayout();
+                    ShowPage(key);
+                    PerformLayoutRecursively(this);
+                    AssertHeaderActionsFit();
+                    AssertPageToolbarsFit(_pages[key], key);
                     using var bitmap = new Bitmap(Math.Max(1, Width), Math.Max(1, Height));
-                    DrawToBitmap(bitmap, ClientRectangle);
-                }
-                if (!string.IsNullOrWhiteSpace(_smokeScreenshotPath))
-                {
-                    ShowPage("overview"); PerformLayout();
-                    var output = Path.GetFullPath(_smokeScreenshotPath);
-                    Directory.CreateDirectory(Path.GetDirectoryName(output)!);
-                    using var screenshot = new Bitmap(Width, Height);
-                    DrawToBitmap(screenshot, new Rectangle(0, 0, Width, Height));
-                    screenshot.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+                    DrawToBitmap(bitmap, new Rectangle(0, 0, Width, Height));
+                    if (!string.IsNullOrWhiteSpace(_smokeScreenshotPath))
+                    {
+                        var requested = Path.GetFullPath(_smokeScreenshotPath);
+                        var directory = Path.GetDirectoryName(requested)!;
+                        Directory.CreateDirectory(directory);
+                        var output = key == "overview" ? requested : Path.Combine(directory, Path.GetFileNameWithoutExtension(requested) + "-" + key + ".png");
+                        bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+                    }
                 }
             }
             catch (Exception exception) { SmokeTestFailed = true; Console.Error.WriteLine(exception); }
@@ -218,6 +238,47 @@ public sealed partial class MainForm : Form
         _refreshTimer.Start();
         await RefreshSnapshotsAsync();
         if (_configuration.AutoStart) await RunBusyAsync(StartCollectionAsync);
+    }
+
+    private static void PerformLayoutRecursively(Control root)
+    {
+        root.PerformLayout();
+        foreach (Control child in root.Controls)
+            if (child.Visible) PerformLayoutRecursively(child);
+        root.PerformLayout();
+    }
+
+    private void AssertHeaderActionsFit()
+    {
+        var buttons = new[] { _startButton, _stopButton, _saveButton };
+        foreach (var button in buttons) AssertVisibleBounds(button, "header");
+        var rectangles = buttons.Select(x => x.Parent!.RectangleToScreen(x.Bounds)).ToArray();
+        if (rectangles.Any(x => x.Top != rectangles[0].Top) || rectangles[0].Right > rectangles[1].Left || rectangles[1].Right > rectangles[2].Left)
+            throw new InvalidOperationException("Header commands are wrapped or overlap; Start, Stop and Save must share one accessible row.");
+    }
+
+    private static void AssertPageToolbarsFit(Control root, string page)
+    {
+        if (root is FlowLayoutPanel toolbar)
+        {
+            foreach (Control child in toolbar.Controls)
+                if (child.Visible) AssertVisibleBounds(child, page + " toolbar");
+        }
+        foreach (Control child in root.Controls)
+            if (child.Visible) AssertPageToolbarsFit(child, page);
+    }
+
+    private static void AssertVisibleBounds(Control control, string context)
+    {
+        if (!control.Visible || control.Width <= 0 || control.Height <= 0)
+            throw new InvalidOperationException($"{context}: control '{control.Text}' has no visible area.");
+        var bounds = control.Parent!.RectangleToScreen(control.Bounds);
+        for (var ancestor = control.Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            var viewport = ancestor.RectangleToScreen(ancestor.ClientRectangle);
+            if (!viewport.Contains(bounds))
+                throw new InvalidOperationException($"{context}: '{control.Text}' ({bounds}) is clipped by {ancestor.GetType().Name} ({viewport}).");
+        }
     }
 
     private async Task StartCollectionAsync()

@@ -73,7 +73,8 @@ internal static class UiTheme
     {
         var panel = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill, AutoSize = true, WrapContents = true,
+            Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = true, FlowDirection = FlowDirection.LeftToRight,
             Padding = new Padding(0, 8, 0, 10), Margin = new Padding(0)
         };
         panel.Controls.AddRange(controls);
