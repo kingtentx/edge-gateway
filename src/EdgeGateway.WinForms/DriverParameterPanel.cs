@@ -79,8 +79,13 @@ internal sealed class DriverParameterPanel : UserControl
         foreach (var field in _fields.Values)
         {
             if (field.Metadata.Options.Count > 0 && field.Input is ComboBox combo)
+            {
+                var expected = _original.GetValueOrDefault(field.Metadata.Key, field.Metadata.DefaultValue);
+                if (combo.SelectedIndex < 0 || combo.SelectedItem?.ToString() != expected)
+                    throw new InvalidOperationException($"{descriptor.Id}: parameter {field.Metadata.Key} lost its configured selection.");
                 foreach (var option in field.Metadata.Options)
                     if (!combo.Items.Contains(option)) throw new InvalidOperationException($"{descriptor.Id}: parameter {field.Metadata.Key} lost enum option {option}.");
+            }
             var bound = BoundValue(field.Metadata, device);
             if (bound is not null)
             {

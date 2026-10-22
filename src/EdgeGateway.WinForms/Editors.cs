@@ -88,7 +88,7 @@ internal sealed class DeviceEditor : EditorDialog
     private readonly Label _driverDetails;
     private readonly TabPage _connectionPage, _parametersPage;
     private readonly DriverParameterPanel _parameters = new();
-    private readonly Dictionary<string, Dictionary<string, string>> _parameterDrafts = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Dictionary<string, string>> _parameterDrafts = new(StringComparer.OrdinalIgnoreCase);
     private DriverDescriptor? _selectedDriver;
 
     public DeviceEditor(DeviceConfiguration value, IReadOnlyList<DriverDescriptor> drivers, bool isNew = false)
@@ -98,9 +98,13 @@ internal sealed class DeviceEditor : EditorDialog
         _parameterDrafts[value.DriverId] = new Dictionary<string, string>(value.Properties, StringComparer.Ordinal);
         var basic = AddTab("基本与采集");
         _name = TextInput(value.Name); _group = TextInput(value.Group);
-        _driver = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FormattingEnabled = true, DropDownWidth = 620, IntegralHeight = false, DropDownHeight = 440, DataSource = drivers.ToList() };
+        _driver = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FormattingEnabled = true, DropDownWidth = 620, IntegralHeight = false, DropDownHeight = 440 };
         _driver.Format += (_, e) => { if (e.ListItem is DriverDescriptor d) e.Value = d.Name + "  ·  " + d.Id; };
-        _driver.SelectedItem = drivers.FirstOrDefault(x => x.Id == value.DriverId);
+        // This is a fixed catalog, not a live binding. Populate Items before selecting so the
+        // constructor does not depend on a BindingContext/CurrencyManager created when shown.
+        var driverItems = drivers.ToArray();
+        _driver.Items.AddRange(driverItems.Cast<object>().ToArray());
+        _driver.SelectedIndex = Array.FindIndex(driverItems, x => string.Equals(x.Id, value.DriverId, StringComparison.OrdinalIgnoreCase));
         _enabled = new CheckBox { Text = "启用此设备", Checked = value.Enabled, AutoSize = true, Height = 32 };
         _cycle = NumberInput(value.PollIntervalMs, 100, 3_600_000); _timeout = NumberInput(value.TimeoutMs, 100, 120_000);
         Field(basic, "设备名称", _name); Field(basic, "设备分组", _group); Field(basic, "采集驱动", _driver);
@@ -165,6 +169,9 @@ internal sealed class DeviceEditor : EditorDialog
     internal void VerifyBindingsForSmoke()
     {
         var descriptor = _selectedDriver ?? throw new InvalidOperationException("Driver selector is empty.");
+        if (!ReferenceEquals(_driver.SelectedItem, descriptor)
+            || !string.Equals(descriptor.Id, Value.DriverId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Device editor lost the configured driver selection while being shown.");
         _parameters.VerifyBindingsForSmoke(descriptor, BoundDevice());
         var expectedId = Value.Id;
         Commit();
