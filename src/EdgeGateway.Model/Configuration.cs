@@ -4,7 +4,7 @@ namespace EdgeGateway.Model;
 
 public sealed class GatewayConfiguration
 {
-    public int SchemaVersion { get; set; } = 1;
+    public int SchemaVersion { get; set; } = 2;
     public string GatewayId { get; set; } = "edge-001";
     public string Name { get; set; } = "边缘采集网关";
     public bool AutoStart { get; set; }
@@ -59,6 +59,9 @@ public sealed class TagConfiguration
     [DisplayName("数据类型")] public TagDataType DataType { get; set; } = TagDataType.UInt16;
     [DisplayName("寄存区")] public ModbusArea Area { get; set; } = ModbusArea.HoldingRegister;
     [DisplayName("字节序")] public RegisterByteOrder ByteOrder { get; set; } = RegisterByteOrder.ABCD;
+    [DisplayName("读取方法")] public string ReadMethod { get; set; } = "";
+    [DisplayName("写入方法")] public string WriteMethod { get; set; } = "";
+    [DisplayName("协议字节序")] public ProtocolEndian Endian { get; set; } = ProtocolEndian.FromByteOrder;
     [DisplayName("启用")] public bool Enabled { get; set; } = true;
     [DisplayName("允许写入")] public bool Writable { get; set; }
     [DisplayName("倍率")] public double Scale { get; set; } = 1;
@@ -69,7 +72,14 @@ public sealed class TagConfiguration
     [DisplayName("说明")] public string Description { get; set; } = "";
 }
 
-public enum TagDataType { Boolean, Int16, UInt16, Int32, UInt32, Float32, Float64 }
+// Preserve the first seven numeric values for existing schema-v1 configuration files.
+public enum TagDataType
+{
+    Boolean, Int16, UInt16, Int32, UInt32, Float32, Float64,
+    Bit, UInt8, Int8, Bcd16, Bcd32, UInt64, Int64, AsciiString, Utf8String,
+    DateTime, TimeStampMs, TimeStampS, Any, Custom1, Custom2, Custom3, Custom4, Custom5, Gb2312String
+}
+public enum ProtocolEndian { FromByteOrder, None, BigEndian, LittleEndian, BigEndianSwap, LittleEndianSwap }
 public enum ModbusArea { Coil, DiscreteInput, HoldingRegister, InputRegister }
 public enum RegisterByteOrder { ABCD, BADC, CDAB, DCBA }
 public enum SampleQuality { Good, Bad, Uncertain }

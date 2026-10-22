@@ -230,6 +230,7 @@ public sealed partial class MainForm : Form
                         bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
                     }
                 }
+                SmokeDriverEditors();
             }
             catch (Exception exception) { SmokeTestFailed = true; Console.Error.WriteLine(exception); }
             _allowClose = true; Close();
@@ -246,6 +247,75 @@ public sealed partial class MainForm : Form
         foreach (Control child in root.Controls)
             if (child.Visible) PerformLayoutRecursively(child);
         root.PerformLayout();
+    }
+
+    private void SmokeDriverEditors()
+    {
+        foreach (var driver in _drivers.Drivers)
+        {
+            var device = new DeviceConfiguration { Name = "配置检查 · " + driver.Name, DriverId = driver.Id, Enabled = false };
+            using (var editor = new DeviceEditor(device, _drivers.Drivers, isNew: true))
+            {
+                editor.Show(this);
+                editor.VerifyBindingsForSmoke();
+                VerifyEditorLayout(editor, driver.Id + " device");
+                SaveEditorScreenshot(editor, "device", driver.Id);
+                editor.Close();
+            }
+            using (var editor = new TagEditor(TagEditor.CreateDefaultTag(driver, "点位配置检查"), driver))
+            {
+                editor.Show(this);
+                editor.VerifyBindingsForSmoke();
+                VerifyEditorLayout(editor, driver.Id + " tag");
+                SaveEditorScreenshot(editor, "tag", driver.Id);
+                editor.Close();
+            }
+        }
+        Console.WriteLine($"WinForms editor smoke passed: {_drivers.Drivers.Count} drivers, {_drivers.Drivers.Sum(x => x.Parameters.Count)} reflected parameters, {_drivers.Drivers.Sum(x => x.Methods.Count)} methods.");
+    }
+
+    private static void VerifyEditorLayout(EditorDialog editor, string context)
+    {
+        var selected = editor.SelectedSmokeTab;
+        foreach (var tab in editor.SmokeTabs)
+        {
+            editor.SelectedSmokeTab = tab;
+            PerformLayoutRecursively(editor);
+            foreach (var command in editor.SmokeCommands) AssertVisibleBounds(command, context + " action");
+            // Long protocol settings pages must allow every field to be brought into view.
+            foreach (var input in Descendants(tab).Where(x => x is TextBoxBase or ComboBox or NumericUpDown or CheckBox))
+            {
+                if (!input.Visible) continue;
+                for (var parent = input.Parent; parent is not null && parent != editor; parent = parent.Parent)
+                    if (parent is ScrollableControl scroll && scroll.AutoScroll) scroll.ScrollControlIntoView(input);
+                PerformLayoutRecursively(editor);
+                AssertVisibleBounds(input, context + " field");
+            }
+            foreach (var scroll in Descendants(tab).OfType<ScrollableControl>().Where(x => x.AutoScroll)) scroll.AutoScrollPosition = Point.Empty;
+            tab.AutoScrollPosition = Point.Empty;
+        }
+        editor.SelectedSmokeTab = selected;
+        PerformLayoutRecursively(editor);
+    }
+
+    private static IEnumerable<Control> Descendants(Control root)
+    {
+        foreach (Control child in root.Controls)
+        {
+            yield return child;
+            foreach (var descendant in Descendants(child)) yield return descendant;
+        }
+    }
+
+    private void SaveEditorScreenshot(Form editor, string kind, string driverId)
+    {
+        if (string.IsNullOrWhiteSpace(_smokeScreenshotPath)) return;
+        var requested = Path.GetFullPath(_smokeScreenshotPath);
+        var identifier = new string(driverId.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '-').ToArray());
+        var output = Path.Combine(Path.GetDirectoryName(requested)!, Path.GetFileNameWithoutExtension(requested) + "-" + kind + "-" + identifier + ".png");
+        using var bitmap = new Bitmap(editor.Width, editor.Height);
+        editor.DrawToBitmap(bitmap, new Rectangle(0, 0, editor.Width, editor.Height));
+        bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
     }
 
     private void AssertHeaderActionsFit()
@@ -433,7 +503,13 @@ public sealed partial class MainForm : Form
     private static string ValueText(object? value) => value switch
     {
         null => "—", bool boolean => boolean ? "true" : "false", double number => number.ToString("G9", CultureInfo.InvariantCulture),
-        float number => number.ToString("G7", CultureInfo.InvariantCulture), _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? "—"
+        float number => number.ToString("G7", CultureInfo.InvariantCulture),
+        DateTime timestamp => timestamp.ToString("O", CultureInfo.InvariantCulture),
+        DateTimeOffset timestamp => timestamp.ToString("O", CultureInfo.InvariantCulture),
+        JsonElement element => element.ValueKind == JsonValueKind.String ? element.GetString() ?? "" : element.GetRawText(),
+        string text => text,
+        System.Collections.IEnumerable structured => JsonSerializer.Serialize(structured, JsonConfigurationStore.SerializerOptions),
+        _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? "—"
     };
     private sealed record Choice(Guid? Id, string Name) { public override string ToString() => Name; }
 }

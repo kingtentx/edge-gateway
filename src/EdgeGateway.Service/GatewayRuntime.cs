@@ -151,7 +151,7 @@ public sealed class GatewayRuntime : IAsyncDisposable
         var rawValue = ConvertWriteValue(tag, engineeringValue);
         var runtimeCancellation = _runCancellation ?? throw new InvalidOperationException("网关已停止。");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, runtimeCancellation.Token);
-        timeout.CancelAfter(session.Configuration.TimeoutMs);
+        timeout.CancelAfter(_registry.GetFactory(session.Configuration.DriverId).Descriptor.IsLegacy ? session.Configuration.TimeoutMs + 1500 : session.Configuration.TimeoutMs);
         await session.Gate.WaitAsync(timeout.Token).ConfigureAwait(false);
         try
         {
@@ -186,7 +186,9 @@ public sealed class GatewayRuntime : IAsyncDisposable
                 try
                 {
                     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    timeout.CancelAfter(device.TimeoutMs);
+                    var legacy = _registry.GetFactory(device.DriverId).Descriptor.IsLegacy;
+                    // Original drivers have per-operation synchronous timeouts; budget the serial per-tag cycle separately.
+                    timeout.CancelAfter(legacy ? (int)Math.Min(int.MaxValue - 1L, (long)(device.TimeoutMs + 1000) * (tags.Length + 1) + 500) : device.TimeoutMs);
                     if (session.Driver is null)
                     {
                         _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Connecting, lastSuccess, failures, null);
@@ -382,23 +384,12 @@ public sealed class GatewayRuntime : IAsyncDisposable
         object? value = raw;
         var quality = result.Quality;
         var error = result.Error;
-        if (quality == SampleQuality.Good)
+        if (quality != SampleQuality.Bad)
         {
             try
             {
                 if (raw is null) throw new InvalidDataException("驱动返回空值。");
-                if (tag.DataType == TagDataType.Boolean)
-                {
-                    if (raw is not bool) throw new InvalidDataException("驱动返回值与布尔类型不符。");
-                }
-                else
-                {
-                    if (raw is bool) throw new InvalidDataException("驱动返回值与数值类型不符。");
-                    var numeric = Convert.ToDouble(raw, CultureInfo.InvariantCulture);
-                    var engineering = numeric * tag.Scale + tag.Offset;
-                    if (!double.IsFinite(numeric) || !double.IsFinite(engineering)) throw new InvalidDataException("点位包含 NaN 或无穷大数值。");
-                    value = engineering;
-                }
+                value = SampleValueConversion.ConvertReadValue(tag, raw);
             }
             catch (Exception ex) when (ex is InvalidDataException or FormatException or InvalidCastException or OverflowException)
             {
@@ -419,16 +410,20 @@ public sealed class GatewayRuntime : IAsyncDisposable
 
     private static object ConvertWriteValue(TagConfiguration tag, string text)
     {
+        if (TagDataTypes.IsString(tag.DataType)) return text;
+        if (tag.DataType is TagDataType.Int64 or TagDataType.UInt64 or TagDataType.TimeStampMs or TagDataType.TimeStampS)
+            return SampleValueConversion.ConvertWideIntegerWrite(tag, text);
         if (tag.DataType == TagDataType.Boolean)
         {
             if (bool.TryParse(text, out var boolean)) return boolean;
             return text.Trim() switch { "1" => true, "0" => false, _ => throw new ArgumentException("布尔点位只接受 true、false、1 或 0。") };
         }
+        if (tag.DataType == TagDataType.Bit && bool.TryParse(text, out var bit)) text = bit ? "1" : "0";
         if (tag.Scale == 0 || !double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var engineering) || !double.IsFinite(engineering))
             throw new ArgumentException("请输入有效的有限数值，使用小数点作为分隔符；写入倍率不能为 0。");
         var raw = (engineering - tag.Offset) / tag.Scale;
         if (!double.IsFinite(raw)) throw new ArgumentException("反算后的原始值超出范围。");
-        if (tag.DataType is TagDataType.Int16 or TagDataType.UInt16 or TagDataType.Int32 or TagDataType.UInt32)
+        if (tag.DataType is TagDataType.Bit or TagDataType.Int8 or TagDataType.UInt8 or TagDataType.Int16 or TagDataType.UInt16 or TagDataType.Int32 or TagDataType.UInt32 or TagDataType.Bcd16 or TagDataType.Bcd32)
         {
             // Permit only a few representable floating-point steps from an integer, e.g. 0.3 / 0.1.
             // A fixed decimal epsilon would incorrectly accept genuine fractions near zero or large magnitudes.
@@ -440,6 +435,11 @@ public sealed class GatewayRuntime : IAsyncDisposable
         }
         return tag.DataType switch
         {
+            TagDataType.Bit when raw is 0 or 1 => (object)(int)raw,
+            TagDataType.Int8 when raw >= sbyte.MinValue && raw <= sbyte.MaxValue => (object)(sbyte)raw,
+            TagDataType.UInt8 when raw >= byte.MinValue && raw <= byte.MaxValue => (object)(byte)raw,
+            TagDataType.Bcd16 when raw >= 0 && raw <= 9999 => (object)(ushort)raw,
+            TagDataType.Bcd32 when raw >= 0 && raw <= 99999999 => (object)(uint)raw,
             TagDataType.Int16 when raw >= short.MinValue && raw <= short.MaxValue => (object)(short)raw,
             TagDataType.UInt16 when raw >= ushort.MinValue && raw <= ushort.MaxValue => (object)(ushort)raw,
             TagDataType.Int32 when raw >= int.MinValue && raw <= int.MaxValue => (object)(int)raw,

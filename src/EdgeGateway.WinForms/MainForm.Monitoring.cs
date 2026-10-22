@@ -141,7 +141,12 @@ public sealed partial class MainForm
         if (sample is null) return;
         var tag = _configuration.Devices.First(d => d.Id == sample.DeviceId).Tags.First(t => t.Id == sample.TagId);
         if (!tag.Enabled || !tag.Writable || !_runtime.IsRunning) throw new InvalidOperationException("该点位未启用写入，或采集尚未启动。");
-        using var dialog = new WriteValueDialog(sample.DeviceName, sample.TagName, sample.Unit, ValueText(sample.Value), tag.DataType == TagDataType.Boolean);
+        var current = sample.Value switch
+        {
+            null => "", double number => number.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+            float number => number.ToString("R", System.Globalization.CultureInfo.InvariantCulture), _ => ValueText(sample.Value)
+        };
+        using var dialog = new WriteValueDialog(sample.DeviceName, sample.TagName, sample.Unit, current, tag.DataType);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         if (MessageBox.Show(this, $"确认向设备“{sample.DeviceName}”的点位“{sample.TagName}”写入工程值 {dialog.Value} {sample.Unit}？\n\n此操作会发送实际设备写入命令。", "确认设备写入", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK) return;
         await _runtime.WriteAsync(sample.DeviceId, sample.TagId, dialog.Value);

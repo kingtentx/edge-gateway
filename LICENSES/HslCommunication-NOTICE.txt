@@ -1,0 +1,19 @@
+HslCommunication 12.8.3
+
+版权归杭州胡工物联科技有限公司所有
+
+The installed official NuGet package identifies its license at:
+http://www.hsltechnology.cn/Home/Licence?area=HslCommunication
+Current HTTPS endpoint:
+https://www.hsltechnology.cn/Home/Licence?area=HslCommunication
+
+The package does not contain an MIT or other open-source license grant.
+HslCommunication is subject to the publisher's applicable license. This
+project does not supply an activation code or grant a HslCommunication license.
+The CNC.Fanuc.H driver reads an existing, legitimately obtained activation
+code from the environment variable named by AuthorizationCodeEnvironmentVariable
+(default EDGE_HSL_AUTHORIZATION_CODE) and passes it to the vendor's
+Authorization.SetAuthorizationCode API. It does not bypass vendor licensing.
+
+Source of this attribution: official HslCommunication 12.8.3 NuGet .nuspec
+copyright, projectUrl and licenseUrl fields.

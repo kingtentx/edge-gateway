@@ -1,5 +1,6 @@
 using EdgeGateway.DataAccess;
 using EdgeGateway.Model;
+using System.Text.Json;
 
 namespace EdgeGateway.Tests.RuntimeStorage;
 
@@ -100,6 +101,26 @@ public sealed class SqliteStoreTests : IDisposable
         await store.AppendSamplesAsync([a, b]);
         Assert.Single(await store.QueryHistoryAsync(new HistoryQuery(a.DeviceId, null, now.AddSeconds(-1), now.AddSeconds(1))));
         await Assert.ThrowsAsync<ArgumentException>(async () => await store.QueryHistoryAsync(new HistoryQuery(null, null, now, now.AddMinutes(-1))));
+    }
+
+    [Fact]
+    public async Task WideIntegersTextAndStructuredValuesRoundTripWithoutDoubleCoercion()
+    {
+        await using var store = new SqliteGatewayStore(DatabasePath);
+        await store.InitializeAsync();
+        var now = DateTimeOffset.UtcNow;
+        var values = new object[] { ulong.MaxValue, long.MinValue, "  工件 A  ",
+            JsonSerializer.SerializeToElement(new { counter = ulong.MaxValue, coordinates = new[] { 1.25, 2.5 } }) };
+        var samples = values.Select((value, index) => MakeSample(now.AddMilliseconds(index), 0) with { RawValue = value, Value = value }).ToArray();
+        await store.AppendSamplesAsync(samples);
+        var rows = await store.QueryHistoryAsync(new HistoryQuery(null, null, now.AddSeconds(-1), now.AddSeconds(1)));
+        var ordered = rows.OrderBy(row => row.Timestamp).ToArray();
+        Assert.Equal(ulong.MaxValue, Assert.IsType<ulong>(ordered[0].Value));
+        Assert.Equal(long.MinValue, Assert.IsType<long>(ordered[1].Value));
+        Assert.Equal("  工件 A  ", Assert.IsType<string>(ordered[2].Value));
+        var structured = Assert.IsType<JsonElement>(ordered[3].Value);
+        Assert.Equal(ulong.MaxValue, structured.GetProperty("counter").GetUInt64());
+        Assert.Equal(2.5, structured.GetProperty("coordinates")[1].GetDouble());
     }
 
     private static TelemetrySample MakeSample(DateTimeOffset at, double value) =>

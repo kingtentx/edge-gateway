@@ -1,0 +1,17 @@
+FANUC FOCAS interoperability declarations
+
+The migrated Plugins/Drivers/CNC.Fanuc/fwlib64.cs retains this original notice:
+
+Copyright (C) 2002-2014 by FANUC CORPORATION All rights reserved.
+
+Source: iioter/iotgateway commit 8de442a7dec52d2993d1e9667d799846936d681b,
+Plugins/Drivers/CNC.Fanuc/fwlib64.cs. The companion fwlib32.cs and FanucFocas.cs
+are preserved from the same source tree.
+
+FANUC's declarations, native libraries, documentation and device options remain
+subject to FANUC's rights and applicable terms. This repository's MIT license
+does not relicense FANUC material or supply a vendor license. FWLIB64.dll and
+its official native dependencies are not included or substituted. Obtain and
+install legitimate vendor components separately for a Windows x64 deployment.
+The active Focas1 calls use FWLIB64.dll; preserving fwlib32.cs does not imply
+that the supplied Windows x64 gateway supports a 32-bit FOCAS deployment.

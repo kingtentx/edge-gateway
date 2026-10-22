@@ -11,7 +11,7 @@ public static class ConfigurationValidator
     {
         ArgumentNullException.ThrowIfNull(configuration);
         var errors = new List<string>();
-        if (configuration.SchemaVersion != 1) errors.Add("仅支持配置格式版本 1。");
+        if (configuration.SchemaVersion != 2) errors.Add("仅支持配置格式版本 2；请通过配置存储加载并迁移版本 1。");
         if (string.IsNullOrWhiteSpace(configuration.GatewayId) || !Regex.IsMatch(configuration.GatewayId, "^[A-Za-z0-9._-]{1,100}$"))
             errors.Add("网关标识须为 1–100 位字母、数字、点、下划线或短横线。");
         if (string.IsNullOrWhiteSpace(configuration.Name)) errors.Add("网关名称不能为空。");
@@ -48,8 +48,13 @@ public static class ConfigurationValidator
             IDriverFactory? factory = null;
             try { factory = registry.GetFactory(device.DriverId ?? ""); }
             catch (Exception ex) { errors.Add($"{label}：{ex.Message}"); }
-            if (device.Enabled && string.Equals(device.DriverId, "modbus-rtu", StringComparison.OrdinalIgnoreCase) &&
-                !serialPorts.Add(device.SerialPortName?.Trim() ?? ""))
+            var canonicalDriverId = factory?.Descriptor.Id ?? device.DriverId;
+            var masterType = device.Properties?.GetValueOrDefault("MasterType", "Tcp")?.Trim();
+            var serialPort = string.Equals(canonicalDriverId, "modbus-rtu", StringComparison.OrdinalIgnoreCase) ? device.SerialPortName :
+                string.Equals(canonicalDriverId, "PLC.ModBusMaster", StringComparison.OrdinalIgnoreCase) && device.Properties is not null &&
+                (string.Equals(masterType, "Rtu", StringComparison.OrdinalIgnoreCase) || string.Equals(masterType, "Ascii", StringComparison.OrdinalIgnoreCase))
+                    ? device.Properties.GetValueOrDefault("PortName", "COM1") : null;
+            if (device.Enabled && serialPort is not null && !serialPorts.Add(NormalizeSerialPort(serialPort)))
                 errors.Add($"{label} 与其他已启用设备使用同一串口；当前版本每个串口只支持一个启用设备。");
             if (device.Tags is null) { errors.Add($"{label} 的点位列表不能为 null。"); continue; }
             if (device.Tags.Count > 2000) errors.Add($"{label} 最多支持 2000 个点位。");
@@ -60,10 +65,12 @@ public static class ConfigurationValidator
                 var tagLabel = $"{label} 点位 [{tag.Name}]";
                 if (tag.Id == Guid.Empty || !tagIds.Add(tag.Id)) errors.Add($"{tagLabel} 的标识为空或重复。");
                 if (string.IsNullOrWhiteSpace(tag.Name) || !names.Add(tag.Name)) errors.Add($"{tagLabel} 的名称为空或设备内重复。");
-                if (!Enum.IsDefined(tag.DataType) || !Enum.IsDefined(tag.Area) || !Enum.IsDefined(tag.ByteOrder)) errors.Add($"{tagLabel} 包含不支持的类型、寄存区或字节序。");
+                if (!Enum.IsDefined(tag.DataType) || !Enum.IsDefined(tag.Area) || !Enum.IsDefined(tag.ByteOrder) || !Enum.IsDefined(tag.Endian)) errors.Add($"{tagLabel} 包含不支持的类型、寄存区或字节序。");
                 if (!double.IsFinite(tag.Scale) || !double.IsFinite(tag.Offset)) errors.Add($"{tagLabel} 的倍率与偏移必须为有限数值。");
                 if (tag.Writable && tag.Scale == 0) errors.Add($"{tagLabel} 允许写入时倍率不能为 0。");
                 if (tag.DataType == TagDataType.Boolean && (tag.Scale != 1 || tag.Offset != 0)) errors.Add($"{tagLabel} 为布尔类型，倍率必须为 1、偏移必须为 0。");
+                if (!TagDataTypes.IsNumeric(tag.DataType) && (tag.Scale != 1 || tag.Offset != 0 || tag.HighLimit.HasValue || tag.LowLimit.HasValue))
+                    errors.Add($"{tagLabel} 为非数值类型，倍率须为 1、偏移须为 0，且不能配置数值阈值。");
                 if (tag.LowLimit is double low && !double.IsFinite(low) || tag.HighLimit is double high && !double.IsFinite(high)) errors.Add($"{tagLabel} 的报警阈值必须为有限数值。");
                 if (tag.LowLimit.HasValue && tag.HighLimit.HasValue && tag.LowLimit > tag.HighLimit) errors.Add($"{tagLabel} 的报警下限不能高于上限。");
                 if (tag.Writable && factory is not null && !factory.Descriptor.SupportsWrite) errors.Add($"{tagLabel} 所用驱动不支持写入。");
@@ -75,5 +82,11 @@ public static class ConfigurationValidator
             }
         }
         return errors;
+    }
+
+    private static string NormalizeSerialPort(string name)
+    {
+        var normalized = name.Trim();
+        return normalized.StartsWith("\\\\.\\", StringComparison.Ordinal) ? normalized[4..] : normalized;
     }
 }

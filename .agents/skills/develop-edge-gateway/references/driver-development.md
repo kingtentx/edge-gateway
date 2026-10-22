@@ -1,6 +1,16 @@
 # 驱动开发与协议测试
 
-## 扩展步骤
+## 维护迁移驱动
+
+原目录名就是稳定 DriverId，完整清单见 [迁移说明](../../../../docs/driver-migration.md)。12 个源驱动通过 `EdgeGateway.IotGateway` 注册；不要将其改名为原生插件命名或删除原 `ConfigParameter` / `Method`。`DeviceId`、`Timeout`、`MinPeriod` 绑定通用配置，其他参数保存到 `DeviceConfiguration.Properties`。
+
+原同步调用由适配器的专属线程执行；OPC DA 构造、读取、释放遵守同 STA 线程约束。超时返回失败后，不再复用尚有操作运行的实例，同设备不能借重连创建无限新线程。错误/空值不得转换为 Good。更新驱动后运行完整性清单和实际行为测试，不能只检查程序集文件名。
+
+点位保存实际方法名与类型。保留所有原读取方法；原 OPC/Modbus 的样例 Read 已改为真实读取兼容入口，默认使用明确的 ReadNode / HoldingRegisters 等方法。若新增诊断方法必须显式标识。写能力按驱动和方法同时判断。Hsl 授权等敏感数据只经环境变量注入，FANUC 本机 DLL 不以占位文件代替。
+
+源 Modbus 的 `ReadMultiple` 返回原始 `bool[]` 或 `ushort[]`，不是任意元素类型的已解码数组。例如先配置 `ReadMultiple` / 地址 `3,0,4,cache1` / 类型 `Any`，再依次用 `ReadFromCache` / `cache1,0` 和 `cache1,2` / 类型 `Float32` 解两个浮点值，并核对字节序。若要一个点位直接返回 `float[]`，需要单独新增并验证转换方法，不能仅更改类型名称。源 MC 的批量方法则按点位数据类型解析批量结果，返回结构值；IO 类型与返回形状不要混为一谈。
+
+## 新原生驱动扩展步骤
 
 1. 在 `Plugins/Drivers/EdgeGateway.Driver.<Protocol>` 建立 `net8.0` 工程，引用 `EdgeGateway.Abstractions`；保持输出程序集名以 `EdgeGateway.Driver.` 开头。
 2. 实现公共无参 `IDriverFactory`，提供唯一 `Descriptor.Id`、中文名称、是否允许写入与 `Validate`。
@@ -11,7 +21,9 @@
 7. 为插件设置 `EnableDynamicLoading=true`，发布依赖与 `.deps.json`，把完整输出放在程序目录 `plugins/<Protocol>/` 后重启。
 8. 使用与宿主一致的契约版本。插件加载器共享宿主 Model / Abstractions；插件有本机代码执行权限，只安装可信插件。无热卸载或沙箱隔离承诺。
 
-## 内置 Modbus 约定
+## 原生 modbus-tcp / modbus-rtu 约定
+
+本节仅描述本项目原生的两个 Modbus 驱动。迁入的 `PLC.ModBusMaster` 另有 `ReadMultiple` / `ReadFromCache` 和 TCP/UDP/ASCII/RTU 透传模式，需按该驱动的方法说明配置；不要把原生驱动“逐点读取”的限制套用到迁移驱动。
 
 | 项目 | 约定 |
 |---|---|

@@ -1,0 +1,960 @@
+{
+  "sourceRepository": "https://github.com/iioter/iotgateway",
+  "sourceCommit": "8de442a7dec52d2993d1e9667d799846936d681b",
+  "note": "Original source hashes record provenance; .NET 8 migration may change destination file contents. Generated IDE and build artifacts are excluded.",
+  "drivers": [
+    {
+      "directory": "CNC.Fanuc",
+      "project": "Plugins/Drivers/CNC.Fanuc/CNC.Fanuc.csproj",
+      "assembly": "CNC.Fanuc",
+      "readMethods": [
+        "ReadDeviceType",
+        "ReadDeviceRunStatus",
+        "ReadDeviceDetailRunStatus",
+        "ReadDeviceModel",
+        "ReadHongNew",
+        "ReadStringNew",
+        "ReadDeviceActSpindleSpeed",
+        "ReadDeviceActFeedRate",
+        "ReadDeviceSpindleOvr",
+        "ReadDeviceFeedOvr",
+        "ReadDeviceAlarmNum",
+        "ReadDeviceAlarmText",
+        "ReadDeviceAlarmType",
+        "ReadDeviceExeProgamNumber",
+        "ReadDeviceCountVaule",
+        "ReadDeviceToolNumber",
+        "ReadDevicePowerTime",
+        "ReadDeviceOperateTime",
+        "ReadDeviceCutTime",
+        "ReadDeviceCycleTime",
+        "ReadDeviceSpindle"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "Timeout",
+        "MinPeriod",
+        "DeviceIp",
+        "DevicePort"
+      ]
+    },
+    {
+      "directory": "CNC.Fanuc.H",
+      "project": "Plugins/Drivers/CNC.Fanuc.H/CNC.Fanuc.H.csproj",
+      "assembly": "CNC.Fanuc.H",
+      "readMethods": [
+        "ReadSysStatusInfo",
+        "ReadSystemAlarm",
+        "ReadSysAllCoors",
+        "ReadProgramList",
+        "ReadSystemProgramCurrent",
+        "ReadSpindleSpeedAndFeedRate",
+        "ReadFanucAxisLoad",
+        "ReadCutterInfos",
+        "ReadCurrentForegroundDir",
+        "ReadDeviceWorkPiecesSize",
+        "ReadAlarmStatus",
+        "ReadCurrentDateTime",
+        "ReadCurrentProduceCount",
+        "ReadExpectProduceCount",
+        "ReadLanguage",
+        "ReadCurrentProgram",
+        "ReadOnLineTime",
+        "ReadRunTime",
+        "ReadCuttingTime",
+        "ReadIdleTime",
+        "ReadCutterNumber",
+        "ReadSystemMacroValue",
+        "ReadProgramAsync"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "IpAddress",
+        "Port",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "CNC.MTConnect",
+      "project": "Plugins/Drivers/CNC.MTConnect/CNC.MTConnect.csproj",
+      "assembly": "CNC.MTConnect",
+      "readMethods": [
+        "ReadById"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "Uri",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "Mock.TcpClient",
+      "project": "Plugins/Drivers/Mock.TcpClient/Mock.TcpClient.csproj",
+      "assembly": "Mock.TcpClient",
+      "readMethods": [
+        "Read"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "IpAddress",
+        "Port",
+        "ConnectionType",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "OPC.DaClient",
+      "project": "Plugins/Drivers/OPC.DaClient/OPC.DaClient.csproj",
+      "assembly": "OPC.DaClient",
+      "readMethods": [
+        "ReadNode",
+        "Read"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "Ip",
+        "OpcServerName",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "OPC.UaClient",
+      "project": "Plugins/Drivers/OPC.UaClient/OPC.UaClient.csproj",
+      "assembly": "OPC.UaClient",
+      "readMethods": [
+        "ReadNode",
+        "Read"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "Uri",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "Other.Toledo",
+      "project": "Plugins/Drivers/Other.Toledo/Other.Toledo.csproj",
+      "assembly": "Other.Toledo",
+      "readMethods": [
+        "Read"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "IpAddress",
+        "Port",
+        "DataBits",
+        "Parity",
+        "StopBits",
+        "ConnectionType",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "PLC.AllenBradley",
+      "project": "Plugins/Drivers/PLC.AllenBradley/PLC.AllenBradley.csproj",
+      "assembly": "PLC.AllenBradley",
+      "readMethods": [
+        "Read"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "IpAddress",
+        "Port",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "PLC.MelsecMc",
+      "project": "Plugins/Drivers/PLC.MelsecMc/PLC.MelsecMc.csproj",
+      "assembly": "PLC.MelsecMc",
+      "readMethods": [
+        "Read",
+        "ReadMultiple",
+        "ReadFromCache"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "CpuType",
+        "IpAddress",
+        "Port",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "PLC.ModBusMaster",
+      "project": "Plugins/Drivers/PLC.ModBusMaster/PLC.ModBusMaster.csproj",
+      "assembly": "PLC.ModBusMaster",
+      "readMethods": [
+        "ReadMultiple",
+        "ReadFromCache",
+        "HoldingRegisters",
+        "InputRegisters",
+        "Coil",
+        "Input",
+        "Read"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "MasterType",
+        "IpAddress",
+        "Port",
+        "PortName",
+        "BaudRate",
+        "DataBits",
+        "Parity",
+        "StopBits",
+        "SlaveAddress",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "PLC.OmronFins",
+      "project": "Plugins/Drivers/PLC.OmronFins/PLC.OmronFins.csproj",
+      "assembly": "PLC.OmronFins",
+      "readMethods": [
+        "Read"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "IpAddress",
+        "Port",
+        "Timeout",
+        "MinPeriod"
+      ]
+    },
+    {
+      "directory": "PLC.SiemensS7",
+      "project": "Plugins/Drivers/PLC.SiemensS7/PLC.SiemensS7.csproj",
+      "assembly": "PLC.SiemensS7",
+      "readMethods": [
+        "Read",
+        "ReadByteString"
+      ],
+      "configurationParameters": [
+        "DeviceId",
+        "CpuType",
+        "IpAddress",
+        "Port",
+        "Rack",
+        "Slot",
+        "Timeout",
+        "MinPeriod"
+      ]
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "Plugins/Drivers/CNC.Fanuc.H/CNC.Fanuc.H.csproj",
+      "sha256": "f0fcfa913a4122384a1f9343917fe90394f606b9bab631649b01f0cc578a4f5c"
+    },
+    {
+      "path": "Plugins/Drivers/CNC.Fanuc.H/DeviceFanuc.cs",
+      "sha256": "efa281514e96f1bc30a3a81ede6bc3ef3605b9b293177fe3ea15e9657e5109d2"
+    },
+    {
+      "path": "Plugins/Drivers/CNC.Fanuc/CNC.Fanuc.csproj",
+      "sha256": "fc114c0dc8b0bb31915af794025f8276fc5a8cff177e31137bfd918d3a82fc1d"
+    },
+    {
+      "path": "Plugins/Drivers/CNC.Fanuc/DeviceFanuc.cs",
+      "sha256": "329e98c229f8b2ee95b6f213b3839e7a2e2c1d65604b126d256f6787ac250c5d"
+    },
+    {
+      "path": "Plugins/Drivers/CNC.Fanuc/FanucFocas.cs",
+      "sha256": "047843000bdd97f2e4f86c0155bbe6f3e801c8dcca5339f4771219fc83d4a97d"
+    },
+    {
+      "path": "Plugins/Drivers/CNC.Fanuc/fwlib32.cs",
+      "sha256": "fa26b53204fa4926e0589dca1cc2088854c3675867429f67c2536ce75e88f6ac"
+    },
+    {
+      "path": "Plugins/Drivers/CNC.Fanuc/fwlib64.cs",
+      "sha256": "58f6aa5e5060ae23a2084bcbd52c1d46a984939c128ad9f87449f858a6dc1104"
+    },
+    {
+      "path": "Plugins/Drivers/CNC.MTConnect/CNC.MTConnect.csproj",
+      "sha256": "04ffbb4f6b92942ae72ce6e288af4a3d6407a13bcd1567fb5386601f2857f5ad"
+    },
+    {
+      "path": "Plugins/Drivers/CNC.MTConnect/DeviceMTClient.cs",
+      "sha256": "61fdbccb9c1c91db6eee501996ab8866aca4c59deb901957e72288c9f80dcf9a"
+    },
+    {
+      "path": "Plugins/Drivers/Mock.TcpClient/DeviceTcpClient.cs",
+      "sha256": "df52751fb9ea9e242d5e93241ec2977e30c241b996ac62af9699edab81fe899a"
+    },
+    {
+      "path": "Plugins/Drivers/Mock.TcpClient/Mock.TcpClient.csproj",
+      "sha256": "29b21cbfd296b9d831c20ad4f1d554c6efe9c1a3aadaf5d71084b97043bf1d0f"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.DaClient/DeviceDaClient.cs",
+      "sha256": "9d15dbe3bf59be02ffae880a90fb06f0a4302f52b38fe8aa70d744ac054aaa23"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.DaClient/OPC.DaClient.csproj",
+      "sha256": "1868f1a39d04ff1d2303a3b74cc9500dbd852eada7d6f81840fd20d38adc9c5f"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.DaClient/OPCClient/Interop.OPCAutomation.dll",
+      "sha256": "ff9b7bc0e0a57c01005f1d29f57a38b89355027f876b118c7932ad0e64c99803"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.DaClient/OPCClient/OPCChangeModel.cs",
+      "sha256": "890f7a71c533084a1247c90e8e9e6277743385e41f0d4626c89f82d4f7dc8514"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.DaClient/OPCClient/OPCClientWrapper.cs",
+      "sha256": "7e191005df17849a63b17010b3b786968d1b2fb59f2923b76887fcd85c7a07af"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.DaClient/OPCClient/OPCDataChangedHandler.cs",
+      "sha256": "39db8350b4dd00230f31c4c54497ab73e69fa75aacac1d5b986c9cfbead09754"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.DaClient/OPCClient/TagItem.cs",
+      "sha256": "de2db1c056bd87beaab8e6f5618b1b282742694308d8001b2b85558e5a026ade"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.DaClient/OPCClient/TagQuality.cs",
+      "sha256": "a3cdb645918945028f54c0f985a61d0a6b3477c6f1352a9ec94ecb04a2be419b"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.DaClient/OPCClient/TagTreeNode.cs",
+      "sha256": "c51d88de38419b0a8bd741cf20943ab3c4e4b039e205550d82325b6f21f38b43"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.UaClient/DeviceUaClient.cs",
+      "sha256": "161cb5be84a14517c3d5ffe21ba2474dd10e2c95a8e3dbe567e8f94b2d491fd4"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.UaClient/OPC.UaClient.csproj",
+      "sha256": "eb34b400af68043247981cb30fc6db968889760e1c9190ad158fa33d96a83ddc"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.UaClient/OpcUaHelper/FormUtils.cs",
+      "sha256": "34f9f1a843f5c05b18b1e81f14c3eec16694fffe14c7d85745a40020f6fbf2ad"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.UaClient/OpcUaHelper/OpcUaClientHelper.cs",
+      "sha256": "7f2f3583c96a986073150b614b667733baaf9e697cd5dc7df91fd516a426f6f9"
+    },
+    {
+      "path": "Plugins/Drivers/OPC.UaClient/OpcUaHelper/OpcUaStatusEventArgs.cs",
+      "sha256": "fc4779aedd38d9f5692b551af9dac909ea16b90dcb7173cbd5f8d50be9ecd74b"
+    },
+    {
+      "path": "Plugins/Drivers/Other.Toledo/DeviceToledo.cs",
+      "sha256": "61b3757428180fc0c92aabc1bc81d4cb1bad9607238628a44358753d61f629c8"
+    },
+    {
+      "path": "Plugins/Drivers/Other.Toledo/Other.Toledo.csproj",
+      "sha256": "22d07110f9e842948965a2843662bb073bb2b78cc09f80eac749f20b7bb81b82"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.AllenBradley/DeviceAllenBradley.cs",
+      "sha256": "b1890a17c53d5e91634ce69556c248b23b808d385572643644ec828577a3e970"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.AllenBradley/PLC.AllenBradley.csproj",
+      "sha256": "7940653a130ac78489a017bcec34206609f87d341e843da394cf3d5b27832e79"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.MelsecMc/DeviceMelsecMc.cs",
+      "sha256": "7fec7f8c992718f023ccc359f890251681180d2585ac58e4badc42e9f1326938"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.MelsecMc/PLC.MelsecMc.csproj",
+      "sha256": "2ed77f5f09ec3291077b3acd6f0eb360e79659bf0907a175457045fd4cae9465"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/DeviceModBusMaster.cs",
+      "sha256": "cde1e0404a74056005f9852338bbe0d178f52dbcdfd324099d38ff47d92b737d"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/MasterType.cs",
+      "sha256": "82e9f2def2ba223dd36778d21bc99b0584eb6acb4839f17de521a1bca06023d4"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/ModbusDataConver.cs",
+      "sha256": "c4ffb07449479725d6383c6e3827ea1c13ee93179419770a8638b1b52e24cad2"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Data/DataStore.cs",
+      "sha256": "04f1c41f463612f9e16b69ba3783589675d46f0ba38590f6035158e1ce6b3104"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Data/DataStoreEventArgs.cs",
+      "sha256": "1cddec135684c3d119429caa095a8afcd70ae6421d6ea1a3746d365f097ffc34"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Data/DataStoreFactory.cs",
+      "sha256": "fbc79e042aef793b969cfebca4c54a57d7a79a7e6316202fb42bd935ccdf5825"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Data/DiscreteCollection.cs",
+      "sha256": "ec59b0d18e9c0f72674ed1304c1f0ad8a487f45e5e91505525bc9a878c6f52e1"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Data/IModbusMessageDataCollection.cs",
+      "sha256": "0a45615b57108ee2f5a862c973e3d31128676a2053facc8823bc62edbfcd2098"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Data/ModbusDataCollection.cs",
+      "sha256": "988d54c897a143d9a367991aaedc372a95b49d2b1188c43c866213466fab1ba6"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Data/ModbusDataType.cs",
+      "sha256": "7e55eb8ae4f62835a2b446609ab7be397dd9a86e9bbffc40dba565d8c4339dce"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Data/RegisterCollection.cs",
+      "sha256": "b5124db771681e871c61a48ba78cf6f542b1fd2c9fba5f677c8b244ca86c1649"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/IModbusMaster.cs",
+      "sha256": "d8988d4d76176db705d8056be8578cb8a24d0610efb1654622a2771e47c5722c"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/IModbusSerialMaster.cs",
+      "sha256": "0b25f0d7fb2a5306bad791414d9b8fe91777a51f4142dcfeca94689b3c77eb25"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusDevice.cs",
+      "sha256": "48eae5ace69484f1876c2239e9f69db3185f5f73bc4108f4194bc766140297e9"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusIpMaster.cs",
+      "sha256": "70497b76d58f6bf8015ec5424f4792e0849fb82bfb8ae7967e2c5654f3d1ed5e"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusMaster.cs",
+      "sha256": "46d4d972b3a9f970842ba99d0c5be0c260c523588dd716a0fccf29a8c0a92ac1"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusMasterTcpConnection.cs",
+      "sha256": "3b8a6b4c0fb6e42d921f9aaf52987d0516218cca481e28d63b0276cf45a069bb"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusSerialMaster.cs",
+      "sha256": "76b839b9f0dbef379a808a66abfcc695a2ba5d45807b6d6e9e7c5707c6e5048e"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusSerialSlave.cs",
+      "sha256": "1d84ca7f84976a7e5162392391f7c5cea5b70ad179d368cd2903a83c27328b4e"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusSlave.cs",
+      "sha256": "30a972c992317374b43b69a4d78ce8755569cb9fd04ccb42014ae323e2c824f5"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusSlaveRequestEventArgs.cs",
+      "sha256": "59510b48d68784f853ad617c998e71122a49f4ffa3295378312dadc857a90c10"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusTcpSlave.cs",
+      "sha256": "371c0c360c7501507e9465cf570e7396d3b5d926bad91f022d8b0232679c3983"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/ModbusUdpSlave.cs",
+      "sha256": "c56ca9943d5fd6b720b8d585f4fa9557794f565c349c5ab2e8e4183921b9c7ff"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Device/TcpConnectionEventArgs.cs",
+      "sha256": "2ff6fde1d8b0ed732894ce1869d888adba70e797d55e87dd2d9fc4dfacd32c30"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Extensions/Enron/EnronModbus.cs",
+      "sha256": "444ebfe4f19c150261c56242e6b70572918ed14755eff68601ae1232e1a43b9a"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/GlobalSuppressions.cs",
+      "sha256": "b5958063f8642101e38a148bbec5486a76e7d511d108bfaff0b3f2affb2d93bd"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/EmptyTransport.cs",
+      "sha256": "6022426a216f01391cc08c7ad394bcf8166cc768c575881da1c809c233da6a33"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/IStreamResource.cs",
+      "sha256": "72f0970eada8993f04d1d5509ff83ed107bf399bdb45aaa53b868625c85bd297"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/ModbusAsciiTransport.cs",
+      "sha256": "535d304d2fba7b2caa006a6099040e3ec63de5392b3eec73c4062dce7fddf513"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/ModbusIpTransport.cs",
+      "sha256": "97afd64685bc6685c23255b4901884180ff2bb8edb270d5ebbacdb00737c2d70"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/ModbusRtuTransport.cs",
+      "sha256": "b5337ef624256edf82761551a6261b879726ddf4d607e7dc85677fdbec873e7d"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/ModbusSerialTransport.cs",
+      "sha256": "0f1dd2f23c492cf6839f244f0922962c8f9115b3b9c384df130a0dc06c4bc493"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/ModbusTransport.cs",
+      "sha256": "43e5e1c8b501af80ad33c6ec93358521cff682abc007da4b80d834a5d86690b8"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/StreamResourceUtility.cs",
+      "sha256": "708584ee26ff7581a167a790508c3abce550d5eddc056b59cc59ff8da26472d7"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/TcpClientAdapter.cs",
+      "sha256": "62263354e3c7d29679c2f83de2cab1112e8dfe833fb4a015ad7b880f2f3971f6"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/IO/UdpClientAdapter.cs",
+      "sha256": "8a6bdeb9a428d01eb2d013f034bf41f30a3085d5470b7bc39f68e7eb5633482b"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/InvalidModbusRequestException.cs",
+      "sha256": "950537a0d5d177743f6ea67908f7b938cf7ccb8128ba044ed5191be3b24cf486"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/AbstractModbusMessage.cs",
+      "sha256": "e655d45a52f959fccf74577e968d153ce8f43d0cac289cf075e83a592e92df66"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/AbstractModbusMessageWithData.cs",
+      "sha256": "a0d8f5bb7cf39e86e99bec98581ba7e871bc1237442aa6e6ae01e8c4a9695f1c"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/DiagnosticsRequestResponse.cs",
+      "sha256": "6710633d8b416fabd1adfa53cff909123619673f39bfbebe5db48f32f0f70a90"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/IModbusMessage.cs",
+      "sha256": "444b50d4af3c29799b40ae8780d29549960feec226008f600c4a35aadb26f421"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/IModbusRequest.cs",
+      "sha256": "0742c4612be909f202f377fda9ebde55fa550870bfb3b27b45d571277f43a1ae"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/ModbusMessageFactory.cs",
+      "sha256": "4681c55bbbee76864e17ee7f6e4ac13d8cf9ecc6738cda658b9e318b88840370"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/ModbusMessageImpl.cs",
+      "sha256": "21f5dba26a39f01073fb2099fa31116aadce72e6a08f08d3f30bf51180a050fd"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/ReadCoilsInputsRequest.cs",
+      "sha256": "d22bfbdd16317abc5a7db9daaef399d65d9ccdd6337cc72b65a4cedb92807206"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/ReadCoilsInputsResponse.cs",
+      "sha256": "f728512dd58b5a09fac650c4182043ea1ea2b3316e8457be0191b28116f5439c"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/ReadHoldingInputRegistersRequest.cs",
+      "sha256": "06efdd97e3632716e83a759569dbe59c5d01b321e2a09bfb12900155a2c7dd70"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/ReadHoldingInputRegistersResponse.cs",
+      "sha256": "c26a7cf95d4c28f7829d09e32fafaebc26cd455f45be394b0cd9c7b400df6c58"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/ReadWriteMultipleRegistersRequest.cs",
+      "sha256": "2e44c106a18072d528db756a70c8e2b6c8ded659737b02ec6f7da94345e02f1a"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/SlaveExceptionResponse.cs",
+      "sha256": "8ce7c0fbcc41c9fe90eb380c2900293cec042285bc8f5504816c438da7deec79"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/WriteMultipleCoilsRequest.cs",
+      "sha256": "597610cef8cb241ae66d5d834e406d515fd14607290d097cccb8fb63dbfdd0ba"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/WriteMultipleCoilsResponse.cs",
+      "sha256": "307692cd25101f96a4525fba8513b9a4ad6006f27c1e0dc7a8de38442114111f"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/WriteMultipleRegistersRequest.cs",
+      "sha256": "86e68336e236771313dc46b4a9da9f6da74f137ae8c52a2f5ab1cfe82ca59cc6"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/WriteMultipleRegistersResponse.cs",
+      "sha256": "bb3600ac60543823c85a0a3d52395ff775c9557a785a6df1a6a51310272d0656"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/WriteSingleCoilRequestResponse.cs",
+      "sha256": "8e1bc4d4ddbbf3ac05373e3b4d453665244380472069e57c6ea17ec3505f8380"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Message/WriteSingleRegisterRequestResponse.cs",
+      "sha256": "2002f01275510d6a02399ad08ff7588d823474f5a57dbb75c57417a0f2593d1b"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Modbus.cs",
+      "sha256": "019ec9708669ad3d0230d8947053d3d7216b1b8bc7c13f28ebad90b444d1808a"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Resources.cs",
+      "sha256": "775d24d33e96f03e4b0635f3f00167050f31f0775ffb5855c5b03c1fbb5675a4"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/SerialPortAdapter.cs",
+      "sha256": "f4e9befceaa19211561ece9434f8beb40a8fbe79e3c6fe98b7d8e6beb4c92ac5"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/SlaveException.cs",
+      "sha256": "8dd3588c2de0abe88a7dc7fbf925a384b9924510420613268230b6ee7cf51c37"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Unme.Common/DisposableUtility.cs",
+      "sha256": "cc009eb09d7b16d662c73af9d8784b1d425467ebe49360c04b5bb42751fb0be0"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Unme.Common/SequenceUtility.cs",
+      "sha256": "00ce151fe62126228dcb6262c62390d0cc97d7c94e6eb132cfbf6f198c4715f2"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Utility/DiscriminatedUnion.cs",
+      "sha256": "35aec7b46c1dba8597eb62514085a738a36b8cda4786deb347ef0d9353cbf039"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/NModbus4/Utility/ModbusUtility.cs",
+      "sha256": "40dbc08d2ed19a1eb7cf0b0a74ebb07c5ddfa27baca4a2821291832833aa737f"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.ModBusMaster/PLC.ModBusMaster.csproj",
+      "sha256": "23be3e3e109e0c5978f6d34bbb4755fc35489ddefed20d218aa993424d60be72"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.OmronFins/DeviceOmronFins.cs",
+      "sha256": "2e564b3405bde380f45c45b9233ac3dada9f706b2ff441c33d2205716574f4a9"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.OmronFins/PLC.OmronFins.csproj",
+      "sha256": "2ed77f5f09ec3291077b3acd6f0eb360e79659bf0907a175457045fd4cae9465"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/DeviceSiemensS7.cs",
+      "sha256": "ffc99488f9d97b74102cfcf67f7a828e138114f93b1f856d4b211bff2dad104a"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/PLC.SiemensS7.csproj",
+      "sha256": "5a9caf7b1803a87900532a6c459d4065cf5b412c309554ba9a48043a1997123e"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/COTP.cs",
+      "sha256": "fe6dc9d2bf85068780c84f4cdaaa5368585ffff3ad37e9581fcf8b5a68203f5f"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Compat/TcpClientMixins.cs",
+      "sha256": "5528ac61acaf1fda55be9b764d44490e3c1ca09b0f525bc64e18e819ae7d8478"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Conversion.cs",
+      "sha256": "cbd0592791d3b2f2079ac53a77785bae6097812470fc8b0c2fa0fc8ae5ab15c0"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Enums.cs",
+      "sha256": "5ac0f682831e0246b5afbbdfe3f03736a65efcb0eabbda071d13852d00827bf1"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Helper/MemoryStreamExtension.cs",
+      "sha256": "0334101b5065c3c42fb9d566ae65fdd20e11c352c9bd5a3c51478b8fc3b7b307"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Internal/TaskQueue.cs",
+      "sha256": "0171c9c0482ea309bfca36e6b6284d5f21c3cefe09ceed7de3be59f043e73d85"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/InvalidDataException.cs",
+      "sha256": "9bcf4468a8bbbf1332b40e1f8a489b3079e78c311fc781bb3388bc4f00216764"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/PLC.cs",
+      "sha256": "01f09e9ebd4f48992b213a740fc3c44a32a9fc463b3395f41acbdf4e5023631d"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/PLCAddress.cs",
+      "sha256": "4c6f8bab6fbe7657d4926fb2cadc8852ace2d47446b4fc80d8f1057b5bc95f41"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/PLCExceptions.cs",
+      "sha256": "4b8aadc22c47bc098dc4d10bcae4c74daece84ca345bd1ed45b114bdcafec8e8"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/PLCHelpers.cs",
+      "sha256": "170b0f2e63ce07718d768feb934edb52bf00b00567a54c254efebbb3bb6c0a39"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/PlcAsynchronous.cs",
+      "sha256": "84e8f6624168d8da42050a48715269e94098760ccb37c046fa349a17940ee506"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/PlcException.cs",
+      "sha256": "05a3521e59848c0ad6056fb9587756ec49bfd57074b6ccbe48fc72c57ea971ad"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/PlcSynchronous.cs",
+      "sha256": "39ce356debc89a552432e8bcfdb503458b553888739992fa37013a88e2f2e39d"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Properties/AssemblyInfo.cs",
+      "sha256": "28c0367a3953f945eb0fbab969cf14580a1e75d8530e2c488d2d2562e5d625f6"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Properties/S7.Net.snk",
+      "sha256": "dfc46d000cb69a94488f956ed491a018dcfa5f34c465e858140099b30164a287"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Protocol/ConnectionRequest.cs",
+      "sha256": "6aea699c44d1828a3cf1fb8669149779b81ee03f7af4149d2914b63b56905bc9"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Protocol/ReadWriteErrorCode.cs",
+      "sha256": "104f31b3f80e6de9c7e74f5bfa03dea5b5a6b1b401779ace251c9b504d2e60d0"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Protocol/S7/DataItemAddress.cs",
+      "sha256": "f2eb8111ac886cb3f4eb738cccd8dbc74652b78b7243fe1e5ea09cf53147bce7"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Protocol/S7WriteMultiple.cs",
+      "sha256": "82d9ff950126b5286e95060c26f48479a37f2e84fe814ddb60e7f612f93f1034"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Protocol/Serialization.cs",
+      "sha256": "63851e4817d0cd18fa058a7130c870f232f8865dcd47fa7e8efd40910851d06f"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Protocol/Tsap.cs",
+      "sha256": "0984599e189e9c46d840ee94408b45c8f3484dbfed21f9203956e6fd215e0442"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Protocol/TsapPair.cs",
+      "sha256": "811168cea229512558130d787d0bcb98e8106ba53823599dd840cb80d5263318"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/StreamExtensions.cs",
+      "sha256": "0b90d90919fc8ac9f362e3014eb364290d163649f4391c27b67648fa0bbbddb3"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/TPKT.cs",
+      "sha256": "1a8f10d3b9aca882f6a7cf0339fb0d6cc85f896b580dd71a03f911f2ab88678f"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Bit.cs",
+      "sha256": "de9c7e120647e0f381773767c944e48d710c3d1daf658620afeecd26f00e80c0"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Boolean.cs",
+      "sha256": "cbc515bcfaad0c1405d10291d170cc5e94038f8b05db54a57e12f357abae4486"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Byte.cs",
+      "sha256": "b8cf5633fa5c96926c4ddf17bcaf2a2d05db3fedd82098a1d923690f0ab6cb6f"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/ByteArray.cs",
+      "sha256": "33322c2ae07345cf508dd9d736e2ab7816b530828bf6eba19b066109fcd047a9"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Class.cs",
+      "sha256": "a7f4083fe2b7c37dcbe861ada7720e341c11ca077e9c5d22834bd3c6d714e048"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Counter.cs",
+      "sha256": "77913945a089d1f0e95c3eff015e7c0e50ebb7b19dcd6ade463468e5f281a019"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/DInt.cs",
+      "sha256": "439a446fafcc5a3847c5e43b3d4fbb60ef00d7602e525192db901fb65291356c"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/DWord.cs",
+      "sha256": "7497aa90672c131f3f107b8f84de468d0cf17ab997102ef7fd9aebb6a814d528"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/DataItem.cs",
+      "sha256": "5acd24d17d073f568c7a20520f5dc5614ef1170571d32fe3201541e72603ec46"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/DateTime.cs",
+      "sha256": "3671afb7dae18de076408058a2b71a83db53a7c613b9c0be321a9b1ec90ae17d"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/DateTimeLong.cs",
+      "sha256": "1205c4bb1700b3681d1db0734eddcc4128af10360c7351a0ac18ade0c73bdca3"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Double.cs",
+      "sha256": "75d3b1d5cc10dae44a46df7f1575b43c77f57f05e01265c5815733fdaeca5819"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Int.cs",
+      "sha256": "fac9466a4edc0f5d4e2322f8b28b23d52cded3c7efc6e04e73ea85e6994c97f7"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/LReal.cs",
+      "sha256": "8dbb41004a7591177f1ab7513123599fdd34660d6c6764f6c6e81c3fa3ef1d1f"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Real.cs",
+      "sha256": "00bad3fd0726ec63eaf1ee971d26c23a92e37cb7033b24dbe81a202de15912f3"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/S7String.cs",
+      "sha256": "04395b1a38506010a0ebd982850a36f957f49b76d7d31f71639498fc662e907d"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/S7StringAttribute.cs",
+      "sha256": "532b4744f3e65395918dc66ba2ec889481f4ed9476f6bb8e5b9767e10b9ea072"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/S7WString.cs",
+      "sha256": "b353ce5295255be8f5ab19c64feff6b49f511d841c7050720c9cce03ea3842ca"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Single.cs",
+      "sha256": "c8c85b55d346b1dcdd99b686246e0e5797a2aecbc847ee45d0c0bfb4ba5f5147"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/String.cs",
+      "sha256": "40ba68c10481f669d82ebbaf948d77b8456fbb157e956a1a77492a59fd6ad166"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/StringEx.cs",
+      "sha256": "0484649d1c46b54d7023963de3b0f58823d72e40623569b242717106ef78fe45"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Struct.cs",
+      "sha256": "ec83246d4e3c52638ebdc2a88eafe703fc71b5ffd393d3afa553a0994692e7ee"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Timer.cs",
+      "sha256": "31861b0976d415a267aa84f03d083916a0c1a1775317acad32b841e418b05982"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/TypeHelper.cs",
+      "sha256": "cc1b58a2589374c555988053e87d68a13dd62431c06ddeb6869dd3c41d23ee61"
+    },
+    {
+      "path": "Plugins/Drivers/PLC.SiemensS7/S7.Net/Types/Word.cs",
+      "sha256": "eccfc26344552eb74890672435cf503d84240be2318080a63a3645564c31ef6d"
+    },
+    {
+      "path": "Plugins/PluginInterface/ConfigParameterAttribute.cs",
+      "sha256": "367e250fa95f50d94c303462019c384bda450d5ca8ba350d2305a563965b0bd0"
+    },
+    {
+      "path": "Plugins/PluginInterface/DataTypeEnum.cs",
+      "sha256": "97ce58a965f12e87cfffd8acdf53c228a49a1a3134a9f6aa2b66615dfa6468f9"
+    },
+    {
+      "path": "Plugins/PluginInterface/DriverAddressIoArgModel.cs",
+      "sha256": "04df646ae23897da53c056df4e700e34e7ed3bd5e3c59e4d27d592638cb2612e"
+    },
+    {
+      "path": "Plugins/PluginInterface/DriverInfoAttribute.cs",
+      "sha256": "24beae36685cf1dca85cf8429f2b2f172053081a41a32b145657018e0b092a8e"
+    },
+    {
+      "path": "Plugins/PluginInterface/DriverReturnValueModel.cs",
+      "sha256": "a934ed714c9bbe67b23803257578ee49fcd0e5db51edd4492a535c5c785a06ff"
+    },
+    {
+      "path": "Plugins/PluginInterface/DriverSupportedAttribute.cs",
+      "sha256": "1861bd14bcc76e32bf633114166cc738b987c8ebaff2f63ab5de014f68956f5d"
+    },
+    {
+      "path": "Plugins/PluginInterface/EndianEnum.cs",
+      "sha256": "515f8a8c50e8a1809d1319f96a15fdaaa5195ea59aabd0b822712b09b2fe4c19"
+    },
+    {
+      "path": "Plugins/PluginInterface/HuaWeiRoma/HwAddDeviceDto.cs",
+      "sha256": "11fea023f9047d65854fac2a6c13e577ca62338f5643db736076ae6eacdfa6e3"
+    },
+    {
+      "path": "Plugins/PluginInterface/HuaWeiRoma/HwDeleteDeviceDto.cs",
+      "sha256": "7a3e19e3197715736e5cb88cbdd301f92915f44bb06afe943d52a0fb9e8bd663"
+    },
+    {
+      "path": "Plugins/PluginInterface/HuaWeiRoma/HwDeviceOnOffLine.cs",
+      "sha256": "853cfb1bd98f7c4e231bdf436d963f8780619ae5f5a9ce5cb090a4a451b3ba47"
+    },
+    {
+      "path": "Plugins/PluginInterface/HuaWeiRoma/HwTelemetry.cs",
+      "sha256": "3d00ce124b671a90634ed3b8aa704a42af08136366098fc82dd1eae4c768657d"
+    },
+    {
+      "path": "Plugins/PluginInterface/IDependency.cs",
+      "sha256": "bf8bc2e03ec42353aa85cb68e265a9045f0c073ad47d5805f1284da850aa5068"
+    },
+    {
+      "path": "Plugins/PluginInterface/IDriver.cs",
+      "sha256": "ebe26dc81731db1160a3751a4b3925a55e9f195cb4810fcdee3d3d94d7902d77"
+    },
+    {
+      "path": "Plugins/PluginInterface/IoTSharp/ISAttributeResponse.cs",
+      "sha256": "ff99d25973c400637bd9f8e1c6db15f3466bf31f576c000b0cdd2ec84914d21e"
+    },
+    {
+      "path": "Plugins/PluginInterface/IoTSharp/ISRpcResponse.cs",
+      "sha256": "1019858adf72cbb8ca8b73cb07f9a3be6e5db9c1b03fa9377031e10bbbaa8d8c"
+    },
+    {
+      "path": "Plugins/PluginInterface/IotDB/IotTsData.cs",
+      "sha256": "d5df2e777e3d5743c4d2d56b59a9b86a2bd0b26ae82517860fdb9e7d3b202da7"
+    },
+    {
+      "path": "Plugins/PluginInterface/MethodAttribute.cs",
+      "sha256": "46ccf9a64b8ce938f4f757246a1e83a2201515886045f64faa914b8f91279cee"
+    },
+    {
+      "path": "Plugins/PluginInterface/PluginInterface.csproj",
+      "sha256": "1f3570f9b45d18f7a15f6e26ab2907998be47e9bb362770955a629dfa8767947"
+    },
+    {
+      "path": "Plugins/PluginInterface/ProtectTypeEnum.cs",
+      "sha256": "f1174129e838c0278b4ffc904d2293547ae326dacd2d4e1a24bf49f415649255"
+    },
+    {
+      "path": "Plugins/PluginInterface/RpcRequest.cs",
+      "sha256": "7ee7816856f0a035cd4952f9571143ef2f5b2d4608d2ecb5ab6907c7e0011f63"
+    },
+    {
+      "path": "Plugins/PluginInterface/RpcResponse.cs",
+      "sha256": "e6c02f8fd2e4859ca317e3fcc01904a96b07f213850de3fc6c1d4c199968e35b"
+    },
+    {
+      "path": "Plugins/PluginInterface/SendModel.cs",
+      "sha256": "05c8dccce6b921394e27f0c753c14e5d579878bc048a01e951f256db9d0150f1"
+    },
+    {
+      "path": "Plugins/PluginInterface/ThingsBoard/TBRpcRequest.cs",
+      "sha256": "ab4864d501c32e0c6af130f512eee1b7aef6c9f3382dbdcb61cc722c4c3f85be"
+    },
+    {
+      "path": "Plugins/PluginInterface/ThingsBoard/TBRpcResponse.cs",
+      "sha256": "fb4c0d0fac8968ba85b67386418056969b905558ac90671b5547ffb9c0bce8d5"
+    },
+    {
+      "path": "Plugins/PluginInterface/ThingsCloud/TCRpcRequest.cs",
+      "sha256": "9091e74907bc766706c4255b3c9922c24a09bae011d6758ccef77da0f47717c8"
+    },
+    {
+      "path": "Plugins/PluginInterface/VaribaleStatusTypeEnum.cs",
+      "sha256": "bb649cc4225c682a6b13150d38fc61262cfd7204b2ee97a27d76422a8c020277"
+    }
+  ]
+}

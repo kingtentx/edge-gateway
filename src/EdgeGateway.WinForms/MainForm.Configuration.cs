@@ -26,6 +26,7 @@ public sealed partial class MainForm
         _deviceGrid.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) EditDevice(); };
         UiTheme.AddColumn(_tagGrid, "Name", "点位名称", 120, 130);
         UiTheme.AddColumn(_tagGrid, "Address", "地址", 95);
+        UiTheme.AddColumn(_tagGrid, "Method", "读取方法", 160, 160);
         UiTheme.AddColumn(_tagGrid, "Type", "数据类型", 95);
         UiTheme.AddColumn(_tagGrid, "Area", "寄存区", 100);
         UiTheme.AddColumn(_tagGrid, "ByteOrder", "字节序", 70);
@@ -95,11 +96,8 @@ public sealed partial class MainForm
     {
         if (!CanEdit()) return;
         var device = SelectedDevice(); if (device is null) { SetFooter("请先添加或选择设备。"); return; }
-        using var editor = new TagEditor(new TagConfiguration
-        {
-            Name = $"点位 {device.Tags.Count + 1}", Address = device.DriverId == "simulator" ? "sine" : "0",
-            DataType = device.DriverId == "simulator" ? TagDataType.Float64 : TagDataType.UInt16
-        }, device.DriverId);
+        var descriptor = _drivers.GetFactory(device.DriverId).Descriptor;
+        using var editor = new TagEditor(TagEditor.CreateDefaultTag(descriptor, $"点位 {device.Tags.Count + 1}"), descriptor);
         if (editor.ShowDialog(this) != DialogResult.OK) return;
         device.Tags.Add(editor.Value); MarkDirty(); RebindConfigurationViews(device.Id);
     }
@@ -108,7 +106,7 @@ public sealed partial class MainForm
     {
         if (!CanEdit()) return;
         var device = SelectedDevice(); var tag = SelectedTag(); if (device is null || tag is null) return;
-        using var editor = new TagEditor(Clone(tag), device.DriverId);
+        using var editor = new TagEditor(Clone(tag), _drivers.GetFactory(device.DriverId).Descriptor);
         if (editor.ShowDialog(this) != DialogResult.OK) return;
         device.Tags[device.Tags.FindIndex(x => x.Id == tag.Id)] = editor.Value;
         MarkDirty(); RebindConfigurationViews(device.Id);
@@ -134,7 +132,15 @@ public sealed partial class MainForm
 
     private void BindTags()
     {
-        _tagGrid.DataSource = SelectedDevice()?.Tags.Select(t => new TagRow(t.Id, t.Name, t.Address, t.DataType.ToString(), AreaText(t.Area), t.ByteOrder.ToString(), $"x × {t.Scale:G6} + {t.Offset:G6}", t.Unit, t.Writable ? "读 / 写" : "只读", t.Enabled ? "是" : "否")).ToList() ?? [];
+        var device = SelectedDevice();
+        var descriptor = device is null ? null : _drivers.GetFactory(device.DriverId).Descriptor;
+        _tagGrid.Columns["Method"].Visible = descriptor?.Methods.Count > 0;
+        _tagGrid.Columns["Area"].Visible = descriptor is not null && !descriptor.IsLegacy && descriptor.Id != "simulator";
+        _tagGrid.Columns["ByteOrder"].Visible = descriptor is not null && descriptor.Id != "simulator";
+        _tagGrid.DataSource = device?.Tags.Select(t => new TagRow(t.Id, t.Name, t.Address, t.ReadMethod, t.DataType.ToString(), AreaText(t.Area),
+            descriptor?.IsLegacy == true ? t.Endian.ToString() : t.ByteOrder.ToString(),
+            TagEditor.IsNumericType(t.DataType) ? $"x × {t.Scale:G6} + {t.Offset:G6}" : "原样保存",
+            t.Unit, t.Writable ? "读 / 写" : "只读", t.Enabled ? "是" : "否")).ToList() ?? [];
     }
 
     private async Task ImportConfigurationAsync()
@@ -143,8 +149,8 @@ public sealed partial class MainForm
         using var dialog = new OpenFileDialog { Filter = "网关配置 (*.json)|*.json", Title = "导入网关配置", CheckFileExists = true };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         if (new FileInfo(dialog.FileName).Length > 2 * 1024 * 1024) throw new InvalidOperationException("配置文件超过 2 MB，请检查文件内容。");
-        var imported = JsonSerializer.Deserialize<GatewayConfiguration>(await File.ReadAllTextAsync(dialog.FileName), JsonConfigurationStore.SerializerOptions)
-            ?? throw new InvalidDataException("配置文件为空。");
+        // Reuse the same in-memory version migration as normal startup; importing never rewrites the source file.
+        var imported = await new JsonConfigurationStore(dialog.FileName).LoadAsync();
         var errors = ConfigurationValidator.Validate(imported, _drivers);
         if (errors.Count > 0) throw new InvalidDataException(string.Join("\n", errors));
         if (MessageBox.Show(this, $"将用文件中的 {imported.Devices.Count} 个设备替换当前配置草稿。确认导入？", "导入配置", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
@@ -254,5 +260,5 @@ public sealed partial class MainForm
 
     private static string AreaText(ModbusArea area) => area switch { ModbusArea.Coil => "线圈 (01)", ModbusArea.DiscreteInput => "离散输入 (02)", ModbusArea.InputRegister => "输入寄存器 (04)", _ => "保持寄存器 (03)" };
     private sealed record DeviceRow(Guid Id, string Name, string Group, string Driver, string Enabled, int PointCount, int Cycle);
-    private sealed record TagRow(Guid Id, string Name, string Address, string Type, string Area, string ByteOrder, string Scaling, string Unit, string Access, string Enabled);
+    private sealed record TagRow(Guid Id, string Name, string Address, string Method, string Type, string Area, string ByteOrder, string Scaling, string Unit, string Access, string Enabled);
 }

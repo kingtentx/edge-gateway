@@ -1,0 +1,509 @@
+{
+  "source": "NuGet package metadata resolved for EdgeGateway.WinForms net8.0-windows",
+  "packages": [
+    {
+      "id": "BitFaster.Caching",
+      "version": "2.6.0",
+      "authors": "Alex Peck",
+      "license": "LICENSE",
+      "licenseUrl": "https://aka.ms/deprecateLicenseUrl",
+      "copyright": "Copyright © Alex Peck 2026",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/bitfaster/BitFaster.Caching",
+        "commit": "43a8822785038dd90f8376b202243ad28c53f845"
+      }
+    },
+    {
+      "id": "HslCommunication",
+      "version": "12.8.3",
+      "authors": "Richard.Hu",
+      "licenseUrl": "http://www.hsltechnology.cn/Home/Licence?area=HslCommunication",
+      "projectUrl": "http://www.hsltechnology.cn/",
+      "copyright": "版权归杭州胡工物联科技有限公司所有"
+    },
+    {
+      "id": "IoTClient",
+      "version": "1.0.48",
+      "authors": "农码一生 - benny",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://github.com/zhaopeiym/IoTClient",
+      "copyright": "Copyright (c) 2022 农码一生.  All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/zhaopeiym/IoTClient",
+        "commit": "a4dc22e4fc9b60647b24db0675a36dabc75066ef"
+      }
+    },
+    {
+      "id": "MQTTnet",
+      "version": "4.3.7.1207",
+      "authors": "The contributors of MQTTnet",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://github.com/dotnet/MQTTnet",
+      "copyright": "Copyright (c) .NET Foundation and Contributors",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/MQTTnet.git",
+        "commit": "740d605fd2c25922fad6ea60e78e8370356e95dd"
+      }
+    },
+    {
+      "id": "Microsoft.Data.Sqlite.Core",
+      "version": "8.0.32",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://docs.microsoft.com/dotnet/standard/data/sqlite/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/efcore",
+        "commit": "5e864fab7a450eedb39ddb931ba61759102c4e35"
+      }
+    },
+    {
+      "id": "Microsoft.Data.Sqlite",
+      "version": "8.0.32",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://docs.microsoft.com/dotnet/standard/data/sqlite/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/efcore",
+        "commit": "5e864fab7a450eedb39ddb931ba61759102c4e35"
+      }
+    },
+    {
+      "id": "Microsoft.Extensions.DependencyInjection.Abstractions",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "Microsoft.Extensions.DependencyInjection",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "Microsoft.Extensions.Logging.Abstractions",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "Microsoft.Extensions.Logging",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "Microsoft.Extensions.Options",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "Microsoft.Extensions.Primitives",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "Newtonsoft.Json",
+      "version": "13.0.4",
+      "authors": "James Newton-King",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://www.newtonsoft.com/json",
+      "copyright": "Copyright © James Newton-King 2008",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/JamesNK/Newtonsoft.Json",
+        "commit": "4e13299d4b0ec96bd4df9954ef646bd2d1b5bf2a"
+      }
+    },
+    {
+      "id": "OPCFoundation.NetStandard.Opc.Ua.Client",
+      "version": "1.5.378.182",
+      "authors": "OPC Foundation",
+      "license": "LICENSE.txt",
+      "licenseUrl": "https://aka.ms/deprecateLicenseUrl",
+      "projectUrl": "https://github.com/OPCFoundation/UA-.NETStandard",
+      "copyright": "Copyright © 2004-2025 OPC Foundation, Inc",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/OPCFoundation/UA-.NETStandard",
+        "commit": "6cca32dd6d79c8b57d2e00e4d2071b991d2cf71b"
+      }
+    },
+    {
+      "id": "OPCFoundation.NetStandard.Opc.Ua.Configuration",
+      "version": "1.5.378.182",
+      "authors": "OPC Foundation",
+      "license": "LICENSE.txt",
+      "licenseUrl": "https://aka.ms/deprecateLicenseUrl",
+      "projectUrl": "https://github.com/OPCFoundation/UA-.NETStandard",
+      "copyright": "Copyright © 2004-2025 OPC Foundation, Inc",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/OPCFoundation/UA-.NETStandard",
+        "commit": "6cca32dd6d79c8b57d2e00e4d2071b991d2cf71b"
+      }
+    },
+    {
+      "id": "OPCFoundation.NetStandard.Opc.Ua.Core",
+      "version": "1.5.378.182",
+      "authors": "OPC Foundation",
+      "license": "LICENSE.txt",
+      "licenseUrl": "https://aka.ms/deprecateLicenseUrl",
+      "projectUrl": "https://github.com/OPCFoundation/UA-.NETStandard",
+      "copyright": "Copyright © 2004-2025 OPC Foundation, Inc",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/OPCFoundation/UA-.NETStandard",
+        "commit": "6cca32dd6d79c8b57d2e00e4d2071b991d2cf71b"
+      }
+    },
+    {
+      "id": "OPCFoundation.NetStandard.Opc.Ua.Security.Certificates",
+      "version": "1.5.378.182",
+      "authors": "OPC Foundation",
+      "license": "LICENSE.txt",
+      "licenseUrl": "https://aka.ms/deprecateLicenseUrl",
+      "projectUrl": "https://github.com/OPCFoundation/UA-.NETStandard",
+      "copyright": "Copyright © 2004-2025 OPC Foundation, Inc",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/OPCFoundation/UA-.NETStandard",
+        "commit": "6cca32dd6d79c8b57d2e00e4d2071b991d2cf71b"
+      }
+    },
+    {
+      "id": "OPCFoundation.NetStandard.Opc.Ua.Types",
+      "version": "1.5.378.182",
+      "authors": "OPC Foundation",
+      "license": "LICENSE.txt",
+      "licenseUrl": "https://aka.ms/deprecateLicenseUrl",
+      "projectUrl": "https://github.com/OPCFoundation/UA-.NETStandard",
+      "copyright": "Copyright © 2004-2025 OPC Foundation, Inc",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/OPCFoundation/UA-.NETStandard",
+        "commit": "6cca32dd6d79c8b57d2e00e4d2071b991d2cf71b"
+      }
+    },
+    {
+      "id": "SQLitePCLRaw.bundle_e_sqlite3",
+      "version": "2.1.13",
+      "authors": "Eric Sink",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://licenses.nuget.org/Apache-2.0",
+      "copyright": "Copyright 2014-2024 SourceGear, LLC",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/ericsink/SQLitePCL.raw"
+      }
+    },
+    {
+      "id": "SQLitePCLRaw.core",
+      "version": "2.1.13",
+      "authors": "Eric Sink",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://licenses.nuget.org/Apache-2.0",
+      "copyright": "Copyright 2014-2024 SourceGear, LLC",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/ericsink/SQLitePCL.raw"
+      }
+    },
+    {
+      "id": "SQLitePCLRaw.lib.e_sqlite3",
+      "version": "2.1.13",
+      "authors": "Eric Sink",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://licenses.nuget.org/Apache-2.0",
+      "copyright": "Copyright 2014-2024 SourceGear, LLC",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/ericsink/SQLitePCL.raw"
+      }
+    },
+    {
+      "id": "SQLitePCLRaw.provider.e_sqlite3",
+      "version": "2.1.13",
+      "authors": "Eric Sink",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://licenses.nuget.org/Apache-2.0",
+      "copyright": "Copyright 2014-2024 SourceGear, LLC",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/ericsink/SQLitePCL.raw"
+      }
+    },
+    {
+      "id": "SimpleTCP.Core",
+      "version": "1.0.4",
+      "authors": "SimpleTCP.Core",
+      "projectUrl": "https://github.com/BrandonPotter/SimpleTCP"
+    },
+    {
+      "id": "System.Collections.Immutable",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "System.Diagnostics.DiagnosticSource",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "System.Formats.Asn1",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "System.IO.Pipelines",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "System.Memory",
+      "version": "4.5.3",
+      "authors": "Microsoft",
+      "licenseUrl": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved."
+    },
+    {
+      "id": "System.Text.Encodings.Web",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "System.Text.Json",
+      "version": "10.0.8",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "opennetcf-extensions-standard",
+      "version": "1.0.17160.0",
+      "authors": "Chris Tacke"
+    },
+    {
+      "id": "opennetcf-mtconnect-client",
+      "version": "1.0.17160.0",
+      "authors": "Chris Tacke"
+    },
+    {
+      "id": "opennetcf-restconnector",
+      "version": "1.0.17160.0",
+      "authors": "Chris Tacke"
+    },
+    {
+      "id": "runtime.linux-arm.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.linux-arm64.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.linux-x64.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.osx-arm64.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.osx-x64.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    }
+  ]
+}

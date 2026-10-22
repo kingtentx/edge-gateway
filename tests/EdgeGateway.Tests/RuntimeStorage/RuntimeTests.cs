@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using EdgeGateway.Abstractions;
 using EdgeGateway.Model;
 using EdgeGateway.Service;
@@ -49,6 +50,95 @@ public sealed class RuntimeTests
         Assert.Null(sample.RawValue);
         Assert.Null(sample.Value);
         Assert.Contains("NaN", sample.Error);
+    }
+
+    public static IEnumerable<object[]> ExactValues()
+    {
+        yield return [TagDataType.UInt64, ulong.MaxValue];
+        yield return [TagDataType.Int64, long.MinValue];
+        yield return [TagDataType.AsciiString, "  part A  "];
+        yield return [TagDataType.Utf8String, "工件甲"];
+        yield return [TagDataType.DateTime, new DateTime(2026, 10, 22, 12, 34, 56, DateTimeKind.Utc)];
+        yield return [TagDataType.Float32, JsonSerializer.SerializeToElement(new[] { 1.25f, 2.5f })];
+        yield return [TagDataType.Any, JsonSerializer.SerializeToElement(new { count = ulong.MaxValue, state = "ready" })];
+    }
+
+    [Theory]
+    [MemberData(nameof(ExactValues))]
+    public async Task ExpandedValueTypesKeepExactValuesAndBatchShape(TagDataType type, object raw)
+    {
+        await using var harness = new Harness();
+        harness.Factory.Value = raw;
+        harness.Config.Devices[0].Tags[0].DataType = type;
+        harness.Runtime.Configure(harness.Config);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Runtime.GetLatest().Count > 0);
+        var sample = Assert.Single(harness.Runtime.GetLatest());
+        Assert.Equal(SampleQuality.Good, sample.Quality);
+        Assert.NotNull(sample.Value);
+        Assert.Equal(raw.GetType(), sample.Value.GetType());
+        Assert.Equal(JsonSerializer.Serialize(raw), JsonSerializer.Serialize(sample.Value));
+    }
+
+    [Fact]
+    public async Task BatchValuesRejectScalarEngineeringConversionInsteadOfInventingNumbers()
+    {
+        await using var harness = new Harness();
+        harness.Factory.Value = JsonSerializer.SerializeToElement(new[] { 1.25f, 2.5f });
+        harness.Config.Devices[0].Tags[0].DataType = TagDataType.Float32;
+        harness.Config.Devices[0].Tags[0].Scale = 2;
+        harness.Runtime.Configure(harness.Config);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Runtime.GetLatest().Count > 0);
+        var sample = Assert.Single(harness.Runtime.GetLatest());
+        Assert.Equal(SampleQuality.Bad, sample.Quality);
+        Assert.Null(sample.Value);
+        Assert.Contains("结构化", sample.Error);
+    }
+
+    [Fact]
+    public async Task UInt64AndTextWritesPreserveValuesIncludingWhitespaceAndEmptyText()
+    {
+        await using var harness = new Harness();
+        var device = harness.Config.Devices[0];
+        var tag = device.Tags[0];
+        tag.Writable = true;
+        tag.DataType = TagDataType.UInt64;
+        harness.Runtime.Configure(harness.Config);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Runtime.GetLatest().Any(s => s.Quality == SampleQuality.Good));
+        await harness.Runtime.WriteAsync(device.Id, tag.Id, "18446744073709551615");
+        Assert.Equal(ulong.MaxValue, Assert.IsType<ulong>(harness.Factory.LastWrite));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => harness.Runtime.WriteAsync(device.Id, tag.Id, "18446744073709551616"));
+        await harness.Runtime.StopAsync();
+        tag.DataType = TagDataType.Utf8String;
+        harness.Runtime.Configure(harness.Config);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Runtime.GetLatest().Any(s => s.Quality == SampleQuality.Good));
+        await harness.Runtime.WriteAsync(device.Id, tag.Id, "  工件 A  ");
+        Assert.Equal("  工件 A  ", harness.Factory.LastWrite);
+        await harness.Runtime.WriteAsync(device.Id, tag.Id, "");
+        Assert.Equal("", harness.Factory.LastWrite);
+    }
+
+    [Fact]
+    public async Task BitWritesApplyInverseEngineeringScaleAndRemainWithinZeroOrOne()
+    {
+        await using var harness = new Harness();
+        var device = harness.Config.Devices[0];
+        var tag = device.Tags[0];
+        tag.Writable = true;
+        tag.DataType = TagDataType.Bit;
+        tag.Scale = 2;
+        tag.Offset = 10;
+        harness.Factory.Value = 0;
+        harness.Runtime.Configure(harness.Config);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Runtime.GetLatest().Any(s => s.Quality == SampleQuality.Good));
+        await harness.Runtime.WriteAsync(device.Id, tag.Id, "12");
+        Assert.Equal(1, Assert.IsType<int>(harness.Factory.LastWrite));
+        await Assert.ThrowsAsync<ArgumentException>(() => harness.Runtime.WriteAsync(device.Id, tag.Id, "11"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => harness.Runtime.WriteAsync(device.Id, tag.Id, "14"));
     }
 
     [Fact]
@@ -185,7 +275,7 @@ public sealed class RuntimeTests
     {
         public DriverDescriptor Descriptor => new(id, "测试驱动", "test", true);
         public volatile bool FailReads;
-        public double Value = 2;
+        public object Value = 2d;
         public object? LastWrite;
         public int MaxConcurrentOperations;
         public int Disposals;

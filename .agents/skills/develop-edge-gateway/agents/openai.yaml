@@ -1,4 +1,4 @@
 interface:
   display_name: ".NET 8 WinForms 采集网关开发"
-  short_description: "按分层插件结构开发、测试和交付可扩展的工业数据采集网关程序"
-  default_prompt: "使用 $develop-edge-gateway 开发或扩展 .NET 8 WinForms 采集网关，并验证采集、持久化与上报闭环。"
+  short_description: "开发 .NET 8 桌面采集网关，维护全部源驱动迁移并验证数据闭环"
+  default_prompt: "使用 $develop-edge-gateway 开发 .NET 8 WinForms 采集网关，维护全部 12 个源驱动及其参数、方法和界面集成，验证采集、持久化、上报与发布完整性。"

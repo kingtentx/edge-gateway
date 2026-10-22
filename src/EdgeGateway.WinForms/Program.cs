@@ -2,6 +2,7 @@ using EdgeGateway.Abstractions;
 using EdgeGateway.DataAccess;
 using EdgeGateway.Driver.Modbus;
 using EdgeGateway.Driver.Simulator;
+using EdgeGateway.IotGateway;
 using EdgeGateway.Service;
 using System.Security.Cryptography;
 using System.Text;
@@ -49,10 +50,11 @@ internal static class Program
             store = new SqliteGatewayStore(Path.Combine(dataDirectory, "gateway.db"));
             store.InitializeAsync().GetAwaiter().GetResult();
             var log = new GatewayLog(Path.Combine(dataDirectory, "logs"));
-            var drivers = new DriverRegistry(new IDriverFactory[]
+            var builtInDrivers = new IDriverFactory[]
             {
                 new SimulatorDriverFactory(), new ModbusTcpDriverFactory(), new ModbusRtuDriverFactory()
-            }, log);
+            };
+            var drivers = new DriverRegistry(builtInDrivers.Concat(IotGatewayDriverCatalog.CreateFactories(log)), log);
             drivers.LoadPlugins(Path.Combine(AppContext.BaseDirectory, "plugins"));
             var errors = ConfigurationValidator.Validate(configuration, drivers);
             if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors));

@@ -1,6 +1,6 @@
 ---
 name: develop-edge-gateway
-description: 为 .NET 8 WinForms 工业采集网关设计、实现、扩展和审查设备配置、点位采集、Modbus TCP/RTU 驱动、插件、SQLite 历史和离线队列、MQTT 上报、运行监控及发布验证。用于本仓库新增功能、修复通信故障、扩展 PLC 协议、优化桌面界面和制定验收方案。遵循 iioter/iotgateway 的分层职责，以真实协议实现和可验证数据闭环为交付依据。
+description: 为 .NET 8 WinForms 工业采集网关设计、实现、迁移和审查设备配置、点位采集、全部上游 PLC/OPC/CNC/称重驱动、插件、SQLite 历史和离线队列、MQTT 上报、运行监控及发布验证。用于本仓库新增功能、维护 iioter/iotgateway 全部 12 个源驱动的 .NET 8 迁移、修复通信故障、扩展协议、优化桌面界面和制定验收方案。以真实协议实现和可验证数据闭环为交付依据。
 ---
 
 # .NET 8 WinForms 采集网关开发规范
@@ -8,6 +8,8 @@ description: 为 .NET 8 WinForms 工业采集网关设计、实现、扩展和�
 ## 1. 确立边界与基线
 
 先阅读仓库 `README.md`、`AGENTS.md` 和实际代码。比较参考项目时，阅读 [结构参考](references/architecture.md)，固定参考提交。以用户要求的 `.NET 8 + WinForms` 为技术基线，不因上游升级到 .NET 10 而修改目标框架。
+
+用户要求将源 `Plugins/Drivers` **全部迁移**。维护 `docs/driver-migration-manifest.json` 中的 12 个原驱动工程、65 个原读取方法、74 个原配置参数和全部来源文件，不得以只留下接口、模拟实现或少量协议来代替迁移。源代码经 .NET 8 编译和统一适配器接入界面；源码完整、程序集被打包、界面可配置、现场验证是分别需要记录的事实。
 
 将需求分为已实现、待实现、待设备验证。保留现有设备 ID、点位 ID、地址口径、权限和配置格式。变更序列化格式时升级 `SchemaVersion` 并定义迁移，未知版本必须报错，不覆盖原文件。
 
@@ -21,7 +23,10 @@ description: 为 .NET 8 WinForms 工业采集网关设计、实现、扩展和�
 | `EdgeGateway.Abstractions` | 驱动工厂、异步驱动、存储、上报、日志契约 | 仅依赖 Model |
 | `EdgeGateway.DataAccess` | 原子 JSON 配置、SQLite 历史、持久化 outbox | 不访问控件或设备 |
 | `EdgeGateway.Service` | 配置校验、调度、重连、工程量、报警、插件、MQTT | 不引用 WinForms |
+| `EdgeGateway.IotGateway` | 12 个源驱动的工厂、元数据、接口和工作线程适配 | 不依赖 UI；保留原方法与参数语义 |
+| `PluginInterface` | 迁移后的上游驱动接口、属性和数据契约 | 不引入上游 Web/WTM/数据库依赖 |
 | `Plugins/Drivers/EdgeGateway.Driver.*` | 协议连接、读取、写入、报文编解码 | 返回原始值与质量；不直接向云端上传 |
+| `Plugins/Drivers/<原目录名>` | 全部 12 个迁移驱动及其协议辅助源码 | `net8.0`，保留来源与许可，依赖随宿主发布 |
 | `EdgeGateway.WinForms` | 桌面交互、配置编辑、实时监控、历史趋势、日志 | 使用服务和快照；不实现采集循环 |
 | `EdgeGateway.Tests` | 关键故障语义、协议回环、持久化和并发测试 | 核心测试在非 Windows 环境可运行 |
 
@@ -32,16 +37,21 @@ description: 为 .NET 8 WinForms 工业采集网关设计、实现、扩展和�
 按“配置校验 → 驱动连接 → 原始采样 → 工程量转换 → 质量与报警 → 历史存储 → 遥测落盘 → MQTT 确认 → 清理已发送记录”实现闭环。
 
 - 为每台设备创建独立驱动与可取消的采集任务。设备间并行，同设备读写互斥。
-- 使用 `CancellationToken`，为每次连接和通信设置有限超时。禁止 `Thread.Sleep`、无限等待和未观察的后台任务异常。
-- 启停操作串行化。停止时先取消，再等待采集与发布任务退出，最后关闭驱动和 MQTT；重复启动或停止不得泄漏任务。
+- 新异步驱动使用 `CancellationToken`，为每次连接和通信设置有限超时，禁止 `Thread.Sleep`、无限等待和未观察的后台任务异常。原同步驱动通过专属工作线程适配；超时后隔离未结束操作，不复用同设备，不宣称取消令牌能强制终止本机库。
+- 启停操作串行化。正常停止先取消并等待可取消的采集、发布任务退出，再关闭驱动和 MQTT。同步厂商调用超过关闭宽限时保留隔离线程与设备租约，待原调用退出后在原线程清理；不承诺任意原生调用已经被强制终止，重复启停不得无限创建新调用。
 - 网络失败后指数退避并设上限；重新连接失败不得占满 CPU、刷屏或拖慢其他设备。
 - 保存原始值与工程值，按 `工程值 = 原始值 × Scale + Offset` 转换。拒绝 NaN、Infinity 和写入时无法逆转换的参数。
+- 保留迁移驱动的字符串、64 位整数、时间和结构值；不将所有数据强制转成 double，不因超过 double 精度而改变原始值。非数值数据不做倍率、偏移或数值报警。
 - 读取失败产生 Bad 或 Uncertain 质量、错误信息和本次时间戳，不将旧值标记为新的 Good 数据。
 - 阈值报警仅在进入、切换或恢复状态时记录，避免每次采样重复记录。通讯异常和阈值异常分别表达。
 
 ## 4. 严格处理协议数据
 
 开发驱动前阅读 [驱动与测试规范](references/driver-development.md)。新增驱动必须实现 `IDriverFactory` 和 `IDeviceDriver`，公开稳定 ID、名称、能力说明和配置验证。
+
+维护源驱动时，通过 `EdgeGateway.IotGateway` 适配 `PluginInterface.IDriver`，反射并保留全部 `ConfigParameter` 和 `Method` 元数据。WinForms 必须能编辑驱动专用参数并选择读取方法，不要求用户手写内部 JSON。OPC 默认使用 `ReadNode`；源 Modbus 默认选择真实寄存器读取；演示返回当前时间的方法必须标识，不能冒充现场数据。未实现的 `WriteAsync` 不得公开为可写能力。
+
+Fanuc FOCAS 原生 DLL、HslCommunication 有效授权、OPC DA COM/DCOM 和现场服务器由实际运行环境提供。缺少依赖时明确失败；不能制造 DLL、绕过授权、接受全部证书或用模拟值填补数据。构造、调用和释放 COM 对象保持同一 STA 线程。
 
 Modbus 地址统一使用 0 基偏移。设备手册的 40001/30001 是参考地址时，先确认转换规则；不得自动猜测。校验站号、地址范围、读长度、数据类型、寄存区和字节序。禁止写入离散输入和输入寄存器。
 
@@ -84,18 +94,21 @@ TCP 读取按协议长度组帧，不假设一次 `ReadAsync` 得到完整报文
 修改完成执行：
 
 ```powershell
+python scripts/verify-driver-migration.py
 dotnet restore EdgeGateway.sln
 dotnet build EdgeGateway.sln -c Release --no-restore
 dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-build
 dotnet run --project src/EdgeGateway.WinForms -c Release --no-build -- --smoke-test
 ```
 
-前三项可在安装对应 SDK 和 Windows targeting pack 的构建机执行；最后一项必须在 Windows 执行。跨平台编译不能替代 Windows 运行检查。真实串口、PLC、TLS 证书和现场长稳测试按 [验收边界](references/acceptance.md) 补齐。
+清单检查和核心构建测试可在安装对应 SDK、Python 和 Windows targeting pack 的构建机执行；最后一项必须在 Windows 执行。跨平台编译不能替代 Windows 运行检查。迁移测试核对全部 12 个工厂、65 个方法与 74 个源参数，并覆盖适配器线程、坏质量、超时、配置类型和关键真实协议回环。真实串口、PLC、TLS 证书和现场长稳测试按 [验收边界](references/acceptance.md) 补齐。
 
-新增或修改协议至少增加一个真实本地 socket 回环测试和一个异常测试。测试应验证外部行为，不为简单属性或固定布局机械编写测试。
+新增或修改 TCP/HTTP 协议至少覆盖一个真实本地通信回环与一个异常场景。COM/FOCAS 等接口使用对应边界的故障、线程和依赖检查，再补实际 Windows 集成与设备验收，不搭建无关 socket 代替原接口验证。测试应验证外部行为，不为简单属性或固定布局机械编写测试。
 
 ## 8. 交付与同步
 
 更新 README 的实际能力、启动步骤、配置示例、边界和验证结果。生成 Windows x64 发布目录，保留数据库和日志在用户数据目录。发布包使用 `.NET 8` 自包含模式时，不需要用户另外安装 Desktop Runtime。
+
+发布前检查全部 12 个原驱动 DLL、PluginInterface、适配层与托管依赖存在。原生厂商运行库不在源仓库时说明取得和安装条件，不把缺少现场运行依赖混同于遗漏驱动源码。保留第三方许可证，不用本项目 MIT 许可覆盖商业库或 FANUC 版权。
 
 按用户指定仓库和分支提交。提交前检查 diff、构建输出、测试结果与敏感信息；不覆盖已有分支历史。把本 skill 与代码一起提交，使规范持续可追溯。报告实际 commit、构建状态和未执行验收项，不把“配置了 CI”写成“CI 已通过”。

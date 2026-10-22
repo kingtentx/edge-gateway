@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />
+    <ProjectReference Include="../../Plugins/PluginInterface/PluginInterface.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/PLC.AllenBradley/PLC.AllenBradley.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/PLC.MelsecMc/PLC.MelsecMc.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/PLC.ModBusMaster/PLC.ModBusMaster.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/PLC.OmronFins/PLC.OmronFins.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/PLC.SiemensS7/PLC.SiemensS7.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/OPC.DaClient/OPC.DaClient.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/OPC.UaClient/OPC.UaClient.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/CNC.Fanuc/CNC.Fanuc.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/CNC.Fanuc.H/CNC.Fanuc.H.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/CNC.MTConnect/CNC.MTConnect.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/Mock.TcpClient/Mock.TcpClient.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/Other.Toledo/Other.Toledo.csproj" />
+  </ItemGroup>
+  <ItemGroup><InternalsVisibleTo Include="EdgeGateway.Tests" /></ItemGroup>
+</Project>

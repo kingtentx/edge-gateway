@@ -72,6 +72,39 @@ public sealed class ConfigurationStoreTests : IDisposable
         Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
     }
 
+    [Fact]
+    public async Task VersionOneUpgradesOnlyInMemoryUntilExplicitSaveAndRetainsOriginalBackup()
+    {
+        Directory.CreateDirectory(_directory);
+        var originalConfiguration = DemoConfiguration.Create();
+        originalConfiguration.SchemaVersion = 1;
+        var original = JsonSerializer.Serialize(originalConfiguration, JsonConfigurationStore.SerializerOptions);
+        await File.WriteAllTextAsync(FilePath, original);
+        var store = new JsonConfigurationStore(FilePath);
+        var upgraded = await store.LoadAsync();
+        Assert.Equal(2, upgraded.SchemaVersion);
+        Assert.Equal(originalConfiguration.Devices[0].Id, upgraded.Devices[0].Id);
+        Assert.Equal(originalConfiguration.Devices[0].Tags[0].Id, upgraded.Devices[0].Tags[0].Id);
+        Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
+        Assert.False(File.Exists(FilePath + ".bak"));
+        await store.SaveAsync(upgraded);
+        Assert.Equal(original, await File.ReadAllTextAsync(FilePath + ".bak"));
+        using var saved = JsonDocument.Parse(await File.ReadAllTextAsync(FilePath));
+        Assert.Equal(2, saved.RootElement.GetProperty("schemaVersion").GetInt32());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(99)]
+    public async Task UnknownSchemaVersionFailsWithoutChangingOriginal(int version)
+    {
+        Directory.CreateDirectory(_directory);
+        var original = "{\"schemaVersion\":" + version + "}";
+        await File.WriteAllTextAsync(FilePath, original);
+        await Assert.ThrowsAsync<InvalidDataException>(() => new JsonConfigurationStore(FilePath).LoadAsync());
+        Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);

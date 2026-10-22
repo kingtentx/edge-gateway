@@ -27,8 +27,9 @@ public sealed class JsonConfigurationStore(string path, Func<GatewayConfiguratio
             try
             {
                 await using var stream = File.OpenRead(_path);
-                return await JsonSerializer.DeserializeAsync<GatewayConfiguration>(stream, SerializerOptions, cancellationToken)
+                var configuration = await JsonSerializer.DeserializeAsync<GatewayConfiguration>(stream, SerializerOptions, cancellationToken)
                     .ConfigureAwait(false) ?? throw new InvalidDataException("配置文件内容为空。");
+                return UpgradeConfiguration(configuration);
             }
             catch (JsonException ex)
             {
@@ -36,6 +37,16 @@ public sealed class JsonConfigurationStore(string path, Func<GatewayConfiguratio
             }
         }
         finally { _gate.Release(); }
+    }
+
+    /// <summary>Apply additive v1→v2 migration in memory, also used by JSON import. Saving remains explicit.</summary>
+    public static GatewayConfiguration UpgradeConfiguration(GatewayConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        if (configuration.SchemaVersion == 1) configuration.SchemaVersion = 2;
+        if (configuration.SchemaVersion != 2)
+            throw new InvalidDataException($"不支持配置版本 {configuration.SchemaVersion}；仅支持版本 1（自动迁移）与 2，原文件未修改。");
+        return configuration;
     }
 
     public async Task SaveAsync(GatewayConfiguration configuration, CancellationToken cancellationToken = default)

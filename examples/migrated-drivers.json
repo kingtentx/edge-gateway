@@ -1,0 +1,391 @@
+{
+  "schemaVersion": 2,
+  "gatewayId": "edge-001",
+  "name": "全部迁移驱动配置示例（需按现场修改后启用）",
+  "autoStart": false,
+  "historyRetentionDays": 30,
+  "maxHistoryRows": 1000000,
+  "maxOutboxMessages": 50000,
+  "publishIntervalMs": 5000,
+  "mqtt": {
+    "enabled": false,
+    "host": "localhost",
+    "port": 1883,
+    "useTls": false,
+    "clientId": "edge-001",
+    "username": "",
+    "passwordEnvironmentVariable": "EDGE_MQTT_PASSWORD",
+    "topic": "edge/{gatewayId}/telemetry",
+    "timeoutMs": 10000
+  },
+  "devices": [
+    {
+      "id": "51c442da-10b9-5943-8acb-138503d4ab04",
+      "name": "西门子 S7（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "PLC.SiemensS7",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "CpuType": "S71200",
+        "IpAddress": "127.0.0.1",
+        "Port": "102",
+        "Rack": "0",
+        "Slot": "0"
+      },
+      "tags": [
+        {
+          "id": "b9ea6040-a59f-5a66-b9fb-628272dc395d",
+          "name": "示例点位",
+          "address": "DB1.DBW0",
+          "dataType": "UInt16",
+          "readMethod": "Read",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "6f982967-b743-5a20-8c2f-b785b3f6f987",
+      "name": "三菱 MC（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "PLC.MelsecMc",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "CpuType": "Qna_3E",
+        "IpAddress": "127.0.0.1",
+        "Port": "6000"
+      },
+      "tags": [
+        {
+          "id": "84b5d8f3-d03f-5fd2-b60a-a4479c7239da",
+          "name": "示例点位",
+          "address": "D0",
+          "dataType": "UInt16",
+          "readMethod": "Read",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "33ce9d59-b4c9-57b6-9055-db31343b550e",
+      "name": "欧姆龙 FINS（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "PLC.OmronFins",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "IpAddress": "127.0.0.1",
+        "Port": "6000"
+      },
+      "tags": [
+        {
+          "id": "e19773fa-581f-51e9-9c7c-e51e87b8c18a",
+          "name": "示例点位",
+          "address": "D0",
+          "dataType": "UInt16",
+          "readMethod": "Read",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "839383ad-79e5-5569-8cf3-328836147246",
+      "name": "Allen-Bradley（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "PLC.AllenBradley",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "IpAddress": "127.0.0.1",
+        "Port": "44818"
+      },
+      "tags": [
+        {
+          "id": "cbd9b172-79f6-5358-9ce8-aac74c524944",
+          "name": "示例点位",
+          "address": "TagName",
+          "dataType": "UInt16",
+          "readMethod": "Read",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "e023b95a-37ab-527b-9ff0-501cf76dc44e",
+      "name": "源 Modbus 主站（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "PLC.ModBusMaster",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "MasterType": "Tcp",
+        "IpAddress": "127.0.0.1",
+        "Port": "502",
+        "SlaveAddress": "1"
+      },
+      "tags": [
+        {
+          "id": "c138ae0c-9041-5b8a-9f50-89026b944e5f",
+          "name": "示例点位",
+          "address": "0",
+          "dataType": "UInt16",
+          "readMethod": "HoldingRegisters",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "be3feec4-b09f-51e6-a745-f838117f5993",
+      "name": "OPC UA（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "OPC.UaClient",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "Uri": "opc.tcp://localhost:62541/Quickstarts/ReferenceServer",
+        "UseSecurity": "true",
+        "CertificateStorePath": ""
+      },
+      "tags": [
+        {
+          "id": "bd59be4f-522a-53e0-82f9-41f225b36867",
+          "name": "示例点位",
+          "address": "ns=2;s=TagName",
+          "dataType": "Any",
+          "readMethod": "ReadNode",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "4da3d142-1dd7-5aa4-8fcc-695669fe16a3",
+      "name": "OPC DA（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "OPC.DaClient",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "Ip": "127.0.0.1",
+        "OpcServerName": "ICONICS.SimulatorOPCDA.2"
+      },
+      "tags": [
+        {
+          "id": "7a04599f-38b8-5576-ab52-b9b693d9c1a7",
+          "name": "示例点位",
+          "address": "TagName",
+          "dataType": "Any",
+          "readMethod": "ReadNode",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "0b61128a-121d-5010-a5be-46f5986bad12",
+      "name": "FANUC FOCAS（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "CNC.Fanuc",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "DeviceIp": "127.0.0.1",
+        "DevicePort": "8193"
+      },
+      "tags": [
+        {
+          "id": "c822fb9b-0205-5156-9b74-5d5d6173af22",
+          "name": "示例点位",
+          "address": "0",
+          "dataType": "Any",
+          "readMethod": "ReadDeviceType",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "1f424a2f-4682-5533-b0b4-bd5244392cee",
+      "name": "FANUC HslCommunication（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "CNC.Fanuc.H",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "IpAddress": "127.0.0.1",
+        "Port": "8193",
+        "AuthorizationCodeEnvironmentVariable": "EDGE_HSL_AUTHORIZATION_CODE"
+      },
+      "tags": [
+        {
+          "id": "9e88cd5a-5d3e-5641-b462-d876d8b5fe23",
+          "name": "示例点位",
+          "address": "0",
+          "dataType": "Any",
+          "readMethod": "ReadSysStatusInfo",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "5651a9f5-b437-5e5c-8999-ed3dc5e0524c",
+      "name": "MTConnect（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "CNC.MTConnect",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "Uri": "http://127.0.0.1:5000"
+      },
+      "tags": [
+        {
+          "id": "91dc6618-9e9d-5988-8fdc-228996d525ae",
+          "name": "示例点位",
+          "address": "dataItemId",
+          "dataType": "Any",
+          "readMethod": "ReadById",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "d7348a85-6370-5946-ae23-7a6efee1a702",
+      "name": "托利多称重 TCP（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "Other.Toledo",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "IpAddress": "127.0.0.1",
+        "Port": "6666",
+        "DataBits": "17"
+      },
+      "tags": [
+        {
+          "id": "c6360dfc-5c95-55e2-a74d-7a4f872390b9",
+          "name": "示例点位",
+          "address": "0",
+          "dataType": "Custom1",
+          "readMethod": "Read",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    },
+    {
+      "id": "83e22df6-c9f8-5da9-8fa3-f2a77a6c903a",
+      "name": "TCP 示例协议（未启用示例）",
+      "group": "源驱动示例",
+      "driverId": "Mock.TcpClient",
+      "enabled": false,
+      "pollIntervalMs": 3000,
+      "timeoutMs": 3000,
+      "properties": {
+        "IpAddress": "127.0.0.1",
+        "Port": "6666"
+      },
+      "tags": [
+        {
+          "id": "cde49839-7930-54aa-9e48-398c6d1897f7",
+          "name": "示例点位",
+          "address": "1",
+          "dataType": "UInt8",
+          "readMethod": "Read",
+          "writeMethod": "",
+          "endian": "BigEndian",
+          "enabled": true,
+          "writable": false,
+          "scale": 1,
+          "offset": 0,
+          "unit": "",
+          "description": "仅示例，请按实际设备点表和方法说明修改。"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+OPC Automation interop assembly
+
+Plugins/Drivers/OPC.DaClient/OPCClient/Interop.OPCAutomation.dll was preserved
+unchanged from iioter/iotgateway commit
+8de442a7dec52d2993d1e9667d799846936d681b.
+SHA-256: ff9b7bc0e0a57c01005f1d29f57a38b89355027f876b118c7932ad0e64c99803
+
+This is a managed interoperability definition assembly. It is not the
+registered OPC Automation COM component, an OPC DA server, or a license for
+either. Deployment requires legitimate installed and registered vendor/OPC
+components with compatible bitness and DCOM configuration. The OPC UA MIT
+license in this directory does not grant rights to separate OPC DA products.
+
+The original repository did not provide a separate license file for this
+interop binary. Its source repository attribution is retained; applicable
+Automation/server component terms remain those of their respective vendors.

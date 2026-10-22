@@ -197,12 +197,14 @@ public sealed class SqliteGatewayStore(string path) : IGatewayStore
     private static object? Primitive(object? value) => value is not JsonElement json ? value : json.ValueKind switch
     {
         JsonValueKind.Number when json.TryGetInt64(out var n) => n,
+        JsonValueKind.Number when json.TryGetUInt64(out var u) => u,
+        JsonValueKind.Number when json.TryGetDecimal(out var d) => d,
         JsonValueKind.Number => json.GetDouble(),
         JsonValueKind.True => true,
         JsonValueKind.False => false,
         JsonValueKind.String => json.GetString(),
         JsonValueKind.Null => null,
-        _ => json.GetRawText()
+        _ => json.Clone()
     };
 
     public async ValueTask DisposeAsync()
