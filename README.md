@@ -4,6 +4,8 @@
 
 开发规范入口：[开发 SKILL](.agents/skills/develop-edge-gateway/SKILL.md) · [全部驱动迁移清单](docs/driver-migration.md) · [结构参考](.agents/skills/develop-edge-gateway/references/architecture.md) · [驱动扩展](.agents/skills/develop-edge-gateway/references/driver-development.md) · [验证记录](docs/verification.md)
 
+已验证交付：[Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39818478291/artifacts/12443481330) · [Windows 构建与 93 项测试结果](https://github.com/kingtentx/edge-gateway/actions/runs/39818478291) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。完整驱动界面烟测生成 36 张截图，证据与构建警告说明见验证记录。
+
 ## 当前功能
 
 | 模块 | 已实现内容 |
