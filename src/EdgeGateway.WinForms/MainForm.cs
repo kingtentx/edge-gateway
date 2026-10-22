@@ -294,16 +294,24 @@ public sealed partial class MainForm : Form
             foreach (var input in EditorInputs(tab))
             {
                 if (!input.Visible) continue;
+                // Follow the same focus path as keyboard navigation. ContainerControl may
+                // scroll its ActiveControl during layout; leaving focus on the first field
+                // would undo ScrollControlIntoView when testing a later field.
+                // Disabled fields are inspected with focus on the stable footer Cancel
+                // button (focus only, no click), clearing the previous input's focus chain.
+                var focusTarget = input.Enabled ? input : editor.SmokeCommands.Last();
+                if (!focusTarget.Focus() || !focusTarget.ContainsFocus)
+                    throw new InvalidOperationException($"{context}: could not focus {focusTarget.GetType().Name} '{focusTarget.Name}' / '{focusTarget.Text}' before inspecting field '{input.Name}'.");
                 for (var parent = input.Parent; parent is not null && parent != editor; parent = parent.Parent)
                     if (parent is ScrollableControl scroll && scroll.AutoScroll) scroll.ScrollControlIntoView(input);
                 PerformLayoutRecursively(editor);
                 AssertVisibleBounds(input, context + " field");
                 // A NumericUpDown is one operator field. Verify its internal edit box after
-                // scrolling the whole control; independently scrolling that implementation
-                // child changes the ancestor offset and can move the composite out of view.
+                // scrolling the whole control without treating it as another keyboard stop.
                 foreach (var child in Descendants(input).Where(x => x.Visible && x is TextBoxBase))
                     AssertVisibleBounds(child, context + " field content");
             }
+            EditorInputs(tab).FirstOrDefault(x => x.Visible && x.Enabled)?.Focus();
             foreach (var scroll in Descendants(tab).OfType<ScrollableControl>().Where(x => x.AutoScroll)) scroll.AutoScrollPosition = Point.Empty;
             tab.AutoScrollPosition = Point.Empty;
         }

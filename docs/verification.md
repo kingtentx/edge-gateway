@@ -42,7 +42,7 @@ MQTT 测试通过真实本机 TCP Broker 测试端验证 3.1.1 协议字节、Qo
 | 完整解决方案 Release 构建 | 本地增量构建报告 0 警告、0 错误；首次 Windows 干净构建 419 警告、0 错误，详见 Windows CI |
 | 全量自动测试 | **93 执行、93 通过、0 失败、0 跳过** |
 | Windows x64 自包含交叉发布 | 成功；12 个原驱动及宿主、接口、适配层、OPC Automation、运行时等 19 个关键文件存在，发布目录共 533 个文件；不代替 Windows 执行验证 |
-| Windows 原生启动与新版 UI 烟测 | Windows 93 项测试通过；驱动选择器初始化已修复，后续复验发现长参数页滚动裁剪，待修复后完整重跑 |
+| Windows 原生启动与新版 UI 烟测 | Windows 93 项测试通过；驱动选择器已修复，长参数页检查已按真实焦点访问调整，待最新提交完整复验 |
 | 真实设备与厂商运行环境 | 未执行现场验收；不由构建、元数据或回环结果推定通过 |
 
 迁移基准为上游提交 `8de442a7dec52d2993d1e9667d799846936d681b`，来源与完整条目见 [迁移清单](driver-migration-manifest.json)。清单脚本核对文件存在且非空、原方法与参数保留、目标框架为 `net8.0`、工程纳入解决方案；来源 SHA256 用于追溯，不要求已修改的迁移文件仍与原文件逐字节相同。此检查证明迁移范围完整，不证明全部协议已完成设备联调。
@@ -96,7 +96,9 @@ dotnet list src/EdgeGateway.WinForms/EdgeGateway.WinForms.csproj package --vulne
 
 烟测使用未启用的设备配置，不调用现场驱动连接。CI 为 36 张截图烟测设置 90 秒退出上限并检查退出码和主截图生成，随后上传 `verification` artifact 中的测试 TRX、烟测日志和 `ui-smoke*.png`；发布包上传为 `EdgeGateway-win-x64` artifact。对应运行见 [Actions](https://github.com/kingtentx/edge-gateway/actions)。
 
-首轮执行为提交 `75918e657f0a552b1146d21e400ee3ca7e2d63f2` 的 [Windows CI 39813962761](https://github.com/kingtentx/edge-gateway/actions/runs/39813962761)：迁移清单通过，干净构建 419 警告、0 错误，93 项测试全部通过。UI 烟测生成六个主页面截图后，因驱动选择器初始化为空而失败；该结果不作为完整 UI 验收通过。驱动选择器修复后，提交 `4d513a98550b81123aa9987c6d018b9acc361aa2` 的 [第二轮 Windows CI](https://github.com/kingtentx/edge-gateway/actions/runs/39814849556) 再次通过 93 项测试，并生成 28 张截图；后续在原 Modbus 长参数页检测到滚动裁剪。定位为烟测对 NumericUpDown 及其内部编辑框重复触发祖先滚动；已改为按整个输入控件滚动，再分别检查控件和内部文本边界，所有可见性断言保留。新提交仍须完整重跑并核对 36 张截图。
+首轮 [Windows CI 39813962761](https://github.com/kingtentx/edge-gateway/actions/runs/39813962761) 通过迁移清单、干净构建和 93 项测试，发现并随后修复驱动选择器初始化问题。[第二轮](https://github.com/kingtentx/edge-gateway/actions/runs/39814849556)及[第三轮](https://github.com/kingtentx/edge-gateway/actions/runs/39816782821)再次通过 93 项测试，后续在原 Modbus 长参数页检查中发现滚动位置被旧输入焦点拉回。
+
+已对照 .NET 8 WinForms 官方源码核实：布局期间容器会重新将活动控件滚入视图。最新烟测改为先聚焦待检查字段，禁用字段则将焦点移到固定底部按钮，再执行完整滚动、布局和原有全部边界断言；数值控件整体滚动，并保留内部文本框检查及失败现场截图。**这些最新改动仍须由对应新提交的 Windows CI 完整复验，当前不宣称 36 张截图验收已通过。**
 
 干净构建的警告中，411 条为保留的源兼容 API 弃用提示（CS0618）：368 条来自 FOCAS 的 UnmanagedType.AsAny 声明，43 条来自 OPC UA 的同步/旧重载；另有 7 条未使用变量及 1 条无 await 的 async 方法提示。审查未发现这些警告指向类型不兼容或依赖漏洞告警，未使用全局抑制隐藏它们。本地增量构建的 0 警告输出不代表迁入源码干净编译无警告。单次 CI 环境下的渲染也不能替代人工交互、真实 COM/FOCAS 环境及多分辨率、多 DPI 验收。
 

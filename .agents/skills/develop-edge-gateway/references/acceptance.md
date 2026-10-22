@@ -16,6 +16,16 @@
 
 维护 `docs/verification.md` 记录执行命令、平台、提交、测试数量和结果。未执行项写“未执行”，不填默认通过。
 
+## WinForms 自动化验收细节
+
+固定驱动目录使用 `Items.AddRange` 同步装载，再按稳定驱动 Id 选择；不能依赖窗体建立 `BindingContext` 前的 `DataSource / SelectedItem` 初始化。显示窗体后检查驱动选择、参数值与枚举没有丢失。
+
+在 Windows 逐个打开全部驱动的设备和点位编辑器，并遍历各页签。长参数页按真实键盘访问路径检查：先聚焦启用的公开输入控件并验证 `ContainsFocus`，再滚动到该控件、执行布局，检查控件与所有祖先的可见边界。禁用字段仍需检查，可将焦点移到滚动区外的固定按钮，不能通过启用或跳过字段使检查通过。`NumericUpDown` 作为整体滚动，再检查其内部文本框；不要把内部实现控件当作独立键盘停靠点。失败时保存当时的窗体截图和控件类型、名称、边界。
+
+原因见 [.NET 8 ScrollableControl 源码](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/ScrollableControl.cs)与 [ContainerControl 源码](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/ContainerControl.cs)：程序滚动后进行布局时，容器可能再次把旧的活动控件滚入视图。禁止通过放宽边界断言掩盖焦点或实际裁剪问题。
+
+构建记录应区分干净构建与增量构建；增量输出无警告不能代表迁入源码干净编译无警告。保留上游兼容 API 警告并记录其类别，不以全局抑制替代处理。
+
 ## Windows 手工验收
 
 1. 首次启动只加载演示设备，MQTT 与现场设备默认不启用。点击开始后能看到四个模拟点位、历史与状态变化。
