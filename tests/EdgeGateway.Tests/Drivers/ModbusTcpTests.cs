@@ -69,8 +69,7 @@ public sealed class ModbusTcpTests
                 case "exceptionlength": response = Response(request, [0x83, 2, 0]); break;
             }
             await stream.WriteAsync(response, token);
-            var eof = new byte[1];
-            Assert.Equal(0, await stream.ReadAsync(eof, token));
+            await AssertPeerClosedAsync(stream, token);
         });
         var tag = new TagConfiguration { Address = "0" };
         await using var driver = new ModbusTcpDriverFactory().Create(server.Configuration([tag]));
@@ -109,8 +108,7 @@ public sealed class ModbusTcpTests
         await using var server = new TcpServer(async (stream, token) =>
         {
             await ReadRequestAsync(stream, token);
-            var eof = new byte[1];
-            Assert.Equal(0, await stream.ReadAsync(eof, token));
+            await AssertPeerClosedAsync(stream, token);
         });
         var tag = new TagConfiguration { Address = "0" };
         var configuration = server.Configuration([tag]);
@@ -163,13 +161,33 @@ public sealed class ModbusTcpTests
             var echo = request.AsSpan(7, 5).ToArray();
             echo[4] ^= 1;
             await stream.WriteAsync(Response(request, echo), token);
-            Assert.Equal(0, await stream.ReadAsync(new byte[1], token));
+            await AssertPeerClosedAsync(stream, token);
         });
         var tag = new TagConfiguration { Address = "0", Writable = true };
         await using var driver = new ModbusTcpDriverFactory().Create(server.Configuration([tag]));
         await driver.ConnectAsync(server.Token);
         await Assert.ThrowsAsync<InvalidDataException>(() => driver.WriteAsync(tag, 42, server.Token));
         await server.Completion;
+    }
+
+    private static async Task AssertPeerClosedAsync(NetworkStream stream, CancellationToken token)
+    {
+        try
+        {
+            Assert.Equal(0, await stream.ReadAsync(new byte[1], token));
+        }
+        catch (IOException ex) when (!token.IsCancellationRequested &&
+            ex.InnerException is SocketException { SocketErrorCode: SocketError.ConnectionReset or SocketError.ConnectionAborted })
+        {
+            // Rejecting MBAP before draining the remaining PDU can produce TCP RST on
+            // Windows. Both RST and orderly EOF prove the driver closed the connection.
+        }
+        catch (SocketException ex) when (!token.IsCancellationRequested &&
+            ex.SocketErrorCode is SocketError.ConnectionReset or SocketError.ConnectionAborted)
+        {
+            // Keep this explicit for stream implementations exposing SocketException directly.
+        }
+        token.ThrowIfCancellationRequested();
     }
 
     private static async Task<byte[]> ReadRequestAsync(NetworkStream stream, CancellationToken token)
