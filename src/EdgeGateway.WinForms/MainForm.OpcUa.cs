@@ -14,9 +14,18 @@ public sealed partial class MainForm
 
     private Control BuildOpcUaPage()
     {
-        var viewport = new EditorLayout.FieldViewport(190) { Name = "OpcUaFieldsViewport" };
-        var fields = viewport.Table;
+        // These fields are built with the main form, so they share its DPI baseline.
+        // A separate UserControl would become the form's ActiveControl and cause
+        // outer auto-scroll layout to reveal that whole container instead of the
+        // focused field when the page is taller than the available work area.
+        var viewport = new Panel
+        {
+            Name = "OpcUaFieldsViewport", Dock = DockStyle.Fill, AutoScroll = true,
+            BackColor = Color.White, Padding = new Padding(14), Margin = Padding.Empty
+        };
+        var fields = EditorLayout.Fields(190);
         fields.Name = "OpcUaFields";
+        viewport.Controls.Add(fields);
         void Section(string caption)
         {
             var row = fields.RowCount++;
