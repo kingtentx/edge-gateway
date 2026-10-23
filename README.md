@@ -71,6 +71,8 @@ dotnet run --project src/EdgeGateway.WinForms -c Release --no-build
 
 也可以直接打开 `EdgeGateway.sln`，把 `EdgeGateway.WinForms` 设为启动项目。
 
+若旧版源码构建时报 `MSB3577`，提示两个文件输出到 `EdgeGateway.WinForms.MainForm.resources`，请更新 `EdgeGateway.WinForms.csproj`：`MainForm.Monitoring.resx` 已通过 `ManifestResourceName` 指定独立资源名，避免与 `MainForm.resx` 冲突。
+
 首次启动包含一台启用的“演示机组”和一台**未启用**的 Modbus TCP 示例。点击“启动采集”，即可看到温度、频率、运行状态和目标温度。默认 MQTT 关闭，程序不会自动连接现场设备或云端平台。
 
 ### 发布可直接运行的 Windows 包

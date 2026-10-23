@@ -11,6 +11,12 @@
     <RootNamespace>EdgeGateway.WinForms</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <!-- 分部类资源按文件名命名，避免从 MainForm 类型推断出与主窗体相同的资源名。 -->
+    <EmbeddedResource Update="MainForm.Monitoring.resx">
+      <ManifestResourceName>$(RootNamespace).MainForm.Monitoring</ManifestResourceName>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="FontAwesome.Sharp" Version="6.6.0" />
   </ItemGroup>
   <ItemGroup>
