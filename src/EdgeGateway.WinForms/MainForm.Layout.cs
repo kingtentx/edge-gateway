@@ -40,16 +40,22 @@ public sealed partial class MainForm
             _arranging = true;
             try
             {
-                var width = Math.Max(1, ClientSize.Width - Padding.Horizontal);
-                if (_content.Width != width) _content.Width = width;
-                var minimum = Math.Max(1, _minimumHeight());
-                var height = Math.Max(minimum, ClientSize.Height - Padding.Vertical);
-                var scrollExtent = new Size(0, minimum + Padding.Vertical);
-                if (AutoScrollMinSize != scrollExtent) AutoScrollMinSize = scrollExtent;
-                // Adding/removing the vertical scrollbar changes ClientSize. Re-read
-                // it so a newly visible scrollbar never causes horizontal overflow.
-                width = Math.Max(1, ClientSize.Width - Padding.Horizontal);
-                _content.SetBounds(Padding.Left + AutoScrollPosition.X, Padding.Top + AutoScrollPosition.Y, width, height);
+                // A vertical scrollbar can narrow the content enough to wrap a
+                // toolbar onto another row. Re-measure at that actual width so
+                // wrapped actions cannot consume the tables' minimum height.
+                for (var pass = 0; pass < 4; pass++)
+                {
+                    var measuredWidth = Math.Max(1, ClientSize.Width - Padding.Horizontal);
+                    if (_content.Width != measuredWidth) _content.Width = measuredWidth;
+                    _content.PerformLayout();
+                    var minimum = Math.Max(1, _minimumHeight());
+                    var scrollExtent = new Size(0, minimum + Padding.Vertical);
+                    if (AutoScrollMinSize != scrollExtent) AutoScrollMinSize = scrollExtent;
+                    var width = Math.Max(1, ClientSize.Width - Padding.Horizontal);
+                    var height = Math.Max(minimum, ClientSize.Height - Padding.Vertical);
+                    _content.SetBounds(Padding.Left + AutoScrollPosition.X, Padding.Top + AutoScrollPosition.Y, width, height);
+                    if (width == measuredWidth && width == Math.Max(1, ClientSize.Width - Padding.Horizontal)) break;
+                }
             }
             finally { _arranging = false; }
         }

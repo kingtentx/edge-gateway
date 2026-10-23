@@ -87,7 +87,8 @@ public sealed partial class MainForm
         tagToolbar.Padding = new Padding(0, 15, 0, 10);
         tagToolbar.Name = "TagActions";
         content.Controls.Add(tagToolbar, 0, 1); content.Controls.Add(_tagGrid, 0, 2);
-        var viewport = ScrollableContent(content, "DevicesViewport", () => tagToolbar.PreferredSize.Height + UiTheme.Scale(content, 320));
+        var viewport = ScrollableContent(content, "DevicesViewport", () =>
+            tagToolbar.GetPreferredSize(new Size(Math.Max(1, content.ClientSize.Width), 0)).Height + UiTheme.Scale(content, 320));
         return UiTheme.PageLayout("设备与点位", "设备可独立维护。修改运行中设备的配置或点位，保存后仅重新连接该设备；其他设备继续采集。", UiTheme.Toolbar(addDevice, editDevice, deleteDevice, importDevices, import, export), viewport);
     }
 
