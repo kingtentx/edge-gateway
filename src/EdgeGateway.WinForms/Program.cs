@@ -16,7 +16,8 @@ internal static class Program
     {
         ApplicationConfiguration.Initialize();
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
-        var smokeTest = args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
+        var layoutMatrix = args.Contains("--layout-matrix", StringComparer.OrdinalIgnoreCase);
+        var smokeTest = layoutMatrix || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
         var screenshotIndex = Array.FindIndex(args, x => x.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
         var screenshotPath = screenshotIndex >= 0 && screenshotIndex + 1 < args.Length ? args[screenshotIndex + 1] : null;
         var dataDirectory = smokeTest
@@ -60,7 +61,7 @@ internal static class Program
             if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors));
             publisher = new MqttTelemetryPublisher();
             runtime = new GatewayRuntime(configuration, drivers, store, publisher, log);
-            using var window = new MainForm(configuration, configurationStore, store, drivers, runtime, log, dataDirectory, smokeTest, screenshotPath);
+            using var window = new MainForm(configuration, configurationStore, store, drivers, runtime, log, dataDirectory, smokeTest, screenshotPath, layoutMatrix);
             Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }

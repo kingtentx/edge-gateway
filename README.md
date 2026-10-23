@@ -4,13 +4,14 @@
 
 开发规范入口：[开发 SKILL](.agents/skills/develop-edge-gateway/SKILL.md) · [全部驱动迁移清单](docs/driver-migration.md) · [结构参考](.agents/skills/develop-edge-gateway/references/architecture.md) · [驱动扩展](.agents/skills/develop-edge-gateway/references/driver-development.md) · [验证记录](docs/verification.md)
 
-已验证交付：[Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39818478291/artifacts/12443481330) · [Windows 构建与 93 项测试结果](https://github.com/kingtentx/edge-gateway/actions/runs/39818478291) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。完整驱动界面烟测生成 36 张截图，证据与构建警告说明见验证记录。
+界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
 ## 当前功能
 
 | 模块 | 已实现内容 |
 |---|---|
-| 桌面管理 | 中文界面，运行总览、设备与点位、实时监控、历史与趋势、平台与系统、运行日志六页 |
+| 桌面管理 | 深色导航、FontAwesome 图标、圆角按钮与卡片、统一表格；运行总览、设备与点位、实时监控、历史与趋势、平台与系统、运行日志六页 |
+| DPI 与分辨率 | PerMonitorV2、统一 96 DPI 基准、当前屏幕工作区约束、跨 DPI 后重排；小屏卡片换列、滚动表单与固定操作栏 |
 | 设备配置 | 设备分组、连接参数、启停、点位新增/编辑/删除；运行时禁止修改配置 |
 | 点位模型 | 数据类型、寄存区、字节序、倍率/偏移、单位、上下限、只读/可写、启用状态 |
 | 上游驱动迁移 | 全部 12 个原驱动工程；保留 65 个原读取方法、74 个原配置参数及协议辅助源码 |
@@ -25,7 +26,7 @@
 | 离线补传 | 遥测持久化 outbox、收到确认后删除、重启重发、消息 ID 去重依据、队列满告警 |
 | 查询与导出 | 按设备/点位/时间查询历史、数值曲线、CSV 导出、配置 JSON 导入导出、日志导出 |
 | 扩展机制 | 独立驱动工厂与契约，扫描 `plugins` 下可信驱动程序集，重启加载 |
-| 工程交付 | 标准 `.sln`、自动测试、Windows CI、窗体启动烟测、Windows x64 自包含发布脚本 |
+| 工程交付 | 标准 `.sln`、自动测试、Windows Server 2022 / 2025 CI、窗体启动及工作区矩阵烟测、Windows x64 自包含发布脚本 |
 
 上游结构与迁移基准固定在 [`8de442a7dec52d2993d1e9667d799846936d681b`](https://github.com/iioter/iotgateway/commit/8de442a7dec52d2993d1e9667d799846936d681b)。上游该版本目标为 .NET 10；本项目将驱动重新编译为 .NET 8，保留原目录名与方法，通过适配层接入桌面程序。迁移范围包含所有源驱动，不包含上游 Web/WTM 界面与数据库；不承诺直接加载上游 .NET 10 生成的 DLL。
 

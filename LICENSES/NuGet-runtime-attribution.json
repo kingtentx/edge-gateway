@@ -15,6 +15,19 @@
       }
     },
     {
+      "id": "FontAwesome.Sharp",
+      "version": "6.6.0",
+      "authors": "Awesome Incremented and Contributors",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://licenses.nuget.org/Apache-2.0",
+      "copyright": "Copyright © Awesome Incremented 2015-2022",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/awesome-inc/FontAwesome.Sharp",
+        "commit": "fca9446a2476e8cb903a938b0d546b4b65c7d00f"
+      }
+    },
+    {
       "id": "HslCommunication",
       "version": "12.8.3",
       "authors": "Richard.Hu",
@@ -37,17 +50,17 @@
       }
     },
     {
-      "id": "MQTTnet",
-      "version": "4.3.7.1207",
-      "authors": "The contributors of MQTTnet",
+      "id": "Microsoft.Data.Sqlite",
+      "version": "8.0.32",
+      "authors": "Microsoft",
       "license": "MIT",
       "licenseUrl": "https://licenses.nuget.org/MIT",
-      "projectUrl": "https://github.com/dotnet/MQTTnet",
-      "copyright": "Copyright (c) .NET Foundation and Contributors",
+      "projectUrl": "https://docs.microsoft.com/dotnet/standard/data/sqlite/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
       "repository": {
         "type": "git",
-        "url": "https://github.com/dotnet/MQTTnet.git",
-        "commit": "740d605fd2c25922fad6ea60e78e8370356e95dd"
+        "url": "https://github.com/dotnet/efcore",
+        "commit": "5e864fab7a450eedb39ddb931ba61759102c4e35"
       }
     },
     {
@@ -65,17 +78,17 @@
       }
     },
     {
-      "id": "Microsoft.Data.Sqlite",
-      "version": "8.0.32",
+      "id": "Microsoft.Extensions.DependencyInjection",
+      "version": "10.0.8",
       "authors": "Microsoft",
       "license": "MIT",
       "licenseUrl": "https://licenses.nuget.org/MIT",
-      "projectUrl": "https://docs.microsoft.com/dotnet/standard/data/sqlite/",
+      "projectUrl": "https://dot.net/",
       "copyright": "© Microsoft Corporation. All rights reserved.",
       "repository": {
         "type": "git",
-        "url": "https://github.com/dotnet/efcore",
-        "commit": "5e864fab7a450eedb39ddb931ba61759102c4e35"
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
       }
     },
     {
@@ -93,7 +106,7 @@
       }
     },
     {
-      "id": "Microsoft.Extensions.DependencyInjection",
+      "id": "Microsoft.Extensions.Logging",
       "version": "10.0.8",
       "authors": "Microsoft",
       "license": "MIT",
@@ -108,20 +121,6 @@
     },
     {
       "id": "Microsoft.Extensions.Logging.Abstractions",
-      "version": "10.0.8",
-      "authors": "Microsoft",
-      "license": "MIT",
-      "licenseUrl": "https://licenses.nuget.org/MIT",
-      "projectUrl": "https://dot.net/",
-      "copyright": "© Microsoft Corporation. All rights reserved.",
-      "repository": {
-        "type": "git",
-        "url": "https://github.com/dotnet/dotnet",
-        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
-      }
-    },
-    {
-      "id": "Microsoft.Extensions.Logging",
       "version": "10.0.8",
       "authors": "Microsoft",
       "license": "MIT",
@@ -160,6 +159,20 @@
         "type": "git",
         "url": "https://github.com/dotnet/dotnet",
         "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "MQTTnet",
+      "version": "4.3.7.1207",
+      "authors": "The contributors of MQTTnet",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://github.com/dotnet/MQTTnet",
+      "copyright": "Copyright (c) .NET Foundation and Contributors",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/MQTTnet.git",
+        "commit": "740d605fd2c25922fad6ea60e78e8370356e95dd"
       }
     },
     {
@@ -247,6 +260,111 @@
       }
     },
     {
+      "id": "opennetcf-extensions-standard",
+      "version": "1.0.17160.0",
+      "authors": "Chris Tacke"
+    },
+    {
+      "id": "opennetcf-mtconnect-client",
+      "version": "1.0.17160.0",
+      "authors": "Chris Tacke"
+    },
+    {
+      "id": "opennetcf-restconnector",
+      "version": "1.0.17160.0",
+      "authors": "Chris Tacke"
+    },
+    {
+      "id": "runtime.linux-arm.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.linux-arm64.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.linux-x64.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.osx-arm64.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "runtime.osx-x64.runtime.native.System.IO.Ports",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "SimpleTCP.Core",
+      "version": "1.0.4",
+      "authors": "SimpleTCP.Core",
+      "projectUrl": "https://github.com/BrandonPotter/SimpleTCP"
+    },
+    {
       "id": "SQLitePCLRaw.bundle_e_sqlite3",
       "version": "2.1.13",
       "authors": "Eric Sink",
@@ -293,12 +411,6 @@
         "type": "git",
         "url": "https://github.com/ericsink/SQLitePCL.raw"
       }
-    },
-    {
-      "id": "SimpleTCP.Core",
-      "version": "1.0.4",
-      "authors": "SimpleTCP.Core",
-      "projectUrl": "https://github.com/BrandonPotter/SimpleTCP"
     },
     {
       "id": "System.Collections.Immutable",
@@ -404,105 +516,6 @@
         "type": "git",
         "url": "https://github.com/dotnet/dotnet",
         "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
-      }
-    },
-    {
-      "id": "opennetcf-extensions-standard",
-      "version": "1.0.17160.0",
-      "authors": "Chris Tacke"
-    },
-    {
-      "id": "opennetcf-mtconnect-client",
-      "version": "1.0.17160.0",
-      "authors": "Chris Tacke"
-    },
-    {
-      "id": "opennetcf-restconnector",
-      "version": "1.0.17160.0",
-      "authors": "Chris Tacke"
-    },
-    {
-      "id": "runtime.linux-arm.runtime.native.System.IO.Ports",
-      "version": "8.0.0",
-      "authors": "Microsoft",
-      "license": "MIT",
-      "licenseUrl": "https://licenses.nuget.org/MIT",
-      "projectUrl": "https://dot.net/",
-      "copyright": "© Microsoft Corporation. All rights reserved.",
-      "repository": {
-        "type": "git",
-        "url": "https://github.com/dotnet/runtime",
-        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
-      }
-    },
-    {
-      "id": "runtime.linux-arm64.runtime.native.System.IO.Ports",
-      "version": "8.0.0",
-      "authors": "Microsoft",
-      "license": "MIT",
-      "licenseUrl": "https://licenses.nuget.org/MIT",
-      "projectUrl": "https://dot.net/",
-      "copyright": "© Microsoft Corporation. All rights reserved.",
-      "repository": {
-        "type": "git",
-        "url": "https://github.com/dotnet/runtime",
-        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
-      }
-    },
-    {
-      "id": "runtime.linux-x64.runtime.native.System.IO.Ports",
-      "version": "8.0.0",
-      "authors": "Microsoft",
-      "license": "MIT",
-      "licenseUrl": "https://licenses.nuget.org/MIT",
-      "projectUrl": "https://dot.net/",
-      "copyright": "© Microsoft Corporation. All rights reserved.",
-      "repository": {
-        "type": "git",
-        "url": "https://github.com/dotnet/runtime",
-        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
-      }
-    },
-    {
-      "id": "runtime.native.System.IO.Ports",
-      "version": "8.0.0",
-      "authors": "Microsoft",
-      "license": "MIT",
-      "licenseUrl": "https://licenses.nuget.org/MIT",
-      "projectUrl": "https://dot.net/",
-      "copyright": "© Microsoft Corporation. All rights reserved.",
-      "repository": {
-        "type": "git",
-        "url": "https://github.com/dotnet/runtime",
-        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
-      }
-    },
-    {
-      "id": "runtime.osx-arm64.runtime.native.System.IO.Ports",
-      "version": "8.0.0",
-      "authors": "Microsoft",
-      "license": "MIT",
-      "licenseUrl": "https://licenses.nuget.org/MIT",
-      "projectUrl": "https://dot.net/",
-      "copyright": "© Microsoft Corporation. All rights reserved.",
-      "repository": {
-        "type": "git",
-        "url": "https://github.com/dotnet/runtime",
-        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
-      }
-    },
-    {
-      "id": "runtime.osx-x64.runtime.native.System.IO.Ports",
-      "version": "8.0.0",
-      "authors": "Microsoft",
-      "license": "MIT",
-      "licenseUrl": "https://licenses.nuget.org/MIT",
-      "projectUrl": "https://dot.net/",
-      "copyright": "© Microsoft Corporation. All rights reserved.",
-      "repository": {
-        "type": "git",
-        "url": "https://github.com/dotnet/runtime",
-        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
       }
     }
   ]

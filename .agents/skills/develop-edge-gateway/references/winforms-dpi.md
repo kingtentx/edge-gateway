@@ -1,0 +1,119 @@
+# WinForms DPI 与视觉规范
+
+修改主窗体、弹窗、动态驱动参数、主题或第三方控件时执行本规范。保持 .NET 8、原生 WinForms 和现有设备操作语义。
+
+## 目录
+
+1. [确定适配边界](#1-确定适配边界)
+2. [统一缩放入口](#2-统一缩放入口)
+3. [处理工作区与响应布局](#3-处理工作区与响应布局)
+4. [处理动态控件与特殊尺寸](#4-处理动态控件与特殊尺寸)
+5. [保持视觉一致性](#5-保持视觉一致性)
+6. [验收矩阵](#6-验收矩阵)
+7. [记录结果与依据](#7-记录结果与依据)
+
+## 1. 确定适配边界
+
+将分辨率和 DPI 分开处理：分辨率决定可用像素空间，DPI 决定同一界面元素应占多少像素。保持文字、控件与图标的相对比例；空间不足时重排或滚动，不把整窗截图拉伸、不按屏幕宽高分别缩放内容。
+
+以 96 DPI 为尺寸基准，目标缩放为 100% / 125% / 150% / 175% / 200%，对应 96 / 120 / 144 / 168 / 192 DPI。响应布局使用 `逻辑宽度 = ClientSize.Width × 96 / DeviceDpi`，不能只比较物理像素宽度。[Windows DPI 定义](https://learn.microsoft.com/en-us/windows/win32/hidpi/wm-dpichanged)
+
+将操作系统兼容与布局验收分别记录。项目主要检查 Windows 11、符合 .NET 8 支持范围的 Windows 10，以及带桌面环境的 Windows Server；在用户实际 Windows Server 2022 会话补充检查。PMv2 从 Windows 10 1703 引入；不能将较老系统的降级行为等同于完整 PMv2。不要承诺 Windows 7 / 8.1 或无桌面环境可以运行本 WinForms 程序。发布时核对 [.NET Windows 支持矩阵](https://learn.microsoft.com/en-us/dotnet/core/install/windows)和 [Windows PMv2 支持说明](https://learn.microsoft.com/en-us/windows/win32/hidpi/high-dpi-desktop-application-development-on-windows)。
+
+## 2. 统一缩放入口
+
+在项目文件配置 `ApplicationHighDpiMode=PerMonitorV2`，在创建任何窗口前调用 `ApplicationConfiguration.Initialize()`。使用 .NET 8 的启动配置，不同时添加冲突的旧版 app.config DPI 段或清单声明。[Desktop SDK 配置](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props-desktop#applicationhighdpimode)
+
+主窗体和自定义弹窗继承 `DpiAwareForm`，通过 `ConfigureWindow` 提供设计时客户区尺寸与最小客户区尺寸。以下尺寸均为 96 DPI 逻辑值：
+
+```csharp
+ConfigureWindow(new Size(1384, 861), new Size(1008, 661));
+```
+
+把构造阶段布局暂停、缩放模式、基线和工作区处理集中在基类中。先设置 `AutoScaleMode.Dpi`，再设置 `AutoScaleDimensions = new SizeF(96, 96)`；在整个派生窗体控件树构造完成后、首次 `CreateHandle` 的基类调用前恢复布局并完成初始自动缩放。不要推迟到 `OnLoad` 或 `OnCreateControl`：首次句柄位于不同 DPI 显示器时，先发生的 `HandleCreated` 字体调整可能消耗仍未缩放的初始基线。响应重排仍在 `OnLoad` 完成后开放，跨屏继续使用框架标准字体和缩放路径。不要在不同派生类混用 Font 和 Dpi 模式；普通子容器继承父缩放，独立 UserControl 的基线必须明确。
+
+让框架执行首次与跨屏的控件缩放。`PerformAutoScale` 会更新基线以防累积缩放；不要在 Resize、切页或每次 DpiChanged 中重设 96 基线。不要对整窗递归调用 `Scale`，也不要再次按 DPI 乘已由框架缩放的 Font 或 Padding。[自动缩放机制](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/forms/autoscale)
+
+重写 `OnDpiChanged` 时先调用基类，让框架处理建议窗口边界和字体/控件缩放，再更新应用管理的绘制常量、窗口约束及响应布局。读取所属控件当前 `DeviceDpi`；不能用进程全局可变缩放倍率控制同时位于不同显示器的窗体。[.NET 8 Form 源码](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/Form.cs)
+
+保存不变的逻辑常量，再用 `UiTheme.Scale(control, logicalValue)` 或等效方法换算。明确每个尺寸由框架还是应用负责，避免两套机制重复处理同一属性；初始逻辑布局和显示后自定义常量重算的时机必须区分。
+
+## 3. 处理工作区与响应布局
+
+使用窗口所属显示器的 `Screen.WorkingArea`，不缓存主屏分辨率，也不假定工作区从 `(0, 0)` 开始。弹窗根据拥有者所在屏幕放置；工作区应排除任务栏，并处理左侧或上方显示器的负坐标。
+
+在首次显示、DPI 切换、工作区改变及窗口还原时，重新约束窗口边界和最小尺寸。用逻辑基准重新计算最小尺寸，并钳制到当前工作区；不要把上次已经缩放的 MinimumSize 再乘倍率。客户区尺寸与包含标题栏/边框的窗口外尺寸分别计算。.NET 8 默认会随 DPI 缩放窗体的 MinimumSize 和 MaximumSize，应用约束必须与此配合。[.NET 8 高 DPI 改进](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/whats-new/net80#high-dpi-improvements)
+
+按以下原则组织布局：
+
+| 区域 | 窄工作区处理 | 保持可达的内容 |
+|---|---|---|
+| 主导航与顶栏 | 紧凑导航、工具栏换行，保持清晰文字 | 页面入口、启动/停止采集、保存 |
+| 总览卡片 | 按逻辑宽度重排，内容区可滚动 | 状态文字、关键数值 |
+| 设备与点位 | 分区最小内容高度与滚动配合 | 设备选择、点位表、增删改命令 |
+| 历史与趋势 | 查询栏换行、图表和表格可获得有效面积 | 查询/导出、时间字段、趋势坐标 |
+| 平台与系统 | 表单滚动，标签和说明按实际列宽换行 | 所有字段、应用/保存操作 |
+| 编辑弹窗 | 约束外窗，页签内容滚动，命令栏固定 | 页签、第一项/最后一项、确定/取消 |
+
+用 Dock、Anchor、百分比列、AutoSize 和 FlowLayoutPanel 表达布局。长说明文本限制为实际可用宽度；不要用设计屏的固定 MaximumSize 造成溢出或错误换行。对小工作区优先减小装饰性留白并增加滚动，不降低正文和输入字体。
+
+## 4. 处理动态控件与特殊尺寸
+
+显示后切换驱动会新增参数控件。不能假定把 96 DPI 数值赋给已缩放容器中新建控件便会自动匹配旧字段。为新子树明确一次缩放责任：采用独立基线容器完成初始化缩放，或继承当前字体并按父 DPI 设置应用管理的尺寸。不要重置整个已显示窗体的缩放基线，也不要同时使用两种方式缩放相同尺寸。
+
+`Controls.Add` 可能同步创建新子控件的句柄。独立基线容器须在首次 `CreateHandle` 的基类调用前完成初始化，不能仅依赖 Add 之后或 `OnCreateControl` 中的补充缩放。以 `FieldViewport` 为统一入口，覆盖显示后新增驱动参数以及移除后重新加入的原生连接页；完成后的 `AutoScaleDimensions` 与框架 RequiredScaling 状态防止后续父容器重复缩放。
+
+动态重建后检查 Margin、Padding、MinimumSize、标签字体、只读字段、枚举下拉和数值输入器；切换回原驱动时保留未保存的参数草稿。仅调整显示，不更改参数默认值、类型范围、方法、设备标识或写入权限。
+
+| 控件或属性 | 处理要求 |
+|---|---|
+| DataGridView | 表头与行高容纳当前字体和内边距；列最小宽度按逻辑尺寸换算；空间不足保留横向滚动；新增/重绑定行同样使用当前指标 |
+| 单元格样式字体 | 明确由样式还是控件继承提供，不把独立样式字体遗漏在普通控件树缩放之外；换 DPI 后重新检查表头与单元格比例 |
+| ComboBox | 打开下拉前按当前 DPI 与工作区设置合理高度/宽度，长方法名称可阅读；不固定使用设计屏的 620/680 像素宽度 |
+| TabControl | 区分 Point 类型的页签 Padding 与 Control.Padding；按当前 DPI 设置页签自定义间距，避免反复重建句柄的循环 |
+| NumericUpDown | 让字体/首选高度参与布局，检查内部文本框和上下箭头，禁用字段仍可见 |
+| 自绘趋势图 | 用实际字体测量坐标文字；边距、线宽、标记尺寸按当前 DPI 计算；可绘区域不足时安全返回，不能出现负矩形或文字互相覆盖 |
+| 第三方图标 | 按所属控件 DPI 生成所需尺寸；更换 DPI、主题或释放控件时处理旧图像，不能反复拉伸低分辨率位图 |
+
+对 ComboBox 和 TabControl 的自定义尺寸，参照固定版本框架源码确认责任，不依赖“全部属性都会自动缩放”的假设：[ComboBox](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/ComboBox.cs)、[TabControl](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/TabControl.cs)。
+
+## 5. 保持视觉一致性
+
+使用集中主题管理字体、色板、间距、圆角、图标与按钮状态。沿用清晰的深色导航、浅色工作区、白色内容卡片和克制的强调色；主操作、普通操作、危险操作的颜色语义一致。主窗体、设备编辑、点位编辑和写入弹窗使用同一套组件。
+
+以中文正文和输入 10 pt 为逻辑基准，标题按层级区分，辅助说明保持清晰且可换行。Windows 缩放后保持相对比例，不给每个弹窗设置不同字体，不因驱动名称较长缩小整个窗口文字。
+
+FontAwesome.Sharp 等第三方图标用于导航和操作识别，保留文字标签，状态不得只靠颜色或图标表达。图标与文字留出统一间距，检查高 DPI 下对齐、裁剪、禁用状态和键盘焦点。自绘圆角按钮需保留点击、焦点、默认按钮、禁用与无障碍语义。
+
+选定依赖版本后核对 .NET 8 兼容性及包许可证，图标资源本身的许可也纳入第三方声明；不可只记录封装库许可证。第三方控件不能通过全局 DPI 数值覆盖不同显示器上的其它窗口。
+
+## 6. 验收矩阵
+
+以下为验收要求，表示需要执行的场景，不表示这些场景已经通过。每种分辨率检查全部五档缩放，合计 20 个布局组合；实际工作区还需扣除任务栏和窗口边框。
+
+| 物理分辨率 | 缩放档位 | 100% 全屏逻辑空间 | 200% 全屏逻辑空间 | 重点 |
+|---|---|---|---|---|
+| 1366×768 | 100 / 125 / 150 / 175 / 200% | 1366×768 | 约 683×384 | 最小工作区、命令栏、滚动与字段可达 |
+| 1920×1080 | 100 / 125 / 150 / 175 / 200% | 1920×1080 | 960×540 | 默认使用场景、卡片重排、弹窗 |
+| 2560×1440 | 100 / 125 / 150 / 175 / 200% | 2560×1440 | 1280×720 | 字体/图标比例、表格及趋势 |
+| 3200×2000 | 100 / 125 / 150 / 175 / 200% | 3200×2000 | 1600×1000 | 高像素密度、清晰度与留白 |
+
+每个组合检查六个主页面、全部 15 个驱动入口的设备/点位编辑器，以及手动写入弹窗。对长参数页面按真实焦点访问路径滚动检查第一项、中间项和最后一项，确认固定底部命令仍可见。检查新增/编辑内容及关闭重开时的比例一致性。
+
+另外执行以下转换场景：
+
+- 在 100% → 150% → 200% → 100% 显示器之间移动主窗体和弹窗，重复往返，检查无累计缩放、重叠、字体漂移或图标模糊。
+- 在第二屏直接打开弹窗；检查拥有者居中与负坐标显示器边界。
+- 修改显示缩放或分辨率后继续操作；检查最大化、还原、最小化再恢复的窗口位置。
+- 在高 DPI 编辑器中连续切换驱动，再检查动态新增字段、枚举和长说明。
+- 使用不同缩放的远程桌面会话连接/重连 Windows Server，检查窗口、弹窗和原生文件对话框。
+
+## 7. 记录结果与依据
+
+在 `docs/verification.md` 逐项记录提交、操作系统版本、SDK/运行时、真实屏幕分辨率、工作区、缩放档位、`DeviceDpi`、窗口外尺寸、客户区尺寸、截图和结论。真实 DPI 自动化应核对系统返回的窗口 DPI 与预期值一致，不能仅修改日志标签。
+
+将验证分为三类：Windows 实际 DPI 运行；受控布局/尺寸/DPI 消息模拟；真实多显示器和远程桌面人工验收。注入消息、调用 Scale 或把截图放大只能覆盖对应受控场景；不能据此填写真实多屏或全部 Windows 系统通过。没有执行的组合明确记录“未执行”。
+
+失败时保存截图及控件边界、所属容器、DPI 和工作区。不要为通过烟测移除禁用字段、扩大可见边界、隐去命令或跳过长参数驱动。布局修复不得更改设备协议、点位语义或现有数据。
+
+持续维护时以固定 .NET 8 源码及微软文档为依据：[ContainerControl 自动缩放](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/ContainerControl.cs)、[Control 缩放与字体](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/Control.cs)、[Form DPI 事件](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/Form.cs)。升级运行时或 UI 依赖后，重新检查相关行为与现有验证记录。

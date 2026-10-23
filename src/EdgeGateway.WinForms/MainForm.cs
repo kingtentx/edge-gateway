@@ -8,7 +8,7 @@ using System.Text.Json;
 
 namespace EdgeGateway.WinForms;
 
-public sealed partial class MainForm : Form
+public sealed partial class MainForm : DpiAwareForm
 {
     private GatewayConfiguration _configuration;
     private MqttConfiguration _appliedMqtt;
@@ -19,6 +19,7 @@ public sealed partial class MainForm : Form
     private readonly IGatewayLog _log;
     private readonly string _dataDirectory;
     private readonly bool _smokeTest;
+    private readonly bool _layoutMatrix;
     private readonly string? _smokeScreenshotPath;
     private readonly Panel _pageHost = new() { Dock = DockStyle.Fill };
     private readonly Dictionary<string, Control> _pages = [];
@@ -42,7 +43,7 @@ public sealed partial class MainForm : Form
 
     public MainForm(GatewayConfiguration configuration, IConfigurationStore configurationStore,
         IGatewayStore store, IDriverRegistry drivers, GatewayRuntime runtime, IGatewayLog log,
-        string dataDirectory, bool smokeTest = false, string? smokeScreenshotPath = null)
+        string dataDirectory, bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false)
     {
         _configuration = Clone(configuration);
         _appliedMqtt = Clone(configuration.Mqtt);
@@ -52,16 +53,14 @@ public sealed partial class MainForm : Form
         _runtime = runtime;
         _log = log;
         _dataDirectory = dataDirectory;
-        _smokeTest = smokeTest;
+        _smokeTest = smokeTest || layoutMatrix;
+        _layoutMatrix = layoutMatrix;
         _smokeScreenshotPath = smokeScreenshotPath;
         Text = "Edge Gateway · 边缘采集网关";
         Font = new Font("Microsoft YaHei UI", 10F);
         ForeColor = UiTheme.Ink;
         BackColor = UiTheme.Background;
-        AutoScaleMode = AutoScaleMode.Dpi;
-        AutoScaleDimensions = new SizeF(96, 96);
-        MinimumSize = new Size(1024, 700);
-        Size = new Size(1400, 900);
+        ConfigureWindow(new Size(1400, 860), new Size(960, 620));
         StartPosition = FormStartPosition.CenterScreen;
         BuildShell();
         RebindConfigurationViews();
@@ -73,73 +72,129 @@ public sealed partial class MainForm : Form
 
     private void BuildShell()
     {
-        var shell = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0), Padding = new Padding(0) };
-        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 186));
+        var shell = new TableLayoutPanel { Name = "ApplicationShell", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0), Padding = new Padding(0) };
+        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 206));
         shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         shell.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        var sidebar = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = UiTheme.Navy, Padding = new Padding(16, 22, 12, 16), ColumnCount = 1, RowCount = 9, Margin = new Padding(0) };
+        var navigationViewport = new Panel { Name = "NavigationViewport", Dock = DockStyle.Fill, AutoScroll = true, BackColor = UiTheme.Navy, Margin = new Padding(0) };
+        var sidebar = new TableLayoutPanel
+        {
+            Name = "NavigationContent", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = UiTheme.Navy, Padding = new Padding(12, 18, 10, 16), ColumnCount = 1, RowCount = 8, Margin = new Padding(0)
+        };
         sidebar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 98));
-        var brand = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        brand.Controls.Add(UiTheme.Label("EDGE GATEWAY", 13, Color.White, true));
-        brand.Controls.Add(UiTheme.Label("工业数据 · 本地连接", 9, Color.FromArgb(160, 178, 203)));
+        sidebar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var brand = new FlowLayoutPanel
+        {
+            Name = "NavigationBrand", Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, 0, 20)
+        };
+        var brandTitle = UiTheme.Label("EDGE GATEWAY", 13, Color.White, true);
+        var brandCaption = UiTheme.Label("工业数据 · 本地连接", 10, Color.FromArgb(160, 178, 203));
+        brand.Controls.Add(brandTitle); brand.Controls.Add(brandCaption);
         sidebar.Controls.Add(brand, 0, 0);
         var entries = new[] { ("overview", "运行总览"), ("devices", "设备与点位"), ("realtime", "实时监控"), ("history", "历史与趋势"), ("cloud", "平台与系统"), ("logs", "运行日志") };
         for (var i = 0; i < entries.Length; i++)
         {
             var entry = entries[i];
-            sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
-            var button = new Button
-            {
-                Text = entry.Item2, Dock = DockStyle.Fill, FlatStyle = FlatStyle.Flat,
-                BackColor = UiTheme.Navy, ForeColor = Color.FromArgb(190, 205, 225),
-                TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(15, 0, 0, 0),
-                Margin = new Padding(0, 0, 0, 6), Cursor = Cursors.Hand, Font = new Font(Font, FontStyle.Bold)
-            };
-            button.FlatAppearance.BorderSize = 0;
+            sidebar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            var button = UiTheme.NavigationButton(entry.Item2, entry.Item1);
+            button.Name = "Navigation_" + entry.Item1; button.Dock = DockStyle.Fill;
+            button.AutoSize = true; button.MinimumSize = new Size(0, 48);
+            button.Margin = new Padding(0, 0, 0, 6);
             button.Click += (_, _) => ShowPage(entry.Item1);
             _navigation[entry.Item1] = button;
             sidebar.Controls.Add(button, 0, i + 1);
         }
-        sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
-        var edition = UiTheme.Label(".NET 8 · WinForms\n本地采集 / 可靠上报", 9, Color.FromArgb(142, 162, 190));
-        edition.Dock = DockStyle.Bottom;
-        sidebar.Controls.Add(edition, 0, 8);
+        sidebar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var edition = UiTheme.Label(".NET 8 · WinForms\n本地采集 / 可靠上报", 10, Color.FromArgb(142, 162, 190));
+        edition.Name = "NavigationEdition"; edition.Dock = DockStyle.Fill; edition.Margin = new Padding(0, 20, 0, 0);
+        sidebar.Controls.Add(edition, 0, 7);
+        navigationViewport.Controls.Add(sidebar);
 
-        var body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
+        var body = new TableLayoutPanel { Name = "ApplicationBody", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         body.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-        var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = Color.White, Padding = new Padding(22, 14, 14, 12), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
+        var header = new TableLayoutPanel
+        {
+            Name = "ApplicationHeader", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
+            BackColor = Color.White, Padding = new Padding(18, 10, 12, 10), AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0)
+        };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var status = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0) };
+        var status = new FlowLayoutPanel
+        {
+            Name = "HeaderStatus", Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0)
+        };
         status.Controls.Add(_runState); status.Controls.Add(_savedState);
         _startButton = UiTheme.Button("启动采集", async (_, _) => await RunBusyAsync(StartCollectionAsync), true);
         _stopButton = UiTheme.Button("停止采集", async (_, _) => await RunBusyAsync(async () => { await _runtime.StopAsync(); SetFooter("采集已停止。"); }));
         _saveButton = UiTheme.Button("保存配置", async (_, _) => await RunBusyAsync(PersistConfigurationAsync));
-        // In an AutoSize table column a wrapping FlowLayoutPanel reports a one-button
-        // preferred width. Give header commands their full single-row preferred size.
-        // Page toolbars intentionally keep wrapping to fit narrower content areas.
+        _startButton.Name = "StartCollection"; _stopButton.Name = "StopCollection"; _saveButton.Name = "SaveConfiguration";
+        // Keep the three application commands on one row. At narrow widths move the
+        // status above them instead of shrinking fonts or letting the status clip them.
         var headerActions = new FlowLayoutPanel
         {
             Name = "HeaderActions", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
             WrapContents = false, FlowDirection = FlowDirection.LeftToRight,
             Anchor = AnchorStyles.Top | AnchorStyles.Right, Dock = DockStyle.None,
-            Margin = new Padding(16, 0, 0, 0), Padding = new Padding(0)
+            Margin = new Padding(12, 0, 0, 0), Padding = new Padding(0)
         };
         headerActions.Controls.AddRange(new Control[] { _startButton, _stopButton, _saveButton });
-        header.Controls.Add(status, 0, 0);
-        header.Controls.Add(headerActions, 1, 0);
-        body.Controls.Add(header, 0, 0);
-        body.Controls.Add(_pageHost, 0, 1);
-        _footer.Dock = DockStyle.Fill; _footer.Padding = new Padding(22, 0, 0, 0);
+        header.Controls.Add(status, 0, 0); header.Controls.Add(headerActions, 1, 0);
+        body.Controls.Add(header, 0, 0); body.Controls.Add(_pageHost, 0, 1);
+        _footer.Dock = DockStyle.Fill; _footer.Padding = new Padding(18, 0, 0, 0); _footer.AutoEllipsis = true;
         body.Controls.Add(_footer, 0, 2);
-        shell.Controls.Add(sidebar, 0, 0); shell.Controls.Add(body, 1, 0);
+        shell.Controls.Add(navigationViewport, 0, 0); shell.Controls.Add(body, 1, 0);
         Controls.Add(shell);
+
+        bool arranging = false;
+        bool? compactHeader = null;
+        void ArrangeShell()
+        {
+            if (arranging || !shell.IsHandleCreated || !IsDpiLayoutReady) return;
+            arranging = true;
+            try
+            {
+                var compactNavigation = shell.ClientSize.Width < UiTheme.Scale(shell, 1000);
+                var sidebarWidth = UiTheme.Scale(shell, compactNavigation ? 172 : 206);
+                if (shell.ColumnStyles[0].Width != sidebarWidth) shell.ColumnStyles[0].Width = sidebarWidth;
+                brandTitle.Text = compactNavigation ? "EDGE" : "EDGE GATEWAY";
+                brandCaption.Text = compactNavigation ? "采集网关" : "工业数据 · 本地连接";
+                var sidebarTextWidth = Math.Max(1, sidebar.ClientSize.Width - sidebar.Padding.Horizontal);
+                SetWrappingWidth(edition, sidebarTextWidth);
+                var narrow = body.ClientSize.Width < UiTheme.Scale(body, 610);
+                if (compactHeader == narrow) return;
+                compactHeader = narrow;
+                header.SuspendLayout();
+                header.Controls.Remove(status); header.Controls.Remove(headerActions);
+                header.ColumnStyles.Clear(); header.RowStyles.Clear();
+                header.ColumnCount = narrow ? 1 : 2; header.RowCount = narrow ? 2 : 1;
+                header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                if (!narrow) header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+                header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                if (narrow) header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                status.FlowDirection = narrow ? FlowDirection.LeftToRight : FlowDirection.TopDown;
+                status.WrapContents = narrow;
+                _runState.Margin = narrow ? UiTheme.Scale(status, new Padding(0, 4, 16, 4)) : UiTheme.Scale(status, new Padding(0, 4, 0, 4));
+                headerActions.Margin = narrow ? new Padding(0) : UiTheme.Scale(header, new Padding(12, 0, 0, 0));
+                header.Controls.Add(status, 0, 0);
+                header.Controls.Add(headerActions, narrow ? 0 : 1, narrow ? 1 : 0);
+                header.ResumeLayout(true);
+            }
+            finally { arranging = false; }
+        }
+        shell.SizeChanged += (_, _) => ArrangeShell();
+        shell.HandleCreated += (_, _) => ArrangeShell();
+        shell.DpiChangedAfterParent += (_, _) => { compactHeader = null; ArrangeShell(); };
+        DpiLayoutCompleted += (_, _) => { compactHeader = null; ArrangeShell(); };
+        body.SizeChanged += (_, _) => ArrangeShell();
+        sidebar.SizeChanged += (_, _) => ArrangeShell();
 
         AddPage("overview", BuildOverviewPage());
         AddPage("devices", BuildDevicesPage());
@@ -158,29 +213,85 @@ public sealed partial class MainForm : Form
         UiTheme.AddColumn(_overviewGrid, "Points", "启用点位", 75, 60);
         UiTheme.AddColumn(_overviewGrid, "LastSuccess", "最近成功", 150, 130);
         UiTheme.AddColumn(_overviewGrid, "Error", "连接信息", 180, 200);
-        var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = new Padding(0) };
-        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 136));
-        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
+        var content = new TableLayoutPanel { Name = "OverviewContent", ColumnCount = 1, RowCount = 4, Margin = new Padding(0) };
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var cards = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1, Margin = new Padding(0) };
+        var cards = new TableLayoutPanel
+        {
+            Name = "OverviewCards", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 4, RowCount = 1, Margin = new Padding(0)
+        };
         var cardInfo = new[] { ("在线 / 启用设备", _deviceCount, "独立连接，自动重连"), ("优质 / 最新采样", _pointCount, "质量与时间戳同步展示"), ("待补传消息", _pendingCount, "收到 MQTT 确认后移除"), ("平台连接", _mqttStatus, "QoS 1 · 持久化发送队列") };
+        var cardPanels = new List<TableLayoutPanel>();
         for (var i = 0; i < 4; i++)
         {
-            cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            var card = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(17, 12, 10, 10), ColumnCount = 1, RowCount = 3, Margin = new Padding(0, 0, i == 3 ? 0 : 12, 12) };
-            card.Controls.Add(UiTheme.Label(cardInfo[i].Item1, 9, UiTheme.Muted));
-            card.Controls.Add(cardInfo[i].Item2);
-            card.Controls.Add(UiTheme.Label(cardInfo[i].Item3, 8, UiTheme.Muted));
-            cards.Controls.Add(card, i, 0);
+            var accent = i switch { 0 => UiTheme.Blue, 1 => UiTheme.Green, 2 => Color.FromArgb(217, 119, 6), _ => Color.FromArgb(8, 145, 178) };
+            var card = UiTheme.Card(accent);
+            card.Name = "OverviewCard_" + i; card.Dock = DockStyle.Fill;
+            card.AutoSize = true; card.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            card.Padding = new Padding(28, 16, 14, 14); card.ColumnCount = 1; card.RowCount = 3;
+            card.Margin = new Padding(0, 0, 12, 12);
+            card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            for (var row = 0; row < 3; row++) card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            var title = UiTheme.Label(cardInfo[i].Item1, 10, UiTheme.Muted);
+            var detail = UiTheme.Label(cardInfo[i].Item3, 10, UiTheme.Muted);
+            title.Dock = DockStyle.Fill; detail.Dock = DockStyle.Fill;
+            card.Controls.Add(title, 0, 0); card.Controls.Add(cardInfo[i].Item2, 0, 1); card.Controls.Add(detail, 0, 2);
+            card.SizeChanged += (_, _) =>
+            {
+                if (!IsDpiLayoutReady) return;
+                var width = Math.Max(1, card.ClientSize.Width - card.Padding.Horizontal);
+                SetWrappingWidth(title, width); SetWrappingWidth(detail, width);
+            };
+            cardPanels.Add(card); cards.Controls.Add(card, i, 0);
         }
         content.Controls.Add(cards, 0, 0);
-        content.Controls.Add(UiTheme.Label("设备连接状态", 12, UiTheme.Ink, true), 0, 1);
-        content.Controls.Add(_overviewGrid, 0, 2);
-        var help = UiTheme.Label("首次使用：直接启动内置模拟设备，观察实时数据；添加真实设备后，按现场点表配置协议、地址和字节序。", 9, UiTheme.Muted);
-        help.Dock = DockStyle.Fill; help.MaximumSize = new Size(1200, 0);
-        content.Controls.Add(help, 0, 3);
-        return UiTheme.PageLayout("运行总览", "从设备现场到数据平台，掌握每条采集链路的状态。", UiTheme.Toolbar(), content);
+        var deviceHeading = UiTheme.Label("设备连接状态", 12, UiTheme.Ink, true);
+        deviceHeading.Margin = new Padding(0, 6, 0, 12);
+        content.Controls.Add(deviceHeading, 0, 1); content.Controls.Add(_overviewGrid, 0, 2);
+        var help = UiTheme.Label("首次使用：直接启动内置模拟设备，观察实时数据；添加真实设备后，按现场点表配置协议、地址和字节序。", 10, UiTheme.Muted);
+        help.Dock = DockStyle.Fill; content.Controls.Add(help, 0, 3);
+        var viewport = ScrollableContent(content, "OverviewViewport", () => cards.PreferredSize.Height + UiTheme.Scale(content, 260));
+        bool arranging = false;
+        void ArrangeCards()
+        {
+            if (arranging || !cards.IsHandleCreated || !IsDpiLayoutReady) return;
+            arranging = true;
+            try
+            {
+                var count = cards.ClientSize.Width >= UiTheme.Scale(cards, 920) ? 4 : cards.ClientSize.Width >= UiTheme.Scale(cards, 440) ? 2 : 1;
+                if (cards.ColumnCount != count || cards.ColumnStyles.Count != count)
+                {
+                    cards.SuspendLayout();
+                    cards.Controls.Clear(); cards.ColumnStyles.Clear(); cards.RowStyles.Clear();
+                    cards.ColumnCount = count; cards.RowCount = 4 / count;
+                    for (var column = 0; column < count; column++) cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / count));
+                    for (var row = 0; row < cards.RowCount; row++) cards.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                    for (var i = 0; i < cardPanels.Count; i++) cards.Controls.Add(cardPanels[i], i % count, i / count);
+                    cards.ResumeLayout(true);
+                }
+                for (var i = 0; i < cardPanels.Count; i++)
+                {
+                    var margin = UiTheme.Scale(cards, new Padding(0, 0, i % count == count - 1 ? 0 : 12, 12));
+                    if (cardPanels[i].Margin != margin) cardPanels[i].Margin = margin;
+                    var textWidth = Math.Max(1, cardPanels[i].ClientSize.Width - cardPanels[i].Padding.Horizontal);
+                    foreach (var label in cardPanels[i].Controls.OfType<Label>().Where(x => x.Font.SizeInPoints <= 12))
+                        SetWrappingWidth(label, textWidth);
+                }
+                SetWrappingWidth(help, Math.Max(1, content.ClientSize.Width));
+                viewport.PerformLayout();
+            }
+            finally { arranging = false; }
+        }
+        cards.SizeChanged += (_, _) => ArrangeCards();
+        cards.HandleCreated += (_, _) => ArrangeCards();
+        cards.DpiChangedAfterParent += (_, _) => ArrangeCards();
+        DpiLayoutCompleted += (_, _) => ArrangeCards();
+        content.SizeChanged += (_, _) => ArrangeCards();
+        return UiTheme.PageLayout("运行总览", "从设备现场到数据平台，掌握每条采集链路的状态。", UiTheme.Toolbar(), viewport);
     }
 
     private void AddPage(string key, Control page)
@@ -219,6 +330,7 @@ public sealed partial class MainForm : Form
                     PerformLayoutRecursively(this);
                     AssertHeaderActionsFit();
                     AssertPageToolbarsFit(_pages[key], key);
+                    ResetScrollPositions(_pages[key], _startButton);
                     using var bitmap = new Bitmap(Math.Max(1, Width), Math.Max(1, Height));
                     DrawToBitmap(bitmap, new Rectangle(0, 0, Width, Height));
                     if (!string.IsNullOrWhiteSpace(_smokeScreenshotPath))
@@ -231,8 +343,15 @@ public sealed partial class MainForm : Form
                     }
                 }
                 SmokeDriverEditors();
+                SmokeDynamicDriverSwitch();
+                if (_layoutMatrix) await RunLayoutMatrixAsync();
             }
-            catch (Exception exception) { SmokeTestFailed = true; Console.Error.WriteLine(exception); }
+            catch (Exception exception)
+            {
+                SmokeTestFailed = true;
+                TrySaveSmokeFailure(this, "baseline-or-matrix-failed");
+                Console.Error.WriteLine(exception);
+            }
             _allowClose = true; Close();
             return;
         }
@@ -362,7 +481,7 @@ public sealed partial class MainForm : Form
         if (root is FlowLayoutPanel toolbar)
         {
             foreach (Control child in toolbar.Controls)
-                if (child.Visible) AssertVisibleBounds(child, page + " toolbar");
+                if (child.Visible) BringIntoViewAndAssert(child, page + " toolbar");
         }
         foreach (Control child in root.Controls)
             if (child.Visible) AssertPageToolbarsFit(child, page);

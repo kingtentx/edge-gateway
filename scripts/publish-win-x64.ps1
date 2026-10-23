@@ -13,7 +13,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed: $LASTEXITCODE" }
     # Fail publication if any original upstream driver was left out of the application.
     $migration = Get-Content 'docs/driver-migration-manifest.json' -Raw | ConvertFrom-Json
-    $requiredAssemblies = @('EdgeGateway.IotGateway', 'PluginInterface', 'Interop.OPCAutomation') + @($migration.drivers | ForEach-Object { $_.assembly })
+    $requiredAssemblies = @('EdgeGateway.IotGateway', 'PluginInterface', 'Interop.OPCAutomation', 'FontAwesome.Sharp') + @($migration.drivers | ForEach-Object { $_.assembly })
     foreach ($assembly in $requiredAssemblies) {
         if (-not (Test-Path (Join-Path $publishDirectory ($assembly + '.dll')))) {
             throw "Required migrated driver/dependency missing from publish output: $assembly.dll"

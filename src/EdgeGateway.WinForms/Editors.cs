@@ -3,10 +3,17 @@ using System.Globalization;
 
 namespace EdgeGateway.WinForms;
 
-internal abstract class EditorDialog : Form
+internal abstract class EditorDialog : DpiAwareForm
 {
-    protected readonly TabControl Tabs = new() { Dock = DockStyle.Fill, Padding = new Point(16, 8) };
+    protected readonly TabControl Tabs = new() { Name = "EditorTabs", Dock = DockStyle.Fill, Padding = new Point(16, 8), Multiline = true };
     private readonly Button _confirm, _cancel;
+    private readonly TableLayoutPanel _layout, _heading;
+    private readonly FlowLayoutPanel _buttons;
+    private readonly Label _description;
+    private readonly LinkLabel _help;
+    private readonly List<EditorLayout.FieldViewport> _fieldViewports = [];
+    private bool _arranging;
+    private bool? _compactMode;
     internal IReadOnlyList<TabPage> SmokeTabs => Tabs.TabPages.Cast<TabPage>().ToArray();
     internal TabPage? SelectedSmokeTab { get => Tabs.SelectedTab; set => Tabs.SelectedTab = value; }
     internal IReadOnlyList<Control> SmokeCommands => new Control[] { _confirm, _cancel };
@@ -14,17 +21,34 @@ internal abstract class EditorDialog : Form
     {
         Text = title; Font = new Font("Microsoft YaHei UI", 10F); BackColor = UiTheme.Background;
         ForeColor = UiTheme.Ink; StartPosition = FormStartPosition.CenterParent;
-        AutoScaleMode = AutoScaleMode.Dpi; AutoScaleDimensions = new SizeF(96, 96);
-        Size = new Size(740, 650); MinimumSize = new Size(620, 520);
+        ConfigureWindow(new Size(724, 611), new Size(604, 481));
         MaximizeBox = false; MinimizeBox = false; ShowInTaskbar = false;
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(20) };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var heading = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, FlowDirection = FlowDirection.TopDown, Padding = new Padding(0, 0, 0, 10) };
-        heading.Controls.Add(UiTheme.Label(title, 18, UiTheme.Ink, true));
-        var description = UiTheme.Label(hint, 9, UiTheme.Muted); description.MaximumSize = new Size(620, 0); heading.Controls.Add(description);
+        var heading = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2, RowCount = 2, Margin = Padding.Empty, Padding = new Padding(0, 0, 0, 14)
+        };
+        heading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        heading.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        heading.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        heading.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        heading.Controls.Add(EditorLayout.WrappingLabel(title, 18, UiTheme.Ink, true), 0, 0);
+        _description = EditorLayout.WrappingLabel(hint, 10, UiTheme.Muted);
+        heading.Controls.Add(_description, 0, 1); heading.SetColumnSpan(_description, 2);
+        _help = new LinkLabel
+        {
+            Text = "查看说明", AutoSize = true, Visible = false, TabStop = true,
+            LinkColor = UiTheme.Blue, ActiveLinkColor = UiTheme.Blue,
+            LinkBehavior = LinkBehavior.HoverUnderline, Anchor = AnchorStyles.Right,
+            Margin = new Padding(12, 8, 0, 0), AccessibleDescription = hint
+        };
+        _help.LinkClicked += (_, _) => MessageBox.Show(this, hint, "配置说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        heading.Controls.Add(_help, 1, 0);
         var save = UiTheme.Button("确定", (_, _) =>
         {
             try { Commit(); DialogResult = DialogResult.OK; Close(); }
@@ -32,25 +56,72 @@ internal abstract class EditorDialog : Form
         }, true);
         var cancel = UiTheme.Button("取消"); cancel.DialogResult = DialogResult.Cancel;
         _confirm = save; _cancel = cancel;
-        var buttons = UiTheme.Toolbar(cancel, save); buttons.FlowDirection = FlowDirection.RightToLeft; buttons.Padding = new Padding(0, 15, 0, 0);
+        var buttons = UiTheme.Toolbar(cancel, save); buttons.FlowDirection = FlowDirection.RightToLeft; buttons.WrapContents = false; buttons.Padding = new Padding(0, 15, 0, 0);
         layout.Controls.Add(heading, 0, 0); layout.Controls.Add(Tabs, 0, 1); layout.Controls.Add(buttons, 0, 2);
+        _layout = layout; _heading = heading; _buttons = buttons;
         Controls.Add(layout); AcceptButton = save; CancelButton = cancel;
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        foreach (var viewport in _fieldViewports) viewport.CompleteInitialization();
+        base.OnLoad(e);
+        UpdateTabMetrics();
+    }
+
+    protected override void OnLayout(LayoutEventArgs levent)
+    {
+        base.OnLayout(levent);
+        if (_layout is null || _arranging || !IsHandleCreated) return;
+        _arranging = true;
+        try
+        {
+            var compact = ClientSize.Height < UiTheme.Scale(this, 460);
+            var padding = UiTheme.Scale(this, new Padding(compact ? 12 : 20));
+            if (_layout.Padding != padding) _layout.Padding = padding;
+            var headingPadding = UiTheme.Scale(this, new Padding(0, 0, 0, compact ? 6 : 14));
+            if (_heading.Padding != headingPadding) _heading.Padding = headingPadding;
+            var buttonPadding = UiTheme.Scale(this, new Padding(0, compact ? 8 : 15, 0, 0));
+            if (_buttons.Padding != buttonPadding) _buttons.Padding = buttonPadding;
+            if (_compactMode != compact)
+            {
+                _compactMode = compact;
+                _description.Visible = !compact;
+                _help.Visible = compact;
+            }
+        }
+        finally { _arranging = false; }
+    }
+
+    protected override void OnDpiChanged(DpiChangedEventArgs e)
+    {
+        base.OnDpiChanged(e);
+        // TabControl.Padding is a Point, not Control.Padding. Apply its original
+        // logical values after the form's DPI transition, without scaling twice.
+        if (IsHandleCreated)
+            BeginInvoke((Action)(() => { if (!IsDisposed) UpdateTabMetrics(); }));
+    }
+
+    private void UpdateTabMetrics()
+    {
+        var padding = new Point(UiTheme.Scale(this, 16), UiTheme.Scale(this, 8));
+        if (Tabs.Padding != padding) Tabs.Padding = padding;
     }
 
     protected abstract void Commit();
 
     protected TableLayoutPanel AddTab(string title)
     {
-        var page = new TabPage(title) { BackColor = Color.White, Padding = new Padding(14), AutoScroll = true };
-        var table = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, RowCount = 0, Padding = new Padding(8) };
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 155)); table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        page.Controls.Add(table); Tabs.TabPages.Add(page); return table;
+        var page = new TabPage(title) { BackColor = Color.White };
+        var viewport = new EditorLayout.FieldViewport();
+        _fieldViewports.Add(viewport);
+        page.Controls.Add(viewport); Tabs.TabPages.Add(page); return viewport.Table;
     }
 
     internal static void Field(TableLayoutPanel table, string label, Control control)
     {
         var row = table.RowCount++; table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var caption = UiTheme.Label(label, 10, UiTheme.Muted); caption.Padding = new Padding(0, 8, 10, 8);
+        var caption = EditorLayout.WrappingLabel(label, 10, UiTheme.Muted); caption.Padding = new Padding(0, 8, 10, 8);
         control.Margin = new Padding(0, 5, 0, 8);
         if (control is not CheckBox) control.Dock = DockStyle.Fill;
         table.Controls.Add(caption, 0, row); table.Controls.Add(control, 1, row);
@@ -58,14 +129,15 @@ internal abstract class EditorDialog : Form
     internal static void Hint(TableLayoutPanel table, string text)
     {
         var row = table.RowCount++; table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var label = UiTheme.Label(text, 9, UiTheme.Muted); label.MaximumSize = new Size(580, 0); label.Dock = DockStyle.Fill; label.Padding = new Padding(0, 10, 0, 5);
+        var label = EditorLayout.WrappingLabel(text, 10, UiTheme.Muted); label.Padding = new Padding(0, 10, 0, 5);
         table.Controls.Add(label, 0, row); table.SetColumnSpan(label, 2);
     }
-    protected static TextBox TextInput(string value) => new() { Text = value, MinimumSize = new Size(150, 30) };
-    protected static NumericUpDown NumberInput(int value, int minimum, int maximum) => new() { Minimum = minimum, Maximum = maximum, Value = Math.Clamp(value, minimum, maximum), ThousandsSeparator = true };
+    protected static TextBox TextInput(string value) => new() { Text = value, MinimumSize = new Size(150, 30), BorderStyle = BorderStyle.FixedSingle };
+    protected static NumericUpDown NumberInput(int value, int minimum, int maximum) => new() { Minimum = minimum, Maximum = maximum, Value = Math.Clamp(value, minimum, maximum), ThousandsSeparator = true, BorderStyle = BorderStyle.FixedSingle };
     protected static ComboBox SelectInput(object[] values, object? selected)
     {
         var box = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList }; box.Items.AddRange(values); box.SelectedItem = selected;
+        EditorLayout.ConfigureDropDown(box);
         if (box.SelectedIndex < 0 && box.Items.Count > 0) box.SelectedIndex = 0;
         return box;
     }
@@ -98,7 +170,8 @@ internal sealed class DeviceEditor : EditorDialog
         _parameterDrafts[value.DriverId] = new Dictionary<string, string>(value.Properties, StringComparer.Ordinal);
         var basic = AddTab("基本与采集");
         _name = TextInput(value.Name); _group = TextInput(value.Group);
-        _driver = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FormattingEnabled = true, DropDownWidth = 620, IntegralHeight = false, DropDownHeight = 440 };
+        _driver = new ComboBox { Name = "DriverSelector", DropDownStyle = ComboBoxStyle.DropDownList, FormattingEnabled = true };
+        EditorLayout.ConfigureDropDown(_driver, 620, 440);
         _driver.Format += (_, e) => { if (e.ListItem is DriverDescriptor d) e.Value = d.Name + "  ·  " + d.Id; };
         // This is a fixed catalog, not a live binding. Populate Items before selecting so the
         // constructor does not depend on a BindingContext/CurrencyManager created when shown.
@@ -109,9 +182,9 @@ internal sealed class DeviceEditor : EditorDialog
         _cycle = NumberInput(value.PollIntervalMs, 100, 3_600_000); _timeout = NumberInput(value.TimeoutMs, 100, 120_000);
         Field(basic, "设备名称", _name); Field(basic, "设备分组", _group); Field(basic, "采集驱动", _driver);
         Field(basic, "采集周期 (ms)", _cycle); Field(basic, "通信超时 (ms)", _timeout); Field(basic, "启用状态", _enabled);
-        _driverDetails = UiTheme.Label("", 9, UiTheme.Muted); _driverDetails.MaximumSize = new Size(540, 0); _driverDetails.Dock = DockStyle.Fill;
+        _driverDetails = EditorLayout.WrappingLabel("", 10, UiTheme.Muted);
         var detailsRow = basic.RowCount++; basic.Controls.Add(_driverDetails, 0, detailsRow); basic.SetColumnSpan(_driverDetails, 2);
-        var connection = AddTab("网络与串口"); _connectionPage = (TabPage)connection.Parent!;
+        var connection = AddTab("网络与串口"); _connectionPage = (TabPage)connection.Parent!.Parent!;
         _host = TextInput(value.Host); _port = NumberInput(value.Port, 1, 65535); _unit = NumberInput(value.UnitId, 1, 247);
         _portName = TextInput(value.SerialPortName); _baud = NumberInput(value.BaudRate, 300, 4_000_000); _bits = NumberInput(value.DataBits, 5, 8);
         _parity = SelectInput(new object[] { "None", "Odd", "Even", "Mark", "Space" }, value.Parity);
@@ -182,6 +255,14 @@ internal sealed class DeviceEditor : EditorDialog
         if (Tabs.TabPages.Contains(_parametersPage)) Tabs.SelectedTab = _parametersPage;
     }
 
+    internal void SelectDriverForSmoke(string driverId)
+    {
+        _driver.SelectedItem = _driver.Items.Cast<DriverDescriptor>().First(x => x.Id == driverId);
+        Commit();
+    }
+
+    internal IReadOnlyCollection<Control> SmokeParameterInputs => _parameters.Inputs;
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -211,7 +292,8 @@ internal sealed class TagEditor : EditorDialog
         Value = value; _driver = driver;
         _basic = AddTab("方法与地址");
         _name = TextInput(value.Name); _address = TextInput(value.Address);
-        _readMethod = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, IntegralHeight = false, DropDownHeight = 360, DropDownWidth = 680 };
+        _readMethod = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+        EditorLayout.ConfigureDropDown(_readMethod, 680, 360);
         _readMethod.Items.AddRange(driver.Methods.Select(x => new MethodChoice(x)).Cast<object>().ToArray());
         var selectedName = string.IsNullOrEmpty(value.ReadMethod) ? driver.DefaultReadMethod : value.ReadMethod;
         var selectedMethod = driver.Methods.FirstOrDefault(x => x.Name == selectedName) ?? driver.Methods.FirstOrDefault(x => !x.IsDiagnostic);
@@ -228,7 +310,8 @@ internal sealed class TagEditor : EditorDialog
         _unit = TextInput(value.Unit);
         _enabled = new CheckBox { Text = "启用采集", Checked = value.Enabled, AutoSize = true };
         _writable = new CheckBox { Text = driver.SupportsWrite ? "允许手动写入此点位" : "当前驱动不提供写入能力", Checked = value.Writable && driver.SupportsWrite, Enabled = driver.SupportsWrite, AutoSize = true };
-        _writeMethod = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, IntegralHeight = false, DropDownHeight = 280, DropDownWidth = 680 };
+        _writeMethod = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+        EditorLayout.ConfigureDropDown(_writeMethod, 680, 280);
         _writeMethod.Items.Add(new MethodChoice(new DriverMethodDescriptor("", "使用读取方法", "")));
         _writeMethod.Items.AddRange(driver.Methods.Where(x => x.SupportsWrite).Select(x => new MethodChoice(x)).Cast<object>().ToArray());
         _writeMethod.SelectedItem = _writeMethod.Items.Cast<MethodChoice>().FirstOrDefault(x => x.Method.Name == value.WriteMethod) ?? _writeMethod.Items[0];
@@ -240,12 +323,12 @@ internal sealed class TagEditor : EditorDialog
         else if (driver.Id != "simulator") { Field(_basic, "Modbus 寄存区", _area); Field(_basic, "字节序", _byteOrder); }
         Field(_basic, "单位", _unit); Field(_basic, "启用状态", _enabled); Field(_basic, "写入权限", _writable);
         if (driver.IsLegacy && driver.SupportsWrite) Field(_basic, "写入方法", _writeMethod);
-        _methodHint = UiTheme.Label("", 9, UiTheme.Muted); _methodHint.MaximumSize = new Size(540, 0); _methodHint.Dock = DockStyle.Fill;
+        _methodHint = EditorLayout.WrappingLabel("", 10, UiTheme.Muted);
         var hintRow = _basic.RowCount++; _basic.Controls.Add(_methodHint, 0, hintRow); _basic.SetColumnSpan(_methodHint, 2);
         var calculation = AddTab("换算与报警");
         _scale = TextInput(value.Scale.ToString("G17", CultureInfo.InvariantCulture)); _offset = TextInput(value.Offset.ToString("G17", CultureInfo.InvariantCulture));
         _low = TextInput(value.LowLimit?.ToString("G17", CultureInfo.InvariantCulture) ?? ""); _high = TextInput(value.HighLimit?.ToString("G17", CultureInfo.InvariantCulture) ?? "");
-        _description = new TextBox { Text = value.Description, Multiline = true, Height = 100, ScrollBars = ScrollBars.Vertical };
+        _description = new TextBox { Text = value.Description, Multiline = true, Height = 100, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.FixedSingle };
         Field(calculation, "倍率", _scale); Field(calculation, "偏移量", _offset); Field(calculation, "报警下限（可空）", _low); Field(calculation, "报警上限（可空）", _high); Field(calculation, "点位说明", _description);
         Hint(calculation, "数值使用英文小数点。字符串、时间、布尔和 Any 类型不参与倍率换算或数值报警。64 位整数不换算时保留完整整数精度。");
         _readMethod.SelectedIndexChanged += (_, _) => UpdateMethod();
@@ -362,20 +445,35 @@ internal sealed class TagEditor : EditorDialog
     }
 }
 
-internal sealed class WriteValueDialog : Form
+internal sealed class WriteValueDialog : DpiAwareForm
 {
     private readonly TextBox _value;
     private readonly TagDataType _type;
+    private readonly Button _confirm, _cancel;
+    private readonly TableLayoutPanel _layout;
+    private readonly Panel _viewport;
+    private readonly FlowLayoutPanel _actions;
+    private bool _arranging;
     public string Value => TagEditor.IsStringType(_type) ? _value.Text : _value.Text.Trim();
+    internal IReadOnlyList<Control> SmokeCommands => new Control[] { _confirm, _cancel };
+    internal Control SmokeValueInput => _value;
     public WriteValueDialog(string device, string tag, string unit, string current, TagDataType type)
     {
         _type = type;
         Text = "输入写入值"; Font = new Font("Microsoft YaHei UI", 10F); StartPosition = FormStartPosition.CenterParent;
-        AutoScaleMode = AutoScaleMode.Dpi; AutoScaleDimensions = new SizeF(96, 96);
-        Size = new Size(620, 350); MinimumSize = new Size(480, 300); MaximizeBox = false; MinimizeBox = false;
-        var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(24) };
-        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); panel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        panel.Controls.Add(UiTheme.Label(device + " / " + tag, 12, UiTheme.Ink, true), 0, 0);
+        ConfigureWindow(new Size(604, 360), new Size(464, 270));
+        BackColor = UiTheme.Background; ForeColor = UiTheme.Ink;
+        MaximizeBox = false; MinimizeBox = false; ShowInTaskbar = false;
+        var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(24) };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        // Scroll only the content. Confirmation and cancellation remain reachable even
+        // when a high-DPI display has a short logical working area.
+        var viewport = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White, Padding = new Padding(16), Margin = Padding.Empty };
+        var content = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 1, RowCount = 3, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = Padding.Empty };
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        for (var i = 0; i < 3; i++) content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        content.Controls.Add(EditorLayout.WrappingLabel(device + " / " + tag, 13, UiTheme.Ink, true), 0, 0);
         var help = type switch
         {
             TagDataType.Boolean => "输入 true / false 或 1 / 0。",
@@ -386,11 +484,45 @@ internal sealed class WriteValueDialog : Form
             _ when TagEditor.IsStringType(type) => "输入完整文本，保留前后空格；允许写入空字符串。",
             _ => "输入新的工程值，单位：" + (string.IsNullOrEmpty(unit) ? "无" : unit)
         };
-        var description = UiTheme.Label(help, 9, UiTheme.Muted); description.MaximumSize = new Size(540, 0); panel.Controls.Add(description, 0, 1);
-        _value = new TextBox { Text = current, Dock = DockStyle.Fill, Multiline = TagEditor.IsStringType(type) || type == TagDataType.Any, ScrollBars = ScrollBars.Vertical, Margin = new Padding(0, 15, 0, 10) }; panel.Controls.Add(_value, 0, 2);
+        content.Controls.Add(EditorLayout.WrappingLabel(help, 10, UiTheme.Muted), 0, 1);
+        var multiline = TagEditor.IsStringType(type) || type == TagDataType.Any;
+        _value = new TextBox
+        {
+            Name = "WriteValue", Text = current, Dock = DockStyle.Fill, Multiline = multiline,
+            Height = multiline ? 120 : 32, MinimumSize = new Size(0, multiline ? 36 : 32),
+            BorderStyle = BorderStyle.FixedSingle, ScrollBars = multiline ? ScrollBars.Vertical : ScrollBars.None,
+            Margin = new Padding(0, 15, 0, 10)
+        };
+        content.Controls.Add(_value, 0, 2); viewport.Controls.Add(content); panel.Controls.Add(viewport, 0, 0);
         var ok = UiTheme.Button("下一步", (_, _) => { if (!TagEditor.IsStringType(type) && string.IsNullOrWhiteSpace(Value)) return; DialogResult = DialogResult.OK; Close(); }, true);
         var cancel = UiTheme.Button("取消"); cancel.DialogResult = DialogResult.Cancel;
-        var actions = UiTheme.Toolbar(cancel, ok); actions.FlowDirection = FlowDirection.RightToLeft; panel.Controls.Add(actions, 0, 3);
+        _confirm = ok; _cancel = cancel;
+        var actions = UiTheme.Toolbar(cancel, ok); actions.FlowDirection = FlowDirection.RightToLeft; actions.WrapContents = false; actions.Padding = new Padding(0, 16, 0, 0); panel.Controls.Add(actions, 0, 1);
+        _layout = panel; _viewport = viewport; _actions = actions;
         Controls.Add(panel); AcceptButton = ok; CancelButton = cancel;
+    }
+
+    protected override void OnLayout(LayoutEventArgs levent)
+    {
+        base.OnLayout(levent);
+        if (_layout is null || _arranging || !IsHandleCreated) return;
+        _arranging = true;
+        try
+        {
+            var compact = ClientSize.Height < UiTheme.Scale(this, 340);
+            var padding = UiTheme.Scale(this, new Padding(compact ? 14 : 24));
+            if (_layout.Padding != padding) _layout.Padding = padding;
+            var viewportPadding = UiTheme.Scale(this, new Padding(compact ? 10 : 16));
+            if (_viewport.Padding != viewportPadding) _viewport.Padding = viewportPadding;
+            var actionsPadding = UiTheme.Scale(this, new Padding(0, compact ? 8 : 16, 0, 0));
+            if (_actions.Padding != actionsPadding) _actions.Padding = actionsPadding;
+            if (_value.Multiline)
+            {
+                var available = _viewport.ClientSize.Height - _viewport.Padding.Vertical - _value.Margin.Vertical - UiTheme.Scale(this, 8);
+                var height = Math.Max(UiTheme.Scale(this, 36), Math.Min(UiTheme.Scale(this, 120), available));
+                if (_value.Height != height) _value.Height = height;
+            }
+        }
+        finally { _arranging = false; }
     }
 }

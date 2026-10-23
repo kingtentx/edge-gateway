@@ -5,9 +5,14 @@
     <UseWindowsForms>true</UseWindowsForms>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationDefaultFont>Microsoft YaHei UI, 10pt</ApplicationDefaultFont>
+    <ForceDesignerDPIUnaware>true</ForceDesignerDPIUnaware>
     <AssemblyName>EdgeGateway.WinForms</AssemblyName>
     <RootNamespace>EdgeGateway.WinForms</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FontAwesome.Sharp" Version="6.6.0" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../EdgeGateway.Model/EdgeGateway.Model.csproj" />
     <ProjectReference Include="../EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />

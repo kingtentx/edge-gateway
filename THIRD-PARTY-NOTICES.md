@@ -16,6 +16,7 @@
 
 | 依赖 | 版本 | 许可 | 随附文件 |
 |---|---|---|---|
+| FontAwesome.Sharp | 6.6.0 | Apache-2.0；内嵌 Font Awesome Free 字体按 SIL OFL 1.1，图标及代码许可见资源声明 | [组件许可](LICENSES/FontAwesome.Sharp-LICENSE.txt)、[字体与图标许可](LICENSES/FontAwesome-Free-LICENSE.txt) |
 | Microsoft.Data.Sqlite / Microsoft.Data.Sqlite.Core | 8.0.32 | MIT | [Microsoft.Data.Sqlite-LICENSE.txt](LICENSES/Microsoft.Data.Sqlite-LICENSE.txt) |
 | MQTTnet | 4.3.7.1207 | MIT | [MQTTnet-LICENSE.txt](LICENSES/MQTTnet-LICENSE.txt) |
 | System.IO.Ports | 8.0.0 | MIT | [System.IO.Ports-LICENSE.txt](LICENSES/System.IO.Ports-LICENSE.txt)、[System.IO.Ports-THIRD-PARTY-NOTICES.txt](LICENSES/System.IO.Ports-THIRD-PARTY-NOTICES.txt) |
@@ -64,3 +65,7 @@
 `CNC.Fanuc/fwlib64.cs` 原有 `Copyright (C) 2002-2014 by FANUC CORPORATION All rights reserved.` 保持原样，见 [FANUC-FOCAS-NOTICE.txt](LICENSES/FANUC-FOCAS-NOTICE.txt)。原生 `FWLIB64.dll` 和其官方依赖未随代码或运行包提供，须从厂商合法取得；当前实际 Focas1 调用针对 Windows x64。保留 `fwlib32.cs` 是源目录完整迁移的一部分，不代表发布包支持 x86。
 
 `OPC.DaClient` 保留上游 `Interop.OPCAutomation.dll`，文件哈希和来源见 [OPC-Automation-NOTICE.txt](LICENSES/OPC-Automation-NOTICE.txt)。该文件只包含托管 COM 互操作定义；运行机器仍需安装并注册位数兼容的 OPC Automation 组件和 OPC DA Server，并配置 DCOM。上游未随该互操作二进制给出独立许可文件，不能将 OPC UA 的 MIT 文本作为 OPC DA 原厂组件授权。
+
+## 桌面界面图标
+
+本次界面升级使用 `FontAwesome.Sharp 6.6.0`（Copyright © Awesome Incremented 2015–2022），官方 NuGet 元数据指定源码提交 `fca9446a2476e8cb903a938b0d546b4b65c7d00f`。完整 Apache-2.0 文本取自该提交的 [LICENSE](https://github.com/awesome-inc/FontAwesome.Sharp/blob/fca9446a2476e8cb903a938b0d546b4b65c7d00f/LICENSE)。内嵌 Font Awesome Free 6.6.0 资源归属 Fonticons, Inc.；字体采用 SIL OFL 1.1，图标采用 CC BY 4.0，代码采用 MIT，原始 [LICENSE.txt](https://github.com/FortAwesome/Font-Awesome/blob/6.6.0/LICENSE.txt) 随运行包保留。程序使用其免费字体图标，不包含 Font Awesome Pro。

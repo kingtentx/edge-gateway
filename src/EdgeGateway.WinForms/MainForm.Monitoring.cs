@@ -45,12 +45,18 @@ public sealed partial class MainForm
         var recent = UiTheme.Button("最近一小时", (_, _) => { _historyTo.Value = DateTime.Now; _historyFrom.Value = DateTime.Now.AddHours(-1); });
         var toolbar = UiTheme.Toolbar(_historyDevice, _historyTag, _historyFrom, UiTheme.Label("至", 10, UiTheme.Muted), _historyTo,
             UiTheme.Label("条数", 10, UiTheme.Muted), _historyLimit, query, recent, export);
-        var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
+        var content = new TableLayoutPanel { Name = "HistoryContent", ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         content.RowStyles.Add(new RowStyle(SizeType.Absolute, 205));
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        _trend.Name = "HistoryTrend"; _historySummary.Dock = DockStyle.Fill;
         content.Controls.Add(_trend, 0, 0); content.Controls.Add(_historySummary, 0, 1); content.Controls.Add(_historyGrid, 0, 2);
-        return UiTheme.PageLayout("历史与趋势", "按本地时间查询 SQLite 采样历史，选择单个点位查看趋势；CSV 导出当前查询结果。", toolbar, content);
+        void ArrangeSummary() { if (IsDpiLayoutReady) SetWrappingWidth(_historySummary, content.ClientSize.Width); }
+        content.SizeChanged += (_, _) => ArrangeSummary();
+        DpiLayoutCompleted += (_, _) => ArrangeSummary();
+        var viewport = ScrollableContent(content, "HistoryViewport", () => UiTheme.Scale(content, 405) + _historySummary.PreferredHeight);
+        return UiTheme.PageLayout("历史与趋势", "按本地时间查询 SQLite 采样历史，选择单个点位查看趋势；CSV 导出当前查询结果。", toolbar, viewport);
     }
 
     private Control BuildLogsPage()
@@ -71,7 +77,18 @@ public sealed partial class MainForm
         return UiTheme.PageLayout("运行日志", "查看最近 500 条运行事件、连接异常、报警变化和手动写入记录。", UiTheme.Toolbar(_logLevel, _logSearch, export), _logGrid);
     }
 
-    private static ComboBox ChoiceBox(int width) => new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = width, Margin = new Padding(0, 4, 8, 0), IntegralHeight = false, DropDownHeight = 320 };
+    private static ComboBox ChoiceBox(int width)
+    {
+        var choice = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = width, Margin = new Padding(0, 4, 8, 0), IntegralHeight = false, DropDownHeight = 320 };
+        choice.DropDown += (_, _) =>
+        {
+            var workArea = Screen.FromControl(choice).WorkingArea;
+            choice.DropDownHeight = Math.Min(UiTheme.Scale(choice, 320), Math.Max(choice.ItemHeight * 3, workArea.Height / 2));
+            var textWidth = choice.Items.Cast<object>().Select(x => TextRenderer.MeasureText(x.ToString(), choice.Font).Width).DefaultIfEmpty(choice.Width).Max();
+            choice.DropDownWidth = Math.Min(workArea.Width, Math.Max(choice.Width, textWidth + UiTheme.Scale(choice, 32)));
+        };
+        return choice;
+    }
 
     private static void ConfigureSampleColumns(DataGridView grid, bool includeRaw)
     {

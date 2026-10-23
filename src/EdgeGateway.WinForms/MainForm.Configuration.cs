@@ -40,7 +40,8 @@ public sealed partial class MainForm
         var deleteDevice = ConfigurationButton("删除设备", (_, _) => DeleteDevice());
         var import = ConfigurationButton("导入配置", async (_, _) => await RunBusyAsync(ImportConfigurationAsync));
         var export = UiTheme.Button("导出配置", async (_, _) => await RunBusyAsync(ExportConfigurationAsync));
-        var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
+        var content = new TableLayoutPanel { Name = "DevicesContent", ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 43));
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 57));
@@ -49,8 +50,10 @@ public sealed partial class MainForm
             ConfigurationButton("添加点位", (_, _) => AddTag()), ConfigurationButton("编辑点位", (_, _) => EditTag()),
             ConfigurationButton("删除点位", (_, _) => DeleteTag()));
         tagToolbar.Padding = new Padding(0, 15, 0, 10);
+        tagToolbar.Name = "TagActions";
         content.Controls.Add(tagToolbar, 0, 1); content.Controls.Add(_tagGrid, 0, 2);
-        return UiTheme.PageLayout("设备与点位", "配置分组、连接和采集点表；修改后保存生效，运行中仅允许查看。", UiTheme.Toolbar(addDevice, editDevice, deleteDevice, import, export), content);
+        var viewport = ScrollableContent(content, "DevicesViewport", () => tagToolbar.PreferredSize.Height + UiTheme.Scale(content, 320));
+        return UiTheme.PageLayout("设备与点位", "配置分组、连接和采集点表；修改后保存生效，运行中仅允许查看。", UiTheme.Toolbar(addDevice, editDevice, deleteDevice, import, export), viewport);
     }
 
     private Button ConfigurationButton(string text, EventHandler action, bool primary = false)
@@ -168,8 +171,9 @@ public sealed partial class MainForm
 
     private Control BuildCloudPage()
     {
-        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White, Padding = new Padding(20) };
-        var fields = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Padding = new Padding(8), MaximumSize = new Size(1000, 0) };
+        var scroll = new Panel { Name = "CloudFieldsViewport", Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White, Padding = new Padding(18) };
+        var fields = new TableLayoutPanel { Name = "CloudFields", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, Padding = new Padding(8), MaximumSize = new Size(1000, 0) };
+        var captions = new List<Label>();
         fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
         fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         void Section(string text)
@@ -180,19 +184,19 @@ public sealed partial class MainForm
         }
         void TextField(string key, string title, Action<string> update)
         {
-            var input = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(0, 4, 0, 8), MinimumSize = new Size(220, 30) };
+            var input = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(0, 4, 0, 8), MinimumSize = new Size(120, 30) };
             input.TextChanged += (_, _) => { if (!_binding) { update(input.Text); MarkDirty(); } };
             AddField(key, title, input);
         }
         void NumberField(string key, string title, int min, int max, Action<int> update)
         {
-            var input = new NumericUpDown { Minimum = min, Maximum = max, Increment = 1, Width = 230, Margin = new Padding(0, 4, 0, 8), ThousandsSeparator = true };
+            var input = new NumericUpDown { Minimum = min, Maximum = max, Increment = 1, Dock = DockStyle.Fill, Margin = new Padding(0, 4, 0, 8), ThousandsSeparator = true };
             input.ValueChanged += (_, _) => { if (!_binding) { update((int)input.Value); MarkDirty(); } };
             AddField(key, title, input);
         }
         void CheckField(string key, string title, Action<bool> update)
         {
-            var input = new CheckBox { Text = "启用", AutoSize = true, MinimumSize = new Size(140, 32), Margin = new Padding(0, 4, 0, 8) };
+            var input = new CheckBox { Text = "启用", AutoSize = true, MinimumSize = new Size(90, 32), Margin = new Padding(0, 4, 0, 8) };
             input.CheckedChanged += (_, _) => { if (!_binding) { update(input.Checked); MarkDirty(); } };
             AddField(key, title, input);
         }
@@ -201,6 +205,8 @@ public sealed partial class MainForm
             var row = fields.RowCount++;
             fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var caption = UiTheme.Label(title, 10, UiTheme.Muted); caption.Padding = new Padding(0, 4, 10, 0);
+            caption.Dock = DockStyle.Fill; input.Name = "CloudField_" + key;
+            captions.Add(caption);
             fields.Controls.Add(caption, 0, row); fields.Controls.Add(input, 1, row);
             _cloudFields.Add(key, input); _configurationCommands.Add(input);
         }
@@ -224,13 +230,32 @@ public sealed partial class MainForm
         NumberField("mqttTimeout", "连接 / 发送超时 (ms)", 500, 120_000, x => _configuration.Mqtt.TimeoutMs = x);
         Section("数据与凭据");
         var tip = UiTheme.Label("主题支持 {gatewayId}。密码从指定环境变量读取；在 Windows 设置该环境变量后，重启程序生效。TLS 使用系统信任链验证服务器证书。", 9, UiTheme.Muted);
-        tip.MaximumSize = new Size(730, 0); tip.Dock = DockStyle.Fill;
+        tip.Dock = DockStyle.Fill;
         var tipRow = fields.RowCount++; fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         fields.Controls.Add(tip, 0, tipRow); fields.SetColumnSpan(tip, 2);
-        var path = UiTheme.Label(_dataDirectory, 9, UiTheme.Muted); path.MaximumSize = new Size(730, 0);
+        var path = UiTheme.Label(_dataDirectory, 10, UiTheme.Muted); path.Dock = DockStyle.Fill;
         var pathRow = fields.RowCount++; fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         fields.Controls.Add(path, 0, pathRow); fields.SetColumnSpan(path, 2);
         scroll.Controls.Add(fields);
+        bool arrangingFields = false;
+        void ArrangeFields()
+        {
+            if (arrangingFields || !fields.IsHandleCreated || !IsDpiLayoutReady) return;
+            arrangingFields = true;
+            try
+            {
+                var available = Math.Max(1, fields.ClientSize.Width - fields.Padding.Horizontal);
+                var captionWidth = Math.Clamp((int)(available * .38), UiTheme.Scale(fields, 110), UiTheme.Scale(fields, 220));
+                if (fields.ColumnStyles[0].Width != captionWidth) fields.ColumnStyles[0].Width = captionWidth;
+                foreach (var caption in captions) SetWrappingWidth(caption, captionWidth);
+                SetWrappingWidth(tip, available); SetWrappingWidth(path, available);
+            }
+            finally { arrangingFields = false; }
+        }
+        fields.SizeChanged += (_, _) => ArrangeFields();
+        fields.HandleCreated += (_, _) => ArrangeFields();
+        fields.DpiChangedAfterParent += (_, _) => ArrangeFields();
+        DpiLayoutCompleted += (_, _) => ArrangeFields();
         var open = UiTheme.Button("打开数据目录", (_, _) =>
         {
             try { Process.Start(new ProcessStartInfo(_dataDirectory) { UseShellExecute = true }); }

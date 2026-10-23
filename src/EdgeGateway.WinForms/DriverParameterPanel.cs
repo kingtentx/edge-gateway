@@ -6,7 +6,7 @@ namespace EdgeGateway.WinForms;
 /// <summary>Edits reflected driver settings without asking the operator to write JSON.</summary>
 internal sealed class DriverParameterPanel : UserControl
 {
-    private readonly TableLayoutPanel _table;
+    private EditorLayout.FieldViewport? _page;
     private readonly ToolTip _tips = new() { AutoPopDelay = 15000 };
     private readonly Dictionary<string, (DriverParameterDescriptor Metadata, Control Input)> _fields = new(StringComparer.Ordinal);
     private Dictionary<string, string> _original = [];
@@ -14,20 +14,24 @@ internal sealed class DriverParameterPanel : UserControl
 
     public DriverParameterPanel()
     {
-        Dock = DockStyle.Fill; AutoScroll = true; BackColor = Color.White; Padding = new Padding(14);
-        _table = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, RowCount = 0, Padding = new Padding(8) };
-        _table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 185));
-        _table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        Controls.Add(_table);
+        Dock = DockStyle.Fill; BackColor = Color.White; Margin = Padding.Empty;
+        AutoScaleMode = AutoScaleMode.Inherit;
     }
 
     public void LoadParameters(DriverDescriptor descriptor, DeviceConfiguration device, Dictionary<string, string> properties)
     {
-        SuspendLayout(); _table.SuspendLayout();
-        foreach (Control control in _table.Controls.Cast<Control>().ToArray()) control.Dispose();
-        _table.Controls.Clear(); _table.RowStyles.Clear(); _table.RowCount = 0; _fields.Clear();
+        SuspendLayout();
+        if (_page is not null) { Controls.Remove(_page); _page.Dispose(); }
+        _fields.Clear();
+        // A displayed editor may already be at 144/192 DPI. New controls do not
+        // inherit previously applied size/margin scaling from an existing table.
+        // Give each replacement subtree its own 96-DPI baseline so WinForms scales
+        // it once when attached to the current monitor; never re-scale its old host.
+        _page = new EditorLayout.FieldViewport(185);
+        var table = _page.Table;
+        table.SuspendLayout();
         _original = new Dictionary<string, string>(properties, StringComparer.Ordinal);
-        EditorDialog.Hint(_table, "按驱动参数逐项配置。枚举与数值范围来自原驱动；设备标识、超时和最小通讯周期与基本配置保持一致。");
+        EditorDialog.Hint(table, "按驱动参数逐项配置。枚举与数值范围来自原驱动；设备标识、超时和最小通讯周期与基本配置保持一致。");
         foreach (var parameter in descriptor.Parameters)
         {
             var bound = BoundValue(parameter, device);
@@ -45,11 +49,17 @@ internal sealed class DriverParameterPanel : UserControl
                 "PollIntervalMs" => "在“基本与采集”的采集周期中修改。", _ => ""
             };
             _tips.SetToolTip(input, $"{parameter.Key} · {parameter.TypeName}\n{parameter.Description}\n{bindingHint}".Trim());
-            EditorDialog.Field(_table, parameter.Name + (bound is null ? "" : "（绑定）"), input);
+            EditorDialog.Field(table, parameter.Name + (bound is null ? "" : "（绑定）"), input);
             _fields.Add(parameter.Key, (parameter, input));
         }
-        if (descriptor.Parameters.Count == 0) EditorDialog.Hint(_table, "此驱动没有额外参数。");
-        _table.ResumeLayout(true); ResumeLayout(true); AutoScrollPosition = Point.Empty;
+        if (descriptor.Parameters.Count == 0) EditorDialog.Hint(table, "此驱动没有额外参数。");
+        table.ResumeLayout(false);
+        Controls.Add(_page);
+        _page.CompleteInitialization();
+        _page.PerformAutoScale();
+        _page.PerformLayout();
+        ResumeLayout(true);
+        _page.AutoScrollPosition = Point.Empty;
     }
 
     public void RefreshBindings(DeviceConfiguration device)
@@ -105,10 +115,11 @@ internal sealed class DriverParameterPanel : UserControl
     private static Control CreateInput(DriverParameterDescriptor parameter, string value)
     {
         if (parameter.BoundProperty is not null || parameter.IsReadOnly)
-            return new TextBox { Text = value, ReadOnly = true };
+            return new TextBox { Text = value, ReadOnly = true, BorderStyle = BorderStyle.FixedSingle };
         if (parameter.Options.Count > 0)
         {
-            var input = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, IntegralHeight = false, DropDownHeight = 320 };
+            var input = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            EditorLayout.ConfigureDropDown(input);
             input.Items.AddRange(parameter.Options.Cast<object>().ToArray());
             // Preserve invalid imported values visibly so validation can report them; never silently substitute a different enum.
             if (!input.Items.Contains(value)) input.Items.Add(value);
@@ -131,8 +142,8 @@ internal sealed class DriverParameterPanel : UserControl
             _ => ((decimal)0, (decimal)0)
         };
         if (range.Item2 > range.Item1 && decimal.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) && number >= range.Item1 && number <= range.Item2)
-            return new NumericUpDown { Minimum = range.Item1, Maximum = range.Item2, Value = number, ThousandsSeparator = true, DecimalPlaces = 0 };
-        return new TextBox { Text = value, UseSystemPasswordChar = parameter.IsSecret };
+            return new NumericUpDown { Minimum = range.Item1, Maximum = range.Item2, Value = number, ThousandsSeparator = true, DecimalPlaces = 0, BorderStyle = BorderStyle.FixedSingle };
+        return new TextBox { Text = value, UseSystemPasswordChar = parameter.IsSecret, BorderStyle = BorderStyle.FixedSingle };
     }
 
     private static string ReadInput(Control input) => input switch

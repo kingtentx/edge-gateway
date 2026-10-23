@@ -1,5 +1,7 @@
 # 验证记录
 
+> 本页记录上一轮全部驱动迁移基线。2026-10-23 的 DPI 与现代界面升级及最新验证见 [界面验证记录](ui-dpi.md)。
+
 验证日期：2026-10-22。目标框架：.NET 8，Windows Forms。
 
 **本轮完整 Windows 验证成功。** 对应程序源码提交为 [`0a150056e8e6417392fc1438dea9466f8b2276d2`](https://github.com/kingtentx/edge-gateway/commit/0a150056e8e6417392fc1438dea9466f8b2276d2)，[Windows CI 39818478291](https://github.com/kingtentx/edge-gateway/actions/runs/39818478291) 的构建、测试、原生界面烟测、发布与上传步骤均为成功。本页后续补录验证结果，不改变该运行包的程序源码。
