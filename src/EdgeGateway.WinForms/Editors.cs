@@ -1,4 +1,5 @@
 using EdgeGateway.Model;
+using EdgeGateway.Service;
 using System.Globalization;
 
 namespace EdgeGateway.WinForms;
@@ -249,7 +250,8 @@ internal sealed class TagEditor : EditorDialog
 {
     public TagConfiguration Value { get; }
     private readonly DriverDescriptor _driver;
-    private readonly TextBox _name, _address, _unit, _scale, _offset, _low, _high, _description;
+    private readonly TextBox _name, _address, _unit, _scale, _offset, _low, _high, _description, _expression, _deadband;
+    private readonly NumericUpDown _scanInterval;
     private readonly ComboBox _type, _area, _byteOrder, _readMethod, _writeMethod, _endian;
     private readonly CheckBox _enabled, _uploadEnabled, _writable;
     private readonly Label _methodHint;
@@ -302,8 +304,28 @@ internal sealed class TagEditor : EditorDialog
         _scale = TextInput(value.Scale.ToString("G17", CultureInfo.InvariantCulture)); _offset = TextInput(value.Offset.ToString("G17", CultureInfo.InvariantCulture));
         _low = TextInput(value.LowLimit?.ToString("G17", CultureInfo.InvariantCulture) ?? ""); _high = TextInput(value.HighLimit?.ToString("G17", CultureInfo.InvariantCulture) ?? "");
         _description = new TextBox { Text = value.Description, Multiline = true, Height = 100, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.FixedSingle };
-        Field(calculation, "倍率", _scale); Field(calculation, "偏移量", _offset); Field(calculation, "报警下限（可空）", _low); Field(calculation, "报警上限（可空）", _high); Field(calculation, "点位说明", _description);
+        _expression = TextInput(value.Expression); _expression.Name = "TagExpression"; _expression.MaxLength = 512;
+        Field(calculation, "倍率", _scale); Field(calculation, "偏移量", _offset); Field(calculation, "计算表达式（可空）", _expression);
+        var previewInput = TextInput("1"); previewInput.Name = "ExpressionPreviewInput";
+        var previewResult = EditorLayout.WrappingLabel("x 为倍率和偏移换算后的工程值。", 10, UiTheme.Muted);
+        previewResult.Name = "ExpressionPreviewResult";
+        Field(calculation, "试算 x", previewInput);
+        Field(calculation, "表达式试算", UiTheme.Button("预览表达式", (_, _) =>
+        {
+            var result = NumericExpression.Preview(_expression.Text, previewInput.Text);
+            previewResult.Text = result.Success ? "计算结果：" + result.Value?.ToString(CultureInfo.InvariantCulture) : "无法计算：" + result.Error;
+            previewResult.ForeColor = result.Success ? UiTheme.Ink : Color.Firebrick;
+        }));
+        Field(calculation, "试算结果", previewResult);
+        Field(calculation, "报警下限（可空）", _low); Field(calculation, "报警上限（可空）", _high); Field(calculation, "点位说明", _description);
         Hint(calculation, "数值使用英文小数点。字符串、时间、布尔和 Any 类型不参与倍率换算或数值报警。64 位整数不换算时保留完整整数精度。");
+        Hint(calculation, "表达式支持 x、+ - * / % ^、abs/min/max/clamp/round/floor/ceil/truncate/pow；例如 clamp(x,0,100)。表达式点必须关闭写入权限；除零或越界将标记为 Bad，不沿用旧值。");
+        var reporting = AddTab("扫描与上报");
+        _scanInterval = NumberInput(value.ScanIntervalMs, 0, 3_600_000); _scanInterval.Name = "TagScanInterval";
+        _deadband = TextInput(value.Deadband.ToString("R", CultureInfo.InvariantCulture)); _deadband.Name = "TagDeadband";
+        Field(reporting, "点位扫描周期 (ms)", _scanInterval);
+        Field(reporting, "变化上报绝对死区", _deadband);
+        Hint(reporting, "周期 0 继承设备周期，其他值为 100–3600000 ms，仅在设备选择“按点位周期扫描”时生效。死区使用最终工程值；在平台选择变化上报后生效，质量变化和心跳不受死区抑制。");
         _readMethod.SelectedIndexChanged += (_, _) => UpdateMethod();
         _type.SelectedIndexChanged += (_, _) => UpdateCalculationFields();
         UpdateMethod(); _initializing = false;
@@ -344,7 +366,11 @@ internal sealed class TagEditor : EditorDialog
         if (_scale is null || _type.SelectedItem is not TagDataType type) return;
         var scalable = IsNumericType(type) && !UsesBatchRead;
         _scale.Enabled = _offset.Enabled = _low.Enabled = _high.Enabled = scalable;
+        if (_expression is not null) _expression.Enabled = scalable;
+        if (_deadband is not null) _deadband.Enabled = scalable;
         if (!scalable) { _scale.Text = "1"; _offset.Text = "0"; _low.Clear(); _high.Clear(); }
+        if (!scalable && _expression is not null) _expression.Clear();
+        if (!scalable && _deadband is not null) _deadband.Text = "0";
     }
 
     protected override void Commit()
@@ -370,6 +396,13 @@ internal sealed class TagEditor : EditorDialog
             if (Value.Writable && Value.Scale == 0) throw new InvalidOperationException("允许写入时倍率不能为 0。");
         }
         else { Value.Scale = 1; Value.Offset = 0; Value.LowLimit = null; Value.HighLimit = null; }
+        Value.Expression = _expression.Text.Trim();
+        if (NumericExpression.Validate(Value.Expression) is string expressionError) throw new InvalidOperationException(expressionError);
+        if (Value.Expression.Length > 0 && Value.Writable) throw new InvalidOperationException("计算表达式点不能直接反算写入，请关闭写入权限，或使用独立原始点位写入。");
+        Value.ScanIntervalMs = (int)_scanInterval.Value;
+        if (Value.ScanIntervalMs != 0 && Value.ScanIntervalMs < 100) throw new InvalidOperationException("点位周期须为 0 或 100–3600000 ms。");
+        Value.Deadband = ParseNumber(_deadband, "上报死区");
+        if (Value.Deadband < 0) throw new InvalidOperationException("上报死区不能为负数。");
         Value.Description = _description.Text.Trim();
     }
 
@@ -421,6 +454,9 @@ internal sealed class TagEditor : EditorDialog
 internal sealed class WriteValueDialog : DpiAwareForm
 {
     private readonly TextBox _value;
+    private readonly CheckBox _verify;
+    private readonly NumericUpDown _verificationTimeout;
+    private readonly TextBox _absoluteTolerance, _relativeTolerance;
     private readonly TagDataType _type;
     private readonly Button _confirm, _cancel;
     private readonly TableLayoutPanel _layout;
@@ -428,13 +464,15 @@ internal sealed class WriteValueDialog : DpiAwareForm
     private readonly FlowLayoutPanel _actions;
     private bool _arranging;
     public string Value => TagEditor.IsStringType(_type) ? _value.Text : _value.Text.Trim();
+    public WriteVerificationOptions VerificationOptions { get; private set; } = new();
     internal IReadOnlyList<Control> SmokeCommands => new Control[] { _confirm, _cancel };
     internal Control SmokeValueInput => _value;
+    internal IReadOnlyList<Control> SmokeVerificationInputs => [_verify, _verificationTimeout, _absoluteTolerance, _relativeTolerance];
     public WriteValueDialog(string device, string tag, string unit, string current, TagDataType type)
     {
         _type = type;
         Text = "输入写入值"; Font = new Font("Microsoft YaHei UI", 10F); StartPosition = FormStartPosition.CenterParent;
-        ConfigureWindow(new Size(604, 360), new Size(464, 270));
+        ConfigureWindow(new Size(604, 560), new Size(464, 270));
         BackColor = UiTheme.Background; ForeColor = UiTheme.Ink;
         MaximizeBox = false; MinimizeBox = false; ShowInTaskbar = false;
         var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(24) };
@@ -466,8 +504,33 @@ internal sealed class WriteValueDialog : DpiAwareForm
             BorderStyle = BorderStyle.FixedSingle, ScrollBars = multiline ? ScrollBars.Vertical : ScrollBars.None,
             Margin = new Padding(0, 15, 0, 10)
         };
-        content.Controls.Add(_value, 0, 2); viewport.Controls.Add(content); panel.Controls.Add(viewport, 0, 0);
-        var ok = UiTheme.Button("下一步", (_, _) => { if (!TagEditor.IsStringType(type) && string.IsNullOrWhiteSpace(Value)) return; DialogResult = DialogResult.OK; Close(); }, true);
+        content.Controls.Add(_value, 0, 2);
+        _verify = new CheckBox { Name = "WriteVerifyReadBack", Text = "写入后立即读回核对", Checked = true, AutoSize = true, MinimumSize = new Size(0, 32) };
+        _verificationTimeout = new NumericUpDown { Name = "WriteVerificationTimeout", Minimum = 50, Maximum = 60000, Value = 5000, Dock = DockStyle.Fill };
+        _absoluteTolerance = new TextBox { Name = "WriteAbsoluteTolerance", Text = "0", Dock = DockStyle.Fill, MaxLength = 80 };
+        _relativeTolerance = new TextBox { Name = "WriteRelativeTolerance", Text = "0", Dock = DockStyle.Fill, MaxLength = 80 };
+        void AddContent(Control control)
+        {
+            var row = content.RowCount++;
+            content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            control.Margin = new Padding(0, 4, 0, 6);
+            content.Controls.Add(control, 0, row);
+        }
+        AddContent(_verify);
+        AddContent(EditorLayout.WrappingLabel("写入与读回总超时 (ms)", 10, UiTheme.Muted)); AddContent(_verificationTimeout);
+        AddContent(EditorLayout.WrappingLabel("绝对容差（工程单位，0 为精确匹配）", 10, UiTheme.Muted)); AddContent(_absoluteTolerance);
+        AddContent(EditorLayout.WrappingLabel("相对容差（0–1，例如 0.01 表示 1%）", 10, UiTheme.Muted)); AddContent(_relativeTolerance);
+        AddContent(EditorLayout.WrappingLabel("最多核对 5 次，间隔 200 ms。布尔和文本按实际值精确比较；读回不匹配或超时不会自动重复写入。", 10, UiTheme.Muted));
+        viewport.Controls.Add(content); panel.Controls.Add(viewport, 0, 0);
+        var ok = UiTheme.Button("下一步", (_, _) =>
+        {
+            if (!TagEditor.IsStringType(type) && string.IsNullOrWhiteSpace(Value)) return;
+            if (!double.TryParse(_absoluteTolerance.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var absolute) || !double.IsFinite(absolute) || absolute < 0
+                || !double.TryParse(_relativeTolerance.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var relative) || !double.IsFinite(relative) || relative is < 0 or > 1)
+            { MessageBox.Show(this, "绝对容差须为非负有限数值，相对容差须为 0–1。", "核对参数", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            VerificationOptions = new() { VerifyReadBack = _verify.Checked, TimeoutMs = (int)_verificationTimeout.Value, AbsoluteTolerance = absolute, RelativeTolerance = relative };
+            DialogResult = DialogResult.OK; Close();
+        }, true);
         var cancel = UiTheme.Button("取消"); cancel.DialogResult = DialogResult.Cancel;
         _confirm = ok; _cancel = cancel;
         var actions = UiTheme.Toolbar(cancel, ok); actions.FlowDirection = FlowDirection.RightToLeft; actions.WrapContents = false; actions.Padding = new Padding(0, 16, 0, 0); panel.Controls.Add(actions, 0, 1);

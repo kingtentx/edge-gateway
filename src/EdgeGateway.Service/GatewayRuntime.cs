@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -23,6 +24,7 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     private readonly ConcurrentDictionary<Guid, DeviceSession> _sessions = new();
     private readonly ConcurrentDictionary<Guid, string> _alarmStates = new();
     private volatile GatewayConfiguration _configuration;
+    private long _configurationRevision;
     private CancellationTokenSource? _runCancellation;
     private Channel<IReadOnlyList<TelemetrySample>>? _historyChannel;
     private Task[] _sharedWorkers = [];
@@ -42,6 +44,10 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     }
 
     public bool IsRunning => _running;
+    public long ConfigurationRevision => Interlocked.Read(ref _configurationRevision);
+    public GatewayConfiguration GetConfigurationSnapshot() => Clone(_configuration);
+    public OpcUaServerConfiguration GetOpcUaConfigurationSnapshot() =>
+        JsonSerializer.Deserialize<OpcUaServerConfiguration>(JsonSerializer.Serialize(_configuration.OpcUa))!;
     public bool IsMqttConnected => _publisher.IsConnected;
     public bool IsDeviceRunning(Guid deviceId) => _sessions.TryGetValue(deviceId, out var session) && session.IsActive;
 
@@ -55,6 +61,8 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
             var errors = ConfigurationValidator.Validate(configuration, _registry);
             if (errors.Count > 0) throw new ArgumentException(string.Join(Environment.NewLine, errors), nameof(configuration));
             _configuration = Clone(configuration);
+            Interlocked.Increment(ref _configurationRevision);
+            _channels.Clear();
             _latest.Clear();
             ResetStatuses();
         }
@@ -116,7 +124,7 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
         _running = true;
         _historyTask = Task.Run(() => StoreHistoryAsync(reader));
         _sharedWorkers = _configuration.Mqtt.Enabled
-            ? [Task.Run(() => QueueTelemetryAsync(token)), Task.Run(() => SendOutboxAsync(token))]
+            ? [Task.Run(() => QueueTelemetryAsync(token)), Task.Run(() => SendOutboxAsync(token)), Task.Run(() => RunPlatformSessionAsync(token))]
             : [];
     }
 
@@ -129,6 +137,8 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
             _latest.TryRemove(tag.Id, out _);
             _alarmStates.TryRemove(tag.Id, out _);
         }
+        _deviceGenerations.AddOrUpdate(device.Id, 1, (_, generation) => generation + 1);
+        SetDemotion(device.Id, null);
         var session = new DeviceSession(device, _runCancellation!.Token);
         _sessions[device.Id] = session;
         _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Connecting,
@@ -217,55 +227,40 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     }
 
     public IReadOnlyList<TelemetrySample> GetLatest() => _latest.Values.OrderBy(s => s.DeviceName).ThenBy(s => s.TagName).ToArray();
+    public TelemetrySample? GetLatestSample(Guid tagId) => _latest.GetValueOrDefault(tagId);
     public IReadOnlyList<DeviceRuntimeStatus> GetDeviceStatuses() => _statuses.Values.OrderBy(s => s.DeviceName).ToArray();
 
-    public async Task WriteAsync(Guid deviceId, Guid tagId, string engineeringValue, CancellationToken cancellationToken = default)
-    {
-        if (!_running || !_sessions.TryGetValue(deviceId, out var session) || !session.IsActive)
-            throw new InvalidOperationException("设备未处于采集运行状态。");
-        var tag = session.Configuration.Tags.FirstOrDefault(t => t.Id == tagId) ?? throw new ArgumentException("点位不存在。");
-        if (!tag.Enabled || !tag.Writable) throw new InvalidOperationException("点位未启用或不允许写入。");
-        var rawValue = ConvertWriteValue(tag, engineeringValue);
-        // The captured token remains safe to read after its source has been disposed by Stop.
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, session.Token);
-        timeout.CancelAfter(_registry.GetFactory(session.Configuration.DriverId).Descriptor.IsLegacy ? session.Configuration.TimeoutMs + 1500 : session.Configuration.TimeoutMs);
-        await session.Gate.WaitAsync(timeout.Token).ConfigureAwait(false);
-        try
-        {
-            if (!_running || !session.IsActive || !_sessions.TryGetValue(deviceId, out var current) || !ReferenceEquals(current, session))
-                throw new InvalidOperationException("设备未处于采集运行状态。");
-            timeout.Token.ThrowIfCancellationRequested();
-            if (session.Driver is null) throw new InvalidOperationException("设备尚未连接，请等待采集恢复后再写入。");
-            await session.Driver.WriteAsync(tag, rawValue, timeout.Token).ConfigureAwait(false);
-            timeout.Token.ThrowIfCancellationRequested();
-            _log.Write(GatewayLogLevel.Information, $"写入成功：设备 [{session.Configuration.Name}] 点位 [{tag.Name}]，工程值 {engineeringValue}；待读回确认。");
-            if (_latest.TryGetValue(tag.Id, out var previous))
-                _latest[tag.Id] = previous with { Quality = SampleQuality.Uncertain, Error = "已写入，待读回确认" };
-        }
-        catch (Exception ex)
-        {
-            _log.Write(GatewayLogLevel.Error, $"写入失败：设备 [{session.Configuration.Name}] 点位 [{tag.Name}]：{ex.Message}");
-            await DisposeDriverAsync(session).ConfigureAwait(false);
-            throw;
-        }
-        finally { session.Gate.Release(); }
-    }
+    /// <summary>Compatibility submission-only API. Successful completion does not confirm readback; failures retain their exception types.</summary>
+    public Task WriteAsync(Guid deviceId, Guid tagId, string engineeringValue, CancellationToken cancellationToken = default) =>
+        SubmitWriteCompatibilityAsync(deviceId, tagId, engineeringValue, cancellationToken);
 
     private async Task CollectDeviceAsync(DeviceSession session, CancellationToken cancellationToken)
     {
         var device = session.Configuration;
-        var tags = device.Tags.Where(t => t.Enabled).ToArray();
+        var planner = new DeviceScanPlanner(device);
+        var clock = Stopwatch.StartNew();
         var failures = 0;
         DateTimeOffset? lastSuccess = null;
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
+                var tags = planner.GetDue(clock.ElapsedMilliseconds).ToArray();
+                if (tags.Length == 0 && device.Tags.Any(t => t.Enabled))
+                {
+                    await Task.Delay(planner.DelayUntilNext(clock.ElapsedMilliseconds), cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
                 var delay = device.PollIntervalMs;
-                IReadOnlyList<TelemetrySample> samples;
+                var failed = false;
+                long operationStarted = 0;
+                IReadOnlyList<TelemetrySample> samples = [];
                 await session.Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
+                    // A channel's wait time is scheduling, not a device communication timeout.
+                    await using var channelLease = await EnterChannelAsync(device, cancellationToken).ConfigureAwait(false);
+                    operationStarted = Stopwatch.GetTimestamp();
                     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     var legacy = _registry.GetFactory(device.DriverId).Descriptor.IsLegacy;
                     // Original drivers have per-operation synchronous timeouts; budget the serial per-tag cycle separately.
@@ -277,15 +272,21 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
                         await session.Driver.ConnectAsync(timeout.Token).ConfigureAwait(false);
                     }
                     var reads = await session.Driver.ReadAsync(tags, timeout.Token).ConfigureAwait(false);
+                    timeout.Token.ThrowIfCancellationRequested();
                     var byId = reads.GroupBy(r => r.TagId).ToDictionary(g => g.Key, g => g.First());
                     var now = DateTimeOffset.UtcNow;
                     samples = tags.Select(tag => BuildSample(device, tag,
                         byId.GetValueOrDefault(tag.Id) ?? new TagReadResult(tag.Id, null, SampleQuality.Bad, "驱动未返回此点位"), now)).ToArray();
-                    var hasGoodSample = samples.Any(s => s.Quality == SampleQuality.Good);
+                    // Conversion/expression errors are point-quality errors, not a lost connection.
+                    var hasGoodSample = tags.Any(t => byId.GetValueOrDefault(t.Id)?.Quality == SampleQuality.Good);
+                    var readError = tags.Any(t => byId.GetValueOrDefault(t.Id)?.Quality != SampleQuality.Good);
+                    RecordDeviceOperation(device.Id, false, !readError, Stopwatch.GetElapsedTime(operationStarted),
+                        readError ? reads.FirstOrDefault(r => r.Quality != SampleQuality.Good)?.Error ?? "部分点位未返回有效值" : null);
                     if (hasGoodSample || tags.Length == 0)
                     {
                         if (failures > 0) _log.Write(GatewayLogLevel.Information, $"设备 [{device.Name}] 连接已恢复。");
                         failures = 0;
+                        SetDemotion(device.Id, null);
                         lastSuccess = now;
                         _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Running, lastSuccess, 0,
                             samples.Any(s => s.Quality != SampleQuality.Good) ? "部分点位采集失败，请查看点位质量。" : null);
@@ -295,7 +296,8 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
                         failures++;
                         var error = samples.FirstOrDefault()?.Error ?? "没有有效采样值";
                         _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Reconnecting, lastSuccess, failures, error);
-                        delay = Backoff(failures);
+                        failed = true;
+                        delay = ReconnectDelay(device, failures);
                         await DisposeDriverAsync(session).ConfigureAwait(false);
                         _log.Write(GatewayLogLevel.Warning, $"设备 [{device.Name}] 无有效采样，将重连：{error}");
                     }
@@ -304,20 +306,31 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
                 catch (Exception ex)
                 {
                     failures++;
+                    failed = true;
                     var error = ex is OperationCanceledException ? $"采集超过 {device.TimeoutMs} ms" : ex.Message;
+                    if (operationStarted != 0) RecordDeviceOperation(device.Id, false, false, Stopwatch.GetElapsedTime(operationStarted), error);
                     samples = tags.Select(tag => BuildSample(device, tag, new TagReadResult(tag.Id, null, SampleQuality.Bad, error), DateTimeOffset.UtcNow)).ToArray();
                     _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Reconnecting, lastSuccess, failures, error);
                     _log.Write(GatewayLogLevel.Warning, $"设备 [{device.Name}] 采集失败，第 {failures} 次重连：{error}");
                     await DisposeDriverAsync(session).ConfigureAwait(false);
-                    delay = Backoff(failures);
+                    delay = ReconnectDelay(device, failures);
                 }
-                finally { session.Gate.Release(); }
-                foreach (var sample in samples)
+                finally
                 {
-                    _latest[sample.TagId] = sample;
-                    var tag = tags.First(t => t.Id == sample.TagId);
-                    UpdateAlarm(tag, sample);
+                    try
+                    {
+                        // Publish this read while still owning the device gate. Otherwise a
+                        // newer write can mark Uncertain and then be overwritten by this old read.
+                        foreach (var sample in samples)
+                        {
+                            _latest[sample.TagId] = sample;
+                            UpdateAlarm(tags.First(t => t.Id == sample.TagId), sample);
+                        }
+                    }
+                    finally { session.Gate.Release(); }
                 }
+                planner.Complete(tags, clock.ElapsedMilliseconds);
+                if (!failed) delay = planner.DelayUntilNext(clock.ElapsedMilliseconds);
                 if (samples.Count > 0) await _historyChannel!.Writer.WriteAsync(samples, cancellationToken).ConfigureAwait(false);
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }

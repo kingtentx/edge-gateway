@@ -96,6 +96,7 @@ public sealed partial class MainForm
         {
             Name = "专用配置检查 · " + descriptor.Name, Group = "配置验证分组", DriverId = descriptor.Id, Enabled = false,
             PollIntervalMs = 1370, TimeoutMs = 4210, Host = "192.0.2.10", Port = 15021, UnitId = 7,
+            ScanMode = DeviceScanMode.TagRate, AutoDemotionEnabled = true, DemotionFailureCount = 4, DemotionIntervalMs = 42000,
             SerialPortName = "COM17", BaudRate = 19200, DataBits = 8, Parity = "Odd", StopBits = "Two",
             Tags = [firstTag, secondTag],
             Properties = descriptor.Parameters.Where(x => x.BoundProperty is null)
@@ -110,6 +111,8 @@ public sealed partial class MainForm
         result.Name = source.Name + " · 已更新";
         result.Group = "统一窗口验证分组";
         result.PollIntervalMs = 2190; result.TimeoutMs = 5430;
+        result.ScanMode = DeviceScanMode.DeviceRate; result.AutoDemotionEnabled = false;
+        result.DemotionFailureCount = 5; result.DemotionIntervalMs = 12500;
         if (descriptor.IsLegacy || descriptor.Parameters.Count > 0)
         {
             foreach (var parameter in descriptor.Parameters.Where(x => x.BoundProperty is null && !x.IsReadOnly))
@@ -146,7 +149,12 @@ public sealed partial class MainForm
             ["Name"] = device.Name,
             ["Group"] = device.Group,
             ["PollIntervalMs"] = device.PollIntervalMs.ToString(CultureInfo.InvariantCulture),
-            ["TimeoutMs"] = device.TimeoutMs.ToString(CultureInfo.InvariantCulture)
+            ["TimeoutMs"] = device.TimeoutMs.ToString(CultureInfo.InvariantCulture),
+            ["ChannelId"] = device.ChannelId?.ToString() ?? "",
+            ["ScanMode"] = device.ScanMode.ToString(),
+            ["AutoDemotionEnabled"] = device.AutoDemotionEnabled ? "true" : "false",
+            ["DemotionFailureCount"] = device.DemotionFailureCount.ToString(CultureInfo.InvariantCulture),
+            ["DemotionIntervalMs"] = device.DemotionIntervalMs.ToString(CultureInfo.InvariantCulture)
         };
         if (descriptor.IsLegacy || descriptor.Parameters.Count > 0) return values;
         if (descriptor.Id == "modbus-tcp")
@@ -184,7 +192,15 @@ public sealed partial class MainForm
             .ToDictionary(x => x.Name[20..], StringComparer.Ordinal);
         if (!values.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(inputs.Keys))
             throw new InvalidOperationException($"{descriptor.Id}: dedicated configuration has unrelated or missing native fields: {string.Join(", ", inputs.Keys)}.");
-        foreach (var field in values) AssertConfigurationSmokeInput(inputs[field.Key], field.Value, descriptor.Id);
+        foreach (var field in values)
+        {
+            if (field.Key == "ChannelId")
+            {
+                if (inputs[field.Key] is not ComboBox { SelectedIndex: >= 0 } || editor.SmokeChannelId != expected.ChannelId)
+                    throw new InvalidOperationException(descriptor.Id + ": channel selection lost its saved stable identity.");
+            }
+            else AssertConfigurationSmokeInput(inputs[field.Key], field.Value, descriptor.Id);
+        }
         if (parameterPage)
         {
             // The shared panel already verifies bound values and enum options. Here
@@ -193,7 +209,7 @@ public sealed partial class MainForm
                 AssertConfigurationSmokeInput(editor.SmokeParameterInputs.Single(x => x.Name == "DriverParameter_" + parameter.Key),
                     expected.Properties.GetValueOrDefault(parameter.Key, parameter.DefaultValue), descriptor.Id);
         }
-        else if (editor.SmokeParameterInputs.Count != values.Count - 6)
+        else if (editor.SmokeParameterInputs.Count != values.Count - 11)
             throw new InvalidOperationException(descriptor.Id + ": native connection field coverage differs from the displayed driver.");
     }
 

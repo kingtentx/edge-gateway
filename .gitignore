@@ -13,3 +13,6 @@ gateway.json
 gateway.json.bak
 *.log
 .env
+**/pki/
+*.pfx
+*.p12

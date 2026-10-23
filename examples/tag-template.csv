@@ -1,1 +1,1 @@
-﻿Name,Address,DataType,Area,ByteOrder,ReadMethod,WriteMethod,Endian,Enabled,UploadEnabled,Writable,Scale,Offset,Unit,LowLimit,HighLimit,Description
+﻿Name,Address,DataType,Area,ByteOrder,ReadMethod,WriteMethod,Endian,Enabled,UploadEnabled,Writable,Scale,Offset,Unit,LowLimit,HighLimit,Description,Expression,ScanIntervalMs,Deadband

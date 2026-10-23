@@ -6,7 +6,7 @@ using Microsoft.Data.Sqlite;
 namespace EdgeGateway.DataAccess;
 
 /// <summary>Serialized SQLite access, WAL, UTC timestamps, durable at-least-once outbox. Database work runs off the UI thread.</summary>
-public sealed class SqliteGatewayStore(string path) : IGatewayStore
+public sealed partial class SqliteGatewayStore(string path) : IGatewayStore, IRpcCommandJournal
 {
     private readonly string _path = Path.GetFullPath(path);
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -31,7 +31,7 @@ public sealed class SqliteGatewayStore(string path) : IGatewayStore
                     using var command = connection.CreateCommand();
                     command.CommandText = "PRAGMA user_version";
                     var schema = Convert.ToInt32(command.ExecuteScalar());
-                    if (schema > 1) throw new InvalidDataException($"数据库版本 {schema} 高于程序支持的版本 1。");
+                    if (schema > 2) throw new InvalidDataException($"数据库版本 {schema} 高于程序支持的版本 2。");
                     command.CommandText = """
                         PRAGMA journal_mode=WAL;
                         PRAGMA synchronous=FULL;
@@ -49,7 +49,13 @@ public sealed class SqliteGatewayStore(string path) : IGatewayStore
                             topic TEXT NOT NULL,
                             payload TEXT NOT NULL,
                             created_ms INTEGER NOT NULL);
-                        PRAGMA user_version=1;
+                        CREATE TABLE IF NOT EXISTS rpc_commands (
+                            command_key TEXT PRIMARY KEY NOT NULL,
+                            fingerprint TEXT NOT NULL,
+                            response_topic TEXT NULL,
+                            response_payload TEXT NULL,
+                            created_ms INTEGER NOT NULL);
+                        PRAGMA user_version=2;
                         """;
                     command.ExecuteNonQuery();
                     _connection = connection;

@@ -105,6 +105,47 @@ public sealed class ConfigurationStoreTests : IDisposable
         Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
     }
 
+    [Fact]
+    public async Task ExistingSchemaTwoFileKeepsAcquisitionAndSecurityDefaultsWhenNewCapabilitiesAreAbsent()
+    {
+        Directory.CreateDirectory(_directory);
+        const string original = """
+            {"schemaVersion":2,"gatewayId":"existing-gateway","devices":[
+              {"id":"07bc5395-2c6f-4945-b815-57e72bf6ae21","name":"旧设备","driverId":"simulator","tags":[
+                {"id":"d38ace68-4e8c-4786-bdc4-b1ba3959cdb2","name":"原点位","address":"constant:42","dataType":"Float64"}
+              ]}
+            ]}
+            """;
+        await File.WriteAllTextAsync(FilePath, original);
+        var store = new JsonConfigurationStore(FilePath);
+        var configuration = await store.LoadAsync();
+        var device = Assert.Single(configuration.Devices);
+        var tag = Assert.Single(device.Tags);
+        Assert.Equal(2, configuration.SchemaVersion);
+        Assert.Empty(configuration.Channels);
+        Assert.Null(device.ChannelId);
+        Assert.Equal(DeviceScanMode.DeviceRate, device.ScanMode);
+        Assert.False(device.AutoDemotionEnabled);
+        Assert.Equal("", tag.Expression);
+        Assert.Equal(0, tag.ScanIntervalMs);
+        Assert.Equal(0d, tag.Deadband);
+        Assert.True(tag.UploadEnabled);
+        Assert.Equal(TelemetryReportMode.Periodic, configuration.ReportMode);
+        Assert.Equal(MqttPlatform.Generic, configuration.Mqtt.Platform);
+        Assert.False(configuration.Mqtt.RpcEnabled);
+        Assert.False(configuration.Mqtt.AllowRemoteWrite);
+        Assert.False(configuration.OpcUa.Enabled);
+        Assert.False(configuration.OpcUa.AllowRemoteWrite);
+        Assert.False(configuration.OpcUa.EnableUserAuthentication);
+        Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
+        await store.SaveAsync(configuration);
+        Assert.Equal(original, await File.ReadAllTextAsync(FilePath + ".bak"));
+        var reloaded = await store.LoadAsync();
+        Assert.Equal(device.Id, reloaded.Devices[0].Id);
+        Assert.Equal(tag.Id, reloaded.Devices[0].Tags[0].Id);
+        Assert.False(reloaded.OpcUa.Enabled);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);

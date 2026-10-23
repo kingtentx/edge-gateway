@@ -32,13 +32,7 @@ jobs:
         run: dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-build --logger "trx;LogFileName=tests.trx" --results-directory artifacts/test-results
       - name: Render WinForms and verify 20 equivalent work areas
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory artifacts -Force | Out-Null
-          $screenshot = Join-Path $pwd 'artifacts/ui-smoke.png'
-          $process = Start-Process -FilePath './src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe' -ArgumentList @('--smoke-test', '--layout-matrix', '--screenshot', $screenshot) -PassThru -RedirectStandardOutput 'artifacts/ui-smoke.stdout.log' -RedirectStandardError 'artifacts/ui-smoke.stderr.log'
-          if (-not $process.WaitForExit(600000)) { $process.Kill(); throw 'WinForms smoke test timed out.' }
-          if ($process.ExitCode -ne 0) { Get-Content 'artifacts/ui-smoke.stderr.log'; throw "WinForms smoke test failed: $($process.ExitCode)" }
-          if (-not (Test-Path $screenshot)) { throw 'UI screenshot was not produced.' }
+        run: ./scripts/smoke-test-winforms.ps1
       - name: Publish Windows x64 package
         if: matrix.os == 'windows-2022'
         shell: pwsh

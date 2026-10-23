@@ -220,7 +220,7 @@ public sealed class TelemetryPipelineTests
         var failed = harness.Runtime.GetTelemetryStatus();
         Assert.True(failed.AcknowledgedMessages >= 1);
         Assert.NotNull(failed.LastBrokerAcknowledgedAt);
-        Assert.Contains("Broker 已确认", failed.SendError);
+        Assert.Contains("发送已确认", failed.SendError);
         Assert.Contains("本地队列确认失败", failed.PersistenceError);
         Assert.True(harness.Store.Outbox.ContainsKey(id));
 

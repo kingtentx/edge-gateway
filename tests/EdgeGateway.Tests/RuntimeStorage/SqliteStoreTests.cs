@@ -1,5 +1,6 @@
 using EdgeGateway.DataAccess;
 using EdgeGateway.Model;
+using Microsoft.Data.Sqlite;
 using System.Text.Json;
 
 namespace EdgeGateway.Tests.RuntimeStorage;
@@ -45,6 +46,62 @@ public sealed class SqliteStoreTests : IDisposable
         await store.AcknowledgeAsync(row.Id);
         Assert.True(await store.EnqueueAsync("topic", "third", 1));
         Assert.Equal("third", Assert.Single(await store.ReadOutboxAsync(10)).Payload);
+    }
+
+    [Fact]
+    public async Task VersionOneDatabaseAddsDurableRpcJournalWithoutChangingHistoryOrPendingMessages()
+    {
+        Directory.CreateDirectory(_directory);
+        var connectionString = new SqliteConnectionStringBuilder { DataSource = DatabasePath, Pooling = false }.ToString();
+        var sample = MakeSample(DateTimeOffset.UtcNow, 42) with { RawValue = ulong.MaxValue, Value = ulong.MaxValue };
+        const string payload = "{\"messageId\":\"v1-pending\",\"value\":18446744073709551615}";
+        await using (var legacy = new SqliteConnection(connectionString))
+        {
+            await legacy.OpenAsync();
+            await using var command = legacy.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE samples (id INTEGER PRIMARY KEY AUTOINCREMENT, device_id TEXT NOT NULL,
+                    tag_id TEXT NOT NULL, timestamp_ms INTEGER NOT NULL, sample_json TEXT NOT NULL);
+                CREATE TABLE outbox (id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT NOT NULL,
+                    payload TEXT NOT NULL, created_ms INTEGER NOT NULL);
+                INSERT INTO samples VALUES(7,$device,$tag,$time,$sample);
+                INSERT INTO outbox VALUES(41,'legacy/telemetry',$payload,$time);
+                PRAGMA user_version=1;
+                """;
+            command.Parameters.AddWithValue("$device", sample.DeviceId.ToString("D"));
+            command.Parameters.AddWithValue("$tag", sample.TagId.ToString("D"));
+            command.Parameters.AddWithValue("$time", sample.Timestamp.ToUnixTimeMilliseconds());
+            command.Parameters.AddWithValue("$sample", JsonSerializer.Serialize(sample));
+            command.Parameters.AddWithValue("$payload", payload);
+            await command.ExecuteNonQueryAsync();
+        }
+        await using (var migrated = new SqliteGatewayStore(DatabasePath))
+        {
+            await migrated.InitializeAsync();
+            var history = Assert.Single(await migrated.QueryHistoryAsync(new HistoryQuery(sample.DeviceId, sample.TagId,
+                sample.Timestamp.AddSeconds(-1), sample.Timestamp.AddSeconds(1))));
+            Assert.Equal(ulong.MaxValue, Assert.IsType<ulong>(history.Value));
+            var queued = Assert.Single(await migrated.ReadOutboxAsync(10));
+            Assert.Equal(41L, queued.Id);
+            Assert.Equal("legacy/telemetry", queued.Topic);
+            Assert.Equal(payload, queued.Payload);
+            var claimed = await migrated.ClaimRpcCommandAsync("migration-command", "fingerprint", 10);
+            Assert.True(claimed.Created);
+            await migrated.CompleteRpcCommandAsync("migration-command", "reply/topic", "{\"state\":\"Matched\"}");
+        }
+        await using (var reopened = new SqliteGatewayStore(DatabasePath))
+        {
+            await reopened.InitializeAsync();
+            var replay = await reopened.ClaimRpcCommandAsync("migration-command", "fingerprint", 10);
+            Assert.False(replay.Created);
+            Assert.Equal("{\"state\":\"Matched\"}", replay.Entry.ResponsePayload);
+            Assert.Equal(payload, Assert.Single(await reopened.ReadOutboxAsync(10)).Payload);
+        }
+        await using var check = new SqliteConnection(connectionString);
+        await check.OpenAsync();
+        await using var version = check.CreateCommand();
+        version.CommandText = "PRAGMA user_version";
+        Assert.Equal(2L, (long)(await version.ExecuteScalarAsync())!);
     }
 
     [Fact]

@@ -37,6 +37,9 @@ internal sealed class TagImportDialog : EditorDialog
         UiTheme.AddColumn(_preview, "Upload", "上传", 65);
         UiTheme.AddColumn(_preview, "Method", "读取方法", 160, 160);
         UiTheme.AddColumn(_preview, "Scaling", "换算", 140, 140);
+        UiTheme.AddColumn(_preview, "Expression", "计算表达式", 160, 160);
+        UiTheme.AddColumn(_preview, "ScanInterval", "扫描周期", 100, 100);
+        UiTheme.AddColumn(_preview, "Deadband", "上报死区", 100, 100);
         _preview.Name = "TagImportPreview";
         _preview.Height = 220;
         _preview.Dock = DockStyle.Top;
@@ -73,7 +76,9 @@ internal sealed class TagImportDialog : EditorDialog
         {
             Change = row.Change == 0 ? "新增" : row.Change == 1 ? "更新" : "保留",
             row.Tag.Name, row.Tag.Address, DataType = row.Tag.DataType.ToString(), Enabled = row.Tag.Enabled ? "是" : "否",
-            Upload = row.Tag.UploadEnabled ? "是" : "否", Method = row.Tag.ReadMethod, Scaling = $"× {row.Tag.Scale:G6} + {row.Tag.Offset:G6}"
+            Upload = row.Tag.UploadEnabled ? "是" : "否", Method = row.Tag.ReadMethod, Scaling = $"× {row.Tag.Scale:G6} + {row.Tag.Offset:G6}",
+            row.Tag.Expression, ScanInterval = row.Tag.ScanIntervalMs == 0 ? "继承设备" : $"{row.Tag.ScanIntervalMs} ms",
+            Deadband = row.Tag.Deadband.ToString("G", System.Globalization.CultureInfo.InvariantCulture)
         }).ToList();
     }
 

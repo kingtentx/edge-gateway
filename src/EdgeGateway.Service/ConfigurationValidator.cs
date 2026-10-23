@@ -11,11 +11,16 @@ public static class ConfigurationValidator
     {
         ArgumentNullException.ThrowIfNull(configuration);
         var errors = new List<string>();
+        errors.AddRange(OpcUaConfigurationValidator.Validate(configuration.OpcUa));
         if (configuration.SchemaVersion != 2) errors.Add("仅支持配置格式版本 2；请通过配置存储加载并迁移版本 1。");
         if (string.IsNullOrWhiteSpace(configuration.GatewayId) || !Regex.IsMatch(configuration.GatewayId, "^[A-Za-z0-9._-]{1,100}$"))
             errors.Add("网关标识须为 1–100 位字母、数字、点、下划线或短横线。");
         if (string.IsNullOrWhiteSpace(configuration.Name)) errors.Add("网关名称不能为空。");
         if (configuration.PublishIntervalMs is < 100 or > 3_600_000) errors.Add("上报周期必须为 100–3600000 ms。");
+        if (!Enum.IsDefined(configuration.ReportMode)) errors.Add("不支持的上报模式。");
+        if (configuration.HeartbeatIntervalMs is < 100 or > 86_400_000) errors.Add("心跳周期必须为 100–86400000 ms。");
+        if (configuration.ReportMode == TelemetryReportMode.OnChangeWithHeartbeat && configuration.HeartbeatIntervalMs < configuration.PublishIntervalMs)
+            errors.Add("心跳周期不能小于上报检查周期。");
         if (configuration.HistoryRetentionDays is < 1 or > 3650) errors.Add("历史保留时间必须为 1–3650 天。");
         if (configuration.MaxHistoryRows is < 100 or > 10_000_000) errors.Add("历史最大记录数必须为 100–10000000。");
         if (configuration.MaxOutboxMessages is < 1 or > 1_000_000) errors.Add("补传队列容量必须为 1–1000000。");
@@ -32,6 +37,21 @@ public static class ConfigurationValidator
             if (!string.IsNullOrEmpty(mqtt.PasswordEnvironmentVariable) && !Regex.IsMatch(mqtt.PasswordEnvironmentVariable, "^[A-Za-z_][A-Za-z0-9_]*$"))
                 errors.Add("MQTT 密码只允许配置合法的环境变量名称。");
         }
+        var channels = new HashSet<Guid>();
+        var channelNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (configuration.Channels is null) errors.Add("通道列表不能为 null。");
+        else
+        {
+            if (configuration.Channels.Count > 500) errors.Add("最多配置 500 个通道。");
+            foreach (var channel in configuration.Channels)
+            {
+                if (channel is null) { errors.Add("通道列表包含空对象。"); continue; }
+                if (channel.Id == Guid.Empty || !channels.Add(channel.Id)) errors.Add("通道标识为空或重复。");
+                if (string.IsNullOrWhiteSpace(channel.Name) || channel.Name.Length > 100 || !channelNames.Add(channel.Name.Trim()))
+                    errors.Add("通道名称不能为空、超过 100 字符或重复。");
+                if (channel.InterRequestDelayMs is < 0 or > 60_000) errors.Add($"通道 [{channel.Name}] 的请求间隔须为 0–60000 ms。");
+            }
+        }
         if (configuration.Devices is null) { errors.Add("设备列表不能为 null。"); return errors; }
         if (configuration.Devices.Count > 500) errors.Add("当前版本最多配置 500 台设备。");
         var deviceIds = new HashSet<Guid>();
@@ -43,6 +63,11 @@ public static class ConfigurationValidator
             var label = $"设备 [{device.Name}]";
             if (device.Id == Guid.Empty || !deviceIds.Add(device.Id)) errors.Add($"{label} 的标识为空或重复。");
             if (string.IsNullOrWhiteSpace(device.Name)) errors.Add("设备名称不能为空。");
+            if (device.Group is null) errors.Add($"{label} 的分组不能为 null。");
+            if (device.ChannelId is Guid channelId && !channels.Contains(channelId)) errors.Add($"{label} 引用了不存在的通信通道。");
+            if (!Enum.IsDefined(device.ScanMode)) errors.Add($"{label} 的扫描模式无效。");
+            if (device.DemotionFailureCount is < 1 or > 30) errors.Add($"{label} 的降速失败次数须为 1–30。");
+            if (device.DemotionIntervalMs is < 100 or > 3_600_000) errors.Add($"{label} 的降速重试间隔须为 100–3600000 ms。");
             if (device.PollIntervalMs is < 100 or > 3_600_000) errors.Add($"{label} 的采集周期必须为 100–3600000 ms。");
             if (device.TimeoutMs is < 100 or > 120000) errors.Add($"{label} 的超时必须为 100–120000 ms。");
             IDriverFactory? factory = null;
@@ -67,6 +92,16 @@ public static class ConfigurationValidator
                 if (string.IsNullOrWhiteSpace(tag.Name) || !names.Add(tag.Name)) errors.Add($"{tagLabel} 的名称为空或设备内重复。");
                 if (!Enum.IsDefined(tag.DataType) || !Enum.IsDefined(tag.Area) || !Enum.IsDefined(tag.ByteOrder) || !Enum.IsDefined(tag.Endian)) errors.Add($"{tagLabel} 包含不支持的类型、寄存区或字节序。");
                 if (!double.IsFinite(tag.Scale) || !double.IsFinite(tag.Offset)) errors.Add($"{tagLabel} 的倍率与偏移必须为有限数值。");
+                if (tag.ScanIntervalMs != 0 && tag.ScanIntervalMs is < 100 or > 3_600_000)
+                    errors.Add($"{tagLabel} 的扫描周期须为 0（继承设备）或 100–3600000 ms。");
+                if (!double.IsFinite(tag.Deadband) || tag.Deadband < 0) errors.Add($"{tagLabel} 的上报死区须为非负有限数值。");
+                if (tag.Deadband != 0 && !TagDataTypes.IsNumeric(tag.DataType)) errors.Add($"{tagLabel} 为非数值类型，不能配置数值死区。");
+                if (!string.IsNullOrWhiteSpace(tag.Expression))
+                {
+                    if (!TagDataTypes.IsNumeric(tag.DataType) || tag.ReadMethod == "ReadMultiple") errors.Add($"{tagLabel} 的表达式仅支持单个数值。");
+                    if (tag.Writable) errors.Add($"{tagLabel} 配置表达式后只能读取；请使用独立原始点位执行写入。");
+                    if (NumericExpression.Validate(tag.Expression) is string expressionError) errors.Add($"{tagLabel} 的表达式无效：{expressionError}");
+                }
                 if (tag.Writable && tag.Scale == 0) errors.Add($"{tagLabel} 允许写入时倍率不能为 0。");
                 if (tag.DataType == TagDataType.Boolean && (tag.Scale != 1 || tag.Offset != 0)) errors.Add($"{tagLabel} 为布尔类型，倍率必须为 1、偏移必须为 0。");
                 if (!TagDataTypes.IsNumeric(tag.DataType) && (tag.Scale != 1 || tag.Offset != 0 || tag.HighLimit.HasValue || tag.LowLimit.HasValue))
@@ -81,6 +116,7 @@ public static class ConfigurationValidator
                 catch (Exception ex) { errors.Add($"{label} 驱动验证失败：{ex.Message}"); }
             }
         }
+        if (mqtt is not null) errors.AddRange(PlatformMqttAdapter.ValidateGateway(configuration));
         return errors;
     }
 

@@ -8,6 +8,16 @@ internal static class SampleValueConversion
 {
     public static object ConvertReadValue(TagConfiguration tag, object raw)
     {
+        var value = ConvertEngineeringValue(tag, raw);
+        if (string.IsNullOrWhiteSpace(tag.Expression)) return value;
+        if (!TagDataTypes.IsNumeric(tag.DataType) || value is bool or JsonElement)
+            throw new InvalidDataException("计算表达式只适用于单个数值点位，不能用于字符串、布尔、时间或结构化结果。");
+        var input = NumericExpression.ParseEngineeringInput(Convert.ToString(value, CultureInfo.InvariantCulture));
+        return NumericExpression.Evaluate(tag.Expression, input);
+    }
+
+    private static object ConvertEngineeringValue(TagConfiguration tag, object raw)
+    {
         if (raw is double d && !double.IsFinite(d) || raw is float f && !float.IsFinite(f))
             throw new InvalidDataException("点位包含 NaN 或无穷大数值。");
         // A batch method's configured type selects each wire value, while its return value is an array/object.

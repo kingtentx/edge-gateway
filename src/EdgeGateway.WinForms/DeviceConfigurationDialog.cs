@@ -17,9 +17,9 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     private readonly List<string> _connectionKeys = [];
     private readonly Dictionary<string, DeviceConfiguration> _driverDrafts = new(StringComparer.OrdinalIgnoreCase);
     private readonly TextBox _name, _group;
-    private readonly ComboBox _driver;
-    private readonly CheckBox _enabled;
-    private readonly NumericUpDown _cycle, _timeout;
+    private readonly ComboBox _driver, _channel, _scanMode;
+    private readonly CheckBox _enabled, _autoDemotion;
+    private readonly NumericUpDown _cycle, _timeout, _demotionCount, _demotionInterval;
     private readonly Label _driverDetails;
     private DriverDescriptor? _descriptor;
     private DriverParameterPanel? _parameters;
@@ -28,8 +28,10 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     /// <summary>Available only after a successful commit; never aliases the caller's device or tags.</summary>
     public DeviceConfiguration? Value { get; private set; }
     internal IReadOnlyCollection<Control> SmokeParameterInputs => _parameters?.Inputs ?? _connectionInputs;
+    internal Guid? SmokeChannelId => (_channel.SelectedItem as ChannelOption)?.Id;
 
-    public DeviceConfigurationDialog(DeviceConfiguration device, IDriverRegistry drivers, bool readOnly = false, bool isNew = false)
+    public DeviceConfigurationDialog(DeviceConfiguration device, IDriverRegistry drivers, bool readOnly = false, bool isNew = false,
+        IReadOnlyList<ChannelConfiguration>? channels = null)
         : base(readOnly ? "查看设备配置" : isNew ? "添加采集设备" : "设备配置", readOnly
             ? "查看设备的启用状态、名称、分组、驱动与连接参数。当前窗口为只读视图。"
             : "配置设备的启用状态、名称、分组、驱动与连接参数。更换协议不会自动转换已有点位；点击“确定”校验并自动保存，取消不修改原配置。")
@@ -52,6 +54,13 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         });
         _name = Register("Name", TextInput(_original.Name));
         _group = Register("Group", TextInput(_original.Group));
+        _channel = Register("ChannelId", new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList });
+        EditorLayout.ConfigureDropDown(_channel, 520, 320);
+        _channel.Items.Add(new ChannelOption(null, "独立通信"));
+        _channel.Items.AddRange((channels ?? []).Select(c => new ChannelOption(c.Id, c.Name)).Cast<object>().ToArray());
+        if (_original.ChannelId.HasValue && !_channel.Items.Cast<ChannelOption>().Any(c => c.Id == _original.ChannelId))
+            _channel.Items.Add(new ChannelOption(_original.ChannelId, "现有通道 · " + _original.ChannelId));
+        _channel.SelectedItem = _channel.Items.Cast<ChannelOption>().First(c => c.Id == _original.ChannelId);
         _driver = Register("DriverId", new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FormattingEnabled = true });
         EditorLayout.ConfigureDropDown(_driver, 620, 440);
         _driver.Format += (_, e) => { if (e.ListItem is DriverDescriptor descriptor) e.Value = descriptor.Name + "  ·  " + descriptor.Id; };
@@ -65,6 +74,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         Field(acquisition, "启用状态", _enabled);
         Field(acquisition, "设备名称", _name);
         Field(acquisition, "设备分组", _group);
+        Field(acquisition, "通信通道", _channel);
         Field(acquisition, "采集驱动", _driver);
         Field(acquisition, "采集周期 (ms)", _cycle);
         Field(acquisition, "通信超时 (ms)", _timeout);
@@ -73,6 +83,18 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         var detailsRow = acquisition.RowCount++;
         acquisition.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         acquisition.Controls.Add(_driverDetails, 0, detailsRow); acquisition.SetColumnSpan(_driverDetails, 2);
+        var scanning = AddTab("扫描与恢复");
+        _scanMode = Register("ScanMode", SelectInput(Enum.GetValues<DeviceScanMode>().Cast<object>().ToArray(), _original.ScanMode));
+        _scanMode.Format += (_, e) => e.Value = e.ListItem is DeviceScanMode.TagRate ? "按点位周期扫描" : "按设备周期扫描";
+        _scanMode.FormattingEnabled = true;
+        _autoDemotion = Register("AutoDemotionEnabled", new CheckBox { Text = "连续失败后降低重试频率", Checked = _original.AutoDemotionEnabled, AutoSize = true });
+        _demotionCount = Register("DemotionFailureCount", Number(_original.DemotionFailureCount, 1, 30));
+        _demotionInterval = Register("DemotionIntervalMs", Number(_original.DemotionIntervalMs, 100, 3_600_000));
+        Field(scanning, "扫描模式", _scanMode);
+        Field(scanning, "故障降速", _autoDemotion);
+        Field(scanning, "连续失败次数", _demotionCount);
+        Field(scanning, "降速重试间隔 (ms)", _demotionInterval);
+        Hint(scanning, "按点位周期扫描时，点位周期 0 继承设备周期。失败设备释放通道后退避；达到阈值按指定间隔重试，读取恢复后自动恢复正常扫描。诊断和写入按请求执行。");
         _driver.SelectedIndexChanged += (_, _) => UpdateProtocolFields();
         _cycle.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
         _timeout.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
@@ -211,6 +233,11 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         candidate.Enabled = _enabled.Checked;
         candidate.PollIntervalMs = IntegerValue(_cycle);
         candidate.TimeoutMs = IntegerValue(_timeout);
+        candidate.ChannelId = (_channel.SelectedItem as ChannelOption)?.Id;
+        candidate.ScanMode = (DeviceScanMode)_scanMode.SelectedItem!;
+        candidate.AutoDemotionEnabled = _autoDemotion.Checked;
+        candidate.DemotionFailureCount = IntegerValue(_demotionCount);
+        candidate.DemotionIntervalMs = IntegerValue(_demotionInterval);
         if (_isNew) candidate.Tags = [TagEditor.CreateDefaultTag(descriptor, "采集点位")];
         var errors = new List<string>();
         if (candidate.PollIntervalMs is < 100 or > 3_600_000) errors.Add("采集周期必须为 100–3600000 ms。");
@@ -264,8 +291,16 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         {
             case NumericUpDown number: number.Value = decimal.Parse(value, CultureInfo.InvariantCulture); break;
             case ComboBox choice:
-                if (!choice.Items.Contains(value)) throw new ArgumentException("不存在枚举选项：" + value, nameof(value));
-                choice.SelectedItem = value; break;
+                var option = choice.Items.Cast<object>().SingleOrDefault(item => item switch
+                {
+                    ChannelOption channel => value.Length == 0 ? channel.Id is null
+                        : Guid.TryParse(value, out var id) && channel.Id == id,
+                    Enum enumeration => string.Equals(enumeration.ToString(), value, StringComparison.Ordinal),
+                    string text => string.Equals(text, value, StringComparison.Ordinal),
+                    _ => false
+                });
+                if (option is null) throw new ArgumentException("不存在枚举或通道选项：" + value, nameof(value));
+                choice.SelectedItem = option; break;
             case CheckBox toggle: toggle.Checked = bool.Parse(value); break;
             default: input.Text = value; break;
         }
@@ -321,6 +356,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     }
 
     private static TabPage TabOf(TableLayoutPanel table) => (TabPage)table.Parent!.Parent!;
+    private sealed record ChannelOption(Guid? Id, string Name) { public override string ToString() => Name; }
     private static DeviceConfiguration Clone(DeviceConfiguration value) =>
         JsonSerializer.Deserialize<DeviceConfiguration>(JsonSerializer.Serialize(value, JsonConfigurationStore.SerializerOptions),
             JsonConfigurationStore.SerializerOptions)!;

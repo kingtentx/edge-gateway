@@ -166,8 +166,19 @@ public sealed partial class MainForm
         using var dialog = new WriteValueDialog(sample.DeviceName, sample.TagName, sample.Unit, current, tag.DataType);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         if (MessageBox.Show(this, $"确认向设备“{sample.DeviceName}”的点位“{sample.TagName}”写入工程值 {dialog.Value} {sample.Unit}？\n\n此操作会发送实际设备写入命令。", "确认设备写入", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK) return;
-        await _runtime.WriteAsync(sample.DeviceId, sample.TagId, dialog.Value);
-        SetFooter("写入指令已完成，下一轮采集将更新显示值。");
+        var result = await _runtime.WriteVerifiedAsync(sample.DeviceId, sample.TagId, dialog.Value, dialog.VerificationOptions);
+        var state = result.State switch
+        {
+            WriteCommandState.Matched => "写入后读回一致", WriteCommandState.Submitted => "已提交写入（未执行读回）",
+            WriteCommandState.Mismatched => "已提交，但读回值不一致", WriteCommandState.TimedOut => "操作超时，写入状态见详情",
+            WriteCommandState.Cancelled => "操作已取消，写入状态见详情", _ => "写入或核对失败"
+        };
+        var details = $"结果：{state}\n命令编号：{result.CommandId}\n已调用设备写入：{result.WriteAttempted}\n驱动确认提交：{result.Submitted}\n期望工程值：{ValueText(result.ExpectedEngineeringValue)}\n读回次数：{result.ReadBackAttempts}\n耗时：{result.Elapsed.TotalMilliseconds:F1} ms";
+        if (result.ReadBack is { } read) details += $"\n读回工程值：{ValueText(read.Value)}\n质量：{read.Quality}\n采样时间：{read.Timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss.fff}";
+        if (!string.IsNullOrEmpty(result.Error)) details += "\n说明：" + result.Error;
+        SetFooter(state + " · " + sample.TagName);
+        MessageBox.Show(this, details, "写入与读回结果", MessageBoxButtons.OK,
+            result.State is WriteCommandState.Matched or WriteCommandState.Submitted ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
     }
 
     private async Task QueryHistoryAsync()

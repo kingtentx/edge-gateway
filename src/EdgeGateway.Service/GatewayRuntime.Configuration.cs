@@ -34,6 +34,13 @@ public sealed partial class GatewayRuntime
             if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors));
             if (_running && !ConfigurationValuesEqual(_configuration, next, nameof(GatewayConfiguration.Devices)))
                 throw new InvalidOperationException("设备运行期间可以修改设备与点位；修改网关或平台全局设置，请先停止全部设备。");
+            if (_configuration.Mqtt.Platform != next.Mqtt.Platform)
+            {
+                await _store.InitializeAsync(cancellationToken).ConfigureAwait(false);
+                var statistics = await _store.GetStatisticsAsync(cancellationToken).ConfigureAwait(false);
+                if (statistics.OutboxCount > 0)
+                    throw new InvalidOperationException($"仍有 {statistics.OutboxCount} 条原平台报文待补传。请先使用原平台设置补传完成，再切换接入平台。");
+            }
 
             var previousDevices = _configuration.Devices.ToDictionary(device => device.Id);
             var nextDevices = next.Devices.ToDictionary(device => device.Id);
@@ -70,11 +77,18 @@ public sealed partial class GatewayRuntime
             }
 
             _configuration = next;
+            Interlocked.Increment(ref _configurationRevision);
+            if (!_running) _channels.Clear();
             foreach (var sample in _latest.Where(pair => affected.Contains(pair.Value.DeviceId)))
                 _latest.TryRemove(sample.Key, out _);
             foreach (var tag in previousDevices.Values.Where(device => affected.Contains(device.Id)).SelectMany(device => device.Tags))
                 _alarmStates.TryRemove(tag.Id, out _);
-            foreach (var deviceId in removed) _statuses.TryRemove(deviceId, out _);
+            foreach (var deviceId in removed)
+            {
+                _statuses.TryRemove(deviceId, out _);
+                _deviceGenerations.TryRemove(deviceId, out _);
+                _communicationStatistics.TryRemove(deviceId, out _);
+            }
             foreach (var deviceId in added.Concat(updated))
             {
                 var device = nextDevices[deviceId];

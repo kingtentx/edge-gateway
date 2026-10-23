@@ -29,7 +29,7 @@
 | SimpleTCP.Core | 1.0.4 | 包指定上游 SimpleTCP 为 Apache-2.0 | [SimpleTCP-LICENSE.txt](LICENSES/SimpleTCP-LICENSE.txt) |
 | opennetcf-mtconnect-client | 1.0.17160 | MIT；OpenNETCF Consulting | [OpenNETCF.MTConnect-LICENSE.txt](LICENSES/OpenNETCF.MTConnect-LICENSE.txt) |
 | opennetcf-extensions-standard / opennetcf-restconnector | 1.0.17160 | MIT；Chris Tacke | [OpenNETCF.Extensions-RestConnector-LICENSE.txt](LICENSES/OpenNETCF.Extensions-RestConnector-LICENSE.txt) |
-| OPCFoundation.NetStandard.Opc.Ua.Client / Configuration / Core / Security.Certificates / Types | 1.5.378.182 | OPC Foundation MIT License 1.00 | [OPCFoundation-UA-LICENSE.txt](LICENSES/OPCFoundation-UA-LICENSE.txt) |
+| OPCFoundation.NetStandard.Opc.Ua.Client / Server / Configuration / Core / Security.Certificates / Types | 1.5.378.182 | OPC Foundation MIT License 1.00 | [OPCFoundation-UA-LICENSE.txt](LICENSES/OPCFoundation-UA-LICENSE.txt) |
 | BitFaster.Caching | 2.6.0 | MIT；Alex Peck | [BitFaster.Caching-LICENSE.txt](LICENSES/BitFaster.Caching-LICENSE.txt) |
 | Microsoft.Extensions.*、System.Text.Json 等 UA 传递依赖 | 10.0.8 | MIT；Microsoft / .NET Foundation | [Microsoft.NET-LICENSE.txt](LICENSES/Microsoft.NET-LICENSE.txt)、[第三方声明](LICENSES/Microsoft.NET-THIRD-PARTY-NOTICES-10.0.8.txt) |
 | Microsoft.Extensions.Logging.Abstractions | 8.0.3 直接引用，最终由 UA 统一解析至 10.0.8 | MIT | [Microsoft.Extensions-8-LICENSE.txt](LICENSES/Microsoft.Extensions-8-LICENSE.txt) 及上述 .NET 许可 |

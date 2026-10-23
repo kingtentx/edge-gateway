@@ -26,7 +26,10 @@ public sealed record TagCsvImportResult(
 /// <remarks>
 /// The UTF-8 CSV schema contains every TagConfiguration property except Id. Append creates new identities;
 /// UpdateByName matches names with OrdinalIgnoreCase, preserves matched identities and appends new names.
-/// All columns are required, their order is arbitrary, and unknown/duplicate columns are rejected.
+/// The original 17 columns remain required. Expression, ScanIntervalMs and Deadband are optional
+/// extensions; omitted extensions retain matched values in UpdateByName, or defaults for new tags.
+/// Present empty Expression clears it; present numeric extensions require explicit valid numbers.
+/// Column order is arbitrary, and unknown/duplicate columns are rejected.
 /// Export includes a BOM and uses CRLF records; import also accepts UTF-8 without a BOM and LF/CR records.
 /// Enum cells use names, booleans use true/false (import also accepts 1/0), numbers use invariant culture,
 /// and an empty limit means null. Empty physical lines are ignored. LineNumber is a record's physical start.
@@ -54,14 +57,17 @@ public static class TagCsvExchange
         nameof(TagConfiguration.HighLimit), nameof(TagConfiguration.Description)
     ];
 
-    public static IReadOnlyList<string> Columns { get; } = Array.AsReadOnly(RequiredColumns);
+    private static readonly string[] ExtensionColumns =
+    [nameof(TagConfiguration.Expression), nameof(TagConfiguration.ScanIntervalMs), nameof(TagConfiguration.Deadband)];
+
+    public static IReadOnlyList<string> Columns { get; } = Array.AsReadOnly<string>([.. RequiredColumns, .. ExtensionColumns]);
 
     public static byte[] Export(IEnumerable<TagConfiguration> tags)
     {
         ArgumentNullException.ThrowIfNull(tags);
         var output = new StringBuilder();
         var byteCount = 3; // UTF-8 BOM is part of the file-size limit.
-        AppendRecord(RequiredColumns);
+        AppendRecord(Columns);
         var count = 0;
         foreach (var tag in tags)
         {
@@ -72,7 +78,8 @@ public static class TagCsvExchange
                 EnumText(tag.ByteOrder), EscapeText(tag.ReadMethod), EscapeText(tag.WriteMethod), EnumText(tag.Endian),
                 BoolText(tag.Enabled), BoolText(tag.UploadEnabled), BoolText(tag.Writable), NumberText(tag.Scale),
                 NumberText(tag.Offset), EscapeText(tag.Unit), NullableNumberText(tag.LowLimit),
-                NullableNumberText(tag.HighLimit), EscapeText(tag.Description)
+                NullableNumberText(tag.HighLimit), EscapeText(tag.Description), EscapeText(tag.Expression),
+                tag.ScanIntervalMs.ToString(CultureInfo.InvariantCulture), NumberText(tag.Deadband)
             ]);
         }
         return [0xEF, 0xBB, 0xBF, .. StrictUtf8.GetBytes(output.ToString())];
@@ -127,7 +134,7 @@ public static class TagCsvExchange
         {
             var name = header.Cells[index].Trim();
             if (!columns.TryAdd(name, index)) errors.Add(new(header.LineNumber, name, "表头重复。"));
-            if (!RequiredColumns.Contains(name, StringComparer.OrdinalIgnoreCase))
+            if (!Columns.Contains(name, StringComparer.OrdinalIgnoreCase))
                 errors.Add(new(header.LineNumber, string.IsNullOrEmpty(name) ? $"列 {index + 1}" : name,
                     "未知列；请使用模板列名，Id 不参与导入。"));
         }
@@ -153,7 +160,10 @@ public static class TagCsvExchange
                 errors.Add(new(record.LineNumber, "列数", $"应为 {header.Cells.Count} 列，实际为 {record.Cells.Count} 列。"));
                 continue;
             }
-            var tag = ReadTag(record, columns, errors);
+            var name = UnescapeText(record.Cells[columns[nameof(TagConfiguration.Name)]]);
+            var matched = mode == TagCsvImportMode.UpdateByName && existingByName.TryGetValue(name, out var matchedIndex)
+                ? original[matchedIndex] : null;
+            var tag = ReadTag(record, columns, errors, matched);
             if (!string.IsNullOrWhiteSpace(tag.Name) && !importedNames.TryAdd(tag.Name, record.LineNumber))
                 errors.Add(new(record.LineNumber, nameof(TagConfiguration.Name), $"名称与第 {importedNames[tag.Name]} 行重复。"));
             imported.Add((tag, record.LineNumber));
@@ -198,7 +208,7 @@ public static class TagCsvExchange
     }
 
     private static TagConfiguration ReadTag(CsvRecord record, IReadOnlyDictionary<string, int> columns,
-        List<TagCsvError> errors)
+        List<TagCsvError> errors, TagConfiguration? matched)
     {
         var initialErrors = errors.Count;
         string Cell(string name) => record.Cells[columns[name]];
@@ -228,6 +238,12 @@ public static class TagCsvExchange
             return 0;
         }
         double? OptionalNumber(string name) => string.IsNullOrWhiteSpace(Cell(name)) ? null : Number(name);
+        int Integer(string name)
+        {
+            if (int.TryParse(Cell(name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)) return parsed;
+            Error(name, "必须为整数毫秒数，0 表示使用设备采集周期。");
+            return 0;
+        }
 
         var tag = new TagConfiguration
         {
@@ -241,7 +257,10 @@ public static class TagCsvExchange
             Writable = Boolean(nameof(TagConfiguration.Writable)), Scale = Number(nameof(TagConfiguration.Scale)),
             Offset = Number(nameof(TagConfiguration.Offset)), Unit = Text(nameof(TagConfiguration.Unit)),
             LowLimit = OptionalNumber(nameof(TagConfiguration.LowLimit)), HighLimit = OptionalNumber(nameof(TagConfiguration.HighLimit)),
-            Description = Text(nameof(TagConfiguration.Description))
+            Description = Text(nameof(TagConfiguration.Description)),
+            Expression = columns.ContainsKey(nameof(TagConfiguration.Expression)) ? Text(nameof(TagConfiguration.Expression)) : matched?.Expression ?? "",
+            ScanIntervalMs = columns.ContainsKey(nameof(TagConfiguration.ScanIntervalMs)) ? Integer(nameof(TagConfiguration.ScanIntervalMs)) : matched?.ScanIntervalMs ?? 0,
+            Deadband = columns.ContainsKey(nameof(TagConfiguration.Deadband)) ? Number(nameof(TagConfiguration.Deadband)) : matched?.Deadband ?? 0
         };
         if (string.IsNullOrWhiteSpace(tag.Name)) Error(nameof(TagConfiguration.Name), "点位名称不能为空。");
         // Driver-specific addresses, methods and capability checks belong to full configuration validation.
@@ -252,6 +271,17 @@ public static class TagCsvExchange
                 Error(nameof(TagConfiguration.DataType), "非数值类型的倍率须为 1、偏移须为 0，且不能配置数值阈值。");
             if (tag.LowLimit.HasValue && tag.HighLimit.HasValue && tag.LowLimit > tag.HighLimit)
                 Error(nameof(TagConfiguration.LowLimit), "报警下限不能高于上限。");
+            if (tag.ScanIntervalMs != 0 && tag.ScanIntervalMs is < 100 or > 3_600_000)
+                Error(nameof(TagConfiguration.ScanIntervalMs), "须为 0（设备周期）或 100–3600000 ms。");
+            if (tag.Deadband < 0 || !TagDataTypes.IsNumeric(tag.DataType) && tag.Deadband != 0)
+                Error(nameof(TagConfiguration.Deadband), "死区须为非负有限数；非数值点位的死区须为 0。");
+            if (!string.IsNullOrWhiteSpace(tag.Expression))
+            {
+                if (!TagDataTypes.IsNumeric(tag.DataType)) Error(nameof(TagConfiguration.Expression), "计算表达式仅支持数值点位。");
+                if (tag.Writable) Error(nameof(TagConfiguration.Writable), "配置计算表达式的点位不能写入，无法安全反算原始值。");
+            }
+            if (NumericExpression.Validate(tag.Expression) is string expressionError)
+                Error(nameof(TagConfiguration.Expression), expressionError);
         }
         return tag;
     }
@@ -390,7 +420,8 @@ public static class TagCsvExchange
             Id = tag.Id, Name = tag.Name, Address = tag.Address, DataType = tag.DataType, Area = tag.Area,
             ByteOrder = tag.ByteOrder, ReadMethod = tag.ReadMethod, WriteMethod = tag.WriteMethod, Endian = tag.Endian,
             Enabled = tag.Enabled, UploadEnabled = tag.UploadEnabled, Writable = tag.Writable, Scale = tag.Scale,
-            Offset = tag.Offset, Unit = tag.Unit, LowLimit = tag.LowLimit, HighLimit = tag.HighLimit, Description = tag.Description
+            Offset = tag.Offset, Unit = tag.Unit, LowLimit = tag.LowLimit, HighLimit = tag.HighLimit, Description = tag.Description,
+            Expression = tag.Expression, ScanIntervalMs = tag.ScanIntervalMs, Deadband = tag.Deadband
         };
     }
 }

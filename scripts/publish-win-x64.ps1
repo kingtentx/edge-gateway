@@ -13,7 +13,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed: $LASTEXITCODE" }
     # Fail publication if any original upstream driver was left out of the application.
     $migration = Get-Content 'docs/driver-migration-manifest.json' -Raw | ConvertFrom-Json
-    $requiredAssemblies = @('EdgeGateway.IotGateway', 'PluginInterface', 'Interop.OPCAutomation', 'FontAwesome.Sharp') + @($migration.drivers | ForEach-Object { $_.assembly })
+    $requiredAssemblies = @('EdgeGateway.IotGateway', 'PluginInterface', 'Interop.OPCAutomation', 'FontAwesome.Sharp',
+        'EdgeGateway.OpcUa', 'Opc.Ua.Server', 'Opc.Ua.Configuration', 'Opc.Ua.Core', 'Opc.Ua.Types', 'Opc.Ua.Security.Certificates') + @($migration.drivers | ForEach-Object { $_.assembly })
     foreach ($assembly in $requiredAssemblies) {
         if (-not (Test-Path (Join-Path $publishDirectory ($assembly + '.dll')))) {
             throw "Required migrated driver/dependency missing from publish output: $assembly.dll"
@@ -29,9 +30,24 @@ try {
     # by this Windows job. A manual local publish does not claim CI verification.
     $verification = $null
     if ($env:GITHUB_ACTIONS -eq 'true') {
+        # Recheck the concrete evidence at the packaging boundary; the Windows
+        # workflow also uses this gate immediately after launching the UI.
+        & (Join-Path $PSScriptRoot 'smoke-test-winforms.ps1') -OutputDirectory $outputRoot -VerifyOnly
         [xml]$testReport = Get-Content (Join-Path $outputRoot 'test-results/tests.trx') -Raw
         $counts = $testReport.TestRun.ResultSummary.Counters
         $layout = Get-Content (Join-Path $outputRoot 'ui-smoke-layout-matrix/layout-matrix.json') -Raw | ConvertFrom-Json
+        $smoke = Get-Content (Join-Path $outputRoot 'ui-smoke-verification.json') -Raw | ConvertFrom-Json
+        if ([int]$counts.total -le 0 -or [int]$counts.total -ne [int]$counts.passed -or [int]$counts.failed -ne 0 -or [int]$counts.notExecuted -ne 0) {
+            throw 'Publication requires all tests to pass without skipped tests.'
+        }
+        if ($layout.expectedCases -ne 20 -or $layout.executedCases -ne 20 -or $layout.passedCases -ne 20 -or $layout.viewportSimulation -ne $true) {
+            throw 'Publication requires all 20 equivalent work-area cases and an explicit viewport-simulation boundary.'
+        }
+        if ($smoke.sourceCommit -ne $env:GITHUB_SHA -or $smoke.workflowRunId -ne $env:GITHUB_RUN_ID -or
+            $smoke.opcUaServiceSmokePassed -ne $true -or $smoke.capabilitiesSmokePassed -ne $true -or
+            $smoke.screenshotCount -ne 143 -or $smoke.testResultsSummary.opcUaTestsPassed -le 0) {
+            throw 'Publication requires complete OPC UA/capability smoke evidence from this CI source and run.'
+        }
         $verification = [ordered]@{
             testsTotal = [int]$counts.total
             testsPassed = [int]$counts.passed
@@ -42,6 +58,14 @@ try {
             viewportSimulation = $layout.viewportSimulation
             operatingSystem = $layout.operatingSystem
             focusRecoveryCount = $layout.focusRecoveryCount
+            screenshotCount = $smoke.screenshotCount
+            checkedPageCount = @($smoke.checkedPages).Count
+            checkedDialogTypeCount = @($smoke.checkedDialogs).Count
+            capabilitiesSmokePassed = $smoke.capabilitiesSmokePassed
+            opcUaServiceSmokePassed = $smoke.opcUaServiceSmokePassed
+            opcUaIntegrationTestsPassed = $smoke.testResultsSummary.opcUaTestsPassed
+            opcUaInputMetricsPerCase = $smoke.controlMetricCounts.opcUaInputMetrics
+            certificateInputMetricsPerCase = $smoke.controlMetricCounts.certificateInputMetrics
         }
     }
     [ordered]@{

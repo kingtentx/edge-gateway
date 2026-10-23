@@ -12,7 +12,11 @@ public sealed class GatewayConfiguration
     public int MaxHistoryRows { get; set; } = 1_000_000;
     public int MaxOutboxMessages { get; set; } = 50_000;
     public int PublishIntervalMs { get; set; } = 5_000;
+    public TelemetryReportMode ReportMode { get; set; } = TelemetryReportMode.Periodic;
+    public int HeartbeatIntervalMs { get; set; } = 60_000;
     public MqttConfiguration Mqtt { get; set; } = new();
+    public OpcUaServerConfiguration OpcUa { get; set; } = new();
+    public List<ChannelConfiguration> Channels { get; set; } = [];
     public List<DeviceConfiguration> Devices { get; set; } = [];
 }
 
@@ -28,6 +32,16 @@ public sealed class MqttConfiguration
     public string PasswordEnvironmentVariable { get; set; } = "EDGE_MQTT_PASSWORD";
     public string Topic { get; set; } = "edge/{gatewayId}/telemetry";
     public int TimeoutMs { get; set; } = 10_000;
+    public MqttPlatform Platform { get; set; } = MqttPlatform.Generic;
+    public bool RpcEnabled { get; set; }
+    public bool AllowRemoteWrite { get; set; }
+    public string RpcRequestTopic { get; set; } = "edge/{gatewayId}/rpc/request";
+    public string RpcResponseTopic { get; set; } = "edge/{gatewayId}/rpc/response";
+    public int RpcTimeoutMs { get; set; } = 10_000;
+    public string UsernameEnvironmentVariable { get; set; } = "";
+    public string PlatformDeviceType { get; set; } = "default";
+    public string ThingsCloudTypeKey { get; set; } = "";
+    public string PlatformGatewayId { get; set; } = "";
 }
 
 public sealed class DeviceConfiguration
@@ -35,10 +49,15 @@ public sealed class DeviceConfiguration
     [Browsable(false)] public Guid Id { get; set; } = Guid.NewGuid();
     [Category("基本信息"), DisplayName("设备名称")] public string Name { get; set; } = "新设备";
     [Category("基本信息"), DisplayName("分组")] public string Group { get; set; } = "默认分组";
+    [Browsable(false)] public Guid? ChannelId { get; set; }
     [Category("基本信息"), DisplayName("驱动标识")] public string DriverId { get; set; } = "simulator";
     [Category("基本信息"), DisplayName("启用采集")] public bool Enabled { get; set; } = true;
     [Category("采集参数"), DisplayName("周期 (ms)")] public int PollIntervalMs { get; set; } = 1000;
     [Category("采集参数"), DisplayName("超时 (ms)")] public int TimeoutMs { get; set; } = 3000;
+    [Category("采集参数"), DisplayName("扫描模式")] public DeviceScanMode ScanMode { get; set; } = DeviceScanMode.DeviceRate;
+    [Category("采集参数"), DisplayName("故障自动降速")] public bool AutoDemotionEnabled { get; set; }
+    [Category("采集参数"), DisplayName("降速失败次数")] public int DemotionFailureCount { get; set; } = 3;
+    [Category("采集参数"), DisplayName("降速重试间隔 (ms)")] public int DemotionIntervalMs { get; set; } = 30_000;
     [Category("网络连接"), DisplayName("主机地址")] public string Host { get; set; } = "127.0.0.1";
     [Category("网络连接"), DisplayName("TCP 端口")] public int Port { get; set; } = 502;
     [Category("Modbus"), DisplayName("站号 (1–247)")] public int UnitId { get; set; } = 1;
@@ -67,6 +86,11 @@ public sealed class TagConfiguration
     [DisplayName("允许写入")] public bool Writable { get; set; }
     [DisplayName("倍率")] public double Scale { get; set; } = 1;
     [DisplayName("偏移量")] public double Offset { get; set; }
+    [DisplayName("计算表达式")] public string Expression { get; set; } = "";
+    [DisplayName("扫描周期 (ms)"), Description("0 表示继承设备周期；按点位周期扫描时生效。")]
+    public int ScanIntervalMs { get; set; }
+    [DisplayName("上报死区"), Description("工程值相对上次成功入队值的绝对变化量；0 为任意变化。")]
+    public double Deadband { get; set; }
     [DisplayName("单位")] public string Unit { get; set; } = "";
     [DisplayName("报警下限")] public double? LowLimit { get; set; }
     [DisplayName("报警上限")] public double? HighLimit { get; set; }

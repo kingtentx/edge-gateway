@@ -15,8 +15,9 @@ public sealed class TagCsvExchangeTests
             Name = "温度,\"出水\"\n北区", Address = "DB1.DBD0", DataType = TagDataType.Float64,
             Area = ModbusArea.InputRegister, ByteOrder = RegisterByteOrder.DCBA,
             ReadMethod = "读取,\"方法\"\r\n下一行", WriteMethod = "写入方法", Endian = ProtocolEndian.LittleEndianSwap,
-            Enabled = false, UploadEnabled = false, Writable = true, Scale = 0.125, Offset = -3.75,
-            Unit = "°C", LowLimit = -40.25, HighLimit = 120.75, Description = "中文说明\r第二行\n第三行\r\n\"末行\""
+            Enabled = false, UploadEnabled = false, Writable = false, Scale = 0.125, Offset = -3.75,
+            Unit = "°C", LowLimit = -40.25, HighLimit = 120.75, Description = "中文说明\r第二行\n第三行\r\n\"末行\"",
+            Expression = "round(x,2)", ScanIntervalMs = 500, Deadband = 0.25
         };
         var bytes = TagCsvExchange.Export([source]);
         Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }, bytes.Take(3).ToArray());
@@ -199,7 +200,7 @@ public sealed class TagCsvExchangeTests
     {
         var headers = TagCsvExchange.Columns.ToArray();
         headers[0] = "Address";
-        headers[^1] = "Id";
+        headers[Array.IndexOf(headers, "Description")] = "Id";
         var csv = string.Join(',', headers) + "\r\n" + Row();
         var result = TagCsvExchange.Import(Encoding.UTF8.GetBytes(csv), []);
         Assert.False(result.IsValid);
@@ -233,6 +234,14 @@ public sealed class TagCsvExchangeTests
     [InlineData("Offset", "Infinity")]
     [InlineData("LowLimit", "-Infinity")]
     [InlineData("HighLimit", "1e999")]
+    [InlineData("Expression", "x.GetType()")]
+    [InlineData("ScanIntervalMs", "")]
+    [InlineData("ScanIntervalMs", "1.5")]
+    [InlineData("ScanIntervalMs", "50")]
+    [InlineData("ScanIntervalMs", "3600001")]
+    [InlineData("Deadband", "")]
+    [InlineData("Deadband", "NaN")]
+    [InlineData("Deadband", "-1")]
     public void InvalidTypedCellsDoNotFallBackSilently(string column, string value)
     {
         var result = TagCsvExchange.Import(Csv(Row((column, value))), []);
@@ -311,6 +320,86 @@ public sealed class TagCsvExchangeTests
         Assert.Throws<InvalidDataException>(() => TagCsvExchange.Export(System.Linq.Enumerable.Append(existing, new TagConfiguration { Name = "额外" })));
     }
 
+    [Fact]
+    public void LegacySeventeenColumnsPreserveMatchedExtensionSettingsAndDefaultNewTags()
+    {
+        var existing = new TagConfiguration
+        { Name = "Pump", Expression = "x+1", ScanIntervalMs = 1500, Deadband = 0.125, Description = "旧说明" };
+        var source = Defaults();
+        source["Name"] = "pump";
+        source["Description"] = "新说明";
+        var appended = Defaults();
+        appended["Name"] = "New";
+        var columns = TagCsvExchange.Columns.Where(column => column is not "Expression" and not "ScanIntervalMs" and not "Deadband").ToArray();
+        Assert.Equal(17, columns.Length);
+        var content = CsvWithColumns(columns, source, appended);
+        var result = TagCsvExchange.Import(content, [existing], TagCsvImportMode.UpdateByName);
+        Assert.True(result.IsValid, string.Join(Environment.NewLine, result.Errors));
+        Assert.Equal(1, result.Updated);
+        Assert.Equal(1, result.Added);
+        var changed = result.Tags[0];
+        Assert.Equal(existing.Id, changed.Id);
+        Assert.Equal("新说明", changed.Description);
+        Assert.Equal("x+1", changed.Expression);
+        Assert.Equal(1500, changed.ScanIntervalMs);
+        Assert.Equal(0.125, changed.Deadband);
+        Assert.Equal("", result.Tags[1].Expression);
+        Assert.Equal(0, result.Tags[1].ScanIntervalMs);
+        Assert.Equal(0, result.Tags[1].Deadband);
+        Assert.Equal("旧说明", existing.Description);
+        changed.Expression = "x+2";
+        Assert.Equal("x+1", existing.Expression);
+    }
+
+    [Fact]
+    public void PresentExtensionsExplicitlyClearOrReplaceWithoutResettingOmittedExtensions()
+    {
+        var existing = new TagConfiguration { Name = "点位", Expression = "x+1", ScanIntervalMs = 1500, Deadband = 2 };
+        var values = Defaults();
+        values["Expression"] = "";
+        values["Deadband"] = "0";
+        var columns = TagCsvExchange.Columns.Where(column => column != "ScanIntervalMs").ToArray();
+        var result = TagCsvExchange.Import(CsvWithColumns(columns, values), [existing], TagCsvImportMode.UpdateByName);
+        Assert.True(result.IsValid);
+        var changed = Assert.Single(result.Tags);
+        Assert.Equal("", changed.Expression);
+        Assert.Equal(1500, changed.ScanIntervalMs);
+        Assert.Equal(0, changed.Deadband);
+    }
+
+    [Fact]
+    public void InheritedExpressionsCannotBypassChangedTypeAndWritableValidation()
+    {
+        var existing = new TagConfiguration { Name = "点位", Expression = "x+1", ScanIntervalMs = 1500, Deadband = 2 };
+        var values = Defaults();
+        values["DataType"] = "Boolean";
+        values["Writable"] = "true";
+        var columns = TagCsvExchange.Columns.Where(column => column is not "Expression" and not "ScanIntervalMs" and not "Deadband").ToArray();
+        var result = TagCsvExchange.Import(CsvWithColumns(columns, values), [existing], TagCsvImportMode.UpdateByName);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Column == "Expression");
+        Assert.Contains(result.Errors, error => error.Column == "Deadband");
+        Assert.Contains(result.Errors, error => error.Column == "Writable");
+        var retained = Assert.Single(result.Tags);
+        AssertBusinessFieldsEqual(existing, retained);
+        Assert.Equal(existing.Id, retained.Id);
+    }
+
+    [Fact]
+    public void ExpressionFormulaPrefixAndFunctionCommasRoundTrip()
+    {
+        var source = new TagConfiguration { Expression = "-min(x,3)", ScanIntervalMs = 100, Deadband = 1 };
+        var content = TagCsvExchange.Export([source]);
+        Assert.Contains("\"'-min(x,3)\"", Encoding.UTF8.GetString(content));
+        var result = TagCsvExchange.Import(content, []);
+        Assert.True(result.IsValid);
+        AssertBusinessFieldsEqual(source, Assert.Single(result.Tags));
+    }
+
+    private static byte[] CsvWithColumns(IReadOnlyList<string> columns, params Dictionary<string, string>[] rows) =>
+        Encoding.UTF8.GetBytes(string.Join(',', columns) + "\r\n" +
+            string.Join("\r\n", rows.Select(row => string.Join(',', columns.Select(column => Quote(row[column]))))) + "\r\n");
+
     private static void AssertBusinessFieldsEqual(TagConfiguration expected, TagConfiguration actual)
     {
         foreach (var property in typeof(TagConfiguration).GetProperties().Where(property => property.Name != nameof(TagConfiguration.Id)))
@@ -322,7 +411,8 @@ public sealed class TagCsvExchangeTests
         ["Name"] = "点位", ["Address"] = "0", ["DataType"] = "UInt16", ["Area"] = "HoldingRegister",
         ["ByteOrder"] = "ABCD", ["ReadMethod"] = "", ["WriteMethod"] = "", ["Endian"] = "FromByteOrder",
         ["Enabled"] = "true", ["UploadEnabled"] = "true", ["Writable"] = "false", ["Scale"] = "1",
-        ["Offset"] = "0", ["Unit"] = "", ["LowLimit"] = "", ["HighLimit"] = "", ["Description"] = ""
+        ["Offset"] = "0", ["Unit"] = "", ["LowLimit"] = "", ["HighLimit"] = "", ["Description"] = "",
+        ["Expression"] = "", ["ScanIntervalMs"] = "0", ["Deadband"] = "0"
     };
 
     private static string Row(params (string Column, string Value)[] changes)

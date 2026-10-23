@@ -89,6 +89,12 @@ public sealed partial class MainForm
                         if (key == "cloud")
                             foreach (var field in _cloudFields.Values)
                                 BringIntoViewAndAssert(field, name + " cloud field");
+                        if (key == "opcua")
+                        {
+                            foreach (var field in _opcUaFields.Values.Concat<Control>(_opcUaStatusFields.Values))
+                                BringIntoViewAndAssert(field, name + " OPC UA field");
+                            result.OpcUaInputMetrics = _opcUaFields.Values.Select(ControlMetric.From).ToList();
+                        }
                         ResetScrollPositions(_pages[key], _navigation["overview"]);
                         result.CheckedPages.Add(key);
                         if (key == "overview") SaveSmokeScreenshot(this, Path.Combine(directory, name + "-overview.png"));
@@ -96,7 +102,7 @@ public sealed partial class MainForm
                             SaveSmokeScreenshot(this, Path.Combine(directory, name + "-devices.png"));
                     }
                     result.HeaderMetrics = new Control[] { _runState, _savedState, _automaticSaveState }.Select(ControlMetric.From).ToList();
-                    VerifyMatrixDialogs(testArea, directory, result);
+                    await VerifyMatrixDialogsAsync(testArea, directory, result);
                     if (resolution == new Size(1366, 768) && percentage == 200)
                         VerifyMinimumConfigurationDialog(testArea, directory, result);
                     result.Passed = true;
@@ -123,7 +129,7 @@ public sealed partial class MainForm
         Console.WriteLine($"Layout matrix passed: {results.Count} equivalent viewport cases at actual {actualDpi} DPI; real multi-DPI/multi-monitor tests remain separate.");
     }
 
-    private void VerifyMatrixDialogs(Rectangle area, string directory, LayoutCaseResult result)
+    private async Task VerifyMatrixDialogsAsync(Rectangle area, string directory, LayoutCaseResult result)
     {
         var descriptor = _drivers.Drivers.Single(x => x.Id == "PLC.ModBusMaster");
         var device = new DeviceConfiguration { Name = "布局检查 · Modbus", DriverId = descriptor.Id, Enabled = false };
@@ -163,7 +169,10 @@ public sealed partial class MainForm
                 FitSmokeDialog(editor, area);
                 foreach (var command in editor.SmokeCommands) AssertVisibleBounds(command, result.Name + " write action");
                 BringIntoViewAndAssert(editor.SmokeValueInput, result.Name + " write value");
+                foreach (var input in editor.SmokeVerificationInputs)
+                    BringIntoViewAndAssert(input, result.Name + " write verification");
                 result.WriteInputMetric = ControlMetric.From(editor.SmokeValueInput);
+                result.WriteVerificationMetrics = editor.SmokeVerificationInputs.Select(ControlMetric.From).ToList();
                 result.CheckedDialogs.Add("WriteValueDialog multiline");
             }
             catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-write-failed.png")); throw; }
@@ -180,6 +189,40 @@ public sealed partial class MainForm
                 result.CheckedDialogs.Add("TagImportDialog preview");
             }
             catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-tag-import-failed.png")); throw; }
+            finally { editor.Close(); }
+        }
+        using (var editor = new ChannelEditor(new ChannelConfiguration
+               { Name = "布局验证通道", InterRequestDelayMs = 25, Description = "同一通道通信串行，不同通道并行。" }))
+        {
+            editor.Show(this);
+            try
+            {
+                FitSmokeDialog(editor, area);
+                VerifyEditorLayout(editor, result.Name + " channel");
+                var inputs = Descendants(editor).Where(control => control.Name is "ChannelName" or "ChannelDelay" or "ChannelDescription").ToArray();
+                if (inputs.Length != 3) throw new InvalidOperationException(result.Name + ": channel editor is missing an input.");
+                foreach (var input in inputs) BringIntoViewAndAssert(input, result.Name + " channel field");
+                result.ChannelInputMetrics = inputs.Select(ControlMetric.From).ToList();
+                SaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-channel.png"));
+                result.CheckedDialogs.Add("ChannelEditor");
+            }
+            catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-channel-failed.png")); throw; }
+            finally { editor.Close(); }
+        }
+        using (var editor = new OpcUaCertificatesDialog(_opcUaServer, _log))
+        {
+            await editor.RefreshCertificatesAsync();
+            editor.Show(this);
+            try
+            {
+                FitSmokeDialog(editor, area);
+                VerifyOpcUaCertificateDialog(editor, result.Name + " OPC UA certificates");
+                result.CertificateInputMetrics = editor.SmokeManagementInputs.Concat(editor.SmokeCertificateCommands)
+                    .Select(ControlMetric.From).ToList();
+                SaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-opcua-certificates.png"));
+                result.CheckedDialogs.Add("OpcUaCertificatesDialog");
+            }
+            catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-opcua-certificates-failed.png")); throw; }
             finally { editor.Close(); }
         }
     }
@@ -394,6 +437,10 @@ public sealed partial class MainForm
         public List<ControlMetric> HeaderMetrics { get; set; } = [];
         public List<ControlMetric> DeviceParameterMetrics { get; set; } = [];
         public List<ControlMetric> ConfigurationParameterMetrics { get; set; } = [];
+        public List<ControlMetric> ChannelInputMetrics { get; set; } = [];
+        public List<ControlMetric> WriteVerificationMetrics { get; set; } = [];
+        public List<ControlMetric> OpcUaInputMetrics { get; set; } = [];
+        public List<ControlMetric> CertificateInputMetrics { get; set; } = [];
         public ControlMetric? WriteInputMetric { get; set; }
         public bool Passed { get; set; }
         public string? Error { get; set; }
