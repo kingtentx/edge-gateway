@@ -10,6 +10,7 @@ internal sealed class DriverParameterPanel : UserControl
     private readonly ToolTip _tips = new() { AutoPopDelay = 15000 };
     private readonly Dictionary<string, (DriverParameterDescriptor Metadata, Control Input)> _fields = new(StringComparer.Ordinal);
     private Dictionary<string, string> _original = [];
+    private bool _readOnly;
     public IReadOnlyCollection<Control> Inputs => _fields.Values.Select(x => x.Input).ToArray();
 
     public DriverParameterPanel()
@@ -18,7 +19,8 @@ internal sealed class DriverParameterPanel : UserControl
         AutoScaleMode = AutoScaleMode.Inherit;
     }
 
-    public void LoadParameters(DriverDescriptor descriptor, DeviceConfiguration device, Dictionary<string, string> properties)
+    public void LoadParameters(DriverDescriptor descriptor, DeviceConfiguration device, Dictionary<string, string> properties,
+        string basicTabName = "基本与采集")
     {
         SuspendLayout();
         if (_page is not null) { Controls.Remove(_page); _page.Dispose(); }
@@ -31,7 +33,7 @@ internal sealed class DriverParameterPanel : UserControl
         var table = _page.Table;
         table.SuspendLayout();
         _original = new Dictionary<string, string>(properties, StringComparer.Ordinal);
-        EditorDialog.Hint(table, "按驱动参数逐项配置。枚举与数值范围来自原驱动；设备标识、超时和最小通讯周期与基本配置保持一致。");
+        EditorDialog.Hint(table, $"按驱动参数逐项配置。枚举与数值范围来自原驱动；设备标识自动绑定，超时和最小通讯周期与“{basicTabName}”保持一致。");
         foreach (var parameter in descriptor.Parameters)
         {
             var bound = BoundValue(parameter, device);
@@ -45,11 +47,17 @@ internal sealed class DriverParameterPanel : UserControl
             }
             var bindingHint = parameter.BoundProperty switch
             {
-                "Id" => "自动使用设备唯一标识。", "TimeoutMs" => "在“基本与采集”的通信超时中修改。",
-                "PollIntervalMs" => "在“基本与采集”的采集周期中修改。", _ => ""
+                "Id" => "自动使用设备唯一标识。", "TimeoutMs" => $"在“{basicTabName}”的通信超时中修改。",
+                "PollIntervalMs" => $"在“{basicTabName}”的采集周期中修改。", _ => ""
             };
-            _tips.SetToolTip(input, $"{parameter.Key} · {parameter.TypeName}\n{parameter.Description}\n{bindingHint}".Trim());
+            var help = $"{parameter.Key} · {parameter.TypeName}\n{parameter.Description}\n{bindingHint}".Trim();
+            _tips.SetToolTip(input, help);
+            input.AccessibleDescription = help;
             EditorDialog.Field(table, parameter.Name + (bound is null ? "" : "（绑定）"), input);
+            // A disabled enum/numeric field does not receive mouse events. Keep its
+            // complete description available on the enabled caption in read-only views.
+            if (table.GetControlFromPosition(0, table.RowCount - 1) is Control caption)
+                _tips.SetToolTip(caption, help);
             _fields.Add(parameter.Key, (parameter, input));
         }
         if (descriptor.Parameters.Count == 0) EditorDialog.Hint(table, "此驱动没有额外参数。");
@@ -60,6 +68,18 @@ internal sealed class DriverParameterPanel : UserControl
         _page.PerformLayout();
         ResumeLayout(true);
         _page.AutoScrollPosition = Point.Empty;
+        SetReadOnly(_readOnly);
+    }
+
+    public void SetReadOnly(bool readOnly)
+    {
+        _readOnly = readOnly;
+        foreach (var field in _fields.Values)
+        {
+            var locked = readOnly || field.Metadata.IsReadOnly || field.Metadata.BoundProperty is not null;
+            if (field.Input is TextBoxBase text) text.ReadOnly = locked;
+            else field.Input.Enabled = !locked;
+        }
     }
 
     public void RefreshBindings(DeviceConfiguration device)
@@ -82,7 +102,7 @@ internal sealed class DriverParameterPanel : UserControl
         return result;
     }
 
-    public void VerifyBindingsForSmoke(DriverDescriptor descriptor, DeviceConfiguration device)
+    public void VerifyBindingsForSmoke(DriverDescriptor descriptor, DeviceConfiguration device, bool verifyInitialSelection = true)
     {
         if (_fields.Count != descriptor.Parameters.Count) throw new InvalidOperationException($"{descriptor.Id}: missing reflected parameter controls.");
         var captured = CaptureProperties();
@@ -91,7 +111,7 @@ internal sealed class DriverParameterPanel : UserControl
             if (field.Metadata.Options.Count > 0 && field.Input is ComboBox combo)
             {
                 var expected = _original.GetValueOrDefault(field.Metadata.Key, field.Metadata.DefaultValue);
-                if (combo.SelectedIndex < 0 || combo.SelectedItem?.ToString() != expected)
+                if (combo.SelectedIndex < 0 || verifyInitialSelection && combo.SelectedItem?.ToString() != expected)
                     throw new InvalidOperationException($"{descriptor.Id}: parameter {field.Metadata.Key} lost its configured selection.");
                 foreach (var option in field.Metadata.Options)
                     if (!combo.Items.Contains(option)) throw new InvalidOperationException($"{descriptor.Id}: parameter {field.Metadata.Key} lost enum option {option}.");
@@ -115,7 +135,7 @@ internal sealed class DriverParameterPanel : UserControl
     private static Control CreateInput(DriverParameterDescriptor parameter, string value)
     {
         if (parameter.BoundProperty is not null || parameter.IsReadOnly)
-            return new TextBox { Text = value, ReadOnly = true, BorderStyle = BorderStyle.FixedSingle };
+            return new TextBox { Text = value, ReadOnly = true, UseSystemPasswordChar = parameter.IsSecret, BorderStyle = BorderStyle.FixedSingle };
         if (parameter.Options.Count > 0)
         {
             var input = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };

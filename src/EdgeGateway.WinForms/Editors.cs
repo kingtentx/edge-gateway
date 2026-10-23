@@ -14,9 +14,10 @@ internal abstract class EditorDialog : DpiAwareForm
     private readonly List<EditorLayout.FieldViewport> _fieldViewports = [];
     private bool _arranging;
     private bool? _compactMode;
+    private bool _readOnlyView;
     internal IReadOnlyList<TabPage> SmokeTabs => Tabs.TabPages.Cast<TabPage>().ToArray();
     internal TabPage? SelectedSmokeTab { get => Tabs.SelectedTab; set => Tabs.SelectedTab = value; }
-    internal IReadOnlyList<Control> SmokeCommands => new Control[] { _confirm, _cancel };
+    internal IReadOnlyList<Control> SmokeCommands => _readOnlyView ? new Control[] { _cancel } : new Control[] { _confirm, _cancel };
     protected EditorDialog(string title, string hint)
     {
         Text = title; Font = new Font("Microsoft YaHei UI", 10F); BackColor = UiTheme.Background;
@@ -109,6 +110,17 @@ internal abstract class EditorDialog : DpiAwareForm
     }
 
     protected abstract void Commit();
+
+    /// <summary>Keep a configuration view navigable while removing every apply action.</summary>
+    protected void SetReadOnlyView()
+    {
+        _readOnlyView = true;
+        _confirm.Enabled = false;
+        _confirm.Visible = false;
+        _cancel.Text = "关闭";
+        AcceptButton = _cancel;
+        CancelButton = _cancel;
+    }
 
     protected TableLayoutPanel AddTab(string title)
     {

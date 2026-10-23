@@ -32,6 +32,9 @@ internal sealed class ModernButton : Button
 
     protected override void OnPaint(PaintEventArgs e)
     {
+        // ButtonBase is Opaque and normal WM_PAINT skips OnPaintBackground.
+        // Fill the complete surface so the pixels outside rounded corners are stable.
+        OnPaintBackground(e);
         var graphics = e.Graphics;
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
         var background = !Enabled ? Color.FromArgb(239, 242, 247) : _pressed

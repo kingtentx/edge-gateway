@@ -344,6 +344,7 @@ public sealed partial class MainForm : DpiAwareForm
                 }
                 SmokeDriverEditors();
                 SmokeDynamicDriverSwitch();
+                SmokeDeviceConfigurations();
                 if (_layoutMatrix) await RunLayoutMatrixAsync();
             }
             catch (Exception exception)
@@ -595,6 +596,7 @@ public sealed partial class MainForm : DpiAwareForm
         _runState.ForeColor = running ? UiTheme.Green : UiTheme.Muted;
         _savedState.Text = _dirty ? "配置已修改 · 请保存" : $"{_configuration.Name}  /  {_configuration.GatewayId}";
         _savedState.ForeColor = _dirty ? Color.FromArgb(180, 83, 9) : UiTheme.Muted;
+        UpdateDeviceConfigurationCommands();
         UpdateWriteButton();
     }
 

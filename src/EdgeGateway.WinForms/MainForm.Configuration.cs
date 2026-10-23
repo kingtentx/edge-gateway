@@ -9,6 +9,7 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
+    private const string DeviceConfigurationColumnName = "DeviceConfiguration";
     private readonly DataGridView _deviceGrid = UiTheme.Grid();
     private readonly DataGridView _tagGrid = UiTheme.Grid();
     private readonly Dictionary<string, Control> _cloudFields = [];
@@ -22,8 +23,29 @@ public sealed partial class MainForm
         UiTheme.AddColumn(_deviceGrid, "Enabled", "启用", 60, 60);
         UiTheme.AddColumn(_deviceGrid, "PointCount", "点位数", 70, 70);
         UiTheme.AddColumn(_deviceGrid, "Cycle", "周期 (ms)", 90);
+        var configurationColumn = new DataGridViewLinkColumn
+        {
+            Name = DeviceConfigurationColumnName, HeaderText = "配置", Text = "配置",
+            UseColumnTextForLinkValue = true, TrackVisitedState = false,
+            LinkBehavior = LinkBehavior.HoverUnderline, LinkColor = UiTheme.Blue,
+            ActiveLinkColor = UiTheme.Blue, VisitedLinkColor = UiTheme.Blue,
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, MinimumWidth = 80,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
+            DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
+            HeaderCell = new DataGridViewColumnHeaderCell
+            {
+                Style = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
+            }
+        };
+        _deviceGrid.Columns.Add(configurationColumn);
+        if (_deviceGrid is DpiDataGridView dpiGrid) dpiGrid.RegisterColumn(configurationColumn, 80);
         _deviceGrid.SelectionChanged += (_, _) => BindTags();
-        _deviceGrid.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) EditDevice(); };
+        _deviceGrid.CellContentClick += DeviceConfigurationCellContentClick;
+        _deviceGrid.CellDoubleClick += (_, e) =>
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0
+                && _deviceGrid.Columns[e.ColumnIndex].Name != DeviceConfigurationColumnName) EditDevice();
+        };
         UiTheme.AddColumn(_tagGrid, "Name", "点位名称", 120, 130);
         UiTheme.AddColumn(_tagGrid, "Address", "地址", 95);
         UiTheme.AddColumn(_tagGrid, "Method", "读取方法", 160, 160);
@@ -62,6 +84,58 @@ public sealed partial class MainForm
     }
 
     private bool CanEdit() => !_runtime.IsRunning && !_busy && !_closing;
+
+    private void DeviceConfigurationCellContentClick(object? sender, DataGridViewCellEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.RowIndex >= _deviceGrid.Rows.Count || e.ColumnIndex < 0
+            || _deviceGrid.Columns[e.ColumnIndex].Name != DeviceConfigurationColumnName) return;
+        // Resolve the clicked row's stable identity; keyboard selection or a previous
+        // selection must never redirect this action to a different device.
+        if (_deviceGrid.Rows[e.RowIndex].DataBoundItem is DeviceRow row) ConfigureDevice(row.Id);
+    }
+
+    private void ConfigureDevice(Guid deviceId)
+    {
+        if (_busy || _closing) return;
+        var device = _configuration.Devices.FirstOrDefault(x => x.Id == deviceId);
+        if (device is null) return;
+        try
+        {
+            var readOnly = _runtime.IsRunning;
+            using var dialog = new DeviceConfigurationDialog(device, _drivers.GetFactory(device.DriverId), readOnly);
+            if (dialog.ShowDialog(this) != DialogResult.OK || readOnly || dialog.Value is null) return;
+            if (!CanEdit()) { SetFooter("采集状态已变化，设备配置未应用。请停止采集后重新配置。"); return; }
+            var index = _configuration.Devices.FindIndex(x => x.Id == deviceId);
+            if (index < 0) return;
+            if (dialog.Value.Id != device.Id || dialog.Value.DriverId != device.DriverId)
+                throw new InvalidOperationException("设备配置不能更改设备标识或采集驱动。");
+            _configuration.Devices[index] = dialog.Value;
+            MarkDirty(); RebindConfigurationViews(deviceId);
+            SetFooter($"设备“{device.Name}”的配置已更新，请点击“保存配置”保存后生效。");
+        }
+        catch (Exception exception)
+        {
+            if (_smokeTest) throw;
+            ShowError("打开或应用设备配置失败：" + exception.Message);
+        }
+    }
+
+    private void UpdateDeviceConfigurationCommands()
+    {
+        if (_deviceGrid.Columns[DeviceConfigurationColumnName] is not DataGridViewLinkColumn column) return;
+        column.Text = _runtime.IsRunning ? "查看" : "配置";
+        foreach (DataGridViewRow row in _deviceGrid.Rows)
+        {
+            if (row.Cells[DeviceConfigurationColumnName] is not DataGridViewLinkCell cell) continue;
+            cell.LinkColor = _busy || _closing ? UiTheme.Muted : UiTheme.Blue;
+            cell.ActiveLinkColor = cell.VisitedLinkColor = cell.LinkColor;
+            cell.ToolTipText = _runtime.IsRunning
+                ? "查看该设备当前驱动的配置；停止采集后可修改。"
+                : "配置该行设备的采集周期、通信超时及当前驱动专用参数。";
+        }
+        _deviceGrid.InvalidateColumn(column.Index);
+    }
+
     private DeviceConfiguration? SelectedDevice() => _deviceGrid.CurrentRow?.DataBoundItem is DeviceRow row
         ? _configuration.Devices.FirstOrDefault(x => x.Id == row.Id) : null;
     private TagConfiguration? SelectedTag() => _tagGrid.CurrentRow?.DataBoundItem is TagRow row
@@ -130,7 +204,7 @@ public sealed partial class MainForm
         if (selected.HasValue)
             foreach (DataGridViewRow row in _deviceGrid.Rows)
                 if (row.DataBoundItem is DeviceRow data && data.Id == selected.Value) { row.Selected = true; _deviceGrid.CurrentCell = row.Cells[0]; break; }
-        BindTags(); BindCloudFields(); BindDeviceChoices();
+        BindTags(); BindCloudFields(); BindDeviceChoices(); UpdateDeviceConfigurationCommands();
     }
 
     private void BindTags()

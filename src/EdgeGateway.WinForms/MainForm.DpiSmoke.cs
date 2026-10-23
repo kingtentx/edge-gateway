@@ -93,6 +93,8 @@ public sealed partial class MainForm
                     }
                     result.HeaderMetrics = new[] { _startButton, _stopButton, _saveButton }.Select(ControlMetric.From).ToList();
                     VerifyMatrixDialogs(testArea, directory, result);
+                    if (resolution == new Size(1366, 768) && percentage == 200)
+                        VerifyMinimumConfigurationDialog(testArea, directory, result);
                     result.Passed = true;
                     Console.WriteLine($"Layout viewport passed: {name}; nominal DPI {nominalDpi}, actual DPI {actualDpi}; viewport {Bounds.Width}x{Bounds.Height}.");
                 }
@@ -348,6 +350,7 @@ public sealed partial class MainForm
         public List<string> CheckedDialogs { get; } = [];
         public List<ControlMetric> HeaderMetrics { get; set; } = [];
         public List<ControlMetric> DeviceParameterMetrics { get; set; } = [];
+        public List<ControlMetric> ConfigurationParameterMetrics { get; set; } = [];
         public ControlMetric? WriteInputMetric { get; set; }
         public bool Passed { get; set; }
         public string? Error { get; set; }
