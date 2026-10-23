@@ -160,7 +160,14 @@ public sealed partial class MainForm : DpiAwareForm
             try
             {
                 var compactNavigation = shell.ClientSize.Width < UiTheme.Scale(shell, 1000);
-                var sidebarWidth = UiTheme.Scale(shell, compactNavigation ? 172 : 206);
+                // PreferredSize and current margins/padding are already physical pixels.
+                // Always reserve this monitor's scrollbar width so scrolling cannot
+                // truncate a label or make the column alternate between two widths.
+                var navigationButtonWidth = _navigation.Values.Max(button => button.GetPreferredSize(Size.Empty).Width + button.Margin.Horizontal);
+                var requiredSidebarWidth = navigationButtonWidth + sidebar.Padding.Horizontal + sidebar.Margin.Horizontal
+                    + navigationViewport.Padding.Horizontal + navigationViewport.Margin.Horizontal
+                    + SystemInformation.GetVerticalScrollBarWidthForDpi(navigationViewport.DeviceDpi);
+                var sidebarWidth = Math.Max(UiTheme.Scale(shell, compactNavigation ? 172 : 206), requiredSidebarWidth);
                 if (shell.ColumnStyles[0].Width != sidebarWidth) shell.ColumnStyles[0].Width = sidebarWidth;
                 brandTitle.Text = compactNavigation ? "EDGE" : "EDGE GATEWAY";
                 brandCaption.Text = compactNavigation ? "采集网关" : "工业数据 · 本地连接";
