@@ -15,6 +15,11 @@ internal abstract class EditorDialog : DpiAwareForm
     private bool _arranging;
     private bool? _compactMode;
     private bool _readOnlyView;
+    private bool _applying;
+    private Func<Task>? _applyChanges;
+    private Action<Exception>? _applyFailed;
+    internal Exception? LastApplyErrorForSmoke { get; private set; }
+    internal bool SuppressApplyErrorDialogForSmoke { get; set; }
     internal IReadOnlyList<TabPage> SmokeTabs => Tabs.TabPages.Cast<TabPage>().ToArray();
     internal TabPage? SelectedSmokeTab { get => Tabs.SelectedTab; set => Tabs.SelectedTab = value; }
     internal IReadOnlyList<Control> SmokeCommands => _readOnlyView ? new Control[] { _cancel } : new Control[] { _confirm, _cancel };
@@ -61,12 +66,19 @@ internal abstract class EditorDialog : DpiAwareForm
             LinkBehavior = LinkBehavior.HoverUnderline, Anchor = AnchorStyles.Right,
             Margin = new Padding(12, 8, 0, 0), AccessibleDescription = hint
         };
-        _help.LinkClicked += (_, _) => MessageBox.Show(this, hint, "配置说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        _help.LinkClicked += (_, _) => MessageBox.Show(this, _description.Text, "配置说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
         titleRow.Controls.Add(_help, 1, 0);
-        var save = UiTheme.Button("确定", (_, _) =>
+        var save = UiTheme.Button("确定", async (_, _) =>
         {
-            try { Commit(); DialogResult = DialogResult.OK; Close(); }
-            catch (Exception exception) { MessageBox.Show(this, exception.Message, "请检查输入", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            if (_applying) return;
+            try { await ApplyAndAcceptAsync(); }
+            catch (Exception exception)
+            {
+                LastApplyErrorForSmoke = exception;
+                _applyFailed?.Invoke(exception);
+                if (!SuppressApplyErrorDialogForSmoke)
+                    MessageBox.Show(this, exception.Message + "\n\n输入内容已保留，请修改后重试。", "配置未保存", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }, true);
         var cancel = UiTheme.Button("取消"); cancel.DialogResult = DialogResult.Cancel;
         _confirm = save; _cancel = cancel;
@@ -143,6 +155,46 @@ internal abstract class EditorDialog : DpiAwareForm
 
     protected abstract void Commit();
 
+    /// <summary>Validate and persist while the editor is still open, so any failure retains the user's inputs.</summary>
+    internal void SetApplyHandler(Func<Task> apply, bool runningDevice, Action<Exception> onFailure)
+    {
+        _applyChanges = apply;
+        _applyFailed = onFailure;
+        if (!runningDevice) return;
+        _confirm.Text = "保存并应用";
+        _description.Text = "该设备正在采集。修改后保存将仅重新连接此设备；禁用设备将停止它。其他设备继续采集。";
+        _help.AccessibleDescription = _description.Text;
+    }
+
+    private async Task ApplyAndAcceptAsync()
+    {
+        _applying = true;
+        _confirm.Enabled = _cancel.Enabled = Tabs.Enabled = false;
+        UseWaitCursor = true;
+        LastApplyErrorForSmoke = null;
+        try
+        {
+            Commit();
+            if (_applyChanges is not null) await _applyChanges();
+        }
+        finally
+        {
+            _applying = false;
+            _confirm.Enabled = _cancel.Enabled = Tabs.Enabled = true;
+            UseWaitCursor = false;
+        }
+        DialogResult = DialogResult.OK;
+        Close();
+    }
+
+    internal Task ApplyAndAcceptForSmokeAsync() => ApplyAndAcceptAsync();
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        if (_applying) e.Cancel = true;
+        base.OnFormClosing(e);
+    }
+
     /// <summary>Keep a configuration view navigable while removing every apply action.</summary>
     protected void SetReadOnlyView()
     {
@@ -199,7 +251,7 @@ internal sealed class TagEditor : EditorDialog
     private readonly DriverDescriptor _driver;
     private readonly TextBox _name, _address, _unit, _scale, _offset, _low, _high, _description;
     private readonly ComboBox _type, _area, _byteOrder, _readMethod, _writeMethod, _endian;
-    private readonly CheckBox _enabled, _writable;
+    private readonly CheckBox _enabled, _uploadEnabled, _writable;
     private readonly Label _methodHint;
     private readonly TableLayoutPanel _basic;
     private DriverMethodDescriptor? _priorMethod;
@@ -228,6 +280,7 @@ internal sealed class TagEditor : EditorDialog
         _endian = SelectInput(Enum.GetValues<ProtocolEndian>().Cast<object>().ToArray(), value.Endian);
         _unit = TextInput(value.Unit);
         _enabled = new CheckBox { Text = "启用采集", Checked = value.Enabled, AutoSize = true };
+        _uploadEnabled = new CheckBox { Name = "TagUploadEnabled", Text = "允许上传到平台", Checked = value.UploadEnabled, AutoSize = true };
         _writable = new CheckBox { Text = driver.SupportsWrite ? "允许手动写入此点位" : "当前驱动不提供写入能力", Checked = value.Writable && driver.SupportsWrite, Enabled = driver.SupportsWrite, AutoSize = true };
         _writeMethod = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
         EditorLayout.ConfigureDropDown(_writeMethod, 680, 280);
@@ -240,7 +293,8 @@ internal sealed class TagEditor : EditorDialog
         Field(_basic, "点位地址", _address); Field(_basic, "数据类型", _type);
         if (driver.IsLegacy) Field(_basic, "协议字节序", _endian);
         else if (driver.Id != "simulator") { Field(_basic, "Modbus 寄存区", _area); Field(_basic, "字节序", _byteOrder); }
-        Field(_basic, "单位", _unit); Field(_basic, "启用状态", _enabled); Field(_basic, "写入权限", _writable);
+        Field(_basic, "单位", _unit); Field(_basic, "启用状态", _enabled); Field(_basic, "上传平台", _uploadEnabled); Field(_basic, "写入权限", _writable);
+        Hint(_basic, "关闭上传后仍采集、显示并保存本地历史；已入队消息继续补传。");
         if (driver.IsLegacy && driver.SupportsWrite) Field(_basic, "写入方法", _writeMethod);
         _methodHint = EditorLayout.WrappingLabel("", 10, UiTheme.Muted);
         var hintRow = _basic.RowCount++; _basic.Controls.Add(_methodHint, 0, hintRow); _basic.SetColumnSpan(_methodHint, 2);
@@ -300,7 +354,7 @@ internal sealed class TagEditor : EditorDialog
         Value.Area = (ModbusArea)_area.SelectedItem!; Value.ByteOrder = (RegisterByteOrder)_byteOrder.SelectedItem!; Value.Endian = (ProtocolEndian)_endian.SelectedItem!;
         Value.ReadMethod = _driver.Methods.Count > 0 ? ((_readMethod.SelectedItem as MethodChoice)?.Method.Name ?? "") : "";
         Value.WriteMethod = _driver.IsLegacy ? ((_writeMethod.SelectedItem as MethodChoice)?.Method.Name ?? "") : "";
-        Value.Enabled = _enabled.Checked; Value.Writable = _writable.Checked;
+        Value.Enabled = _enabled.Checked; Value.UploadEnabled = _uploadEnabled.Checked; Value.Writable = _writable.Checked;
         if (_driver.IsLegacy && !_driver.Methods.Any(x => x.Name == Value.ReadMethod)) throw new InvalidOperationException("请选择当前驱动提供的读取方法。");
         if (Value.Writable && _driver.IsLegacy)
         {
@@ -312,7 +366,7 @@ internal sealed class TagEditor : EditorDialog
             Value.Scale = ParseNumber(_scale, "倍率"); Value.Offset = ParseNumber(_offset, "偏移量");
             Value.LowLimit = string.IsNullOrWhiteSpace(_low.Text) ? null : ParseNumber(_low, "报警下限");
             Value.HighLimit = string.IsNullOrWhiteSpace(_high.Text) ? null : ParseNumber(_high, "报警上限");
-            if (Value.LowLimit.HasValue && Value.HighLimit.HasValue && Value.LowLimit.Value >= Value.HighLimit.Value) throw new InvalidOperationException("报警下限必须小于上限。");
+            if (Value.LowLimit.HasValue && Value.HighLimit.HasValue && Value.LowLimit.Value > Value.HighLimit.Value) throw new InvalidOperationException("报警下限不能高于上限。");
             if (Value.Writable && Value.Scale == 0) throw new InvalidOperationException("允许写入时倍率不能为 0。");
         }
         else { Value.Scale = 1; Value.Offset = 0; Value.LowLimit = null; Value.HighLimit = null; }

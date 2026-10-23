@@ -11,7 +11,7 @@ namespace EdgeGateway.Service;
 /// One sequential worker per device; acquisition, history storage and northbound publication are independent.
 /// This instance owns driver sessions, but the caller retains ownership of the store and publisher.
 /// </summary>
-public sealed class GatewayRuntime : IAsyncDisposable
+public sealed partial class GatewayRuntime : IAsyncDisposable
 {
     private readonly IDriverRegistry _registry;
     private readonly IGatewayStore _store;
@@ -22,7 +22,7 @@ public sealed class GatewayRuntime : IAsyncDisposable
     private readonly ConcurrentDictionary<Guid, DeviceRuntimeStatus> _statuses = new();
     private readonly ConcurrentDictionary<Guid, DeviceSession> _sessions = new();
     private readonly ConcurrentDictionary<Guid, string> _alarmStates = new();
-    private GatewayConfiguration _configuration;
+    private volatile GatewayConfiguration _configuration;
     private CancellationTokenSource? _runCancellation;
     private Channel<IReadOnlyList<TelemetrySample>>? _historyChannel;
     private Task[] _sharedWorkers = [];
@@ -356,95 +356,6 @@ public sealed class GatewayRuntime : IAsyncDisposable
                 _log.Write(GatewayLogLevel.Error, $"历史写入失败，本批 {batch.Count} 条未保存，请检查磁盘：{ex.Message}");
             }
         }
-    }
-
-    private async Task QueueTelemetryAsync(CancellationToken cancellationToken)
-    {
-        var capacityWarning = false;
-        try
-        {
-            while (true)
-            {
-                await Task.Delay(_configuration.PublishIntervalMs, cancellationToken).ConfigureAwait(false);
-                var samples = GetLatest();
-                if (samples.Count == 0) continue;
-                var payload = JsonSerializer.Serialize(new
-                {
-                    schemaVersion = 1,
-                    messageId = Guid.NewGuid().ToString("N"),
-                    gatewayId = _configuration.GatewayId,
-                    timestamp = DateTimeOffset.UtcNow,
-                    samples = samples.Select(s => new
-                    {
-                        deviceId = s.DeviceId, deviceName = s.DeviceName, tagId = s.TagId, tagName = s.TagName,
-                        address = s.Address, rawValue = s.RawValue, value = s.Value, unit = s.Unit,
-                        quality = s.Quality.ToString(), timestamp = s.Timestamp, error = s.Error
-                    })
-                });
-                var topic = _configuration.Mqtt.Topic.Replace("{gatewayId}", _configuration.GatewayId, StringComparison.Ordinal);
-                // Keep the same messageId while retrying an unpersisted snapshot; do not evict older messages.
-                while (true)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    try
-                    {
-                        if (await _store.EnqueueAsync(topic, payload, _configuration.MaxOutboxMessages, cancellationToken).ConfigureAwait(false))
-                        {
-                            if (capacityWarning) _log.Write(GatewayLogLevel.Information, "补传队列已有可用容量，恢复生成上报快照。");
-                            capacityWarning = false;
-                            break;
-                        }
-                        if (!capacityWarning) _log.Write(GatewayLogLevel.Error, "补传队列已满，暂停生成新的上报快照；已入队数据保留，现场采集及历史记录继续。");
-                        capacityWarning = true;
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-                    catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"上报快照无法持久化，将重试：{ex.Message}"); }
-                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
-                }
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"上报快照任务异常：{ex.Message}"); }
-    }
-
-    private async Task SendOutboxAsync(CancellationToken cancellationToken)
-    {
-        var failures = 0;
-        try
-        {
-            while (true)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                try
-                {
-                    var messages = await _store.ReadOutboxAsync(50, cancellationToken).ConfigureAwait(false);
-                    if (messages.Count == 0) { await Task.Delay(500, cancellationToken).ConfigureAwait(false); continue; }
-                    foreach (var message in messages)
-                    {
-                        await _publisher.PublishAsync(_configuration.Mqtt, message.Topic, message.Payload, cancellationToken).ConfigureAwait(false);
-                        // QoS 1 acknowledged by the broker. A crash before delete may duplicate delivery, never silently lose it.
-                        await _store.AcknowledgeAsync(message.Id, cancellationToken).ConfigureAwait(false);
-                    }
-                    if (failures > 0) _log.Write(GatewayLogLevel.Information, "MQTT 上报已恢复，继续发送补传队列。");
-                    failures = 0;
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-                catch (Exception ex)
-                {
-                    failures++;
-                    _log.Write(GatewayLogLevel.Warning, $"MQTT 暂不可用，消息保留待补传（{ex.GetType().Name}）：{Redact(ex.Message)}");
-                    await Task.Delay(Backoff(failures), cancellationToken).ConfigureAwait(false);
-                }
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-    }
-
-    private string Redact(string text)
-    {
-        var name = _configuration.Mqtt.PasswordEnvironmentVariable;
-        var password = string.IsNullOrEmpty(name) ? null : Environment.GetEnvironmentVariable(name);
-        return string.IsNullOrEmpty(password) ? text : text.Replace(password, "***", StringComparison.Ordinal);
     }
 
     private void UpdateAlarm(TagConfiguration tag, TelemetrySample sample)

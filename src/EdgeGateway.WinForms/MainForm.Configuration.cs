@@ -28,6 +28,9 @@ public sealed partial class MainForm
         UiTheme.AddColumn(_deviceGrid, "State", "采集状态", 88, 88);
         UiTheme.AddColumn(_deviceGrid, "PointCount", "点位数", 70, 70);
         UiTheme.AddColumn(_deviceGrid, "Cycle", "周期 (ms)", 90);
+        UiTheme.AddColumn(_deviceGrid, "LastSuccess", "最近成功采集", 150, 150);
+        UiTheme.AddColumn(_deviceGrid, "Failures", "连续失败", 85, 85);
+        UiTheme.AddColumn(_deviceGrid, "Error", "采集诊断", 260, 260);
         AddDeviceActionColumn(DeviceStartColumnName, "启动", true);
         AddDeviceActionColumn(DeviceStopColumnName, "停止", false);
         var configurationColumn = new DataGridViewLinkColumn
@@ -57,12 +60,17 @@ public sealed partial class MainForm
         UiTheme.AddColumn(_tagGrid, "Unit", "单位", 65);
         UiTheme.AddColumn(_tagGrid, "Access", "读写", 80);
         UiTheme.AddColumn(_tagGrid, "Enabled", "启用", 60);
-        _tagGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await EditTagAsync(); };
+        UiTheme.AddColumn(_tagGrid, "Upload", "上传", 60);
+        _tagGrid.CellDoubleClick += async (_, e) =>
+        {
+            if (e.RowIndex >= 0 && _tagGrid.Rows[e.RowIndex].DataBoundItem is TagRow tag) await EditTagAsync(tag.Id);
+        };
         var addDevice = ConfigurationButton("添加设备", async (_, _) => await AddDeviceAsync(), true);
         var editDevice = ConfigurationButton("编辑设备", async (_, _) => await EditDeviceAsync());
         var deleteDevice = ConfigurationButton("删除设备", async (_, _) => await DeleteDeviceAsync());
         var importDevices = ConfigurationButton("导入设备", async (_, _) => await RunBusyAsync(ImportDevicesAsync));
         var import = ConfigurationButton("导入配置", async (_, _) => await RunBusyAsync(ImportConfigurationAsync));
+        _stoppedConfigurationCommands.Add(import);
         var export = UiTheme.Button("导出配置", async (_, _) => await RunBusyAsync(ExportConfigurationAsync));
         var content = new TableLayoutPanel { Name = "DevicesContent", ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -72,12 +80,15 @@ public sealed partial class MainForm
         content.Controls.Add(_deviceGrid, 0, 0);
         var tagToolbar = UiTheme.Toolbar(UiTheme.Label("选中设备的点位", 11, UiTheme.Ink, true),
             ConfigurationButton("添加点位", async (_, _) => await AddTagAsync()), ConfigurationButton("编辑点位", async (_, _) => await EditTagAsync()),
-            ConfigurationButton("删除点位", async (_, _) => await DeleteTagAsync()));
+            ConfigurationButton("删除点位", async (_, _) => await DeleteTagAsync()),
+            ConfigurationButton("导入点位", async (_, _) => await ImportTagsAsync()),
+            UiTheme.Button("导出点位", async (_, _) => await RunBusyAsync(() => ExportTagsAsync())),
+            UiTheme.Button("点位模板", async (_, _) => await RunBusyAsync(() => ExportTagsAsync(template: true))));
         tagToolbar.Padding = new Padding(0, 15, 0, 10);
         tagToolbar.Name = "TagActions";
         content.Controls.Add(tagToolbar, 0, 1); content.Controls.Add(_tagGrid, 0, 2);
         var viewport = ScrollableContent(content, "DevicesViewport", () => tagToolbar.PreferredSize.Height + UiTheme.Scale(content, 320));
-        return UiTheme.PageLayout("设备与点位", "每台设备独立启动、停止；配置确认后自动保存。任意设备运行期间，配置仅允许查看。", UiTheme.Toolbar(addDevice, editDevice, deleteDevice, importDevices, import, export), viewport);
+        return UiTheme.PageLayout("设备与点位", "设备可独立维护。修改运行中设备的配置或点位，保存后仅重新连接该设备；其他设备继续采集。", UiTheme.Toolbar(addDevice, editDevice, deleteDevice, importDevices, import, export), viewport);
     }
 
     private void AddDeviceActionColumn(string name, string text, bool start)
@@ -100,7 +111,23 @@ public sealed partial class MainForm
         var button = UiTheme.Button(text, action, primary); _configurationCommands.Add(button); return button;
     }
 
-    private bool CanEdit() => !_runtime.IsRunning && !_busy && !_closing;
+    private bool CanEdit() => !_busy && !_closing;
+
+    private void BindEditorApply(EditorDialog editor, Guid? deviceId, Func<Task> apply)
+    {
+        editor.SetApplyHandler(async () =>
+        {
+            if (!CanEdit()) throw new InvalidOperationException("当前操作尚未完成，请稍后重试。输入内容已保留。");
+            _busy = true; UpdateCommands();
+            try { await apply(); }
+            finally { _busy = false; UpdateCommands(); }
+        }, deviceId.HasValue && _runtime.IsDeviceRunning(deviceId.Value), exception =>
+        {
+            _log.Write(GatewayLogLevel.Error, "配置未保存，编辑内容已保留：" + exception.Message);
+            SetFooter("配置未保存，弹窗中的输入内容已保留。");
+        });
+        editor.SuppressApplyErrorDialogForSmoke = _smokeTest;
+    }
 
     private async Task HandleDeviceGridActionAsync(DataGridViewCellEventArgs e, bool doubleClick = false)
     {
@@ -142,42 +169,43 @@ public sealed partial class MainForm
         var device = _configuration.Devices.FirstOrDefault(x => x.Id == deviceId);
         if (device is null) return;
         var start = columnName == DeviceStartColumnName;
-        if (start && !device.Enabled) { SetFooter("该设备未启用，请停止全部采集后，在“配置 → 采集设置”勾选“启用设备”。"); return; }
-        if (start && _dirty) { SetFooter("平台设置尚未应用，请先应用设置或重置修改，再启动设备。"); return; }
+        if (start && !device.Enabled) { SetFooter("该设备未启用，请在“配置 → 采集设置”勾选“启用设备”，保存后启动。"); return; }
         if (start == _runtime.IsDeviceRunning(deviceId)) return;
         await RunBusyAsync(() => ExecuteDeviceActionAsync(deviceId, start));
     }
 
-    private async Task ConfigureDeviceAsync(Guid deviceId)
+    private Task ConfigureDeviceAsync(Guid deviceId)
     {
-        if (_busy || _closing) return;
+        if (_busy || _closing) return Task.CompletedTask;
         var device = _configuration.Devices.FirstOrDefault(x => x.Id == deviceId);
-        if (device is null) return;
+        if (device is null) return Task.CompletedTask;
         try
         {
-            var readOnly = _runtime.IsRunning;
-            using var dialog = new DeviceConfigurationDialog(device, _drivers, readOnly: readOnly);
-            if (dialog.ShowDialog(this) != DialogResult.OK || readOnly || dialog.Value is null) return;
-            if (!CanEdit()) { SetFooter("采集状态已变化，设备配置未应用。请停止采集后重新配置。"); return; }
-            var index = _configuration.Devices.FindIndex(x => x.Id == deviceId);
-            if (index < 0) return;
-            if (dialog.Value.Id != device.Id)
-                throw new InvalidOperationException("设备配置不能更改设备唯一标识。");
-            var candidate = Clone(_configuration);
-            candidate.Devices[index] = Clone(dialog.Value);
-            await RunBusyAsync(() => CommitConfigurationAsync(candidate, deviceId, $"设备“{device.Name}”的配置已自动保存。"));
+            using var dialog = new DeviceConfigurationDialog(device, _drivers);
+            BindEditorApply(dialog, deviceId, async () =>
+            {
+                var value = dialog.Value ?? throw new InvalidOperationException("设备配置尚未通过检查。");
+                var index = _configuration.Devices.FindIndex(x => x.Id == deviceId);
+                if (index < 0) throw new InvalidOperationException("设备已不存在，请取消当前编辑。");
+                if (value.Id != deviceId) throw new InvalidOperationException("设备配置不能更改设备唯一标识。");
+                var candidate = Clone(_configuration);
+                candidate.Devices[index] = Clone(value);
+                await CommitConfigurationAsync(candidate, deviceId, $"设备“{value.Name}”的配置已自动保存。");
+            });
+            dialog.ShowDialog(this);
         }
         catch (Exception exception)
         {
             if (_smokeTest) throw;
             ShowError("打开或应用设备配置失败：" + exception.Message);
         }
+        return Task.CompletedTask;
     }
 
     private void UpdateDeviceConfigurationCommands()
     {
         if (_deviceGrid.Columns[DeviceConfigurationColumnName] is not DataGridViewLinkColumn column) return;
-        column.Text = _runtime.IsRunning ? "查看" : "配置";
+        column.Text = "配置";
         var statuses = _runtime.GetDeviceStatuses().ToDictionary(x => x.DeviceId);
         foreach (DataGridViewRow row in _deviceGrid.Rows)
         {
@@ -185,13 +213,18 @@ public sealed partial class MainForm
             var device = _configuration.Devices.FirstOrDefault(x => x.Id == data.Id);
             if (device is null) continue;
             var running = _runtime.IsDeviceRunning(device.Id);
+            var status = statuses.GetValueOrDefault(device.Id);
             row.Cells["State"].Value = !device.Enabled ? "未启用"
-                : running ? StateText(statuses.GetValueOrDefault(device.Id)?.State ?? DeviceState.Connecting) : "已停止";
+                : running ? StateText(status?.State ?? DeviceState.Connecting) : "已停止";
+            row.Cells["LastSuccess"].Value = status?.LastSuccess?.ToLocalTime().ToString("MM-dd HH:mm:ss") ?? "—";
+            row.Cells["Failures"].Value = status?.ConsecutiveFailures ?? 0;
+            row.Cells["Error"].Value = status?.Error ?? (running ? "采集中" : "—");
+            row.Cells["Error"].ToolTipText = status?.Error ?? "";
             if (row.Cells[DeviceStartColumnName] is DeviceActionButtonCell start)
             {
-                start.ActionEnabled = !_busy && !_closing && !_dirty && device.Enabled && !running;
+                start.ActionEnabled = !_busy && !_closing && device.Enabled && !running;
                 start.ToolTipText = !device.Enabled ? "请先在“配置 → 采集设置”勾选“启用设备”。"
-                    : _dirty ? "请先应用平台设置或重置修改。" : running ? "该设备已启动。" : "仅启动本行设备的采集。";
+                    : running ? "该设备已启动。" : _dirty ? "使用已保存的平台设置启动；未应用的平台草稿不会生效。" : "仅启动本行设备的采集。";
             }
             if (row.Cells[DeviceStopColumnName] is DeviceActionButtonCell stop)
             {
@@ -201,8 +234,8 @@ public sealed partial class MainForm
             if (row.Cells[DeviceConfigurationColumnName] is not DataGridViewLinkCell cell) continue;
             cell.LinkColor = _busy || _closing ? UiTheme.Muted : UiTheme.Blue;
             cell.ActiveLinkColor = cell.VisitedLinkColor = cell.LinkColor;
-            cell.ToolTipText = _runtime.IsRunning
-                ? "查看该设备当前驱动的配置；停止全部运行设备后可修改。"
+            cell.ToolTipText = running
+                ? "配置此设备；保存变更后仅重新连接此设备，其他设备继续采集。"
                 : "配置该行设备的启用状态、名称、分组、采集驱动及通信参数。";
         }
         _deviceGrid.Invalidate();
@@ -213,16 +246,20 @@ public sealed partial class MainForm
     private TagConfiguration? SelectedTag() => _tagGrid.CurrentRow?.DataBoundItem is TagRow row
         ? SelectedDevice()?.Tags.FirstOrDefault(x => x.Id == row.Id) : null;
 
-    private async Task AddDeviceAsync()
+    private Task AddDeviceAsync()
     {
-        if (!CanEdit()) return;
+        if (!CanEdit()) return Task.CompletedTask;
         var device = new DeviceConfiguration { Name = $"设备 {_configuration.Devices.Count + 1}", Tags = [new TagConfiguration { Name = "采集点位", Address = "sine", DataType = TagDataType.Float64 }] };
         using var editor = new DeviceConfigurationDialog(device, _drivers, isNew: true);
-        if (editor.ShowDialog(this) != DialogResult.OK || editor.Value is null) return;
-        if (!CanEdit()) { SetFooter("采集状态已变化，设备未添加。请停止采集后重新操作。"); return; }
-        var candidate = Clone(_configuration);
-        candidate.Devices.Add(Clone(editor.Value));
-        await RunBusyAsync(() => CommitConfigurationAsync(candidate, editor.Value.Id, "设备已添加并自动保存。"));
+        BindEditorApply(editor, null, async () =>
+        {
+            var value = editor.Value ?? throw new InvalidOperationException("设备配置尚未通过检查。");
+            var candidate = Clone(_configuration);
+            candidate.Devices.Add(Clone(value));
+            await CommitConfigurationAsync(candidate, value.Id, "设备已添加并自动保存，可在设备行点击启动。");
+        });
+        editor.ShowDialog(this);
+        return Task.CompletedTask;
     }
 
     private async Task EditDeviceAsync()
@@ -236,41 +273,52 @@ public sealed partial class MainForm
     {
         if (!CanEdit()) return;
         var device = SelectedDevice(); if (device is null) return;
-        if (MessageBox.Show(this, $"删除设备“{device.Name}”及其 {device.Tags.Count} 个配置点位？已有历史数据仍然保留。", "删除设备", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+        var runningNotice = _runtime.IsDeviceRunning(device.Id) ? "\n该设备正在运行，删除成功后只停止本设备，其他设备继续采集。" : "";
+        if (MessageBox.Show(this, $"删除设备“{device.Name}”及其 {device.Tags.Count} 个配置点位？已有历史数据仍然保留。{runningNotice}", "删除设备", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
         var candidate = Clone(_configuration);
         candidate.Devices.RemoveAll(x => x.Id == device.Id);
         await RunBusyAsync(() => CommitConfigurationAsync(candidate, successMessage: "设备已删除并自动保存。"));
     }
 
-    private async Task AddTagAsync()
+    private Task AddTagAsync()
     {
-        if (!CanEdit()) return;
-        var device = SelectedDevice(); if (device is null) { SetFooter("请先添加或选择设备。"); return; }
+        if (!CanEdit()) return Task.CompletedTask;
+        var device = SelectedDevice(); if (device is null) { SetFooter("请先添加或选择设备。"); return Task.CompletedTask; }
         var descriptor = _drivers.GetFactory(device.DriverId).Descriptor;
         using var editor = new TagEditor(TagEditor.CreateDefaultTag(descriptor, $"点位 {device.Tags.Count + 1}"), descriptor);
-        if (editor.ShowDialog(this) != DialogResult.OK) return;
-        var candidate = Clone(_configuration);
-        candidate.Devices.Single(x => x.Id == device.Id).Tags.Add(Clone(editor.Value));
-        await RunBusyAsync(() => CommitConfigurationAsync(candidate, device.Id, "点位已添加并自动保存。"));
+        BindEditorApply(editor, device.Id, async () =>
+        {
+            var candidate = Clone(_configuration);
+            candidate.Devices.Single(x => x.Id == device.Id).Tags.Add(Clone(editor.Value));
+            await CommitConfigurationAsync(candidate, device.Id, "点位已添加并自动保存。");
+        });
+        editor.ShowDialog(this);
+        return Task.CompletedTask;
     }
 
-    private async Task EditTagAsync()
+    private Task EditTagAsync(Guid? tagId = null)
     {
-        if (!CanEdit()) return;
-        var device = SelectedDevice(); var tag = SelectedTag(); if (device is null || tag is null) return;
+        if (!CanEdit()) return Task.CompletedTask;
+        var device = SelectedDevice(); var tag = tagId.HasValue ? device?.Tags.FirstOrDefault(x => x.Id == tagId) : SelectedTag();
+        if (device is null || tag is null) return Task.CompletedTask;
         using var editor = new TagEditor(Clone(tag), _drivers.GetFactory(device.DriverId).Descriptor);
-        if (editor.ShowDialog(this) != DialogResult.OK) return;
-        var candidate = Clone(_configuration);
-        var tags = candidate.Devices.Single(x => x.Id == device.Id).Tags;
-        tags[tags.FindIndex(x => x.Id == tag.Id)] = Clone(editor.Value);
-        await RunBusyAsync(() => CommitConfigurationAsync(candidate, device.Id, "点位已更新并自动保存。"));
+        BindEditorApply(editor, device.Id, async () =>
+        {
+            var candidate = Clone(_configuration);
+            var tags = candidate.Devices.Single(x => x.Id == device.Id).Tags;
+            tags[tags.FindIndex(x => x.Id == tag.Id)] = Clone(editor.Value);
+            await CommitConfigurationAsync(candidate, device.Id, "点位已更新并自动保存。");
+        });
+        editor.ShowDialog(this);
+        return Task.CompletedTask;
     }
 
     private async Task DeleteTagAsync()
     {
         if (!CanEdit()) return;
         var device = SelectedDevice(); var tag = SelectedTag(); if (device is null || tag is null) return;
-        if (MessageBox.Show(this, $"删除点位“{tag.Name}”？", "删除点位", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+        var notice = _runtime.IsDeviceRunning(device.Id) ? "\n保存后仅重新连接该点位所属设备，其他设备继续采集。" : "";
+        if (MessageBox.Show(this, $"删除点位“{tag.Name}”？{notice}", "删除点位", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
         var candidate = Clone(_configuration);
         candidate.Devices.Single(x => x.Id == device.Id).Tags.RemoveAll(x => x.Id == tag.Id);
         await RunBusyAsync(() => CommitConfigurationAsync(candidate, device.Id, "点位已删除并自动保存。"));
@@ -296,22 +344,22 @@ public sealed partial class MainForm
         _tagGrid.DataSource = device?.Tags.Select(t => new TagRow(t.Id, t.Name, t.Address, t.ReadMethod, t.DataType.ToString(), AreaText(t.Area),
             descriptor?.IsLegacy == true ? t.Endian.ToString() : t.ByteOrder.ToString(),
             TagEditor.IsNumericType(t.DataType) ? $"x × {t.Scale:G6} + {t.Offset:G6}" : "原样保存",
-            t.Unit, t.Writable ? "读 / 写" : "只读", t.Enabled ? "是" : "否")).ToList() ?? [];
+            t.Unit, t.Writable ? "读 / 写" : "只读", t.Enabled ? "是" : "否", t.UploadEnabled ? "是" : "否")).ToList() ?? [];
     }
 
     private async Task ImportDevicesAsync()
     {
-        if (_runtime.IsRunning) throw new InvalidOperationException("请先停止采集，再导入设备。");
         using var dialog = new OpenFileDialog { Filter = "网关配置 (*.json)|*.json", Title = "追加导入设备（保留当前网关与平台配置）", CheckFileExists = true };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
-        if (new FileInfo(dialog.FileName).Length > 2 * 1024 * 1024) throw new InvalidOperationException("配置文件超过 2 MB，请检查文件内容。");
         var imported = await new JsonConfigurationStore(dialog.FileName).LoadAsync();
+        if (imported.Devices is null) throw new InvalidDataException("配置文件缺少设备集合。");
+        if (MessageBox.Show(this, $"追加导入 {imported.Devices.Count} 台设备、{imported.Devices.Sum(x => x?.Tags?.Count ?? 0)} 个点位？\n已有设备与平台配置保持不变，新增设备导入后不会自动启动。\n重复标识或串口冲突将整批拒绝。", "追加导入设备", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
         await AppendImportedDevicesAsync(imported);
     }
 
     private async Task AppendImportedDevicesAsync(GatewayConfiguration imported)
     {
-        if (_runtime.IsRunning || _closing) throw new InvalidOperationException("请先停止采集，再导入设备。");
+        if (_closing) throw new InvalidOperationException("程序正在退出，不能导入设备。");
         if (imported.Devices is null || imported.Devices.Count == 0)
             throw new InvalidDataException("配置文件中没有可导入的设备。");
 
@@ -332,7 +380,6 @@ public sealed partial class MainForm
         if (_runtime.IsRunning) throw new InvalidOperationException("请先停止采集，再导入配置。");
         using var dialog = new OpenFileDialog { Filter = "网关配置 (*.json)|*.json", Title = "导入网关配置", CheckFileExists = true };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
-        if (new FileInfo(dialog.FileName).Length > 2 * 1024 * 1024) throw new InvalidOperationException("配置文件超过 2 MB，请检查文件内容。");
         // Reuse the same in-memory version migration as normal startup; importing never rewrites the source file.
         var imported = await new JsonConfigurationStore(dialog.FileName).LoadAsync();
         var errors = ConfigurationValidator.Validate(imported, _drivers);
@@ -398,7 +445,7 @@ public sealed partial class MainForm
         NumberField("retention", "历史保留天数", 1, 3650, x => CloudDraft.HistoryRetentionDays = x);
         NumberField("maxHistory", "最大历史记录数", 100, 10_000_000, x => CloudDraft.MaxHistoryRows = x);
         NumberField("maxOutbox", "最大待发送消息数", 1, 1_000_000, x => CloudDraft.MaxOutboxMessages = x);
-        Section("MQTT 平台连接");
+        Section("通用 MQTT 上报");
         CheckField("mqttEnabled", "启用 MQTT 上报", x => CloudDraft.Mqtt.Enabled = x);
         TextField("host", "Broker 主机", x => CloudDraft.Mqtt.Host = x);
         NumberField("port", "Broker 端口", 1, 65535, x => CloudDraft.Mqtt.Port = x);
@@ -444,6 +491,7 @@ public sealed partial class MainForm
         });
         var apply = ConfigurationButton("应用设置", async (_, _) => await RunBusyAsync(ApplyCloudSettingsAsync), true);
         apply.Name = "ApplyCloudSettings";
+        _stoppedConfigurationCommands.Add(apply);
         var reset = ConfigurationButton("重置修改", (_, _) =>
         {
             if (!CanEdit()) return;
@@ -451,7 +499,7 @@ public sealed partial class MainForm
             SetFooter("平台设置已恢复为上次保存的内容。");
         });
         reset.Name = "ResetCloudSettings";
-        return UiTheme.PageLayout("平台与系统", "编辑后点击“应用设置”完成校验并自动保存；“重置修改”恢复已保存内容。", UiTheme.Toolbar(apply, reset, open), scroll);
+        return UiTheme.PageLayout("平台与系统", "可随时编辑草稿；停止全部设备后应用全局设置。未应用草稿不影响设备按已保存设置启动和采集。", UiTheme.Toolbar(apply, reset, open), scroll);
     }
 
     private GatewayConfiguration CloudDraft => _cloudDraft ??= Clone(_configuration);
@@ -501,7 +549,7 @@ public sealed partial class MainForm
 
     private static string AreaText(ModbusArea area) => area switch { ModbusArea.Coil => "线圈 (01)", ModbusArea.DiscreteInput => "离散输入 (02)", ModbusArea.InputRegister => "输入寄存器 (04)", _ => "保持寄存器 (03)" };
     private sealed record DeviceRow(Guid Id, string Name, string Group, string Driver, string Enabled, string State, int PointCount, int Cycle);
-    private sealed record TagRow(Guid Id, string Name, string Address, string Method, string Type, string Area, string ByteOrder, string Scaling, string Unit, string Access, string Enabled);
+    private sealed record TagRow(Guid Id, string Name, string Address, string Method, string Type, string Area, string ByteOrder, string Scaling, string Unit, string Access, string Enabled, string Upload);
 
     private sealed class DeviceActionButtonCell : DataGridViewButtonCell
     {

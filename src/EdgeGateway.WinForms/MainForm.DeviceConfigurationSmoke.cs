@@ -375,7 +375,7 @@ public sealed partial class MainForm
                 throw new InvalidOperationException("Applied row configuration was not automatically saved or failed to preserve the target selection.");
             await AssertSavedConfigurationForSmokeAsync("device row configuration");
             Console.WriteLine("Device row entry smoke passed: configuration link and data-cell double-click opened the same dedicated dialog for clicked B while A was selected, and both automatically saved.");
-            Console.WriteLine("Device enabled configuration smoke passed: enabled via configuration link, disabled via row double-click, saved JSON and row start availability matched; cancelled edits stayed isolated and running views remained read-only.");
+            Console.WriteLine("Device enabled configuration smoke passed: enabled via configuration link, disabled via row double-click, saved JSON and row start availability matched; cancelled edits stayed isolated.");
             var added = await SmokeDeviceConfigurationModalAsync(AddDeviceAsync, dialog =>
             {
                 if (dialog.Value is not null || dialog.SelectedSmokeTab?.Name != "AcquisitionSettings")
@@ -438,7 +438,7 @@ public sealed partial class MainForm
         Exception? failure = null;
         var elapsed = Stopwatch.StartNew();
         using var timer = new System.Windows.Forms.Timer { Interval = 20 };
-        timer.Tick += (_, _) =>
+        timer.Tick += async (_, _) =>
         {
             var dialog = Application.OpenForms.OfType<DeviceConfigurationDialog>().SingleOrDefault(x => x.Visible && x.Modal);
             if (dialog is null)
@@ -453,10 +453,9 @@ public sealed partial class MainForm
             try
             {
                 edit(dialog);
-                // Exercise the production Commit path and ShowDialog's OK result
-                // without leaving an unexpected validation MessageBox blocking CI.
-                confirmed = dialog.CommitForSmoke();
-                dialog.DialogResult = DialogResult.OK;
+                // Exercise the same awaited validate/save/apply path as the real confirmation button.
+                await dialog.ApplyAndAcceptForSmokeAsync();
+                confirmed = dialog.Value;
             }
             catch (Exception exception)
             {

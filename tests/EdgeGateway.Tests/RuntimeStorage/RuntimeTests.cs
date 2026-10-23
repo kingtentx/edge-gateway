@@ -6,7 +6,7 @@ using EdgeGateway.Service;
 
 namespace EdgeGateway.Tests.RuntimeStorage;
 
-public sealed class RuntimeTests
+public sealed partial class RuntimeTests
 {
     [Fact]
     public async Task AppliesEngineeringScaleAndDoesNotObserveOutsideConfigurationMutations()
@@ -458,6 +458,7 @@ public sealed class RuntimeTests
         public Guid? BlockingWriteDevice;
         public TaskCompletionSource<bool> WriteStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ConcurrentDictionary<Guid, bool> FailingDevices { get; } = new();
+        public ConcurrentDictionary<string, bool> FailingHosts { get; } = new();
         public ConcurrentDictionary<Guid, int> CreationsByDevice { get; } = new();
         public ConcurrentDictionary<Guid, int> DisposalsByDevice { get; } = new();
         public ConcurrentDictionary<Guid, int> ReadsByDevice { get; } = new();
@@ -469,12 +470,13 @@ public sealed class RuntimeTests
             CreationsByDevice.AddOrUpdate(configuration.Id, 1, (_, count) => count + 1);
             var live = LiveDriversByDevice.AddOrUpdate(configuration.Id, 1, (_, count) => count + 1);
             MaximumLiveDriversByDevice.AddOrUpdate(configuration.Id, live, (_, count) => Math.Max(count, live));
-            return new FakeDriver(this, configuration.Id);
+            return new FakeDriver(this, configuration.Id, configuration.Host);
         }
         public IReadOnlyList<string> Validate(DeviceConfiguration configuration) => [];
-        private sealed class FakeDriver(FakeFactory owner, Guid deviceId) : IDeviceDriver
+        private sealed class FakeDriver(FakeFactory owner, Guid deviceId, string host) : IDeviceDriver
         {
-            public Task ConnectAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+            public Task ConnectAsync(CancellationToken cancellationToken) => owner.FailingHosts.ContainsKey(host)
+                ? Task.FromException(new IOException("测试连接失败：" + host)) : Task.CompletedTask;
             public async Task<IReadOnlyList<TagReadResult>> ReadAsync(IReadOnlyList<TagConfiguration> tags, CancellationToken cancellationToken)
             {
                 var active = Interlocked.Increment(ref owner._active);

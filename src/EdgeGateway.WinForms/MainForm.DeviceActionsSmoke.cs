@@ -170,7 +170,7 @@ public sealed partial class MainForm
             if (item.DataBoundItem is not DeviceRow data) continue;
             var device = _configuration.Devices.Single(x => x.Id == data.Id);
             var running = _runtime.IsDeviceRunning(device.Id);
-            if (((DeviceActionButtonCell)item.Cells[DeviceStartColumnName]).ActionEnabled != (!_busy && !_closing && !_dirty && device.Enabled && !running)
+            if (((DeviceActionButtonCell)item.Cells[DeviceStartColumnName]).ActionEnabled != (!_busy && !_closing && device.Enabled && !running)
                 || ((DeviceActionButtonCell)item.Cells[DeviceStopColumnName]).ActionEnabled != (!_busy && !_closing && running))
                 throw new InvalidOperationException(context + ": row command availability disagrees with its device session.");
         }

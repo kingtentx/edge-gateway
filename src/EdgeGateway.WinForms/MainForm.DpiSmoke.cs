@@ -1,4 +1,5 @@
 using EdgeGateway.Model;
+using EdgeGateway.Service;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -166,6 +167,19 @@ public sealed partial class MainForm
                 result.CheckedDialogs.Add("WriteValueDialog multiline");
             }
             catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-write-failed.png")); throw; }
+            finally { editor.Close(); }
+        }
+        using (var editor = new TagImportDialog("点位导入布局检查", TagCsvExchange.Export(new[]
+               { new TagConfiguration { Name = "批量维护点位", Address = "0" } }), [], _ => []))
+        {
+            editor.Show(this);
+            try
+            {
+                FitSmokeDialog(editor, area);
+                VerifyEditorLayout(editor, result.Name + " tag import");
+                result.CheckedDialogs.Add("TagImportDialog preview");
+            }
+            catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-tag-import-failed.png")); throw; }
             finally { editor.Close(); }
         }
     }

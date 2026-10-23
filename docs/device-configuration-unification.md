@@ -1,5 +1,7 @@
 # 统一设备配置窗与启用状态
 
+> **历史版本说明：** 本页完整保留源码 `6419274` / CI `39916897490` 的窗体合并行为、截图和验收事实。下文“全部停止才能修改”“运行时只读”和平台草稿影响启动等规则仅适用于该历史版本。当前源码已支持运行中维护设备与点位、仅重启变更目标、失败保留弹窗输入，且平台草稿不阻止启动；请按 [运行中配置与数据闭环](live-configuration.md) 操作。本页历史运行包不包含这些后续功能。
+
 添加设备、编辑设备、设备行“配置”和普通数据列双击统一使用 `DeviceConfigurationDialog`。原 `Editors.cs` 中重复的 `DeviceEditor` 类移除，四种入口使用相同的字段、页签和保存规则。“采集设置”默认打开，首行恢复“启用设备”，不再因入口不同而缺少启用、名称、分组或驱动选择。
 
 **本轮已完成验证：** 源码 [`6419274`](https://github.com/kingtentx/edge-gateway/commit/64192748e37368402c7eb0c78592f184cda9c8f3) 的 [Windows CI 39916897490](https://github.com/kingtentx/edge-gateway/actions/runs/39916897490) 首次执行全部通过。[下载 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39916897490/artifacts/12485477098)，完整解压后运行 `EdgeGateway.WinForms.exe`。详细执行结果见下文及 [机器可读记录](device-configuration-unification-verification.json)。

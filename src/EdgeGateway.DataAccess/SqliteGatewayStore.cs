@@ -159,10 +159,14 @@ public sealed class SqliteGatewayStore(string path) : IGatewayStore
     public Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default) => ExecuteAsync(connection =>
     {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT (SELECT COUNT(*) FROM samples), (SELECT COUNT(*) FROM outbox)";
+        command.CommandText = """
+            SELECT (SELECT COUNT(*) FROM samples), (SELECT COUNT(*) FROM outbox),
+                   (SELECT created_ms FROM outbox ORDER BY id LIMIT 1)
+            """;
         using var reader = command.ExecuteReader();
         reader.Read();
-        return new StoreStatistics(reader.GetInt64(0), reader.GetInt64(1));
+        return new StoreStatistics(reader.GetInt64(0), reader.GetInt64(1),
+            reader.IsDBNull(2) ? null : DateTimeOffset.FromUnixTimeMilliseconds(reader.GetInt64(2)));
     }, cancellationToken);
 
     public Task PruneHistoryAsync(int retentionDays, int maxRows, CancellationToken cancellationToken = default) => ExecuteAsync(connection =>

@@ -31,7 +31,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
 
     public DeviceConfigurationDialog(DeviceConfiguration device, IDriverRegistry drivers, bool readOnly = false, bool isNew = false)
         : base(readOnly ? "查看设备配置" : isNew ? "添加采集设备" : "设备配置", readOnly
-            ? "采集运行期间仅可查看设备配置。停止全部运行设备后，可修改启用状态、名称、分组、驱动与连接参数。"
+            ? "查看设备的启用状态、名称、分组、驱动与连接参数。当前窗口为只读视图。"
             : "配置设备的启用状态、名称、分组、驱动与连接参数。更换协议不会自动转换已有点位；点击“确定”校验并自动保存，取消不修改原配置。")
     {
         ArgumentNullException.ThrowIfNull(device);
