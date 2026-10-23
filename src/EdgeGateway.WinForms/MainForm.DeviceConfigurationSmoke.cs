@@ -45,6 +45,7 @@ public sealed partial class MainForm
                     }
                     else if (descriptor.Id == "simulator")
                     {
+                        editor.SetFieldForSmoke("Enabled", "true");
                         editor.SetFieldForSmoke("PollIntervalMs", "9990");
                         var cancel = (Button)editor.CancelButton!;
                         BringIntoViewAndAssert(cancel, "cancel dedicated configuration");
@@ -102,6 +103,7 @@ public sealed partial class MainForm
     private static DeviceConfiguration ChangedConfigurationSmokeDevice(DeviceConfiguration source, DriverDescriptor descriptor)
     {
         var result = Clone(source);
+        result.Enabled = !source.Enabled;
         result.PollIntervalMs = 2190; result.TimeoutMs = 5430;
         if (descriptor.IsLegacy || descriptor.Parameters.Count > 0)
         {
@@ -135,6 +137,7 @@ public sealed partial class MainForm
     {
         var values = new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["Enabled"] = device.Enabled ? "true" : "false",
             ["PollIntervalMs"] = device.PollIntervalMs.ToString(CultureInfo.InvariantCulture),
             ["TimeoutMs"] = device.TimeoutMs.ToString(CultureInfo.InvariantCulture)
         };
@@ -165,8 +168,7 @@ public sealed partial class MainForm
         if (editor.Value is not null) throw new InvalidOperationException(descriptor.Id + ": configuration result exists before confirmation.");
         editor.VerifyBindingsForSmoke();
         var parameterPage = descriptor.IsLegacy || descriptor.Parameters.Count > 0;
-        var defaultTab = parameterPage ? "DriverConfigurationParameters"
-            : descriptor.Id is "modbus-tcp" or "modbus-rtu" ? "NativeConnection" : "AcquisitionSettings";
+        const string defaultTab = "AcquisitionSettings";
         if (editor.SelectedSmokeTab?.Name != defaultTab)
             throw new InvalidOperationException($"{descriptor.Id}: dedicated configuration opened '{editor.SelectedSmokeTab?.Name}', expected '{defaultTab}'.");
         var values = ConfigurationSmokeNativeValues(expected, descriptor);
@@ -184,7 +186,7 @@ public sealed partial class MainForm
                 AssertConfigurationSmokeInput(editor.SmokeParameterInputs.Single(x => x.Name == "DriverParameter_" + parameter.Key),
                     expected.Properties.GetValueOrDefault(parameter.Key, parameter.DefaultValue), descriptor.Id);
         }
-        else if (editor.SmokeParameterInputs.Count != values.Count - 4)
+        else if (editor.SmokeParameterInputs.Count != values.Count - 5)
             throw new InvalidOperationException(descriptor.Id + ": native connection field coverage differs from the displayed driver.");
     }
 
@@ -298,21 +300,25 @@ public sealed partial class MainForm
             if (column is not DataGridViewLinkColumn { HeaderText: "配置", Text: "配置" }
                 || column.DisplayIndex != _deviceGrid.Columns.Count - 1)
                 throw new InvalidOperationException("Device configuration action is missing from the rightmost device column or has lost its Chinese caption.");
-            await SmokeDeviceConfigurationRowActionAsync(target);
-            var expected = Clone(target); expected.Port = 15029;
+            await SmokeDeviceConfigurationRowActionAsync(target, enabled: true);
+            var expected = Clone(target); expected.Port = 15029; expected.Enabled = true;
             AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "applied non-selected device row");
+            AssertSavedDeviceEnabledRowForSmoke(target.Id, true);
+            await AssertSavedConfigurationForSmokeAsync("enabled device row configuration");
             // Double-click a normal data cell while A is selected: it must use
             // the very same dedicated configuration dialog and row identity.
             RebindConfigurationViews(selected.Id);
-            await SmokeDeviceConfigurationRowActionAsync(expected, doubleClick: true, port: 15030);
-            expected.Port = 15030;
+            await SmokeDeviceConfigurationRowActionAsync(expected, doubleClick: true, port: 15030, enabled: false);
+            expected.Port = 15030; expected.Enabled = false;
             AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "double-clicked non-selected device row");
+            AssertSavedDeviceEnabledRowForSmoke(target.Id, false);
             AssertConfigurationSmokeUnchanged(targetJson, target, "row action source device");
             AssertConfigurationSmokeUnchanged(selectedJson, _configuration.Devices.Single(x => x.Id == selected.Id), "other selected device row");
             if (_dirty || SelectedDevice()?.Id != target.Id)
                 throw new InvalidOperationException("Applied row configuration was not automatically saved or failed to preserve the target selection.");
             await AssertSavedConfigurationForSmokeAsync("device row configuration");
             Console.WriteLine("Device row entry smoke passed: configuration link and data-cell double-click opened the same dedicated dialog for clicked B while A was selected, and both automatically saved.");
+            Console.WriteLine("Device enabled configuration smoke passed: enabled via configuration link, disabled via row double-click, saved JSON and row start availability matched; cancelled edits stayed isolated and running views remained read-only.");
         }
         finally
         {
@@ -321,7 +327,16 @@ public sealed partial class MainForm
         }
     }
 
-    private async Task SmokeDeviceConfigurationRowActionAsync(DeviceConfiguration target, bool doubleClick = false, int port = 15029)
+    private void AssertSavedDeviceEnabledRowForSmoke(Guid deviceId, bool enabled)
+    {
+        var row = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == deviceId);
+        if (row.DataBoundItem is not DeviceRow data || data.Enabled != (enabled ? "是" : "否")
+            || ((DeviceActionButtonCell)row.Cells[DeviceStartColumnName]).ActionEnabled != enabled
+            || _runtime.IsRunning)
+            throw new InvalidOperationException("Saved Enabled state did not update the device row/start command, or unexpectedly started collection.");
+    }
+
+    private async Task SmokeDeviceConfigurationRowActionAsync(DeviceConfiguration target, bool doubleClick = false, int port = 15029, bool? enabled = null)
     {
         if (SelectedDevice()?.Id == target.Id) throw new InvalidOperationException("Row-action smoke must start with another device selected.");
         var row = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == target.Id);
@@ -345,6 +360,7 @@ public sealed partial class MainForm
             try
             {
                 VerifyConfigurationSmokeFields(dialog, _drivers.GetFactory(target.DriverId).Descriptor, target);
+                if (enabled.HasValue) dialog.SetFieldForSmoke("Enabled", enabled.Value ? "true" : "false");
                 dialog.SetFieldForSmoke("Port", port.ToString(CultureInfo.InvariantCulture));
                 // Exercise the production Commit path and ShowDialog's OK result
                 // without leaving an unexpected validation MessageBox blocking CI.

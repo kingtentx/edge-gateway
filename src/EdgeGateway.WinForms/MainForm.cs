@@ -516,7 +516,7 @@ public sealed partial class MainForm : DpiAwareForm
         if (start)
         {
             if (_dirty) throw new InvalidOperationException("平台设置尚未应用，请先在“平台与系统”应用设置或重置修改。");
-            if (!device.Enabled) throw new InvalidOperationException("设备未启用，请先编辑设备并勾选启用。");
+            if (!device.Enabled) throw new InvalidOperationException("设备未启用，请先在“配置 → 采集设置”勾选“启用设备”。");
             // Persist generated default identities before their first acquisition.
             // Starting another device must not reconfigure the active runtime.
             if (!_runtime.IsRunning) await _configurationStore.SaveAsync(_configuration);

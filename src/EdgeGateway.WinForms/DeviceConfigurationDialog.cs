@@ -15,6 +15,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     private readonly bool _readOnly;
     private readonly Dictionary<string, Control> _fields = new(StringComparer.Ordinal);
     private readonly List<Control> _connectionInputs = [];
+    private readonly CheckBox _enabled;
     private readonly NumericUpDown _cycle, _timeout;
     private readonly DriverParameterPanel? _parameters;
 
@@ -24,8 +25,8 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
 
     public DeviceConfigurationDialog(DeviceConfiguration device, IDriverFactory factory, bool readOnly = false)
         : base(readOnly ? "查看设备配置" : "设备配置", readOnly
-            ? "采集运行期间仅可查看当前设备配置。停止全部运行设备后，可在此修改采集周期、通信超时与驱动连接参数。"
-            : "配置当前设备的采集周期、通信超时与驱动连接参数。点击“确定”完成校验并自动保存；取消不修改原配置。")
+            ? "采集运行期间仅可查看当前设备配置。停止全部运行设备后，可在此修改启用状态、采集周期、通信超时与驱动连接参数。"
+            : "配置当前设备的启用状态、采集周期、通信超时与驱动连接参数。点击“确定”完成校验并自动保存；取消不修改原配置。")
     {
         ArgumentNullException.ThrowIfNull(device);
         ArgumentNullException.ThrowIfNull(factory);
@@ -40,15 +41,21 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
 
         var acquisition = AddTab("采集设置");
         TabOf(acquisition).Name = "AcquisitionSettings";
+        _enabled = Register("Enabled", new CheckBox
+        {
+            Text = "启用设备", Checked = _original.Enabled, AutoSize = true,
+            MinimumSize = new Size(0, 32)
+        });
         var name = Register("Name", TextInput(_original.Name)); name.ReadOnly = true;
         var driver = Register("DriverId", TextInput(_descriptor.Name + " · " + _original.DriverId)); driver.ReadOnly = true;
         _cycle = Register("PollIntervalMs", Number(_original.PollIntervalMs, 100, 3_600_000));
         _timeout = Register("TimeoutMs", Number(_original.TimeoutMs, 100, 120_000));
+        Field(acquisition, "启用状态", _enabled);
         Field(acquisition, "设备名称", name);
         Field(acquisition, "采集驱动", driver);
         Field(acquisition, "采集周期 (ms)", _cycle);
         Field(acquisition, "通信超时 (ms)", _timeout);
-        Hint(acquisition, "设备身份、所属分组、启用状态与已有点位保持不变。采集周期为 100–3600000 ms，通信超时为 100–120000 ms。");
+        Hint(acquisition, "启用后可在设备行点击“启动”；取消勾选后禁止启动该设备。采集周期为 100–3600000 ms，通信超时为 100–120000 ms。");
         if (!string.IsNullOrWhiteSpace(_descriptor.Prerequisites))
             Hint(acquisition, "运行条件：" + _descriptor.Prerequisites);
 
@@ -60,7 +67,6 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
             Tabs.TabPages.Add(parameterPage);
             _parameters.LoadParameters(_descriptor, BoundDevice(), _original.Properties, "采集设置");
             _parameters.SetReadOnly(readOnly);
-            Tabs.SelectedTab = parameterPage;
         }
         else if (_descriptor.Id == "modbus-tcp")
         {
@@ -69,7 +75,6 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
             AddConnection(connection, "Port", "TCP 端口", Number(_original.Port, 1, 65535));
             AddConnection(connection, "UnitId", "Modbus 站号", Number(_original.UnitId, 1, 247));
             Hint(connection, "主机填写设备 IP 或域名；TCP 端口为 1–65535，站号为 1–247。寄存器地址、类型与字节序在点位中配置。");
-            Tabs.SelectedTab = TabOf(connection);
         }
         else if (_descriptor.Id == "modbus-rtu")
         {
@@ -81,7 +86,6 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
             AddConnection(connection, "StopBits", "停止位", Choice(["One", "Two"], _original.StopBits));
             AddConnection(connection, "UnitId", "Modbus 站号", Number(_original.UnitId, 1, 247));
             Hint(connection, "Modbus RTU 二进制通信要求 8 个数据位，停止位选择 One 或 Two；同一串口当前只允许一个启用设备。");
-            Tabs.SelectedTab = TabOf(connection);
         }
         else
         {
@@ -90,6 +94,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
                 : "当前驱动未公开额外连接参数。可在本页调整采集周期与通信超时。");
         }
 
+        Tabs.SelectedTab = TabOf(acquisition);
         _cycle.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
         _timeout.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
         if (readOnly)
@@ -108,6 +113,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         Value = null;
         if (_readOnly) throw new InvalidOperationException("当前设备配置为只读，停止采集后才能修改。");
         var candidate = Clone(_original);
+        candidate.Enabled = _enabled.Checked;
         candidate.PollIntervalMs = IntegerValue(_cycle);
         candidate.TimeoutMs = IntegerValue(_timeout);
         if (_parameters is not null) candidate.Properties = _parameters.CaptureProperties();
@@ -142,6 +148,8 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
 
     internal void VerifyBindingsForSmoke()
     {
+        if (_fields["Enabled"] is not CheckBox enabled || !ReferenceEquals(enabled, _enabled))
+            throw new InvalidOperationException("Device configuration lost its enabled-state field.");
         if (_fields["Name"].Text != _original.Name || _fields["Name"] is not TextBox { ReadOnly: true }
             || _fields["DriverId"] is not TextBox { ReadOnly: true }
             || !_fields["DriverId"].Text.EndsWith(" · " + _original.DriverId, StringComparison.Ordinal))
