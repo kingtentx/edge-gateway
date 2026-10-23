@@ -1,0 +1,69 @@
+{
+  "verifiedOn": "2026-10-23",
+  "codeCommit": "80f75237d7f99561d87e5e5a53807c07d4d86d0c",
+  "previousUserCommitPreserved": "6ffcb0c91da44584d7a6ad87dbc63e13028ebfb2",
+  "workflowRunId": 39894976476,
+  "workflowUrl": "https://github.com/kingtentx/edge-gateway/actions/runs/39894976476",
+  "workflowAttempt": 1,
+  "conclusion": "success",
+  "localTests": {
+    "passed": 102,
+    "failed": 0,
+    "skipped": 0
+  },
+  "windows": [
+    {
+      "runner": "windows-2022",
+      "operatingSystem": "Microsoft Windows 10.0.20348",
+      "jobId": 120223184753,
+      "artifactId": 12476123897,
+      "totalTests": 102,
+      "passedTests": 102,
+      "failedTests": 0,
+      "buildErrors": 0,
+      "upstreamBuildWarnings": 419,
+      "deviceImportSmokePassed": true,
+      "driverConfigurationDialogs": 15,
+      "layoutCases": 20,
+      "layoutCasesPassed": 20,
+      "actualDeviceDpi": 96,
+      "nativeWindowDpi": 96,
+      "realDpiTransitionsTested": false,
+      "collectionStarted": false,
+      "screenshotCount": 94,
+      "stderrEmpty": true
+    },
+    {
+      "runner": "windows-2025",
+      "operatingSystem": "Microsoft Windows 10.0.26100",
+      "jobId": 120223184973,
+      "artifactId": 12476366932,
+      "totalTests": 102,
+      "passedTests": 102,
+      "failedTests": 0,
+      "buildErrors": 0,
+      "upstreamBuildWarnings": 419,
+      "deviceImportSmokePassed": true,
+      "driverConfigurationDialogs": 15,
+      "layoutCases": 20,
+      "layoutCasesPassed": 20,
+      "actualDeviceDpi": 96,
+      "nativeWindowDpi": 96,
+      "realDpiTransitionsTested": false,
+      "collectionStarted": false,
+      "screenshotCount": 94,
+      "stderrEmpty": true
+    }
+  ],
+  "package": {
+    "codeCommit": "80f75237d7f99561d87e5e5a53807c07d4d86d0c",
+    "artifactId": 12476816254,
+    "bytes": 78839921,
+    "sha256": "d69ebf8277cfe52a20c5a4c8b129cee155c6bd520732ec7866f6ae999315ed18",
+    "entryCount": 588,
+    "requiredAssemblies": 21,
+    "rtuExampleMatchesSourceIgnoringLineEndings": true,
+    "zipCrcPassed": true
+  },
+  "physicalOrVirtualSerialSessionTested": false
+}

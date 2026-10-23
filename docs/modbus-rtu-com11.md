@@ -46,3 +46,35 @@
 用户截图显示 **No connection**，不能作为串口已连通的证据。本配置尚未在用户的 COM10 / COM11 虚拟串口环境完成实际联调；应按上述步骤确认连接、质量和寄存器读回。程序自动验证记录见 [验证说明](verification.md)，自动测试与界面烟测不替代现场串口验收。
 
 参考：[Virtual Serial Port Driver 串口对说明](https://www.virtual-serial-port.org/user-guides/standard/overview.html) · [Modbus Slave 官方手册（串口设置、功能码和地址）](https://www.modbustools.com/mbslave-user-manual.html)。
+
+## 实际界面
+
+以下为 Windows Server 2022、实际 96 DPI 下的真实 WinForms 截图，采集处于停止状态。设备表已选中新追加的 RTU 设备；表格内容较多时可滚动查看全部 10 个点位。
+
+![COM11 RTU 设备与导入入口](images/modbus-rtu-com11-devices.png)
+
+![COM11 RTU 串口配置](images/modbus-rtu-com11-configuration.png)
+
+## 本次验证与下载
+
+代码提交 [`80f7523`](https://github.com/kingtentx/edge-gateway/commit/80f75237d7f99561d87e5e5a53807c07d4d86d0c) 已保留此前窗体资源命名修复。2026-10-23 的 [Windows CI](https://github.com/kingtentx/edge-gateway/actions/runs/39894976476) 首次执行全部通过，机器可读结果见 [验证记录](modbus-rtu-com11-verification.json)。
+
+| 验证项 | Windows Server 2022 | Windows Server 2025 |
+|---|---|---|
+| Release 编译 | 通过，0 错误 | 通过，0 错误 |
+| 自动测试 | 102 / 102 | 102 / 102 |
+| 追加导入与拒绝后无修改 | 通过 | 通过 |
+| 15 个驱动专用配置窗 | 通过 | 通过 |
+| 等效工作区布局 | 20 / 20 | 20 / 20 |
+| 实际窗口 DPI | 96 | 96 |
+| 实际窗口截图 | 94 张 | 94 张 |
+
+追加导入检查覆盖原网关、MQTT、旧设备与点位保留，深拷贝隔离，重复 ID 拒绝，以及两个启用 RTU 设备的 COM11 冲突拒绝。实际交付 JSON 通过程序的加载与完整配置校验。构建仍保留 419 条上游驱动警告；没有新增错误。等效工作区测试未改变真实 DPI，也未连接用户的虚拟串口。
+
+[下载 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39894976476/artifacts/12476816254)。运行包已核对 ZIP 完整性、21 个必要程序集（包含全部 12 个迁移驱动）、RTU 示例和使用说明；其中 JSON 与仓库文件在统一 Windows / Unix 换行后完全一致。
+
+运行包内层 `EdgeGateway-win-x64.zip`：78,839,921 字节，588 个条目，SHA-256：
+
+```text
+d69ebf8277cfe52a20c5a4c8b129cee155c6bd520732ec7866f6ae999315ed18
+```
