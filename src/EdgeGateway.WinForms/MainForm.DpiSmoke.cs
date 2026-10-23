@@ -32,6 +32,7 @@ public sealed partial class MainForm
         var originalMaximum = MaximumSize;
         var resolutions = new[] { new Size(1366, 768), new Size(1920, 1080), new Size(2560, 1440), new Size(3200, 2000) };
         var percentages = new[] { 100, 125, 150, 175, 200 };
+        using var focusDiagnostics = StartSmokeFocusDiagnostics(directory);
         try
         {
             foreach (var resolution in resolutions)
@@ -56,6 +57,7 @@ public sealed partial class MainForm
                 results.Add(result);
                 try
                 {
+                    focusDiagnostics?.Capture(name + " before window resize");
                     MinimumSize = Size.Empty;
                     // Form.SetBoundsCore clamps ordinary Size assignments to the host's
                     // MaxWindowTrackSize, even in a viewport-only test. Resize this test
@@ -67,6 +69,7 @@ public sealed partial class MainForm
                     FitToWorkingArea(testWorkArea: testArea);
                     await Task.Yield();
                     PerformLayoutRecursively(this);
+                    focusDiagnostics?.Capture(name + " after window resize/layout");
                     result.ActualWindowBounds = Bounds;
                     if (Bounds != testArea)
                         throw new InvalidOperationException($"{name}: requested equivalent viewport {testArea}, but Windows produced {Bounds}.");
@@ -80,8 +83,11 @@ public sealed partial class MainForm
                     }
                     foreach (var key in _pages.Keys)
                     {
+                        if (key == "devices") focusDiagnostics?.Capture(name + " before devices ShowPage");
                         ShowPage(key);
+                        if (key == "devices") focusDiagnostics?.Capture(name + " after devices ShowPage");
                         PerformLayoutRecursively(this);
+                        if (key == "devices") focusDiagnostics?.Capture(name + " after devices layout");
                         AssertHeaderStatusFits();
                         AssertPageToolbarsFit(_pages[key], name + " " + key);
                         if (key == "overview") VerifyOverviewCards(name);
@@ -97,20 +103,29 @@ public sealed partial class MainForm
                         }
                         ResetScrollPositions(_pages[key], _navigation["overview"]);
                         result.CheckedPages.Add(key);
-                        if (key == "overview") SaveSmokeScreenshot(this, Path.Combine(directory, name + "-overview.png"));
+                        if (key == "overview")
+                        {
+                            // Preserve the native state immediately around WM_PRINT. Do not pump or lay out between these snapshots.
+                            focusDiagnostics?.Capture(name + " before overview screenshot");
+                            SaveSmokeScreenshot(this, Path.Combine(directory, name + "-overview.png"));
+                            focusDiagnostics?.Capture(name + " after overview screenshot");
+                        }
                         if (key == "devices" && name == "1920x1080-125pct")
                             SaveSmokeScreenshot(this, Path.Combine(directory, name + "-devices.png"));
                     }
                     result.HeaderMetrics = new Control[] { _runState, _savedState, _automaticSaveState }.Select(ControlMetric.From).ToList();
+                    focusDiagnostics?.Capture(name + " before matrix dialogs");
                     await VerifyMatrixDialogsAsync(testArea, directory, result);
                     if (resolution == new Size(1366, 768) && percentage == 200)
                         VerifyMinimumConfigurationDialog(testArea, directory, result);
+                    focusDiagnostics?.Capture(name + " after matrix dialogs");
                     result.Passed = true;
                     Console.WriteLine($"Layout viewport passed: {name}; nominal DPI {nominalDpi}, actual DPI {actualDpi}; viewport {Bounds.Width}x{Bounds.Height}.");
                 }
                 catch (Exception exception)
                 {
                     result.Error = exception.ToString();
+                    focusDiagnostics?.Capture(name + " matrix failure before failure screenshot", failure: true);
                     TrySaveSmokeScreenshot(this, Path.Combine(directory, name + "-failed.png"));
                     throw;
                 }
@@ -325,14 +340,18 @@ public sealed partial class MainForm
     {
         if (target.Focus() && target.ContainsFocus) return;
         var initial = DescribeSmokeControl(target);
+        var focusDiagnostics = (window as MainForm ?? window.Owner as MainForm)?._smokeFocusDiagnostics;
+        focusDiagnostics?.Capture(context + " first Focus failure", target, requested, window, failure: true);
         // A modeless owned dialog was just closed, or a whole page was shown after
         // resizing. The CI message loop can still have window-activation/focus work
         // queued. Complete that lifecycle before judging keyboard reachability.
         // Never skip the focus or clipping assertions and never click a command.
         var timer = Stopwatch.StartNew();
+        var attempts = 0;
         for (var attempt = 1; attempt <= 3 && timer.Elapsed < TimeSpan.FromMilliseconds(500); attempt++)
         {
             if (window.IsDisposed || target.IsDisposed || !window.Visible || !target.Visible || !target.Enabled) break;
+            attempts = attempt;
             window.Activate();
             Application.DoEvents();
             if (window.IsDisposed || target.IsDisposed) break;
@@ -342,9 +361,13 @@ public sealed partial class MainForm
                 var recovery = $"{context}: completed focus after {attempt} activation/message-loop pass(es); target={DescribeSmokeControl(target)}; requested={DescribeSmokeControl(requested)}; initial={initial}.";
                 SmokeFocusRecoveries.Add(recovery);
                 Console.WriteLine(recovery);
+                focusDiagnostics?.Capture(context + " Focus recovered", target, requested, window,
+                    attempts: attempts, elapsedMilliseconds: timer.Elapsed.TotalMilliseconds);
                 return;
             }
         }
+        focusDiagnostics?.Capture(context + " Focus attempts exhausted", target, requested, window, failure: true,
+            attempts: attempts, elapsedMilliseconds: timer.Elapsed.TotalMilliseconds);
         throw new InvalidOperationException($"{context}: cannot focus target={DescribeSmokeControl(target)} before scrolling requested={DescribeSmokeControl(requested)}; initial={initial}; "
             + $"window={window.GetType().Name} '{window.Text}', active={ReferenceEquals(Form.ActiveForm, window)}, containsFocus={window.ContainsFocus}, activeControl={DescribeSmokeControl(window.ActiveControl)}.");
     }
