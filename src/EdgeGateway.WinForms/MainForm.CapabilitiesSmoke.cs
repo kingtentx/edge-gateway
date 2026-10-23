@@ -240,24 +240,73 @@ public sealed partial class MainForm
 
     private WriteVerificationOptions SmokeCapabilityWriteOptions()
     {
-        using var editor = new WriteValueDialog("能力验收 A", "可写原始点", "", "1", TagDataType.Float64);
-        editor.Show(this);
-        try
+        void EditAndConfirm(WriteValueDialog editor, string context)
         {
             editor.SmokeValueInput.Text = "42.5";
             CapabilityControl<NumericUpDown>(editor, "WriteVerificationTimeout").Value = 4000;
             CapabilityControl<TextBox>(editor, "WriteAbsoluteTolerance").Text = "0.01";
             CapabilityControl<TextBox>(editor, "WriteRelativeTolerance").Text = "0.001";
-            foreach (var input in editor.SmokeVerificationInputs) BringIntoViewAndAssert(input, "capabilities write verification field");
+            foreach (var input in editor.SmokeVerificationInputs) BringIntoViewAndAssert(input, context + " field");
             var accept = (Button)editor.AcceptButton!;
-            BringIntoViewAndAssert(accept, "capabilities write verification accept"); accept.PerformClick();
+            BringIntoViewAndAssert(accept, context + " accept"); accept.PerformClick();
+        }
+
+        static WriteVerificationOptions AssertConfirmed(WriteValueDialog editor, string context)
+        {
             var options = editor.VerificationOptions;
-            CheckCapability(editor.DialogResult == DialogResult.OK && editor.Value == "42.5" && options.VerifyReadBack
+            var value = editor.Value;
+            CheckCapability(editor.DialogResult == DialogResult.OK && value == "42.5" && options.VerifyReadBack
                 && options.TimeoutMs == 4000 && options.AbsoluteTolerance == .01 && options.RelativeTolerance == .001,
-                "write verification dialog did not preserve the operator's options.");
+                context + ": write verification dialog did not preserve the operator's options. Actual: "
+                + $"result={editor.DialogResult}, value={System.Text.Json.JsonSerializer.Serialize(value)}, "
+                + $"verify={options.VerifyReadBack}, timeout={options.TimeoutMs}, "
+                + FormattableString.Invariant($"absolute={options.AbsoluteTolerance:R}, relative={options.RelativeTolerance:R}, ")
+                + $"modal={editor.Modal}, disposed={editor.IsDisposed}.");
             return options;
         }
-        finally { editor.Close(); }
+
+        // Retain the original close/dispose regression check. Confirmed results
+        // must survive a modeless Close, including the operator's edited value.
+        using (var editor = new WriteValueDialog("能力验收 A", "可写原始点", "", "1", TagDataType.Float64))
+        {
+            editor.Show(this);
+            try
+            {
+                EditAndConfirm(editor, "capabilities modeless write verification");
+                CheckCapability(editor.IsDisposed, "modeless write confirmation did not exercise control disposal.");
+                AssertConfirmed(editor, "capabilities modeless write verification");
+            }
+            finally { if (!editor.IsDisposed) editor.Close(); }
+        }
+
+        // Exercise the production ShowDialog lifecycle as well; read the result
+        // only after the modal loop returns, exactly as the actual write command does.
+        using var modal = new WriteValueDialog("能力验收 A", "可写原始点", "", "1", TagDataType.Float64);
+        Exception? failure = null;
+        var observed = false;
+        modal.Shown += (_, _) => modal.BeginInvoke(new Action(() =>
+        {
+            observed = true;
+            try
+            {
+                CheckCapability(modal.Modal, "write confirmation did not open as a real modal dialog.");
+                EditAndConfirm(modal, "capabilities modal write verification");
+                CheckCapability(modal.DialogResult == DialogResult.OK,
+                    "modal write confirmation did not accept the valid options: " + modal.DialogResult);
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+                TrySaveSmokeFailure(modal, "capability-write-options-failed");
+                modal.DialogResult = DialogResult.Cancel;
+                modal.Close();
+            }
+        }));
+        var result = modal.ShowDialog(this);
+        if (failure is not null) throw new InvalidOperationException("Capabilities smoke: modal write verification failed.", failure);
+        CheckCapability(observed && result == DialogResult.OK,
+            $"modal write verification did not complete: observed={observed}, result={result}.");
+        return AssertConfirmed(modal, "capabilities modal write verification");
     }
 
     private async Task SmokeCapabilityModalAsync<T>(Func<Task> open, Action<T> edit, string context) where T : EditorDialog

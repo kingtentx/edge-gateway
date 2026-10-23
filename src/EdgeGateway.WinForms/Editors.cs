@@ -463,7 +463,8 @@ internal sealed class WriteValueDialog : DpiAwareForm
     private readonly Panel _viewport;
     private readonly FlowLayoutPanel _actions;
     private bool _arranging;
-    public string Value => TagEditor.IsStringType(_type) ? _value.Text : _value.Text.Trim();
+    private string? _acceptedValue;
+    public string Value => _acceptedValue ?? (TagEditor.IsStringType(_type) ? _value.Text : _value.Text.Trim());
     public WriteVerificationOptions VerificationOptions { get; private set; } = new();
     internal IReadOnlyList<Control> SmokeCommands => new Control[] { _confirm, _cancel };
     internal Control SmokeValueInput => _value;
@@ -524,10 +525,14 @@ internal sealed class WriteValueDialog : DpiAwareForm
         viewport.Controls.Add(content); panel.Controls.Add(viewport, 0, 0);
         var ok = UiTheme.Button("下一步", (_, _) =>
         {
-            if (!TagEditor.IsStringType(type) && string.IsNullOrWhiteSpace(Value)) return;
+            var value = Value;
+            if (!TagEditor.IsStringType(type) && string.IsNullOrWhiteSpace(value)) return;
             if (!double.TryParse(_absoluteTolerance.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var absolute) || !double.IsFinite(absolute) || absolute < 0
                 || !double.TryParse(_relativeTolerance.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var relative) || !double.IsFinite(relative) || relative is < 0 or > 1)
             { MessageBox.Show(this, "绝对容差须为非负有限数值，相对容差须为 0–1。", "核对参数", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            // Close disposes modeless controls; their Text can then fall back to a
+            // pre-handle cache. Keep the confirmed command independent of HWND lifetime.
+            _acceptedValue = value;
             VerificationOptions = new() { VerifyReadBack = _verify.Checked, TimeoutMs = (int)_verificationTimeout.Value, AbsoluteTolerance = absolute, RelativeTolerance = relative };
             DialogResult = DialogResult.OK; Close();
         }, true);

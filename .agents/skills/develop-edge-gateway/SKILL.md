@@ -132,10 +132,10 @@ python scripts/verify-driver-migration.py
 dotnet restore EdgeGateway.sln
 dotnet build EdgeGateway.sln -c Release --no-restore
 dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-build
-dotnet run --project src/EdgeGateway.WinForms -c Release --no-build -- --smoke-test
+./scripts/smoke-test-winforms.ps1
 ```
 
-清单检查和核心构建测试可在安装对应 SDK、Python 和 Windows targeting pack 的构建机执行；最后一项必须在 Windows 执行。跨平台编译不能替代 Windows 运行检查。迁移测试核对全部 12 个工厂、65 个方法与 74 个源参数，并覆盖适配器线程、坏质量、超时、配置类型和关键真实协议回环。真实串口、PLC、TLS 证书和现场长稳测试按 [验收边界](references/acceptance.md) 补齐。
+清单检查和核心构建测试可在安装对应 SDK、Python 和 Windows targeting pack 的构建机执行；最后一项必须在 Windows PowerShell 执行。该脚本运行完整功能与 20 组合布局烟测，核验八页面、六类弹窗、143 张截图和 UA/能力成功标记，CI 中还核验真实 UA 集成测试记录；打包时再次复验并生成 `build-info.json`。跨平台编译不能替代 Windows 运行检查。迁移测试核对全部 12 个工厂、65 个方法与 74 个源参数，并覆盖适配器线程、坏质量、超时、配置类型和关键真实协议回环。真实串口、PLC、TLS 证书和现场长稳测试按 [验收边界](references/acceptance.md) 补齐。
 
 新增或修改 TCP/HTTP 协议至少覆盖一个真实本地通信回环与一个异常场景。COM/FOCAS 等接口使用对应边界的故障、线程和依赖检查，再补实际 Windows 集成与设备验收，不搭建无关 socket 代替原接口验证。测试应验证外部行为，不为简单属性或固定布局机械编写测试。
 
