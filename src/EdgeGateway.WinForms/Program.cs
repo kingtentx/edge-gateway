@@ -3,7 +3,6 @@ using EdgeGateway.DataAccess;
 using EdgeGateway.Driver.Modbus;
 using EdgeGateway.Driver.Simulator;
 using EdgeGateway.IotGateway;
-using EdgeGateway.OpcUa;
 using EdgeGateway.Service;
 using System.Security.Cryptography;
 using System.Text;
@@ -34,7 +33,6 @@ internal static class Program
 
         SqliteGatewayStore? store = null;
         GatewayRuntime? runtime = null;
-        GatewayOpcUaServer? opcUaServer = null;
         MqttTelemetryPublisher? publisher = null;
         FileStream? dataLock = null;
         try
@@ -63,8 +61,7 @@ internal static class Program
             if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors));
             publisher = new MqttTelemetryPublisher();
             runtime = new GatewayRuntime(configuration, drivers, store, publisher, log);
-            opcUaServer = new GatewayOpcUaServer(runtime, log, dataDirectory);
-            using var window = new MainForm(configuration, configurationStore, store, drivers, runtime, opcUaServer, log, dataDirectory, smokeTest, screenshotPath, layoutMatrix);
+            using var window = new MainForm(configuration, configurationStore, store, drivers, runtime, log, dataDirectory, smokeTest, screenshotPath, layoutMatrix);
             Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }
@@ -79,7 +76,6 @@ internal static class Program
         }
         finally
         {
-            try { opcUaServer?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { /* Preserve original startup error. */ }
             try { runtime?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { /* Preserve original startup error. */ }
             try { publisher?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { }
             try { store?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { }

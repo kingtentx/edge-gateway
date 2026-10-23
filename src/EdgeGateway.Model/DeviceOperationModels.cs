@@ -50,8 +50,6 @@ public sealed record WriteVerificationOptions
     public Guid? CommandId { get; init; }
     /// <summary>Additionally enforce the currently applied MQTT/RPC/remote-write permission under the device gate.</summary>
     public bool RequireRemoteWritePermission { get; init; }
-    /// <summary>Additionally enforce the currently applied OPC UA user-authentication and write permissions under the device gate.</summary>
-    public bool RequireOpcUaWritePermission { get; init; }
 }
 
 public sealed record WriteCommandResult

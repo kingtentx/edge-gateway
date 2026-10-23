@@ -275,9 +275,6 @@ public sealed partial class GatewayRuntime
         var mqtt = _configuration.Mqtt;
         if (options.RequireRemoteWritePermission && (!mqtt.Enabled || !mqtt.RpcEnabled || !mqtt.AllowRemoteWrite))
             throw new InvalidOperationException("当前已应用配置不允许远程写入。");
-        var opcUa = _configuration.OpcUa;
-        if (options.RequireOpcUaWritePermission && (!opcUa.Enabled || !opcUa.EnableUserAuthentication || !opcUa.AllowRemoteWrite))
-            throw new InvalidOperationException("当前已应用配置不允许 OPC UA 远程写入。");
     }
 
     private static void ValidateWriteOptions(WriteVerificationOptions options)

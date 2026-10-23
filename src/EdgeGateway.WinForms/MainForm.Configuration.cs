@@ -339,7 +339,7 @@ public sealed partial class MainForm
     {
         RefreshDeviceFilters();
         BindDeviceRows(selectDevice);
-        BindTags(); BindCloudFields(); BindOpcUaFields(); BindDeviceChoices(); UpdateDeviceConfigurationCommands();
+        BindTags(); BindCloudFields(); BindDeviceChoices(); UpdateDeviceConfigurationCommands();
     }
 
     private void BindTags()
@@ -393,10 +393,9 @@ public sealed partial class MainForm
         var imported = await new JsonConfigurationStore(dialog.FileName).LoadAsync();
         var errors = ConfigurationValidator.Validate(imported, _drivers);
         if (errors.Count > 0) throw new InvalidDataException(string.Join("\n", errors));
-        var draftNotice = _dirty || _opcUaDirty ? "\n尚未应用的平台或 OPC UA设置也将被替换。" : "";
+        var draftNotice = _dirty ? "\n尚未应用的平台设置也将被替换。" : "";
         if (MessageBox.Show(this, $"将以文件中的整份配置替换并保存，包括 {imported.Devices.Count} 个设备、网关与平台参数。{draftNotice}\n确认导入？", "导入配置", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
         await CommitConfigurationAsync(Clone(imported), successMessage: "整份配置已导入并自动保存。", replaceCloudDraft: true);
-        ResetOpcUaDraft(); BindOpcUaFields(); UpdateCommands();
     }
 
     private async Task ExportConfigurationAsync()

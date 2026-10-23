@@ -77,7 +77,6 @@ public sealed partial class GatewayRuntime
             }
 
             _configuration = next;
-            Interlocked.Increment(ref _configurationRevision);
             if (!_running) _channels.Clear();
             foreach (var sample in _latest.Where(pair => affected.Contains(pair.Value.DeviceId)))
                 _latest.TryRemove(sample.Key, out _);

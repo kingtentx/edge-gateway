@@ -15,7 +15,6 @@ public sealed class GatewayConfiguration
     public TelemetryReportMode ReportMode { get; set; } = TelemetryReportMode.Periodic;
     public int HeartbeatIntervalMs { get; set; } = 60_000;
     public MqttConfiguration Mqtt { get; set; } = new();
-    public OpcUaServerConfiguration OpcUa { get; set; } = new();
     public List<ChannelConfiguration> Channels { get; set; } = [];
     public List<DeviceConfiguration> Devices { get; set; } = [];
 }

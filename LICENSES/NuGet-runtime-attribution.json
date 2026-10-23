@@ -246,20 +246,6 @@
       }
     },
     {
-      "id": "OPCFoundation.NetStandard.Opc.Ua.Server",
-      "version": "1.5.378.182",
-      "authors": "OPC Foundation",
-      "license": "LICENSE.txt",
-      "licenseUrl": "https://aka.ms/deprecateLicenseUrl",
-      "projectUrl": "https://github.com/OPCFoundation/UA-.NETStandard",
-      "copyright": "Copyright © 2004-2025 OPC Foundation, Inc",
-      "repository": {
-        "type": "git",
-        "url": "https://github.com/OPCFoundation/UA-.NETStandard",
-        "commit": "6cca32dd6d79c8b57d2e00e4d2071b991d2cf71b"
-      }
-    },
-    {
       "id": "OPCFoundation.NetStandard.Opc.Ua.Types",
       "version": "1.5.378.182",
       "authors": "OPC Foundation",

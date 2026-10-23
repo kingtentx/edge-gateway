@@ -45,7 +45,7 @@ internal static class UiTheme
         {
             "overview" => IconChar.TachometerAlt, "devices" => IconChar.NetworkWired,
             "realtime" => IconChar.WaveSquare, "history" => IconChar.ChartLine,
-            "cloud" => IconChar.Cloud, "opcua" => IconChar.Server, "logs" => IconChar.ListAlt, _ => IconChar.Circle
+            "cloud" => IconChar.Cloud, "logs" => IconChar.ListAlt, _ => IconChar.Circle
         }, Cursor = Cursors.Hand
     };
 

@@ -1,26 +1,22 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
-参考 [iioter/iotgateway](https://github.com/iioter/iotgateway) 的分层与驱动扩展思路，使用 **.NET 8 + 原生 Windows Forms** 实现的桌面工业数据采集网关。网关主体独立实现，并将源项目 **`Plugins/Drivers` 下全部 12 个驱动工程**及其驱动接口迁入本仓库，接入统一采集、配置与监控界面。围绕 Kepware 的采集侧工作流程完善通道、设备、点位管理、诊断与读写核对，并提供实时监控、历史趋势、多平台 MQTT、持久化补传及 OPC UA 对外服务。
+参考 [iioter/iotgateway](https://github.com/iioter/iotgateway) 的分层与驱动扩展思路，使用 **.NET 8 + 原生 Windows Forms** 实现的桌面工业数据采集网关。网关主体独立实现，并将源项目 **`Plugins/Drivers` 下全部 12 个驱动工程**及其驱动接口迁入本仓库，接入统一采集、配置与监控界面。围绕 Kepware 的采集侧工作流程完善通道、设备、点位管理、诊断与读写核对，并提供实时监控、历史趋势、多平台 MQTT 与持久化补传。
 
 开发规范入口：[开发 SKILL](.agents/skills/develop-edge-gateway/SKILL.md) · [全部驱动迁移清单](docs/driver-migration.md) · [结构参考](.agents/skills/develop-edge-gateway/references/architecture.md) · [驱动扩展](.agents/skills/develop-edge-gateway/references/driver-development.md) · [验证记录](docs/verification.md)
 
-功能闭环说明：[运行中配置、点表交换与通信诊断](docs/live-configuration.md) · [Kepware 核心能力实现](docs/kepware-core-capabilities.md) · [平台接入与 RPC](docs/platform-protocols.md) · [OPC UA 对外服务](docs/opc-ua-server.md) · [源项目与主流网关能力对照](docs/gateway-capability-review.md)
+功能闭环说明：[运行中配置、点表交换与通信诊断](docs/live-configuration.md) · [Kepware 核心能力实现](docs/kepware-core-capabilities.md) · [平台接入与 RPC](docs/platform-protocols.md) · [源项目与主流网关能力对照](docs/gateway-capability-review.md)
 
 界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
-**2026-10-23 最新交付：六项差距、Kepware 核心采集能力及 OPC UA 对外服务已实现并通过本轮 Windows 验证。** 源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。下载 [Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39972261116/artifacts/12509917670)，完整结果见 [CI 39972261116](https://github.com/kingtentx/edge-gateway/actions/runs/39972261116)、[本轮验收记录](docs/kepware-opcua-verification.md) 和 [机器可读证据](docs/kepware-opcua-verification.json)。包内 `build-info.json` 绑定实际程序提交；本仓库后补的验收文档不改变该二进制来源。
+**当前范围更新：已按用户要求完整移除 OPC UA 对外服务端及其配置字段、页面、专用依赖和验收入口，不保留兼容层。** 全部 12 个迁移驱动（含南向 `OPC.UaClient`）、核心采集和 MQTT/RPC 功能继续保留。当前版本的构建、Windows 检查和新运行包结果见 [服务端移除与验证记录](docs/opc-ua-service-removal.md)；本地构建和回归已完成，Windows 原生烟测及新运行包仍待执行核验，不沿用删除前版本的通过数量或运行包。
 
 **历史发布基线：** 程序源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8)、[Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487349660)、[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 对应上一轮运行中配置功能。Windows Server 2022 / 2025 当时各通过 **163 / 163 项测试、20 / 20 个等效工作区布局**，覆盖七个主页面及四类矩阵编辑器，各保存 102 张实际 PNG。Server 2025 在 attempt 1 通过；Server 2022 首次焦点异常后，在同一提交、未改代码或断言的情况下仅重跑失败作业，于 attempt 2 通过。详情保留在 [历史验证记录](docs/live-configuration-verification.md) 和 [机器可读证据](docs/live-configuration-verification.json)。
-
-![OPC UA 服务设置与状态](docs/images/opcua-service.png)
-
-上图取自本轮 `b5ac830` 的真实 WinForms 产物，展示 OPC UA 服务页的初始未启用状态。两套成功运行器的实际窗口及原生 DPI 均为 96；20 种矩阵为等效工作区模拟，不替代真实 125%–200% 系统缩放、跨显示器或现场设备/客户端验收。前三轮对话框回读、导航截断及字段滚动问题的修复、第四轮 2022 两次焦点失败和后续原生窗口诊断均保留在本轮记录中；焦点异常根因尚未确认。
 
 ## 当前功能
 
 | 模块 | 已实现内容 |
 |---|---|
-| 桌面管理 | 深色导航、FontAwesome 图标、圆角按钮与卡片、统一表格；运行总览、设备与点位、实时监控、历史与趋势、平台与系统、运行日志、通信诊断、OPC UA 服务八个页面；本轮两套 Windows 均通过 20 个等效工作区布局检查 |
+| 桌面管理 | 深色导航、FontAwesome 图标、圆角按钮与卡片、统一表格；运行总览、设备与点位、实时监控、历史与趋势、平台与系统、运行日志、通信诊断七个页面 |
 | DPI 与分辨率 | PerMonitorV2、统一 96 DPI 基准、当前屏幕工作区约束、跨 DPI 后重排；小屏卡片换列、滚动表单与固定操作栏 |
 | 设备配置 | 添加、编辑、行内配置及双击共用一个窗体；运行中可维护设备与点位，保存后仅重启发生变更的运行设备，其他会话保持；失败保留配置及弹窗输入 |
 | 设备维护 | 通道/分组筛选与关键字查找；复制设备生成新的设备、点位 ID，副本默认停用；通道调度、设备连接与点表分别配置 |
@@ -37,7 +33,6 @@
 | 本地数据 | JSON schema 2 原子配置与上一版备份；SQLite WAL 历史及 outbox，数据库 schema 2 增加 RPC 审计表 |
 | 云端通信 | MQTT 3.1.1、QoS1、TLS、环境变量凭据；Generic、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp 专用格式；周期、变化、变化加心跳三种策略 |
 | 远程 RPC | 真实订阅与请求/响应，仅允许 read/write；默认关闭远程写，校验目标、权限、容量和超时，复用设备读写服务并防止重复下发 |
-| OPC UA 服务 | 独立北向 UA TCP 端点，浏览/读取/订阅，证书信任和用户认证，默认远程写关闭；独立启停，不因最后一台设备停止而关闭 |
 | 离线补传 | 持久化 outbox、重启重发、稳定消息 ID、队列容量保护；ThingsCloud 等待属性应用响应，其余模式等待 Broker QoS 1 确认 |
 | 通信诊断 | 设备读写批次、失败、耗时、降速及单次操作结果；MQTT 入队、连接、发送确认、积压和重试；RPC 订阅、拒绝、重放和错误 |
 | 查询与导出 | 按设备/点位/时间查询历史、数值曲线、CSV 导出、配置 JSON 导入导出、日志导出 |
@@ -153,12 +148,6 @@ RPC 与“允许远程写入”分别默认关闭。启用后真实订阅对应�
 
 “通信诊断”页显示最近入队、发送、发送确认、累计确认、待补传数量与最早时间、重试、设备通信批次和 RPC 状态；确认次数可能包含重复投递。设备表同时显示最近成功采集、连续失败和错误，帮助区分现场、存储与平台链路。
 
-## OPC UA 对外服务
-
-新增“OPC UA 服务”页提供北向服务的配置、独立启停和证书/认证入口。默认端点为 `opc.tcp://localhost:4840/EdgeGateway`，服务默认关闭；标准客户端可浏览设备/点位、读取和订阅。仅启用 `Basic256Sha256` 的 `SignAndEncrypt`，需要双方证书信任。匿名访问默认只读；用户认证和远程写分别配置，密码仅从环境变量读取。授权写入复用设备写入与读回核对，只有匹配成功返回 Good。
-
-UA 服务独立于采集会话：停止最后一台设备后端点仍可在线，但相应值的质量不能冒充新成功采样；普通设备配置更新不会重新启动手动停止的 UA 服务。它与南向 `OPC.UaClient` 驱动各自承担不同方向的连接。部署和客户端操作见 [OPC UA 服务说明](docs/opc-ua-server.md)；本轮两套 Windows 均已通过 11 项真实安全客户端回环及服务/证书界面操作，见 [本轮验收记录](docs/kepware-opcua-verification.md)。
-
 ## 本地数据与恢复
 
 默认数据目录：`%LOCALAPPDATA%\EdgeGateway`，可在界面中打开。
@@ -173,7 +162,7 @@ UA 服务独立于采集会话：停止最后一台设备后端点仍可在线�
 
 设备、点位与导入配置通过同一个运行时事务入口提交：在生命周期锁内校验完整候选、原子保存，再同步受影响设备；顶部不再提供“保存配置”。保存失败不停止原会话，弹窗保留输入。保存提交后完成运行时同步，调用方随后取消不撤回已保存配置；物理连接结果由设备状态和日志反映。平台输入通过“应用设置”单独提交。正常修改会保留上一版 `.bak`。配置损坏会报错并保留原文件，不会静默重置。恢复前停止程序并备份数据目录，再用确认无误的 `.bak` 恢复。备份数据库时先正常关闭程序后复制整个数据目录。
 
-JSON 配置仍为 schema 2；旧版本 1 在加载时内存迁移，保存前不改写原文件，设备和点位 ID 保持不变。新增字段均提供兼容缺省：上传开启、通道为空、设备周期扫描、降速关闭、空表达式、点位周期/死区为 0、周期上报、Generic、RPC/远程写及 UA 服务关闭。SQLite 自身独立升级到数据库 schema 2，仅新增 RPC 审计表，保留历史和 outbox。未知版本拒绝，破坏兼容的变更仍须显式迁移，见 [配置兼容规则](docs/live-configuration.md#配置兼容规则)。
+JSON 配置仍为 schema 2；旧版本 1 在加载时内存迁移，保存前不改写原文件，设备和点位 ID 保持不变。新增字段均提供兼容缺省：上传开启、通道为空、设备周期扫描、降速关闭、空表达式、点位周期/死区为 0、周期上报、Generic、RPC/远程写关闭。SQLite 自身独立升级到数据库 schema 2，仅新增 RPC 审计表，保留历史和 outbox。未知版本拒绝，破坏兼容的变更仍须显式迁移，见 [配置兼容规则](docs/live-configuration.md#配置兼容规则)。
 
 默认保留 30 天、最多 1,000,000 条历史，定期清理；数据库文件空间可复用，删除记录不会立即缩小物理文件。内存日志最多 2,000 条；文件日志保留最近 30 个 UTC 日期，每日最多当前文件及 2 个轮转文件，每个约 10 MiB。
 
@@ -187,7 +176,6 @@ JSON 配置仍为 schema 2；旧版本 1 在加载时内存迁移，保存前不
 | `src/EdgeGateway.Abstractions` | 驱动、存储、日志、发布器接口 |
 | `src/EdgeGateway.DataAccess` | JSON 配置与 SQLite |
 | `src/EdgeGateway.Service` | 采集运行时、插件、校验、MQTT、日志 |
-| `src/EdgeGateway.OpcUa` | 北向 OPC UA Server、地址空间、证书与受控读写 |
 | `src/EdgeGateway.IotGateway` | 全部源驱动的工厂、参数/方法元数据、线程与接口适配 |
 | `src/EdgeGateway.WinForms` | Windows 桌面界面与组合根 |
 | `Plugins/PluginInterface` | 迁移后的原驱动接口、属性与数据契约 |
@@ -206,11 +194,11 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release
 ./scripts/smoke-test-winforms.ps1
 ```
 
-核心自动测试包含实际 TCP 回环与 TLS 握手；本轮覆盖采集策略、表达式、读写核对、五平台 JSON、MQTT 订阅/回复、ThingsCloud 应用响应、持久请求去重和安全 UA TCP 标准客户端。源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。详情见 [本轮验收记录](docs/kepware-opcua-verification.md)，历史结果仍单独保留。**尚未连接真实 PLC、串口设备、用户现场平台租户或商业 UA 客户端，自动测试不等于现场验收。** 现场仍需核对点表、字节序、串口硬件、双向证书信任与 24–72 小时长稳运行。
+核心自动测试包含实际 TCP 回环与 TLS 握手，覆盖采集策略、表达式、读写核对、五平台 JSON、MQTT 订阅/回复、ThingsCloud 应用响应和持久请求去重。删除后的 Windows 门禁目标为 7 个主页面、5 类矩阵弹窗、20 个等效工作区、122 张 PNG 和 12 个完成标记，保留真实焦点与 DPI 边界断言；实际结果以 [本轮记录](docs/opc-ua-service-removal.md) 为准。**真实 PLC、串口、南向 OPC UA 目标服务器和用户现场平台租户仍需对应环境验收，自动测试不等于现场验收。** 现场还需核对点表、字节序、串口硬件、证书信任与 24–72 小时长稳运行。
 
 历史交付另行保留：[驱动迁移基线](docs/verification.md)、[单设备启停](docs/device-control-autosave.md#此前版本验证与运行包)、[配置窗合并版本](docs/device-configuration-unification.md#实际执行结果)。这些文档中的运行包、截图和通过数量对应各自源码提交。
 
-本项目原生 Modbus 驱动按点位请求；源 Modbus / MC 驱动保留原有批量和缓存方法，需按其说明配置。通道提供通信串行调度，串口仍按设备独占，不提供共享串口多从站连接。当前是桌面程序，关闭后停止采集与对外服务；未包含 Windows Service、桌面多角色权限管理、OTA、VPN、跨点位表达式、所有驱动逐帧抓包或完整 Kepware 产品能力。已实现的平台协议仍需真实租户配置验收。配置数量限制不代表同规模性能已测；源驱动未实现的写入方法继续明确拒绝。
+本项目原生 Modbus 驱动按点位请求；源 Modbus / MC 驱动保留原有批量和缓存方法，需按其说明配置。通道提供通信串行调度，串口仍按设备独占，不提供共享串口多从站连接。当前是桌面程序，关闭后停止采集；未包含 Windows Service、桌面多角色权限管理、OTA、VPN、跨点位表达式、所有驱动逐帧抓包或完整 Kepware 产品能力。已实现的平台协议仍需真实租户配置验收。配置数量限制不代表同规模性能已测；源驱动未实现的写入方法继续明确拒绝。
 
 ## 许可与来源
 

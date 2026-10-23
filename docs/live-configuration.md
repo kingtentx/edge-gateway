@@ -1,8 +1,8 @@
 # 运行中配置、点表交换与通信诊断
 
-本页说明当前源码的配置维护流程。设备 A 正在采集时，可以维护设备 B 及其点位；修改运行 B 后只重新连接 B。新增设备保持停止，禁用或删除只停止目标。设备、点位及导入弹窗等待完整校验、原子保存和运行时应用成功后才关闭，失败保留输入。本轮还补充通道/筛选/复制、真实诊断、读回核对、表达式、20 列 CSV、变化上报与平台 RPC；OPC UA 使用独立服务入口。
+本页说明当前源码的配置维护流程。设备 A 正在采集时，可以维护设备 B 及其点位；修改运行 B 后只重新连接 B。新增设备保持停止，禁用或删除只停止目标。设备、点位及导入弹窗等待完整校验、原子保存和运行时应用成功后才关闭，失败保留输入。本轮还补充通道/筛选/复制、真实诊断、读回核对、表达式、20 列 CSV、变化上报与平台 RPC。
 
-**当前验证状态：本轮统一 Windows 验证及发布包核验通过。** 源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。见 [CI 39972261116](https://github.com/kingtentx/edge-gateway/actions/runs/39972261116)、[本轮完整记录](kepware-opcua-verification.md) 和 [机器可读证据](kepware-opcua-verification.json)。本页后半部分的 `f1d398b`、工作流 39923092261 和 163 项测试仍属于历史基线；旧运行包与首次失败/重跑证据保留在 [历史验证说明](live-configuration-verification.md)。
+**当前验证状态：OPC UA 对外服务端已按用户要求完整移除，本地构建和回归已完成，Windows CI 与新发布包仍待执行核验。** 当前范围与门禁目标见 [服务端移除记录](opc-ua-service-removal.md)。本页后半部分的 `f1d398b`、工作流 39923092261 和 163 项测试仍属于历史基线；旧运行包与首次失败/重跑证据保留在 [历史验证说明](live-configuration-verification.md)。
 
 ## 操作范围
 
@@ -23,7 +23,6 @@
 | 编辑、重置平台草稿 | 允许 | 不改变已应用配置，草稿不阻止启动 |
 | “应用设置”提交全局/历史/MQTT 字段 | 要求全部设备停止 | 校验、保存后更新共享服务使用的设置 |
 | “导入配置”替换整份 JSON | 要求全部设备停止并确认 | 替换网关、MQTT、设备与点位，成功后重置平台草稿 |
-| OPC UA 服务启停 | 独立入口 | UA 端点生命周期独立；停止最后一台采集设备不自动停止 UA 服务 |
 
 设备变更比较按字段值进行，驱动参数字典的键顺序不触发重启；点位数组顺序仍代表采集顺序。打开后原样确认不会重启未变更设备。变化目标的实时旧样本会清除，重新等待新会话采样；其他设备的最新值保留。编辑、删除配置不会清空已保存的历史记录。相关实现见 [配置应用](../src/EdgeGateway.Service/GatewayRuntime.Configuration.cs) 与 [设备界面](../src/EdgeGateway.WinForms/MainForm.Configuration.cs)。
 
@@ -117,7 +116,6 @@ Task<ConfigurationApplyResult> ApplyConfigurationAsync(
 
 平台页现提供周期全量、仅变化、变化加心跳三种策略，以及 Generic、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp 五种协议。变化比较使用成功入队后的工程值基线、点位绝对死区、质量和错误；心跳不改变原采样时间。RPC 与远程写分别默认关闭，启用后使用白名单点位读写、权限复查、持久写请求去重和读回核对。完整字段、主题、令牌环境变量与请求样例见 [平台接入与 RPC](platform-protocols.md)。
 
-“OPC UA 服务”页管理独立北向端点，默认关闭，提供标准浏览、读取、订阅及授权写入。证书、用户认证和服务生命周期与南向 `OPC.UaClient` 分开；普通设备配置更新同步地址空间，不会重启手动停止的 UA 服务。操作与信任配置见 [OPC UA 服务](opc-ua-server.md)。
 
 ## 点位 CSV 导入导出
 
@@ -177,7 +175,7 @@ Task<ConfigurationApplyResult> ApplyConfigurationAsync(
 
 ### 如何定位链路问题
 
-设备表的“最近成功采集”“连续失败”和“采集诊断”用于区分尚未采样、正常、重连与失败。“通信诊断”从运行时和存储读取快照，增加读写/失败批次、最近耗时、降速及 RPC 状态，可导出 JSON。批次计数不代表底层物理帧数。主界面增加“OPC UA 服务”页，共八个主页面。两套 Windows 的页面操作及 20 个等效工作区均已核验，见 [本轮记录](kepware-opcua-verification.md)。
+设备表的“最近成功采集”“连续失败”和“采集诊断”用于区分尚未采样、正常、重连与失败。“通信诊断”从运行时和存储读取快照，增加读写/失败批次、最近耗时、降速及 RPC 状态，可导出 JSON。批次计数不代表底层物理帧数。当前主界面共七个页面。删除后的页面操作及 20 个等效工作区结果以 [本轮记录](opc-ua-service-removal.md) 为准，不使用旧版本通过结果代替。
 
 | 信息 | 能证明什么 | 不能据此推断什么 |
 |---|---|---|
@@ -194,13 +192,13 @@ Task<ConfigurationApplyResult> ApplyConfigurationAsync(
 
 ## 配置兼容规则
 
-JSON 配置版本继续为 **schema 2**。新增字段提供兼容缺省：上传开启、通道为空、设备独立通信及设备周期、降速关闭、空表达式、点位周期和死区 0、周期上报、Generic、RPC/远程写及 UA 服务关闭。schema 1 经原有加载迁移进入 schema 2，设备和点位 ID 不改变；未知 schema 拒绝并保留文件。
+JSON 配置版本继续为 **schema 2**。新增字段提供兼容缺省：上传开启、通道为空、设备独立通信及设备周期、降速关闭、空表达式、点位周期和死区 0、周期上报、Generic、RPC/远程写关闭。schema 1 经原有加载迁移进入 schema 2，设备和点位 ID 不改变；未知 schema 拒绝并保留文件。
 
 保持版本要求新增字段可缺省、行为兼容、原含义不丢失，并补充加载和往返校验。更改字段类型/结构、必需字段或原地址/方法/枚举含义时仍须显式升级并定义迁移。CSV 独立维护原 17 个必需表头与 3 个可选扩展，不套用 JSON 的缺省规则。SQLite 自身由数据库 schema 1 升级到 2，新增 `rpc_commands`，已有历史与 outbox 保留；数据库版本与 JSON 配置版本、MQTT Generic 消息版本分别管理。
 
 ## 验收用例与证据
 
-以下为当前功能验收范围；本轮新增能力已执行的统一结果见 [Kepware 核心能力与 OPC UA 验证](kepware-opcua-verification.md)。后面的旧结果表只描述 `f1d398b` 历史基线。自动化使用隔离目录、本地模拟设备及通信回环，未连接用户 COM10/COM11、PLC 或现场平台租户时不能写成现场验收。
+以下为当前功能验收范围；本轮执行状态见 [服务端移除记录](opc-ua-service-removal.md)，表内目标不表示已经通过。后面的旧结果表只描述 `f1d398b` 历史基线。自动化使用隔离目录、本地模拟设备及通信回环，未连接用户 COM10/COM11、PLC 或现场平台租户时不能写成现场验收。
 
 | 验收场景 | 需要观察的结果 |
 |---|---|
@@ -224,8 +222,7 @@ JSON 配置版本继续为 **schema 2**。新增字段提供兼容缺省：上�
 | 表达式、20 列往返与旧 17 列更新 | 试算和运行一致；错误拒绝/标 Bad；缺失扩展字段保留，显式空表达式清空 |
 | 变化、死区、心跳和多平台拆分 | 仅成功持久化推进基线，旧采样时间保留，半批失败不丢未入队部分 |
 | 五平台 RPC 与重启重放 | 实际订阅和匹配回复，默认拒写，冲突拒绝、持久占位不重下发 |
-| OPC UA 浏览、读、订阅与授权写 | 标准客户端访问、安全策略、证书/用户认证及质量明确；写入经统一读回核对 |
-| 八个页面与全部编辑器的小工作区/DPI | 新增通道、扫描、平台、RPC 和 UA 字段可达；矩阵数量按实际执行记录 |
+| 七个页面与全部编辑器的小工作区/DPI | 通道、扫描、平台、RPC 和写入核对字段可达；五类弹窗与矩阵数量按实际执行记录 |
 
 自动测试位置：[运行时配置用例](../tests/EdgeGateway.Tests/RuntimeStorage/RuntimeConfigurationTests.cs)、[CSV 用例](../tests/EdgeGateway.Tests/RuntimeStorage/TagCsvExchangeTests.cs)、[上报诊断用例](../tests/EdgeGateway.Tests/RuntimeStorage/TelemetryPipelineTests.cs)。Windows 界面用例见 [运行中配置烟测](../src/EdgeGateway.WinForms/MainForm.LiveConfigurationSmoke.cs)。已有 [验收规范](../.agents/skills/develop-edge-gateway/references/acceptance.md) 与 [DPI 规范](../.agents/skills/develop-edge-gateway/references/winforms-dpi.md) 同步适用。
 

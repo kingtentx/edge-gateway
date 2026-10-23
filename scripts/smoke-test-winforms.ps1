@@ -73,7 +73,6 @@ markers = [
     'Device-action/autosave smoke passed:',
     'Live configuration smoke passed: A kept collecting',
     'Completed capabilities smoke passed at actual',
-    'OPC UA service UI smoke passed at actual',
     'Layout matrix passed: 20 equivalent viewport cases',
 ]
 for marker in markers:
@@ -88,9 +87,9 @@ require(report['collectionRunning'] is False, 'Acquisition was left running at t
 actual_dpi = report['actualDeviceDpi']
 require(actual_dpi > 0 and actual_dpi == report['nativeWindowDpi'], 'Actual/native window DPI mismatch.')
 
-pages = {'overview', 'devices', 'realtime', 'history', 'diagnostics', 'cloud', 'opcua', 'logs'}
+pages = {'overview', 'devices', 'realtime', 'history', 'diagnostics', 'cloud', 'logs'}
 dialogs = {'PLC.ModBusMaster device', 'PLC.ModBusMaster tag', 'WriteValueDialog multiline',
-           'TagImportDialog preview', 'ChannelEditor', 'OpcUaCertificatesDialog'}
+           'TagImportDialog preview', 'ChannelEditor'}
 resolutions = [(1366, 768), (1920, 1080), (2560, 1440), (3200, 2000)]
 percentages = [100, 125, 150, 175, 200]
 case_specs = {f'{width}x{height}-{percent}pct': (width, height, percent)
@@ -98,14 +97,10 @@ case_specs = {f'{width}x{height}-{percent}pct': (width, height, percent)
 cases = report['cases']
 require(len(cases) == 20 and {case['name'] for case in cases} == set(case_specs),
         'Layout case names are missing, duplicated, or unexpected.')
-opcua_names = {'OpcUaField_' + key for key in ('enabled', 'endpoint', 'anonymous', 'userAuthentication',
-    'username', 'passwordEnv', 'remoteWrite', 'updateInterval', 'maxSessions', 'operationTimeout')}
-certificate_names = {'SelectedClientCertificate', 'ClientCertificateDetails', 'RefreshClientCertificates',
-    'ImportClientCertificate', 'TrustSelectedCertificate', 'RemoveTrustedCertificate', 'RegenerateOpcUaServerCertificate'}
 channel_names = {'ChannelName', 'ChannelDelay', 'ChannelDescription'}
 write_names = {'WriteVerifyReadBack', 'WriteVerificationTimeout', 'WriteAbsoluteTolerance', 'WriteRelativeTolerance'}
 metric_counts = {'headerMetrics': 3, 'deviceParameterMetrics': 12, 'channelInputMetrics': 3,
-                 'writeVerificationMetrics': 4, 'opcUaInputMetrics': 10, 'certificateInputMetrics': 7}
+                 'writeVerificationMetrics': 4}
 
 def check_metrics(values, count, context, names=None):
     require(len(values) == count, f'{context}: expected {count} control metrics, got {len(values)}.')
@@ -136,14 +131,13 @@ for case in cases:
     require(case['requestedWindowBounds']['width'] == round(logical_width * actual_dpi / 96.0)
             and case['requestedWindowBounds']['height'] == round(logical_height * actual_dpi / 96.0),
             name + ': requested physical viewport does not match its unchanged actual DPI.')
-    require(len(case['checkedPages']) == 8 and set(case['checkedPages']) == pages, name + ': not all eight pages were checked.')
+    require(len(case['checkedPages']) == 7 and set(case['checkedPages']) == pages, name + ': not all seven pages were checked.')
     smallest = name == '1366x768-200pct'
     expected_dialogs = dialogs | ({'PLC.ModBusMaster dedicated configuration'} if smallest else set())
     require(len(case['checkedDialogs']) == len(expected_dialogs) and set(case['checkedDialogs']) == expected_dialogs,
             name + ': missing, duplicate, or unexpected dialog checks.')
     for key, count in metric_counts.items():
-        names = {'channelInputMetrics': channel_names, 'writeVerificationMetrics': write_names,
-                 'opcUaInputMetrics': opcua_names, 'certificateInputMetrics': certificate_names}.get(key)
+        names = {'channelInputMetrics': channel_names, 'writeVerificationMetrics': write_names}.get(key)
         check_metrics(case[key], count, name + ' ' + key, names)
     check_metrics(case['configurationParameterMetrics'], 12 if smallest else 0, name + ' minimum configuration')
     check_metrics([case['writeInputMetric']], 1, name + ' multiline write input', {'WriteValue'})
@@ -160,7 +154,7 @@ expected_images.update('ui-smoke-' + name + '.png' for name in (
     'tag-import-preview', 'live-configuration-devices', 'live-configuration-diagnostics', 'live-configuration-retained-draft'))
 for name in case_specs:
     expected_images.update(f'ui-smoke-layout-matrix/{name}-{kind}.png'
-                          for kind in ('overview', 'modbus-device', 'channel', 'opcua-certificates'))
+                          for kind in ('overview', 'modbus-device', 'channel'))
 expected_images.update({'ui-smoke-layout-matrix/1920x1080-125pct-devices.png',
                         'ui-smoke-layout-matrix/1366x768-200pct-modbus-configuration.png'})
 images = list(output.glob('ui-smoke*.png'))
@@ -168,8 +162,8 @@ for directory in output.glob('ui-smoke-*'):
     if directory.is_dir():
         images.extend(directory.rglob('*.png'))
 actual_images = {image.relative_to(output).as_posix() for image in images}
-require(len(expected_images) == 143, 'The expected screenshot manifest is internally inconsistent.')
-require(actual_images == expected_images and len(images) == 143,
+require(len(expected_images) == 122, 'The expected screenshot manifest is internally inconsistent.')
+require(actual_images == expected_images and len(images) == 122,
         f'Screenshot manifest mismatch: missing={sorted(expected_images - actual_images)}; unexpected={sorted(actual_images - expected_images)}.')
 png_sizes = {}
 for image in images:
@@ -194,24 +188,16 @@ if os.environ.get('GITHUB_ACTIONS') == 'true':
     counts = {key: int(counters.attrib[key]) for key in ('total', 'passed', 'failed', 'notExecuted')}
     require(counts['total'] > 0 and counts['total'] == counts['passed']
             and counts['failed'] == counts['notExecuted'] == 0, 'The full CI test suite did not pass.')
-    ua_results = [result for result in tests.findall('.//t:UnitTestResult', ns)
-                  if result.attrib.get('testName', '').startswith('EdgeGateway.Tests.Integration.OpcUaServerTests.')]
-    require(ua_results and all(result.attrib.get('outcome') == 'Passed' for result in ua_results),
-            'Real OPC UA integration tests were missing, skipped, or failed.')
-    for method in ('SecureClientBrowsesReadsExactTypesAndReceivesRealSubscriptions',
-                   'AuthenticatedWriteIsExplicitlyDisabledByDefaultAndAnonymousNeverWrites'):
-        require(any(result.attrib.get('testName') == 'EdgeGateway.Tests.Integration.OpcUaServerTests.' + method
-                    for result in ua_results), 'Missing required secure OPC UA integration test: ' + method)
-    test_results_summary = dict(**counts, opcUaTestsPassed=len(ua_results))
+    test_results_summary = counts
 
 summary = dict(sourceCommit=os.environ.get('GITHUB_SHA'), workflowRunId=os.environ.get('GITHUB_RUN_ID'),
     actualDeviceDpi=actual_dpi, nativeWindowDpi=report['nativeWindowDpi'], viewportSimulation=True,
     layoutCasesPassed=20, layoutCasesExpected=20, checkedPages=sorted(pages), checkedDialogs=sorted(dialogs),
-    screenshotCount=143, capabilitiesSmokePassed=True, opcUaServiceSmokePassed=True,
+    screenshotCount=122, capabilitiesSmokePassed=True,
     controlMetricCounts=metric_counts, markersPassed=markers, testResultsSummary=test_results_summary,
     reportSha256=hashlib.sha256(report_path.read_bytes()).hexdigest())
 (output / 'ui-smoke-verification.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-print(f'Validated WinForms evidence: 8 pages, 6 dialog types, 20 equivalent work areas, 143 PNGs; actual {actual_dpi} DPI. OPC UA and completed-capability smoke markers are present.')
+print(f'Validated WinForms evidence: 7 pages, 5 dialog types, 20 equivalent work areas, 122 PNGs; actual {actual_dpi} DPI. Completed-capability smoke markers are present.')
 '@
     $checker | & python - $repositoryRoot $outputRoot
     if ($LASTEXITCODE -ne 0) { throw 'WinForms evidence verification failed.' }

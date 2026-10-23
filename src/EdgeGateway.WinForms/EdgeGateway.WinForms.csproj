@@ -24,7 +24,6 @@
     <ProjectReference Include="../EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />
     <ProjectReference Include="../EdgeGateway.DataAccess/EdgeGateway.DataAccess.csproj" />
     <ProjectReference Include="../EdgeGateway.Service/EdgeGateway.Service.csproj" />
-    <ProjectReference Include="../EdgeGateway.OpcUa/EdgeGateway.OpcUa.csproj" />
     <ProjectReference Include="../EdgeGateway.IotGateway/EdgeGateway.IotGateway.csproj" />
     <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Simulator/EdgeGateway.Driver.Simulator.csproj" />
     <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Modbus/EdgeGateway.Driver.Modbus.csproj" />

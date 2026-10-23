@@ -134,16 +134,12 @@ public sealed class ConfigurationStoreTests : IDisposable
         Assert.Equal(MqttPlatform.Generic, configuration.Mqtt.Platform);
         Assert.False(configuration.Mqtt.RpcEnabled);
         Assert.False(configuration.Mqtt.AllowRemoteWrite);
-        Assert.False(configuration.OpcUa.Enabled);
-        Assert.False(configuration.OpcUa.AllowRemoteWrite);
-        Assert.False(configuration.OpcUa.EnableUserAuthentication);
         Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
         await store.SaveAsync(configuration);
         Assert.Equal(original, await File.ReadAllTextAsync(FilePath + ".bak"));
         var reloaded = await store.LoadAsync();
         Assert.Equal(device.Id, reloaded.Devices[0].Id);
         Assert.Equal(tag.Id, reloaded.Devices[0].Tags[0].Id);
-        Assert.False(reloaded.OpcUa.Enabled);
     }
 
     public void Dispose()

@@ -11,7 +11,6 @@ public static class ConfigurationValidator
     {
         ArgumentNullException.ThrowIfNull(configuration);
         var errors = new List<string>();
-        errors.AddRange(OpcUaConfigurationValidator.Validate(configuration.OpcUa));
         if (configuration.SchemaVersion != 2) errors.Add("仅支持配置格式版本 2；请通过配置存储加载并迁移版本 1。");
         if (string.IsNullOrWhiteSpace(configuration.GatewayId) || !Regex.IsMatch(configuration.GatewayId, "^[A-Za-z0-9._-]{1,100}$"))
             errors.Add("网关标识须为 1–100 位字母、数字、点、下划线或短横线。");

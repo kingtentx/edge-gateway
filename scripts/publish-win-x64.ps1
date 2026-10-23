@@ -14,10 +14,16 @@ try {
     # Fail publication if any original upstream driver was left out of the application.
     $migration = Get-Content 'docs/driver-migration-manifest.json' -Raw | ConvertFrom-Json
     $requiredAssemblies = @('EdgeGateway.IotGateway', 'PluginInterface', 'Interop.OPCAutomation', 'FontAwesome.Sharp',
-        'EdgeGateway.OpcUa', 'Opc.Ua.Server', 'Opc.Ua.Configuration', 'Opc.Ua.Core', 'Opc.Ua.Types', 'Opc.Ua.Security.Certificates') + @($migration.drivers | ForEach-Object { $_.assembly })
+        'Opc.Ua.Client', 'Opc.Ua.Configuration', 'Opc.Ua.Core', 'Opc.Ua.Types', 'Opc.Ua.Security.Certificates') + @($migration.drivers | ForEach-Object { $_.assembly })
     foreach ($assembly in $requiredAssemblies) {
         if (-not (Test-Path (Join-Path $publishDirectory ($assembly + '.dll')))) {
             throw "Required migrated driver/dependency missing from publish output: $assembly.dll"
+        }
+    }
+    # The retained OPC UA client driver must not bring back the removed server.
+    foreach ($assembly in @('EdgeGateway.OpcUa', 'Opc.Ua.Server')) {
+        if (Test-Path (Join-Path $publishDirectory ($assembly + '.dll'))) {
+            throw "Removed server assembly must not be published: $assembly.dll"
         }
     }
     Copy-Item README.md,LICENSE,THIRD-PARTY-NOTICES.md -Destination $publishDirectory
@@ -44,9 +50,9 @@ try {
             throw 'Publication requires all 20 equivalent work-area cases and an explicit viewport-simulation boundary.'
         }
         if ($smoke.sourceCommit -ne $env:GITHUB_SHA -or $smoke.workflowRunId -ne $env:GITHUB_RUN_ID -or
-            $smoke.opcUaServiceSmokePassed -ne $true -or $smoke.capabilitiesSmokePassed -ne $true -or
-            $smoke.screenshotCount -ne 143 -or $smoke.testResultsSummary.opcUaTestsPassed -le 0) {
-            throw 'Publication requires complete OPC UA/capability smoke evidence from this CI source and run.'
+            $smoke.capabilitiesSmokePassed -ne $true -or $smoke.screenshotCount -ne 122 -or
+            @($smoke.checkedPages).Count -ne 7 -or @($smoke.checkedDialogs).Count -ne 5) {
+            throw 'Publication requires complete capability smoke evidence from this CI source and run.'
         }
         $verification = [ordered]@{
             testsTotal = [int]$counts.total
@@ -62,10 +68,8 @@ try {
             checkedPageCount = @($smoke.checkedPages).Count
             checkedDialogTypeCount = @($smoke.checkedDialogs).Count
             capabilitiesSmokePassed = $smoke.capabilitiesSmokePassed
-            opcUaServiceSmokePassed = $smoke.opcUaServiceSmokePassed
-            opcUaIntegrationTestsPassed = $smoke.testResultsSummary.opcUaTestsPassed
-            opcUaInputMetricsPerCase = $smoke.controlMetricCounts.opcUaInputMetrics
-            certificateInputMetricsPerCase = $smoke.controlMetricCounts.certificateInputMetrics
+            channelInputMetricsPerCase = $smoke.controlMetricCounts.channelInputMetrics
+            writeVerificationMetricsPerCase = $smoke.controlMetricCounts.writeVerificationMetrics
         }
     }
     [ordered]@{

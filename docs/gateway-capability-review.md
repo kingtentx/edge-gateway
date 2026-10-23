@@ -1,8 +1,8 @@
 # 采集网关能力对照与本轮改进范围
 
-更新日期：2026-10-23。上游固定为 [iioter/iotgateway `8de442a7dec52d2993d1e9667d799846936d681b`](https://github.com/iioter/iotgateway/tree/8de442a7dec52d2993d1e9667d799846936d681b)。本页最初相对 `83743cf0870649d9bbf7bd147df17dfb1fbcc158` 审查运行中配置，历史发布证据对应 `f1d398b`；现已按当前源码同步六项差距、Kepware 核心能力和 OPC UA 服务集成范围。新增功能已由 [CI 39972261116](https://github.com/kingtentx/edge-gateway/actions/runs/39972261116) 完成统一验证，源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。完整证据见 [本轮验收记录](kepware-opcua-verification.md)，旧数量仍只对应其历史提交。
+更新日期：2026-10-23。上游固定为 [iioter/iotgateway `8de442a7dec52d2993d1e9667d799846936d681b`](https://github.com/iioter/iotgateway/tree/8de442a7dec52d2993d1e9667d799846936d681b)。本页最初相对 `83743cf0870649d9bbf7bd147df17dfb1fbcc158` 审查运行中配置，历史发布证据对应 `f1d398b`。当前继续保留六项差距与核心采集能力，按用户要求完整移除 OPC UA 对外服务端；本轮新构建、Windows 检查和发布结果见 [服务端移除记录](opc-ua-service-removal.md)，本地结果已记录，Windows CI 与新发布包仍待执行核验。旧数量只对应其历史提交。
 
-运行中局部配置、点表批量提交与点位上传开关继续保留。此前列出的停止设备诊断、筛选复制、写后读回、单点表达式、变化/心跳上报、平台适配/RPC 六项差距均已补充代码；本轮同时加入通道调度、点位周期、故障降速和北向 OPC UA 服务。具体操作与边界见 [Kepware 核心能力实现](kepware-core-capabilities.md)、[平台协议](platform-protocols.md) 和 [OPC UA 服务](opc-ua-server.md)，不声明完整复刻 Kepware。
+运行中局部配置、点表批量提交与点位上传开关继续保留。此前列出的停止设备诊断、筛选复制、写后读回、单点表达式、变化/心跳上报、平台适配/RPC 六项差距均已补充代码；同时保留通道调度、点位周期和故障降速。具体操作与边界见 [Kepware 核心能力实现](kepware-core-capabilities.md)和[平台协议](platform-protocols.md)，不声明完整复刻 Kepware。
 
 ## 1. 上游已经具备哪些业务能力
 
@@ -49,7 +49,6 @@
 | P1 | 写入提交与现场值核对混在一起 | 写入只下发一次，按命令 ID 主动读回并比较，返回状态、原值、工程值、次数和耗时 | 超时或取消不能证明现场未执行，核对失败不自动重写 |
 | P1 | 线性换算与周期全量不能覆盖常用数据处理 | 受限单点表达式和预览；变化死区、质量变化、周期心跳；成功持久化后推进基线 | 表达式只读；不保存检查周期内每一次短暂变化 |
 | P1 | 专用平台协议与远程操作缺少闭环 | 五平台主题/载荷、实际订阅、请求响应、权限校验、持久写命令去重与结果 | 远程写默认关闭，租户物模型和现场设备需要部署验收 |
-| P1 | 只有南向 UA Client，缺少标准北向访问 | 新增独立 OPC UA Server 工程与服务页面入口，浏览/读/订阅及授权读回写入 | 服务、证书与认证单独配置；两套 Windows 的 11 项安全 UA TCP 测试和服务/证书界面操作通过，现场客户端另验 |
 
 相关实现入口：
 
@@ -57,7 +56,7 @@
 - [CSV 交换服务](../src/EdgeGateway.Service/TagCsvExchange.cs)、[导入预览](../src/EdgeGateway.WinForms/TagImportDialog.cs)、[模板文件](../examples/tag-template.csv)。
 - [上报诊断状态模型](../src/EdgeGateway.Model/TelemetryPipelineStatus.cs)、[上报流水线](../src/EdgeGateway.Service/GatewayRuntime.Telemetry.cs)、[通信诊断界面](../src/EdgeGateway.WinForms/MainForm.Diagnostics.cs)。
 - [设备操作与读回](../src/EdgeGateway.Service/GatewayRuntime.Operations.cs)、[扫描与通道调度](../src/EdgeGateway.Service/GatewayRuntime.Scheduling.cs)、[表达式](../src/EdgeGateway.Service/NumericExpression.cs)、[变化上报](../src/EdgeGateway.Service/TelemetryReportPlanner.cs)。
-- [平台协议适配](../src/EdgeGateway.Service/PlatformMqttAdapter.cs)、[RPC 运行时](../src/EdgeGateway.Service/GatewayRuntime.Rpc.cs)、[北向 UA 服务](opc-ua-server.md)。
+- [平台协议适配](../src/EdgeGateway.Service/PlatformMqttAdapter.cs)、[RPC 运行时](../src/EdgeGateway.Service/GatewayRuntime.Rpc.cs)。
 
 此前已经实现的 12 个上游驱动工程、统一驱动参数编辑、原生模拟与 Modbus 驱动、单设备启停、原值和工程值、数据质量、读写互斥、退避重连、SQLite 历史、MQTT QoS 1 补传和本地手工写入继续保留。本轮没有将这些已有能力计为新增功能；驱动范围和依赖见[迁移清单](driver-migration.md)。
 
@@ -116,13 +115,15 @@
 | 5 | 变化上报和周期心跳 | Periodic/OnChange/OnChangeWithHeartbeat；绝对工程量死区、质量/错误变化、首次值和心跳，完整入队后推进基线；不是全量采样事件流 |
 | 6 | 平台专用适配与远程写控制 | Generic、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp 明确格式与路由；真实订阅/回复、默认拒写、持久防重复调度和写后读回；真实租户物模型仍待部署联调 |
 
-这些实现继续以 [Kepware 核心能力说明](kepware-core-capabilities.md) 中的通道、扫描与诊断规则为主。OPC UA Server 是新增的北向标准接口，采用独立服务生命周期、证书与用户身份验证；匿名只读、远程写默认关闭，停止采集后值保留真实质量。详见 [UA 服务说明](opc-ua-server.md)。Windows Service、桌面多角色、跨点位计算、共享串口多从站、全驱动逐帧追踪及商业插件仍不属于完成声明。
+这些实现继续以 [Kepware 核心能力说明](kepware-core-capabilities.md) 中的通道、扫描与诊断规则为主。OPC UA 对外服务端已按用户要求删除，南向 `OPC.UaClient` 继续保留。Windows Service、桌面多角色、跨点位计算、共享串口多从站、全驱动逐帧追踪及商业插件仍不属于完成声明。
 
-现场依赖也不能通过界面功能代替：Fanuc 仍需合法取得的 FWLIB64 及官方依赖；采用 Hsl 的驱动可能需要配置许可环境变量；OPC DA 依赖匹配位数的 COM/Automation、服务器注册及 DCOM；OPC UA 依赖正确的证书信任。当前串口限制是一条串口只配置一个启用设备；共享串口多从站需要专门的总线调度，不能只删除冲突校验。具体说明见[驱动依赖](driver-migration.md)与[第三方声明](../THIRD-PARTY-NOTICES.md)。
+现场依赖也不能通过界面功能代替：Fanuc 仍需合法取得的 FWLIB64 及官方依赖；采用 Hsl 的驱动可能需要配置许可环境变量；OPC DA 依赖匹配位数的 COM/Automation、服务器注册及 DCOM；南向 OPC UA 采集依赖目标服务器与正确的证书信任。当前串口限制是一条串口只配置一个启用设备；共享串口多从站需要专门的总线调度，不能只删除冲突校验。具体说明见[驱动依赖](driver-migration.md)与[第三方声明](../THIRD-PARTY-NOTICES.md)。
 
 ## 7. 本轮验证范围与历史证据
 
-当前六项能力和 UA 集成已完成统一验证：源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。源码、作业、产物与修复过程见 [本轮验收记录](kepware-opcua-verification.md)。以下已执行数据属于**历史基线**：源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8) 在 Windows Server 2022 / 2025 完成核心测试、原生窗体烟测与布局矩阵，[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 最终 attempt 2 成功。当时两系统各通过 **163 / 163 项测试、20 / 20 个等效工作区场景**，覆盖七个主页面和四类编辑器，各保存 102 张 PNG；成功作业 stderr 为空，失败截图为 0，`focusRecoveryCount=0`，矩阵期间采集已停止。
+本轮服务端删除后的当前范围、门禁目标和实际执行状态见 [服务端移除记录](opc-ua-service-removal.md)。本地结果已记录，Windows CI 与新发布包仍待核验；历史成功不自动适用于本次修改。
+
+以下已执行数据属于**历史基线**：源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8) 在 Windows Server 2022 / 2025 完成核心测试、原生窗体烟测与布局矩阵，[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 最终 attempt 2 成功。当时两系统各通过 **163 / 163 项测试、20 / 20 个等效工作区场景**，覆盖七个主页面和四类编辑器，各保存 102 张 PNG；成功作业 stderr 为空，失败截图为 0，`focusRecoveryCount=0`，矩阵期间采集已停止。
 
 历史作业中 Server 2025 在 attempt 1 首次通过；Server 2022 首次焦点异常，只重跑失败作业后在 attempt 2 通过，同一提交源码和断言未更改。最终成功不代表首次全部通过或异常根因已解决。原始详情见 [历史验证说明](live-configuration-verification.md) 和 [机器可读证据](live-configuration-verification.json)。
 
@@ -138,7 +139,7 @@
 | [PlatformAdapterTests](../tests/EdgeGateway.Tests/RuntimeStorage/PlatformAdapterTests.cs)、[MqttRpcTransportTests](../tests/EdgeGateway.Tests/Integration/MqttRpcTransportTests.cs) | 五平台独立协议向量、真实 TCP 订阅/回复、SUBACK 拒绝、默认拒写、ThingsCloud 注册及应用响应 |
 | [RpcRuntimeTests](../tests/EdgeGateway.Tests/RuntimeStorage/RpcRuntimeTests.cs)、[PlatformSwitchTests](../tests/EdgeGateway.Tests/RuntimeStorage/PlatformSwitchTests.cs) | 权限、持久去重、重启/身份/方法冲突、令牌轮换、待确定写入与平台切换阻止 |
 | [在线配置界面烟测](../src/EdgeGateway.WinForms/MainForm.LiveConfigurationSmoke.cs) | 使用本地模拟设备验证在线编辑、失败保留输入、点表导入和上传设置等界面路径 |
-| [新增功能界面烟测](../src/EdgeGateway.WinForms/MainForm.CapabilitiesSmoke.cs)、[UA 验证入口](opc-ua-server.md) | 新入口操作、通道和核对选项布局、标准 UA 客户端行为；具体执行结果单独记录 |
+| [新增功能界面烟测](../src/EdgeGateway.WinForms/MainForm.CapabilitiesSmoke.cs) | 设备维护、表达式、平台、通道和核对选项操作与布局；具体执行结果单独记录 |
 
 控制发布结果的伪实现用于验证确认先后、失败和恢复，不代表已完成某个业务平台的接收测试；本地模拟设备与协议回环也不替代现场 PLC、CNC、串口及 COM 验收。
 

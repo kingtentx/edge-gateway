@@ -1,7 +1,6 @@
 using EdgeGateway.Abstractions;
 using EdgeGateway.DataAccess;
 using EdgeGateway.Model;
-using EdgeGateway.OpcUa;
 using EdgeGateway.Service;
 using System.Diagnostics;
 using System.Globalization;
@@ -17,7 +16,6 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly IGatewayStore _store;
     private readonly IDriverRegistry _drivers;
     private readonly GatewayRuntime _runtime;
-    private readonly GatewayOpcUaServer _opcUaServer;
     private readonly IGatewayLog _log;
     private readonly string _dataDirectory;
     private readonly bool _smokeTest;
@@ -43,7 +41,7 @@ public sealed partial class MainForm : DpiAwareForm
     public bool SmokeTestFailed { get; private set; }
 
     public MainForm(GatewayConfiguration configuration, IConfigurationStore configurationStore,
-        IGatewayStore store, IDriverRegistry drivers, GatewayRuntime runtime, GatewayOpcUaServer opcUaServer, IGatewayLog log,
+        IGatewayStore store, IDriverRegistry drivers, GatewayRuntime runtime, IGatewayLog log,
         string dataDirectory, bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false)
     {
         _configuration = Clone(configuration);
@@ -52,7 +50,6 @@ public sealed partial class MainForm : DpiAwareForm
         _store = store;
         _drivers = drivers;
         _runtime = runtime;
-        _opcUaServer = opcUaServer;
         _log = log;
         _dataDirectory = dataDirectory;
         _smokeTest = smokeTest || layoutMatrix;
@@ -82,7 +79,7 @@ public sealed partial class MainForm : DpiAwareForm
         var sidebar = new TableLayoutPanel
         {
             Name = "NavigationContent", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = UiTheme.Navy, Padding = new Padding(12, 18, 10, 16), ColumnCount = 1, RowCount = 10, Margin = new Padding(0)
+            BackColor = UiTheme.Navy, Padding = new Padding(12, 18, 10, 16), ColumnCount = 1, RowCount = 9, Margin = new Padding(0)
         };
         sidebar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         sidebar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -95,7 +92,7 @@ public sealed partial class MainForm : DpiAwareForm
         var brandCaption = UiTheme.Label("工业数据 · 本地连接", 10, Color.FromArgb(160, 178, 203));
         brand.Controls.Add(brandTitle); brand.Controls.Add(brandCaption);
         sidebar.Controls.Add(brand, 0, 0);
-        var entries = new[] { ("overview", "运行总览"), ("devices", "设备与点位"), ("realtime", "实时监控"), ("history", "历史与趋势"), ("diagnostics", "通信诊断"), ("cloud", "平台与系统"), ("opcua", "OPC UA服务"), ("logs", "运行日志") };
+        var entries = new[] { ("overview", "运行总览"), ("devices", "设备与点位"), ("realtime", "实时监控"), ("history", "历史与趋势"), ("diagnostics", "通信诊断"), ("cloud", "平台与系统"), ("logs", "运行日志") };
         for (var i = 0; i < entries.Length; i++)
         {
             var entry = entries[i];
@@ -207,7 +204,6 @@ public sealed partial class MainForm : DpiAwareForm
         AddPage("history", BuildHistoryPage());
         AddPage("diagnostics", BuildDiagnosticsPage());
         AddPage("cloud", BuildCloudPage());
-        AddPage("opcua", BuildOpcUaPage());
         AddPage("logs", BuildLogsPage());
         ShowPage("overview");
     }
@@ -360,7 +356,6 @@ public sealed partial class MainForm : DpiAwareForm
                 await SmokeDeviceActionsAndAutosaveAsync();
                 await SmokeLiveConfigurationAsync();
                 await SmokeCompletedCapabilitiesAsync();
-                await SmokeOpcUaServiceAsync();
                 if (_layoutMatrix) await RunLayoutMatrixAsync();
             }
             catch (Exception exception)
@@ -375,7 +370,6 @@ public sealed partial class MainForm : DpiAwareForm
         _refreshTimer.Start();
         await RefreshSnapshotsAsync();
         if (_configuration.AutoStart) await RunBusyAsync(StartCollectionAsync);
-        if (_configuration.OpcUa.Enabled) await StartOpcUaServiceAsync(showError: false);
     }
 
     private static void PerformLayoutRecursively(Control root)
@@ -562,8 +556,6 @@ public sealed partial class MainForm : DpiAwareForm
     {
         if (_closing) throw new InvalidOperationException("程序正在退出，不能修改配置。");
         candidate = Clone(candidate);
-        var opcUaChanged = JsonSerializer.Serialize(_configuration.OpcUa, JsonConfigurationStore.SerializerOptions)
-            != JsonSerializer.Serialize(candidate.OpcUa, JsonConfigurationStore.SerializerOptions);
         var errors = ConfigurationValidator.Validate(candidate, _drivers);
         if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：\n\n" + string.Join("\n", errors));
         if (_appliedMqtt.Platform == candidate.Mqtt.Platform && MqttDestinationChanged(_appliedMqtt, candidate.Mqtt))
@@ -586,11 +578,9 @@ public sealed partial class MainForm : DpiAwareForm
         _appliedMqtt = Clone(candidate.Mqtt);
         if (replaceCloudDraft) ResetCloudDraft();
         RebindConfigurationViews(selectDevice);
-        var opcUaError = opcUaChanged ? await ReconfigureOpcUaAfterCommitAsync() : null;
         var outcome = applied.Restarted.Count > 0 ? $" 已对 {applied.Restarted.Count} 台变更设备发起重新连接，请查看采集状态。"
             : applied.Stopped.Count > 0 ? $" 已停止 {applied.Stopped.Count} 台被禁用或删除的设备。" : "";
-        var message = (successMessage ?? "配置已自动保存，上一版备份已保留。") + outcome
-            + (opcUaError is null ? "" : " OPC UA服务未启动：" + opcUaError);
+        var message = (successMessage ?? "配置已自动保存，上一版备份已保留。") + outcome;
         SetFooter(message);
         _log.Write(GatewayLogLevel.Information, message);
         UpdateCommands();
@@ -635,7 +625,6 @@ public sealed partial class MainForm : DpiAwareForm
             }
             if (_activePage == "realtime") RefreshRealtime(samples);
             if (_activePage == "logs") RefreshLogs();
-            if (_activePage == "opcua") RefreshOpcUaStatus();
             var statistics = await _store.GetStatisticsAsync();
             if (!IsDisposed)
             {
@@ -661,11 +650,10 @@ public sealed partial class MainForm : DpiAwareForm
         _runState.Text = _busy ? "正在处理…" : running ? $"● {activeDevices} 台设备采集中" : "● 采集已停止";
         _runState.ForeColor = running ? UiTheme.Green : UiTheme.Muted;
         _savedState.Text = $"{_configuration.Name}  /  {_configuration.GatewayId}";
-        _automaticSaveState.Text = _dirty && _opcUaDirty ? "两项设置待应用" : _opcUaDirty ? "OPC UA设置待应用" : _dirty ? "平台设置待应用" : "配置自动保存";
-        _automaticSaveState.ForeColor = _dirty || _opcUaDirty ? Color.FromArgb(180, 83, 9) : UiTheme.Muted;
+        _automaticSaveState.Text = _dirty ? "平台设置待应用" : "配置自动保存";
+        _automaticSaveState.ForeColor = _dirty ? Color.FromArgb(180, 83, 9) : UiTheme.Muted;
         UpdateDeviceConfigurationCommands();
         UpdateWriteButton();
-        UpdateOpcUaCommands();
     }
 
     private void MarkDirty() { _dirty = true; UpdateCommands(); }
@@ -683,9 +671,9 @@ public sealed partial class MainForm : DpiAwareForm
         e.Cancel = true;
         if (_closing) return;
         if (_busy) { SetFooter("正在处理当前操作，请稍后关闭窗口。"); return; }
-        if (_dirty || _opcUaDirty)
+        if (_dirty)
         {
-            var answer = MessageBox.Show(this, "平台或 OPC UA设置尚未应用，是否应用后退出？" + (_runtime.IsRunning ? "\n选择“是”将停止全部设备，然后应用并退出。" : ""), "尚未应用的设置", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            var answer = MessageBox.Show(this, "平台设置尚未应用，是否应用后退出？" + (_runtime.IsRunning ? "\n选择“是”将停止全部设备，然后应用并退出。" : ""), "尚未应用的设置", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
             if (answer == DialogResult.Cancel) return;
             if (answer == DialogResult.Yes)
             {
@@ -693,22 +681,20 @@ public sealed partial class MainForm : DpiAwareForm
                 {
                     await _runtime.StopAsync();
                     await ApplyCloudSettingsAsync();
-                    await ApplyOpcUaSettingsAsync();
                 });
                 // Failed/cancelled application keeps the draft and window open.
-                if (_dirty || _opcUaDirty) return;
+                if (_dirty) return;
             }
         }
         _closing = true; _refreshTimer.Stop(); Enabled = false;
         try
         {
-            await _opcUaServer.StopAsync();
             await _runtime.StopAsync();
             _allowClose = true; Close();
         }
         catch (Exception exception)
         {
-            _closing = false; Enabled = true; _refreshTimer.Start(); ShowError("停止服务或采集失败：" + exception.Message);
+            _closing = false; Enabled = true; _refreshTimer.Start(); ShowError("停止采集失败：" + exception.Message);
         }
     }
 

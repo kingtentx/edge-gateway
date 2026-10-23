@@ -24,7 +24,6 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     private readonly ConcurrentDictionary<Guid, DeviceSession> _sessions = new();
     private readonly ConcurrentDictionary<Guid, string> _alarmStates = new();
     private volatile GatewayConfiguration _configuration;
-    private long _configurationRevision;
     private CancellationTokenSource? _runCancellation;
     private Channel<IReadOnlyList<TelemetrySample>>? _historyChannel;
     private Task[] _sharedWorkers = [];
@@ -44,10 +43,6 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     }
 
     public bool IsRunning => _running;
-    public long ConfigurationRevision => Interlocked.Read(ref _configurationRevision);
-    public GatewayConfiguration GetConfigurationSnapshot() => Clone(_configuration);
-    public OpcUaServerConfiguration GetOpcUaConfigurationSnapshot() =>
-        JsonSerializer.Deserialize<OpcUaServerConfiguration>(JsonSerializer.Serialize(_configuration.OpcUa))!;
     public bool IsMqttConnected => _publisher.IsConnected;
     public bool IsDeviceRunning(Guid deviceId) => _sessions.TryGetValue(deviceId, out var session) && session.IsActive;
 
@@ -61,7 +56,6 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
             var errors = ConfigurationValidator.Validate(configuration, _registry);
             if (errors.Count > 0) throw new ArgumentException(string.Join(Environment.NewLine, errors), nameof(configuration));
             _configuration = Clone(configuration);
-            Interlocked.Increment(ref _configurationRevision);
             _channels.Clear();
             _latest.Clear();
             ResetStatuses();

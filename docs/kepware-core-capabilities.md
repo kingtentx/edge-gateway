@@ -1,6 +1,6 @@
 # Kepware 核心能力对标与差距功能实现
 
-本轮以 Kepware 的核心采集和数据服务能力作为主要参考，在原有 .NET 8 WinForms 网关上补齐此前列出的六项差距，并增加通道调度、点位扫描周期、故障降速、通信统计和 OPC UA 对外服务。已迁移的 `OPC.UaClient` 继续负责南向读取；新增 `EdgeGateway.OpcUa` 工程负责外部客户端的浏览、读取、订阅和受控写入，两者分别维护。
+本项目以 Kepware 的核心采集与平台数据链路作为主要参考，在 .NET 8 WinForms 网关上补齐此前列出的六项差距，并增加通道调度、点位扫描周期、故障降速和通信统计。按用户要求，OPC UA 对外服务端已完整移除；全部 12 个迁移驱动继续保留，其中 `OPC.UaClient` 负责南向读取。
 
 这份说明描述实际代码与操作方式。自动测试、Windows 原生窗体检查、平台协议回环和现场联调的证据分别记录，不能把“对标”理解为与 Kepware 全部产品、驱动或商业插件功能相同。
 
@@ -18,7 +18,6 @@
 | 批量维护 | 设备复制、20 列点位 CSV、旧 17 列兼容、整份配置交换 | 新身份、冲突校验、整批保存，失败不留半批状态 |
 | 诊断统计 | 通信诊断页增加设备读取/写入/失败批次、耗时、降速以及 RPC 状态，可导出 JSON | 批次数不冒充底层帧数，QoS 确认不冒充业务入库 |
 | 上报与远程控制 | 周期、变化、变化加心跳；五种 MQTT 模式与白名单读写 RPC | 持久化后推进基线，去重后执行写入，结果可追踪 |
-| OPC UA 数据服务 | 独立“OPC UA服务”页配置安全端点、账号与权限，管理客户端证书和服务启停 | 真实 UA TCP 浏览/读取/订阅；稳定节点；质量/源时间戳；写入复用现场权限与锁 |
 
 参考依据是 PTC 官方的[点位属性与扫描周期](https://support.ptc.com/help/kepware/kepware_server/en/kepware/server/properties-tag.html)、[通道串行化说明](https://support.ptc.com/help/kepware/kepware_server/en/kepware/server/tag-management.html)、[故障自动降级](https://www.ptc.com/help/kepware/kepware_server/en/kepware/server/device-properties-auto-demotion.html)以及[通信诊断](https://support.ptc.com/help/kepware/kepware_server/en/kepware/server/channel-diagnostics.html)。这里按本项目实际模型实现对应行为，没有复制 Kepware 的全部扫描模式或 OPC 客户端订阅语义。
 
@@ -51,9 +50,9 @@
 
 结果携带命令 ID、是否已调用写入、驱动是否确认提交、请求值、实际线类型表示的期望工程值、读回值、质量、次数和时间。64 位整数与十进制值采用精确比较；浮点按照实际可写线类型的舍入结果比较。数值判定为 `绝对误差 <= max(绝对容差, 相对容差 × max(|期望|, |实测|))`。布尔与文本精确比较，不把文本 `"1"` 当作数值 1。
 
-正常完成的主动读回会在同一设备锁内更新共享最新值，保留本次真实质量和源时间戳。读值即使与目标不匹配，也按实测结果显示；超时、取消或已停止会话的迟到结果不会被发布成新 Good。桌面、MQTT 与 OPC UA 读取同一份最新值，后续提交写入、设备停止和重启也遵循同一质量规则。单独执行连接诊断或单点读取不更新采集快照和历史。
+正常完成的主动读回会在同一设备锁内更新共享最新值，保留本次真实质量和源时间戳。读值即使与目标不匹配，也按实测结果显示；超时、取消或已停止会话的迟到结果不会被发布成新 Good。桌面与 MQTT 读取同一份最新值，后续提交写入、设备停止和重启也遵循同一质量规则。单独执行连接诊断或单点读取不更新采集快照和历史。
 
-本地确认仍保留。RPC 与 OPC UA 复用同一服务入口，并在取得设备锁后再次检查各自的远程写权限。旧 `WriteAsync` 保持只提交语义供已有调用方兼容，新界面、RPC 和 OPC UA 使用 `WriteVerifiedAsync`。
+本地确认仍保留。RPC 复用同一服务入口，并在取得设备锁后再次检查远程写权限。旧 `WriteAsync` 保持只提交语义供已有调用方兼容，新界面和 RPC 使用 `WriteVerifiedAsync`。
 
 ## 4. 计算表达式与 CSV
 
@@ -85,18 +84,10 @@ RPC 默认关闭，远程写入再单独关闭。启用后仅允许已运行、�
 
 已有补传报文不会被新配置改写。切换平台类型前必须先完成原平台待传队列；否则配置保存明确拒绝。Broker 确认、平台接口回应与业务系统最终入库分别核对。
 
-## 7. OPC UA 对外访问
+## 7. 默认配置与验证入口
 
-“OPC UA服务”页管理北向服务，默认关闭。服务可以独立启动和停止，不会代替或停止设备采集；设备停止、故障或尚未产生样本时，对外读数必须带相应非 Good 质量。设备和点位标识用于生成稳定 NodeId，名称变化不改变客户端绑定；地址空间随保存后的配置更新。
+JSON 配置仍为 schema 2：通道列表默认空、设备默认独立通信与设备周期、故障降速关闭、点位表达式空/周期 0/死区 0、周期上报、Generic 平台、RPC 及远程写关闭。旧设备与点位身份、驱动参数和原采集语义保留。SQLite 数据库独立升级到 schema 2，新增 RPC 表，保留历史和 outbox。
 
-仅开放 Basic256Sha256 / SignAndEncrypt 安全端点，首次运行生成应用证书。客户端与服务端需建立证书信任；界面只导出公共证书，并对导入或移除指定客户端信任提供明确确认。不会自动接受所有证书。匿名会话只读；用户名验证从环境变量读取密码，远程写入默认关闭，即使打开仍须点位可写、设备启用且正在运行。写入通过原有有界读回核对服务，不直接将客户端输入标成现场 Good 值。
+核心回归入口：`AcquisitionPoliciesTests`、`ExpressionTests`、`DeviceOperationTests`、`PlatformAdapterTests`、`RpcRuntimeTests`、`MqttRpcTransportTests`、`TagCsvExchangeTests`。Windows 门禁继续检查完整功能操作、通道弹窗和读回核对输入的可见性/焦点；目标为七页面、五类弹窗、五档缩放对应的 20 个等效工作区组合及 122 张截图，不含已删除的服务端页面和证书窗口。
 
-具体连接步骤、类型与状态映射、证书目录、配置热更新边界，以及真实协议测试见 [OPC UA 服务说明](opc-ua-server.md)。本轮实现数据访问服务，不宣称已取得 OPC 产品认证，也不把本地 SQLite 历史、阈值日志等同于 UA Historical Access 或 Alarms & Conditions。
-
-## 8. 默认兼容与验证入口
-
-JSON 配置仍为 schema 2：通道列表默认空、设备默认独立通信与设备周期、故障降速关闭、点位表达式空/周期 0/死区 0、周期上报、Generic 平台、RPC 及远程写关闭，OPC UA 服务默认关闭。旧设备与点位身份、驱动参数和原采集语义保留。SQLite 数据库独立升级到 schema 2，新增 RPC 表，保留历史和 outbox。
-
-核心回归入口：`AcquisitionPoliciesTests`、`ExpressionTests`、`DeviceOperationTests`、`PlatformAdapterTests`、`RpcRuntimeTests`、`MqttRpcTransportTests`、`TagCsvExchangeTests`，另有真实 UA TCP 客户端集成测试。Windows 检查增加完整功能操作烟测、通道弹窗、OPC UA 页面与证书管理、读回核对输入的可见性/焦点覆盖；执行八页面、五档缩放对应的 20 个等效工作区组合。
-
-本轮执行结果见 [Kepware 核心能力与 OPC UA 验证](kepware-opcua-verification.md)，旧基线保留在 [历史验证记录](verification.md)。真实 PLC/CNC/串口、用户 OPC UA 客户端与平台租户、24–72 小时长稳仍需要对应环境验收。Windows Service、跨点位计算、共享串口多从站、全部驱动逐帧抓包及 Kepware 全部商业插件不属于本轮完成声明。
+当前变更与实际执行结果见 [服务端移除记录](opc-ua-service-removal.md)，本地验证已记录，Windows 新结果尚待核验；旧基线保留在 [历史验证记录](verification.md)。真实 PLC/CNC/串口、南向 OPC UA 目标服务器与平台租户、24–72 小时长稳仍需要对应环境验收。Windows Service、跨点位计算、共享串口多从站、全部驱动逐帧抓包及 Kepware 全部商业插件不属于本轮完成声明。

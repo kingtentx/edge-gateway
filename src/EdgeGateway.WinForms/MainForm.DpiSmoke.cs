@@ -95,12 +95,6 @@ public sealed partial class MainForm
                         if (key == "cloud")
                             foreach (var field in _cloudFields.Values)
                                 BringIntoViewAndAssert(field, name + " cloud field");
-                        if (key == "opcua")
-                        {
-                            foreach (var field in _opcUaFields.Values.Concat<Control>(_opcUaStatusFields.Values))
-                                BringIntoViewAndAssert(field, name + " OPC UA field");
-                            result.OpcUaInputMetrics = _opcUaFields.Values.Select(ControlMetric.From).ToList();
-                        }
                         ResetScrollPositions(_pages[key], _navigation["overview"]);
                         result.CheckedPages.Add(key);
                         if (key == "overview")
@@ -115,7 +109,7 @@ public sealed partial class MainForm
                     }
                     result.HeaderMetrics = new Control[] { _runState, _savedState, _automaticSaveState }.Select(ControlMetric.From).ToList();
                     focusDiagnostics?.Capture(name + " before matrix dialogs");
-                    await VerifyMatrixDialogsAsync(testArea, directory, result);
+                    VerifyMatrixDialogs(testArea, directory, result);
                     if (resolution == new Size(1366, 768) && percentage == 200)
                         VerifyMinimumConfigurationDialog(testArea, directory, result);
                     focusDiagnostics?.Capture(name + " after matrix dialogs");
@@ -144,7 +138,7 @@ public sealed partial class MainForm
         Console.WriteLine($"Layout matrix passed: {results.Count} equivalent viewport cases at actual {actualDpi} DPI; real multi-DPI/multi-monitor tests remain separate.");
     }
 
-    private async Task VerifyMatrixDialogsAsync(Rectangle area, string directory, LayoutCaseResult result)
+    private void VerifyMatrixDialogs(Rectangle area, string directory, LayoutCaseResult result)
     {
         var descriptor = _drivers.Drivers.Single(x => x.Id == "PLC.ModBusMaster");
         var device = new DeviceConfiguration { Name = "布局检查 · Modbus", DriverId = descriptor.Id, Enabled = false };
@@ -222,22 +216,6 @@ public sealed partial class MainForm
                 result.CheckedDialogs.Add("ChannelEditor");
             }
             catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-channel-failed.png")); throw; }
-            finally { editor.Close(); }
-        }
-        using (var editor = new OpcUaCertificatesDialog(_opcUaServer, _log))
-        {
-            await editor.RefreshCertificatesAsync();
-            editor.Show(this);
-            try
-            {
-                FitSmokeDialog(editor, area);
-                VerifyOpcUaCertificateDialog(editor, result.Name + " OPC UA certificates");
-                result.CertificateInputMetrics = editor.SmokeManagementInputs.Concat(editor.SmokeCertificateCommands)
-                    .Select(ControlMetric.From).ToList();
-                SaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-opcua-certificates.png"));
-                result.CheckedDialogs.Add("OpcUaCertificatesDialog");
-            }
-            catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-opcua-certificates-failed.png")); throw; }
             finally { editor.Close(); }
         }
     }
@@ -462,8 +440,6 @@ public sealed partial class MainForm
         public List<ControlMetric> ConfigurationParameterMetrics { get; set; } = [];
         public List<ControlMetric> ChannelInputMetrics { get; set; } = [];
         public List<ControlMetric> WriteVerificationMetrics { get; set; } = [];
-        public List<ControlMetric> OpcUaInputMetrics { get; set; } = [];
-        public List<ControlMetric> CertificateInputMetrics { get; set; } = [];
         public ControlMetric? WriteInputMetric { get; set; }
         public bool Passed { get; set; }
         public string? Error { get; set; }
