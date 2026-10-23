@@ -8,7 +8,7 @@
 
 界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
-**当前范围更新：已按用户要求完整移除 OPC UA 对外服务端及其配置字段、页面、专用依赖和验收入口，不保留兼容层。** 全部 12 个迁移驱动（含南向 `OPC.UaClient`）、核心采集和 MQTT/RPC 功能继续保留。当前版本的构建、Windows 检查和新运行包结果见 [服务端移除与验证记录](docs/opc-ua-service-removal.md)；本地构建和回归已完成，Windows 原生烟测及新运行包仍待执行核验，不沿用删除前版本的通过数量或运行包。
+**当前范围更新：已按用户要求完整移除 OPC UA 对外服务端及其配置字段、页面、专用依赖和验收入口，不保留兼容层。** 全部 12 个迁移驱动（含南向 `OPC.UaClient`）、核心采集和 MQTT/RPC 功能继续保留。程序提交 `e3c5466` 已通过 [Windows Server 2022 / 2025 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638)：两个作业各 319 项测试通过，并分别完成 7 页、5 类弹窗、20 个等效工作区及 122 张截图检查。实际 DPI 为 96，不代表真实高 DPI 跨屏实测。[新 Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638/artifacts/12513230047)已核对来源和服务端删除结果，详情见 [服务端移除与验证记录](docs/opc-ua-service-removal.md)。
 
 **历史发布基线：** 程序源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8)、[Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487349660)、[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 对应上一轮运行中配置功能。Windows Server 2022 / 2025 当时各通过 **163 / 163 项测试、20 / 20 个等效工作区布局**，覆盖七个主页面及四类矩阵编辑器，各保存 102 张实际 PNG。Server 2025 在 attempt 1 通过；Server 2022 首次焦点异常后，在同一提交、未改代码或断言的情况下仅重跑失败作业，于 attempt 2 通过。详情保留在 [历史验证记录](docs/live-configuration-verification.md) 和 [机器可读证据](docs/live-configuration-verification.json)。
 

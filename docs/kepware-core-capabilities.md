@@ -90,4 +90,4 @@ JSON 配置仍为 schema 2：通道列表默认空、设备默认独立通信与
 
 核心回归入口：`AcquisitionPoliciesTests`、`ExpressionTests`、`DeviceOperationTests`、`PlatformAdapterTests`、`RpcRuntimeTests`、`MqttRpcTransportTests`、`TagCsvExchangeTests`。Windows 门禁继续检查完整功能操作、通道弹窗和读回核对输入的可见性/焦点；目标为七页面、五类弹窗、五档缩放对应的 20 个等效工作区组合及 122 张截图，不含已删除的服务端页面和证书窗口。
 
-当前变更与实际执行结果见 [服务端移除记录](opc-ua-service-removal.md)，本地验证已记录，Windows 新结果尚待核验；旧基线保留在 [历史验证记录](verification.md)。真实 PLC/CNC/串口、南向 OPC UA 目标服务器与平台租户、24–72 小时长稳仍需要对应环境验收。Windows Service、跨点位计算、共享串口多从站、全部驱动逐帧抓包及 Kepware 全部商业插件不属于本轮完成声明。
+当前变更与实际执行结果见 [服务端移除记录](opc-ua-service-removal.md)：程序提交 `e3c5466` 的本地及 Windows Server 2022 / 2025 构建和各 319 项测试通过，两套原生界面证据与新发布包已核验；旧基线保留在 [历史验证记录](verification.md)。真实高 DPI 初始启动与跨屏、PLC/CNC/串口、南向 OPC UA 目标服务器与平台租户、24–72 小时长稳仍需要对应环境验收。Windows Service、跨点位计算、共享串口多从站、全部驱动逐帧抓包及 Kepware 全部商业插件不属于本轮完成声明。

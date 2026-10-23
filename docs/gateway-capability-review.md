@@ -1,6 +1,6 @@
 # 采集网关能力对照与本轮改进范围
 
-更新日期：2026-10-23。上游固定为 [iioter/iotgateway `8de442a7dec52d2993d1e9667d799846936d681b`](https://github.com/iioter/iotgateway/tree/8de442a7dec52d2993d1e9667d799846936d681b)。本页最初相对 `83743cf0870649d9bbf7bd147df17dfb1fbcc158` 审查运行中配置，历史发布证据对应 `f1d398b`。当前继续保留六项差距与核心采集能力，按用户要求完整移除 OPC UA 对外服务端；本轮新构建、Windows 检查和发布结果见 [服务端移除记录](opc-ua-service-removal.md)，本地结果已记录，Windows CI 与新发布包仍待执行核验。旧数量只对应其历史提交。
+更新日期：2026-10-23。上游固定为 [iioter/iotgateway `8de442a7dec52d2993d1e9667d799846936d681b`](https://github.com/iioter/iotgateway/tree/8de442a7dec52d2993d1e9667d799846936d681b)。本页最初相对 `83743cf0870649d9bbf7bd147df17dfb1fbcc158` 审查运行中配置，历史发布证据对应 `f1d398b`。当前继续保留六项差距与核心采集能力，按用户要求完整移除 OPC UA 对外服务端。程序提交 `e3c5466` 的本地与两个 Windows 作业各 319 项测试、两套原生界面证据和新发布包已核验，详见 [服务端移除记录](opc-ua-service-removal.md)；布局矩阵是在实际 96 DPI 下检查等效工作区。旧数量只对应其历史提交。
 
 运行中局部配置、点表批量提交与点位上传开关继续保留。此前列出的停止设备诊断、筛选复制、写后读回、单点表达式、变化/心跳上报、平台适配/RPC 六项差距均已补充代码；同时保留通道调度、点位周期和故障降速。具体操作与边界见 [Kepware 核心能力实现](kepware-core-capabilities.md)和[平台协议](platform-protocols.md)，不声明完整复刻 Kepware。
 
@@ -121,7 +121,7 @@
 
 ## 7. 本轮验证范围与历史证据
 
-本轮服务端删除后的当前范围、门禁目标和实际执行状态见 [服务端移除记录](opc-ua-service-removal.md)。本地结果已记录，Windows CI 与新发布包仍待核验；历史成功不自动适用于本次修改。
+本轮服务端删除后的当前范围和实际执行结果见 [服务端移除记录](opc-ua-service-removal.md)。本地、Windows Server 2022 / 2025 CI 与新发布包均已核验；使用本轮源码对应的原始测试和界面证据，历史成功不自动适用于本次修改。
 
 以下已执行数据属于**历史基线**：源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8) 在 Windows Server 2022 / 2025 完成核心测试、原生窗体烟测与布局矩阵，[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 最终 attempt 2 成功。当时两系统各通过 **163 / 163 项测试、20 / 20 个等效工作区场景**，覆盖七个主页面和四类编辑器，各保存 102 张 PNG；成功作业 stderr 为空，失败截图为 0，`focusRecoveryCount=0`，矩阵期间采集已停止。
 
