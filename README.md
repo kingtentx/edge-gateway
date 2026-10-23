@@ -6,6 +6,12 @@
 
 界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
+**2026-10-23 最新交付：** [下载 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39885093582/artifacts/12472745656) · [已通过的双系统 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39885093582)。Server 2022 / 2025 各 101 项测试与 20 个等效工作区场景通过；两台构建机的实际 DPI 均为 96，真实多 DPI / 多显示器切换的现场验收范围见 [验证说明](docs/ui-dpi.md)。
+
+![Edge Gateway 现代总览界面](docs/images/overview-modern.png)
+
+上图为实际 WinForms 窗口截图，使用默认演示配置、未启动采集；窗口 1536×816，实际 96 DPI。
+
 ## 当前功能
 
 | 模块 | 已实现内容 |

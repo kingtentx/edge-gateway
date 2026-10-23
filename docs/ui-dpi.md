@@ -39,7 +39,48 @@
 
 ## 本次执行结果
 
-当前已完成本地编译、迁移清单和开发 Skill 校验；Windows Server 2022 / 2025 CI 执行后在此补充实际运行记录、测试数量、截图与下载链接。运行包中的本页可能反映打包时状态，最终以仓库本页和对应 CI 运行记录为准。
+**两套 Windows 验证均已通过。** 程序源码提交为 [`2d528cba58e2a443aee784dd59ec3c1e48a26c0c`](https://github.com/kingtentx/edge-gateway/commit/2d528cba58e2a443aee784dd59ec3c1e48a26c0c)，对应 [Windows CI 39885093582](https://github.com/kingtentx/edge-gateway/actions/runs/39885093582)。本页及截图是该次执行后的证据补录，不改变运行包的程序源码。
+
+| 检查 | Windows Server 2022 | Windows Server 2025 |
+|---|---|---|
+| 实际 OS build | 10.0.20348 | 10.0.26100 |
+| .NET 运行时 | 8.0.32 | 8.0.32 |
+| 干净 Release 构建 | 通过 | 通过 |
+| 自动测试 | 101 / 101，0 失败、0 跳过 | 101 / 101，0 失败、0 跳过 |
+| 原生主页面 / 设备 / 点位编辑器 | 6 / 15 / 15 通过 | 6 / 15 / 15 通过 |
+| 显示后动态切换驱动 | 通过 | 通过 |
+| 等效工作区矩阵 | 20 / 20 通过 | 20 / 20 通过 |
+| 截图数量 | 76 | 76 |
+| 实际 DeviceDpi / GetDpiForWindow | 96 / 96 | 96 / 96 |
+| 烟测焦点恢复次数 | 0 | 0 |
+
+迁移清单再次通过：12 个原驱动工程、65 个原读取方法、74 个原配置参数、176 个来源文件。开发 Skill 格式校验通过。本次增加的 8 个 DPI 几何用例与既有 93 项自动测试合计 101 项。干净构建仍保留上游驱动的 419 个源码警告，未将增量构建的 0 警告作为干净构建结果。
+
+首轮 Server 2022 在第 19 个场景遇到一次窗口焦点同步检查失败；失败截图未显示裁剪。烟测增加了有界窗口激活与消息处理，并保留最终焦点、控件边界、按钮文字尺寸的严格断言。上述最终运行两个系统均全部通过，且没有触发焦点恢复。
+
+- [Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39885093582/artifacts/12472745656)：下载 artifact，解出其中 `EdgeGateway-win-x64.zip` 后完整解压，运行 `EdgeGateway.WinForms.exe`。
+- [Server 2022 完整证据](https://github.com/kingtentx/edge-gateway/actions/runs/39885093582/artifacts/12471964011) · [Server 2025 完整证据](https://github.com/kingtentx/edge-gateway/actions/runs/39885093582/artifacts/12472208506)。包含 TRX、标准输出、PNG 与完整矩阵 JSON。
+- [持久化验证摘要](ui-verification-summary.json)：记录测试数量、实际 DPI、每个场景的窗口尺寸、完整报告哈希和证据来源。
+
+下载后的运行包已复核：577 个 ZIP 条目全部通过 CRC 检查，21 个必需文件检查通过，包含全部 12 个原驱动程序集、FontAwesome.Sharp、图标许可证和 Windows Desktop 运行时。内层 `EdgeGateway-win-x64.zip` 大小为 78,636,527 字节，SHA-256 为 `691fdbcb48c7b3ac68b771b550a66964d0a9fd7b6313c17e76ef96074c7c109a`。
+
+GitHub Actions 下载可能需要登录，artifact 保留期以 GitHub 显示为准；可使用仓库内脚本重新构建。运行包内文档反映打包时状态，最新补录以本页和上述 CI 为准。
+
+### 实际程序截图
+
+截图直接来自上述 Windows 原生界面烟测，使用默认演示配置且未启动现场采集。
+
+总览：在实际 96 DPI 下以 1536×816 窗口绘制（矩阵中的 1920×1080 / 名义 125% 等效空间）。
+
+![现代总览界面](images/overview-modern.png)
+
+原 Modbus 驱动参数弹窗：
+
+![驱动参数编辑器](images/device-driver-modern.png)
+
+小工作区：1366×768 / 名义 200% 等效空间对应实际 683×336 窗口；参数滚动、说明入口与固定操作栏保留。
+
+![紧凑工作区的参数编辑器](images/compact-editor.png)
 
 ## 复核命令
 

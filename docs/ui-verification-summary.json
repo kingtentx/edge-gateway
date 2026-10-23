@@ -1,0 +1,1604 @@
+{
+  "verifiedCodeCommit": "2d528cba58e2a443aee784dd59ec3c1e48a26c0c",
+  "workflowRun": "https://github.com/kingtentx/edge-gateway/actions/runs/39885093582",
+  "date": "2026-10-23",
+  "timezone": "Asia/Shanghai",
+  "viewportSimulation": true,
+  "explanation": "Equivalent work-area checks at each host's unchanged actual DPI; not real multi-DPI or multi-monitor verification. Screenshots are unedited native WinForms renders.",
+  "windowsPackageArtifactId": 12472745656,
+  "environments": [
+    {
+      "runner": "windows-2022",
+      "artifactId": 12471964011,
+      "operatingSystem": "Microsoft Windows 10.0.20348",
+      "runtime": ".NET 8.0.32",
+      "actualDeviceDpi": 96,
+      "nativeWindowDpi": 96,
+      "tests": {
+        "total": 101,
+        "executed": 101,
+        "passed": 101,
+        "failed": 0,
+        "notExecuted": 0
+      },
+      "screenshots": 76,
+      "passedCases": 20,
+      "expectedCases": 20,
+      "focusRecoveryCount": 0,
+      "focusRecoveries": [],
+      "stderrBytes": 0,
+      "fullLayoutReportSha256": "01a982606a2a9f10e42d8e1abec8644c148ae29379288e4ac8d60886e2ac99e0",
+      "cases": [
+        {
+          "name": "1366x768-100pct",
+          "nominalScalePercent": 100,
+          "nominalDpi": 96,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 720
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1366,
+            "height": 720
+          }
+        },
+        {
+          "name": "1366x768-125pct",
+          "nominalScalePercent": 125,
+          "nominalDpi": 120,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1092.8,
+            "height": 566.4
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1093,
+            "height": 566
+          }
+        },
+        {
+          "name": "1366x768-150pct",
+          "nominalScalePercent": 150,
+          "nominalDpi": 144,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 910.6667,
+            "height": 464
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 911,
+            "height": 464
+          }
+        },
+        {
+          "name": "1366x768-175pct",
+          "nominalScalePercent": 175,
+          "nominalDpi": 168,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 780.5714,
+            "height": 390.85715
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 781,
+            "height": 391
+          }
+        },
+        {
+          "name": "1366x768-200pct",
+          "nominalScalePercent": 200,
+          "nominalDpi": 192,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 683,
+            "height": 336
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 683,
+            "height": 336
+          }
+        },
+        {
+          "name": "1920x1080-100pct",
+          "nominalScalePercent": 100,
+          "nominalDpi": 96,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1032
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1920,
+            "height": 1032
+          }
+        },
+        {
+          "name": "1920x1080-125pct",
+          "nominalScalePercent": 125,
+          "nominalDpi": 120,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1536,
+            "height": 816
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1536,
+            "height": 816
+          }
+        },
+        {
+          "name": "1920x1080-150pct",
+          "nominalScalePercent": 150,
+          "nominalDpi": 144,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1280,
+            "height": 672
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 672
+          }
+        },
+        {
+          "name": "1920x1080-175pct",
+          "nominalScalePercent": 175,
+          "nominalDpi": 168,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1097.1428,
+            "height": 569.1429
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1097,
+            "height": 569
+          }
+        },
+        {
+          "name": "1920x1080-200pct",
+          "nominalScalePercent": 200,
+          "nominalDpi": 192,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 960,
+            "height": 492
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 960,
+            "height": 492
+          }
+        },
+        {
+          "name": "2560x1440-100pct",
+          "nominalScalePercent": 100,
+          "nominalDpi": 96,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1392
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 2560,
+            "height": 1392
+          }
+        },
+        {
+          "name": "2560x1440-125pct",
+          "nominalScalePercent": 125,
+          "nominalDpi": 120,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 2048,
+            "height": 1104
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 2048,
+            "height": 1104
+          }
+        },
+        {
+          "name": "2560x1440-150pct",
+          "nominalScalePercent": 150,
+          "nominalDpi": 144,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1706.6666,
+            "height": 912
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1707,
+            "height": 912
+          }
+        },
+        {
+          "name": "2560x1440-175pct",
+          "nominalScalePercent": 175,
+          "nominalDpi": 168,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1462.8572,
+            "height": 774.8571
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1463,
+            "height": 775
+          }
+        },
+        {
+          "name": "2560x1440-200pct",
+          "nominalScalePercent": 200,
+          "nominalDpi": 192,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1280,
+            "height": 672
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 672
+          }
+        },
+        {
+          "name": "3200x2000-100pct",
+          "nominalScalePercent": 100,
+          "nominalDpi": 96,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 1952
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 3200,
+            "height": 1952
+          }
+        },
+        {
+          "name": "3200x2000-125pct",
+          "nominalScalePercent": 125,
+          "nominalDpi": 120,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1552
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 2560,
+            "height": 1552
+          }
+        },
+        {
+          "name": "3200x2000-150pct",
+          "nominalScalePercent": 150,
+          "nominalDpi": 144,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 2133.3333,
+            "height": 1285.3334
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 2133,
+            "height": 1285
+          }
+        },
+        {
+          "name": "3200x2000-175pct",
+          "nominalScalePercent": 175,
+          "nominalDpi": 168,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1828.5714,
+            "height": 1094.8572
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1829,
+            "height": 1095
+          }
+        },
+        {
+          "name": "3200x2000-200pct",
+          "nominalScalePercent": 200,
+          "nominalDpi": 192,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1600,
+            "height": 952
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1600,
+            "height": 952
+          }
+        }
+      ]
+    },
+    {
+      "runner": "windows-2025",
+      "artifactId": 12472208506,
+      "operatingSystem": "Microsoft Windows 10.0.26100",
+      "runtime": ".NET 8.0.32",
+      "actualDeviceDpi": 96,
+      "nativeWindowDpi": 96,
+      "tests": {
+        "total": 101,
+        "executed": 101,
+        "passed": 101,
+        "failed": 0,
+        "notExecuted": 0
+      },
+      "screenshots": 76,
+      "passedCases": 20,
+      "expectedCases": 20,
+      "focusRecoveryCount": 0,
+      "focusRecoveries": [],
+      "stderrBytes": 0,
+      "fullLayoutReportSha256": "e6d94cf5dd4647615b5036ab5628c551709c5dc2252e3d9d4a1e391338fa721b",
+      "cases": [
+        {
+          "name": "1366x768-100pct",
+          "nominalScalePercent": 100,
+          "nominalDpi": 96,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 720
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1366,
+            "height": 720
+          }
+        },
+        {
+          "name": "1366x768-125pct",
+          "nominalScalePercent": 125,
+          "nominalDpi": 120,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1092.8,
+            "height": 566.4
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1093,
+            "height": 566
+          }
+        },
+        {
+          "name": "1366x768-150pct",
+          "nominalScalePercent": 150,
+          "nominalDpi": 144,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 910.6667,
+            "height": 464
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 911,
+            "height": 464
+          }
+        },
+        {
+          "name": "1366x768-175pct",
+          "nominalScalePercent": 175,
+          "nominalDpi": 168,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 780.5714,
+            "height": 390.85715
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 781,
+            "height": 391
+          }
+        },
+        {
+          "name": "1366x768-200pct",
+          "nominalScalePercent": 200,
+          "nominalDpi": 192,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1366,
+            "height": 768
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 683,
+            "height": 336
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 683,
+            "height": 336
+          }
+        },
+        {
+          "name": "1920x1080-100pct",
+          "nominalScalePercent": 100,
+          "nominalDpi": 96,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1032
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1920,
+            "height": 1032
+          }
+        },
+        {
+          "name": "1920x1080-125pct",
+          "nominalScalePercent": 125,
+          "nominalDpi": 120,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1536,
+            "height": 816
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1536,
+            "height": 816
+          }
+        },
+        {
+          "name": "1920x1080-150pct",
+          "nominalScalePercent": 150,
+          "nominalDpi": 144,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1280,
+            "height": 672
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 672
+          }
+        },
+        {
+          "name": "1920x1080-175pct",
+          "nominalScalePercent": 175,
+          "nominalDpi": 168,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1097.1428,
+            "height": 569.1429
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1097,
+            "height": 569
+          }
+        },
+        {
+          "name": "1920x1080-200pct",
+          "nominalScalePercent": 200,
+          "nominalDpi": 192,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 1920,
+            "height": 1080
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 960,
+            "height": 492
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 960,
+            "height": 492
+          }
+        },
+        {
+          "name": "2560x1440-100pct",
+          "nominalScalePercent": 100,
+          "nominalDpi": 96,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1392
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 2560,
+            "height": 1392
+          }
+        },
+        {
+          "name": "2560x1440-125pct",
+          "nominalScalePercent": 125,
+          "nominalDpi": 120,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 2048,
+            "height": 1104
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 2048,
+            "height": 1104
+          }
+        },
+        {
+          "name": "2560x1440-150pct",
+          "nominalScalePercent": 150,
+          "nominalDpi": 144,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1706.6666,
+            "height": 912
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1707,
+            "height": 912
+          }
+        },
+        {
+          "name": "2560x1440-175pct",
+          "nominalScalePercent": 175,
+          "nominalDpi": 168,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1462.8572,
+            "height": 774.8571
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1463,
+            "height": 775
+          }
+        },
+        {
+          "name": "2560x1440-200pct",
+          "nominalScalePercent": 200,
+          "nominalDpi": 192,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1440
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1280,
+            "height": 672
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 672
+          }
+        },
+        {
+          "name": "3200x2000-100pct",
+          "nominalScalePercent": 100,
+          "nominalDpi": 96,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 1952
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 3200,
+            "height": 1952
+          }
+        },
+        {
+          "name": "3200x2000-125pct",
+          "nominalScalePercent": 125,
+          "nominalDpi": 120,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 2560,
+            "height": 1552
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 2560,
+            "height": 1552
+          }
+        },
+        {
+          "name": "3200x2000-150pct",
+          "nominalScalePercent": 150,
+          "nominalDpi": 144,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 2133.3333,
+            "height": 1285.3334
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 2133,
+            "height": 1285
+          }
+        },
+        {
+          "name": "3200x2000-175pct",
+          "nominalScalePercent": 175,
+          "nominalDpi": 168,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1828.5714,
+            "height": 1094.8572
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1829,
+            "height": 1095
+          }
+        },
+        {
+          "name": "3200x2000-200pct",
+          "nominalScalePercent": 200,
+          "nominalDpi": 192,
+          "actualDeviceDpi": 96,
+          "nativeWindowDpi": 96,
+          "physicalResolution": {
+            "isEmpty": false,
+            "width": 3200,
+            "height": 2000
+          },
+          "equivalentLogicalWorkArea": {
+            "isEmpty": false,
+            "width": 1600,
+            "height": 952
+          },
+          "checkedPages": [
+            "overview",
+            "devices",
+            "realtime",
+            "history",
+            "cloud",
+            "logs"
+          ],
+          "checkedDialogs": [
+            "PLC.ModBusMaster device",
+            "PLC.ModBusMaster tag",
+            "WriteValueDialog multiline"
+          ],
+          "passed": true,
+          "error": null,
+          "actualWindowBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1600,
+            "height": 952
+          }
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "docs/images/device-driver-modern.png",
+      "sha256": "d0f79fe4d831ec1ea6445015f02bfd9af8f12da19ab32dce326ae24ccffac2cd"
+    },
+    {
+      "path": "docs/images/overview-modern.png",
+      "sha256": "242aead41218b844fd2ddc15f7cecd26e3a23fce736acd6680aa59f7c2aaec0d"
+    },
+    {
+      "path": "docs/images/compact-editor.png",
+      "sha256": "61fd0ee858b8a83e52cbca846c3730f30aa5312a6d344dbb1716ae11a22f585f"
+    }
+  ],
+  "packageVerification": {
+    "artifactId": 12472745656,
+    "sha256": "691fdbcb48c7b3ac68b771b550a66964d0a9fd7b6313c17e76ef96074c7c109a",
+    "archiveBytes": 78636527,
+    "zipEntries": 577,
+    "crcPassed": true,
+    "requiredFilesChecked": 21,
+    "originalDriverAssemblies": 12,
+    "fontAwesomeSharpIncluded": true,
+    "fontAwesomeLicensesIncluded": true
+  }
+}
