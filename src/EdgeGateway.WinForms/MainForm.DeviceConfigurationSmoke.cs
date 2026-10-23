@@ -295,8 +295,9 @@ public sealed partial class MainForm
             _configuration.Devices = [target, selected];
             _dirty = false; RebindConfigurationViews(selected.Id); UpdateCommands(); ShowPage("devices");
             var column = _deviceGrid.Columns[DeviceConfigurationColumnName];
-            if (column is not DataGridViewLinkColumn || column.DisplayIndex != _deviceGrid.Columns.Count - 1)
-                throw new InvalidOperationException("Device configuration action is missing from the rightmost device column.");
+            if (column is not DataGridViewLinkColumn { HeaderText: "配置", Text: "配置" }
+                || column.DisplayIndex != _deviceGrid.Columns.Count - 1)
+                throw new InvalidOperationException("Device configuration action is missing from the rightmost device column or has lost its Chinese caption.");
             SmokeDeviceConfigurationRowAction(target);
             var expected = Clone(target); expected.Port = 15029;
             AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "applied non-selected device row");

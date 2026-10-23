@@ -31,12 +31,10 @@ public sealed partial class MainForm
             ActiveLinkColor = UiTheme.Blue, VisitedLinkColor = UiTheme.Blue,
             AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, MinimumWidth = 80,
             SortMode = DataGridViewColumnSortMode.NotSortable,
-            DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
-            HeaderCell = new DataGridViewColumnHeaderCell
-            {
-                Style = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
-            }
+            DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
         };
+        // Keep the header cell that owns HeaderText; replacing it resets the caption.
+        configurationColumn.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
         _deviceGrid.Columns.Add(configurationColumn);
         if (_deviceGrid is DpiDataGridView dpiGrid) dpiGrid.RegisterColumn(configurationColumn, 80);
         _deviceGrid.SelectionChanged += (_, _) => BindTags();

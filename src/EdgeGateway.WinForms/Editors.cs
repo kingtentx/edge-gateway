@@ -7,9 +7,9 @@ internal abstract class EditorDialog : DpiAwareForm
 {
     protected readonly TabControl Tabs = new() { Name = "EditorTabs", Dock = DockStyle.Fill, Padding = new Point(16, 8), Multiline = true };
     private readonly Button _confirm, _cancel;
-    private readonly TableLayoutPanel _layout, _heading;
+    private readonly TableLayoutPanel _layout, _heading, _titleRow;
     private readonly FlowLayoutPanel _buttons;
-    private readonly Label _description;
+    private readonly Label _title, _description;
     private readonly LinkLabel _help;
     private readonly List<EditorLayout.FieldViewport> _fieldViewports = [];
     private bool _arranging;
@@ -32,15 +32,28 @@ internal abstract class EditorDialog : DpiAwareForm
         var heading = new TableLayoutPanel
         {
             Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 2, RowCount = 2, Margin = Padding.Empty, Padding = new Padding(0, 0, 0, 14)
+            ColumnCount = 1, RowCount = 2, Margin = Padding.Empty, Padding = new Padding(0, 0, 0, 14)
         };
         heading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        heading.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         heading.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         heading.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        heading.Controls.Add(EditorLayout.WrappingLabel(title, 18, UiTheme.Ink, true), 0, 0);
+        // A spanning description in the title/help table can give its preferred width
+        // to the AutoSize help column and squeeze the title down to one character.
+        // Keep that text in its own full-width row, outside the two-column title row.
+        var titleRow = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2, RowCount = 1, Margin = Padding.Empty, Padding = Padding.Empty
+        };
+        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        titleRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _title = EditorLayout.WrappingLabel(title, 18, UiTheme.Ink, true);
+        _title.Name = "EditorHeadingTitle";
+        titleRow.Controls.Add(_title, 0, 0);
         _description = EditorLayout.WrappingLabel(hint, 10, UiTheme.Muted);
-        heading.Controls.Add(_description, 0, 1); heading.SetColumnSpan(_description, 2);
+        heading.Controls.Add(titleRow, 0, 0);
+        heading.Controls.Add(_description, 0, 1);
         _help = new LinkLabel
         {
             Text = "查看说明", AutoSize = true, Visible = false, TabStop = true,
@@ -49,7 +62,7 @@ internal abstract class EditorDialog : DpiAwareForm
             Margin = new Padding(12, 8, 0, 0), AccessibleDescription = hint
         };
         _help.LinkClicked += (_, _) => MessageBox.Show(this, hint, "配置说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        heading.Controls.Add(_help, 1, 0);
+        titleRow.Controls.Add(_help, 1, 0);
         var save = UiTheme.Button("确定", (_, _) =>
         {
             try { Commit(); DialogResult = DialogResult.OK; Close(); }
@@ -59,8 +72,27 @@ internal abstract class EditorDialog : DpiAwareForm
         _confirm = save; _cancel = cancel;
         var buttons = UiTheme.Toolbar(cancel, save); buttons.FlowDirection = FlowDirection.RightToLeft; buttons.WrapContents = false; buttons.Padding = new Padding(0, 15, 0, 0);
         layout.Controls.Add(heading, 0, 0); layout.Controls.Add(Tabs, 0, 1); layout.Controls.Add(buttons, 0, 2);
-        _layout = layout; _heading = heading; _buttons = buttons;
+        _layout = layout; _heading = heading; _titleRow = titleRow; _buttons = buttons;
         Controls.Add(layout); AcceptButton = save; CancelButton = cancel;
+    }
+
+    internal void VerifyHeadingForSmoke(string context)
+    {
+        var bounds = _title.RectangleToScreen(_title.ClientRectangle);
+        if (!_title.Visible || bounds.Width <= 0 || bounds.Height <= 0
+            || !_heading.RectangleToScreen(_heading.ClientRectangle).Contains(bounds)
+            || !RectangleToScreen(ClientRectangle).Contains(bounds))
+            throw new InvalidOperationException($"{context}: editor heading has no fully visible area ({bounds}).");
+
+        var singleLine = _title.GetPreferredSize(new Size(int.MaxValue, int.MaxValue));
+        var availableWidth = _heading.ClientSize.Width - _heading.Padding.Horizontal
+            - _titleRow.Margin.Horizontal - _titleRow.Padding.Horizontal - _title.Margin.Horizontal
+            - (_help.Visible ? _help.Width + _help.Margin.Horizontal : 0);
+        var tolerance = UiTheme.Scale(this, 2);
+        if (availableWidth >= singleLine.Width
+            && (_title.ClientSize.Width + tolerance < singleLine.Width
+                || Math.Abs(_title.ClientSize.Height - singleLine.Height) > tolerance))
+            throw new InvalidOperationException($"{context}: heading '{_title.Text}' wraps or is clipped despite available width {availableWidth}; bounds {_title.Bounds}, single-line preferred size {singleLine}.");
     }
 
     protected override void OnLoad(EventArgs e)

@@ -437,6 +437,7 @@ public sealed partial class MainForm : DpiAwareForm
         }
         editor.SelectedSmokeTab = selected;
         PerformLayoutRecursively(editor);
+        editor.VerifyHeadingForSmoke(context);
     }
 
     private static IEnumerable<Control> EditorInputs(Control root)
