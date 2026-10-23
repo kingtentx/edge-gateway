@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private void SmokeDeviceImport()
+    private async Task SmokeDeviceImportAsync()
     {
         if (!_smokeTest || _runtime.IsRunning)
             throw new InvalidOperationException("Device import verification requires an isolated, stopped smoke-test session.");
@@ -28,28 +28,33 @@ public sealed partial class MainForm
             _configuration.HistoryRetentionDays = 17;
             _configuration.Mqtt.Host = "existing-broker.invalid";
             var before = DeviceImportSmokeJson(_configuration);
-            AppendImportedDevices(incoming);
+            await AppendImportedDevicesAsync(incoming);
 
             var added = _configuration.Devices.Single(x => x.Id == source.Id);
             var preserved = Clone(_configuration);
             preserved.Devices.RemoveAll(x => x.Id == source.Id);
-            if (DeviceImportSmokeJson(preserved) != before || !_dirty || SelectedDevice()?.Id != source.Id)
-                throw new InvalidOperationException("Appending devices changed existing configuration or failed to select the imported draft.");
+            if (DeviceImportSmokeJson(preserved) != before || _dirty || SelectedDevice()?.Id != source.Id)
+                throw new InvalidOperationException("Appending devices changed existing configuration or failed to select the automatically saved device.");
             AssertConfigurationSmokeEqual(source, added, "appended RTU device");
             if (ReferenceEquals(source, added) || ReferenceEquals(source.Properties, added.Properties)
                 || ReferenceEquals(source.Tags, added.Tags)
                 || source.Tags.Zip(added.Tags).Any(pair => ReferenceEquals(pair.First, pair.Second)))
                 throw new InvalidOperationException("Imported device shares mutable state with the input configuration.");
 
-            AssertDeviceImportRejected(incoming, "duplicate identities");
+            await AssertSavedConfigurationForSmokeAsync("device append");
+            await AssertDeviceImportRejectedAsync(incoming, "duplicate identities");
             // Use fresh identities to ensure the second rejection is a serial conflict.
             var conflicting = Clone(incoming);
             conflicting.Devices[0].Id = Guid.NewGuid();
             foreach (var tag in conflicting.Devices[0].Tags) tag.Id = Guid.NewGuid();
-            added.Enabled = true;
+            var enabled = Clone(_configuration);
+            enabled.Devices.Single(x => x.Id == source.Id).Enabled = true;
+            await CommitConfigurationAsync(enabled, source.Id);
             conflicting.Devices[0].Enabled = true;
-            AssertDeviceImportRejected(conflicting, "enabled serial-port conflict");
-            added.Enabled = false;
+            await AssertDeviceImportRejectedAsync(conflicting, "enabled serial-port conflict");
+            enabled.Devices.Single(x => x.Id == source.Id).Enabled = false;
+            await CommitConfigurationAsync(enabled, source.Id);
+            added = _configuration.Devices.Single(x => x.Id == source.Id);
 
             ShowPage("devices");
             RebindConfigurationViews(added.Id);
@@ -76,7 +81,7 @@ public sealed partial class MainForm
         }
         finally
         {
-            _configuration = original;
+            await RestoreConfigurationForSmokeAsync(original);
             _dirty = originalDirty;
             RebindConfigurationViews(originalSelection);
             ShowPage(originalPage);
@@ -85,14 +90,15 @@ public sealed partial class MainForm
         }
     }
 
-    private void AssertDeviceImportRejected(GatewayConfiguration incoming, string context)
+    private async Task AssertDeviceImportRejectedAsync(GatewayConfiguration incoming, string context)
     {
         var before = DeviceImportSmokeJson(_configuration);
         var rejected = false;
-        try { AppendImportedDevices(incoming); }
+        try { await AppendImportedDevicesAsync(incoming); }
         catch (InvalidDataException) { rejected = true; }
         if (!rejected || DeviceImportSmokeJson(_configuration) != before)
             throw new InvalidOperationException(context + ": invalid device import was accepted or changed the current configuration.");
+        await AssertSavedConfigurationForSmokeAsync(context);
     }
 
     private static string DeviceImportSmokeJson(GatewayConfiguration configuration) =>

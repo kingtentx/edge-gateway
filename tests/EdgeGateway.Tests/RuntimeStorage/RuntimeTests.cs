@@ -231,6 +231,182 @@ public sealed class RuntimeTests
     }
 
     [Fact]
+    public async Task IndividualStartAndStopPreserveOtherDevicesHistoryAndMqtt()
+    {
+        await using var harness = new Harness();
+        var first = harness.Config.Devices[0];
+        first.Tags[0].Writable = true;
+        var second = AddSecondDevice(harness);
+        harness.Config.Mqtt.Enabled = true;
+        harness.Config.PublishIntervalMs = 100;
+        harness.Runtime.Configure(harness.Config);
+
+        await harness.Runtime.StartDeviceAsync(first.Id);
+        await Until(() => harness.Runtime.GetLatest().Any(s => s.DeviceId == first.Id && s.Quality == SampleQuality.Good));
+        Assert.True(harness.Runtime.IsDeviceRunning(first.Id));
+        Assert.False(harness.Runtime.IsDeviceRunning(second.Id));
+        Assert.Equal(DeviceState.Stopped, harness.Runtime.GetDeviceStatuses().Single(s => s.DeviceId == second.Id).State);
+        Assert.False(harness.Factory.CreationsByDevice.ContainsKey(second.Id));
+
+        await harness.Runtime.StartDeviceAsync(second.Id);
+        await Until(() => harness.Runtime.GetLatest().Count(s => s.Quality == SampleQuality.Good) == 2 && harness.Publisher.Attempts > 0);
+        Assert.Equal(1, harness.Store.Initializations);
+        await harness.Runtime.StopDeviceAsync(first.Id);
+        Assert.False(harness.Runtime.IsDeviceRunning(first.Id));
+        Assert.True(harness.Runtime.IsDeviceRunning(second.Id));
+        Assert.True(harness.Runtime.IsRunning);
+        Assert.Equal(0, harness.Publisher.Disconnections);
+        Assert.Throws<InvalidOperationException>(() => harness.Runtime.Configure(harness.Config));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => harness.Runtime.WriteAsync(first.Id, first.Tags[0].Id, "5"));
+
+        var stopped = harness.Runtime.GetLatest().Single(s => s.DeviceId == first.Id);
+        Assert.Equal(SampleQuality.Uncertain, stopped.Quality);
+        var firstReads = harness.Factory.ReadsByDevice[first.Id];
+        var secondReads = harness.Factory.ReadsByDevice[second.Id];
+        var publications = harness.Publisher.Attempts;
+        await Until(() => harness.Factory.ReadsByDevice[second.Id] > secondReads && harness.Publisher.Attempts > publications);
+        Assert.Equal(firstReads, harness.Factory.ReadsByDevice[first.Id]);
+        Assert.Equal(stopped, harness.Runtime.GetLatest().Single(s => s.DeviceId == first.Id));
+        Assert.Equal(SampleQuality.Good, harness.Runtime.GetLatest().Single(s => s.DeviceId == second.Id).Quality);
+        Assert.Contains(harness.Store.Samples, s => s.DeviceId == first.Id);
+        Assert.Contains(harness.Store.Samples, s => s.DeviceId == second.Id);
+        Assert.Equal(1, harness.Factory.CreationsByDevice[second.Id]);
+        Assert.False(harness.Factory.DisposalsByDevice.ContainsKey(second.Id));
+
+        await harness.Runtime.StopDeviceAsync(second.Id);
+        Assert.False(harness.Runtime.IsRunning);
+        Assert.Equal(1, harness.Publisher.Disconnections);
+        Assert.All(harness.Runtime.GetLatest(), s => Assert.Equal(SampleQuality.Uncertain, s.Quality));
+        var stored = harness.Store.Samples.Count;
+        await Task.Delay(150);
+        Assert.Equal(stored, harness.Store.Samples.Count);
+        Assert.All(harness.Factory.CreationsByDevice, pair => Assert.Equal(pair.Value, harness.Factory.DisposalsByDevice[pair.Key]));
+
+        harness.Runtime.Configure(harness.Config);
+        await harness.Runtime.StartDeviceAsync(first.Id);
+        await Until(() => harness.Store.Samples.Count > stored);
+        Assert.Equal(2, harness.Store.Initializations);
+        Assert.Equal(2, harness.Factory.CreationsByDevice[first.Id]);
+        Assert.Equal(1, harness.Factory.CreationsByDevice[second.Id]);
+        Assert.False(harness.Runtime.IsDeviceRunning(second.Id));
+    }
+
+    [Fact]
+    public async Task RepeatedAndConcurrentLifecycleCommandsDoNotDuplicateDeviceSessions()
+    {
+        await using var harness = new Harness();
+        var first = harness.Config.Devices[0];
+        var second = AddSecondDevice(harness);
+        harness.Runtime.Configure(harness.Config);
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => harness.Runtime.StartDeviceAsync(first.Id)));
+        await Until(() => harness.Factory.ReadsByDevice.ContainsKey(first.Id));
+        Assert.Equal(1, harness.Factory.CreationsByDevice[first.Id]);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Factory.ReadsByDevice.ContainsKey(second.Id));
+        Assert.Equal(1, harness.Factory.CreationsByDevice[first.Id]);
+        Assert.Equal(1, harness.Factory.CreationsByDevice[second.Id]);
+
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => harness.Runtime.StopDeviceAsync(first.Id)));
+        Assert.Equal(1, harness.Factory.DisposalsByDevice[first.Id]);
+        Assert.True(harness.Runtime.IsDeviceRunning(second.Id));
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => harness.Runtime.StartDeviceAsync(first.Id)));
+        await Until(() => harness.Factory.CreationsByDevice[first.Id] == 2);
+        await Task.WhenAll(Enumerable.Range(0, 12).Select(i => i % 2 == 0
+            ? harness.Runtime.StopDeviceAsync(first.Id) : harness.Runtime.StartDeviceAsync(first.Id)));
+        await harness.Runtime.StopAsync();
+        Assert.False(harness.Runtime.IsRunning);
+        Assert.False(harness.Runtime.IsDeviceRunning(first.Id));
+        Assert.False(harness.Runtime.IsDeviceRunning(second.Id));
+        Assert.All(harness.Factory.MaximumLiveDriversByDevice.Values, count => Assert.Equal(1, count));
+        Assert.All(harness.Factory.CreationsByDevice, pair => Assert.Equal(pair.Value, harness.Factory.DisposalsByDevice[pair.Key]));
+    }
+
+    [Fact]
+    public async Task DisabledUnknownAndCancelledStartsDoNotLaunchWorkers()
+    {
+        await using var harness = new Harness();
+        var first = harness.Config.Devices[0];
+        var disabled = AddSecondDevice(harness);
+        disabled.Enabled = false;
+        harness.Runtime.Configure(harness.Config);
+        await Assert.ThrowsAsync<ArgumentException>(() => harness.Runtime.StartDeviceAsync(Guid.NewGuid()));
+        await Assert.ThrowsAsync<ArgumentException>(() => harness.Runtime.StopDeviceAsync(Guid.NewGuid()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => harness.Runtime.StartDeviceAsync(disabled.Id));
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => harness.Runtime.StartDeviceAsync(first.Id, cancelled.Token));
+        Assert.False(harness.Runtime.IsRunning);
+        Assert.Empty(harness.Factory.CreationsByDevice);
+        Assert.Equal(0, harness.Store.Initializations);
+
+        using var startup = new CancellationTokenSource();
+        await harness.Runtime.StartDeviceAsync(first.Id, startup.Token);
+        startup.Cancel();
+        await Until(() => harness.Runtime.GetLatest().Any(s => s.Quality == SampleQuality.Good));
+        Assert.True(harness.Runtime.IsDeviceRunning(first.Id));
+        Assert.False(harness.Runtime.IsDeviceRunning(disabled.Id));
+    }
+
+    [Fact]
+    public async Task FailedDeviceCanBeStoppedWithoutInterruptingHealthyDevice()
+    {
+        await using var harness = new Harness();
+        var first = harness.Config.Devices[0];
+        var second = AddSecondDevice(harness);
+        harness.Factory.FailingDevices[first.Id] = true;
+        harness.Runtime.Configure(harness.Config);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Runtime.GetDeviceStatuses().Any(s => s.DeviceId == first.Id && s.State == DeviceState.Reconnecting)
+            && harness.Runtime.GetLatest().Any(s => s.DeviceId == first.Id && s.Quality == SampleQuality.Bad)
+            && harness.Factory.ReadsByDevice.GetValueOrDefault(second.Id) >= 2);
+        Assert.True(harness.Runtime.IsDeviceRunning(first.Id));
+        Assert.Equal(SampleQuality.Bad, harness.Runtime.GetLatest().Single(s => s.DeviceId == first.Id).Quality);
+        await harness.Runtime.StopDeviceAsync(first.Id);
+        var secondReads = harness.Factory.ReadsByDevice[second.Id];
+        await Until(() => harness.Factory.ReadsByDevice[second.Id] > secondReads);
+        Assert.True(harness.Runtime.IsRunning);
+        Assert.True(harness.Runtime.IsDeviceRunning(second.Id));
+        Assert.Equal(SampleQuality.Good, harness.Runtime.GetLatest().Single(s => s.DeviceId == second.Id).Quality);
+        Assert.Equal(1, harness.Factory.CreationsByDevice[second.Id]);
+    }
+
+    [Fact]
+    public async Task StoppingDeviceCancelsItsInFlightWriteAndLeavesOtherDeviceCollecting()
+    {
+        await using var harness = new Harness();
+        var first = harness.Config.Devices[0];
+        first.Tags[0].Writable = true;
+        first.TimeoutMs = 10000; // Stop must cancel this write before its operation timeout.
+        var second = AddSecondDevice(harness);
+        harness.Factory.BlockingWriteDevice = first.Id;
+        harness.Runtime.Configure(harness.Config);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Runtime.GetLatest().Count(s => s.Quality == SampleQuality.Good) == 2);
+        var write = harness.Runtime.WriteAsync(first.Id, first.Tags[0].Id, "5");
+        await harness.Factory.WriteStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await harness.Runtime.StopDeviceAsync(first.Id).WaitAsync(TimeSpan.FromSeconds(3));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => write);
+        Assert.False(harness.Runtime.IsDeviceRunning(first.Id));
+        Assert.True(harness.Runtime.IsDeviceRunning(second.Id));
+        Assert.Null(harness.Factory.LastWrite);
+        Assert.Equal(1, harness.Factory.DisposalsByDevice[first.Id]);
+        var reads = harness.Factory.ReadsByDevice[second.Id];
+        await Until(() => harness.Factory.ReadsByDevice[second.Id] > reads);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => harness.Runtime.WriteAsync(first.Id, first.Tags[0].Id, "6"));
+    }
+
+    private static DeviceConfiguration AddSecondDevice(Harness harness)
+    {
+        var second = new DeviceConfiguration
+        {
+            DriverId = "test", Name = "第二台测试设备", PollIntervalMs = 100, TimeoutMs = 1000,
+            Tags = [new TagConfiguration { Name = "压力", Address = "1", DataType = TagDataType.Float64 }]
+        };
+        harness.Config.Devices.Add(second);
+        return second;
+    }
+
+    [Fact]
     public void ValidatorRejectsSharedSerialPortsAndDuplicateTagIds()
     {
         var factory = new FakeFactory("modbus-rtu");
@@ -279,10 +455,24 @@ public sealed class RuntimeTests
         public object? LastWrite;
         public int MaxConcurrentOperations;
         public int Disposals;
+        public Guid? BlockingWriteDevice;
+        public TaskCompletionSource<bool> WriteStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public ConcurrentDictionary<Guid, bool> FailingDevices { get; } = new();
+        public ConcurrentDictionary<Guid, int> CreationsByDevice { get; } = new();
+        public ConcurrentDictionary<Guid, int> DisposalsByDevice { get; } = new();
+        public ConcurrentDictionary<Guid, int> ReadsByDevice { get; } = new();
+        public ConcurrentDictionary<Guid, int> LiveDriversByDevice { get; } = new();
+        public ConcurrentDictionary<Guid, int> MaximumLiveDriversByDevice { get; } = new();
         private int _active;
-        public IDeviceDriver Create(DeviceConfiguration configuration) => new FakeDriver(this);
+        public IDeviceDriver Create(DeviceConfiguration configuration)
+        {
+            CreationsByDevice.AddOrUpdate(configuration.Id, 1, (_, count) => count + 1);
+            var live = LiveDriversByDevice.AddOrUpdate(configuration.Id, 1, (_, count) => count + 1);
+            MaximumLiveDriversByDevice.AddOrUpdate(configuration.Id, live, (_, count) => Math.Max(count, live));
+            return new FakeDriver(this, configuration.Id);
+        }
         public IReadOnlyList<string> Validate(DeviceConfiguration configuration) => [];
-        private sealed class FakeDriver(FakeFactory owner) : IDeviceDriver
+        private sealed class FakeDriver(FakeFactory owner, Guid deviceId) : IDeviceDriver
         {
             public Task ConnectAsync(CancellationToken cancellationToken) => Task.CompletedTask;
             public async Task<IReadOnlyList<TagReadResult>> ReadAsync(IReadOnlyList<TagConfiguration> tags, CancellationToken cancellationToken)
@@ -292,7 +482,8 @@ public sealed class RuntimeTests
                 try
                 {
                     await Task.Delay(10, cancellationToken);
-                    if (owner.FailReads) throw new IOException("设备断线");
+                    if (owner.FailReads || owner.FailingDevices.ContainsKey(deviceId)) throw new IOException("设备断线");
+                    owner.ReadsByDevice.AddOrUpdate(deviceId, 1, (_, count) => count + 1);
                     return tags.Select(t => new TagReadResult(t.Id, owner.Value)).ToArray();
                 }
                 finally { Interlocked.Decrement(ref owner._active); }
@@ -301,10 +492,25 @@ public sealed class RuntimeTests
             {
                 var active = Interlocked.Increment(ref owner._active);
                 owner.MaxConcurrentOperations = Math.Max(owner.MaxConcurrentOperations, active);
-                try { await Task.Delay(10, cancellationToken); owner.LastWrite = value; }
+                try
+                {
+                    if (deviceId == owner.BlockingWriteDevice)
+                    {
+                        owner.WriteStarted.TrySetResult(true);
+                        await Task.Delay(Timeout.Infinite, cancellationToken);
+                    }
+                    await Task.Delay(10, cancellationToken);
+                    owner.LastWrite = value;
+                }
                 finally { Interlocked.Decrement(ref owner._active); }
             }
-            public ValueTask DisposeAsync() { Interlocked.Increment(ref owner.Disposals); return ValueTask.CompletedTask; }
+            public ValueTask DisposeAsync()
+            {
+                Interlocked.Increment(ref owner.Disposals);
+                owner.DisposalsByDevice.AddOrUpdate(deviceId, 1, (_, count) => count + 1);
+                owner.LiveDriversByDevice.AddOrUpdate(deviceId, 0, (_, count) => count - 1);
+                return ValueTask.CompletedTask;
+            }
         }
     }
 
@@ -313,6 +519,7 @@ public sealed class RuntimeTests
         public volatile bool Fail;
         public bool IsConnected => !Fail;
         public int Attempts;
+        public int Disconnections;
         public ConcurrentBag<string> Payloads { get; } = [];
         public Task PublishAsync(MqttConfiguration settings, string topic, string payload, CancellationToken cancellationToken)
         {
@@ -321,7 +528,8 @@ public sealed class RuntimeTests
             Payloads.Add(payload);
             return Task.CompletedTask;
         }
-        public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task DisconnectAsync(CancellationToken cancellationToken = default)
+        { Interlocked.Increment(ref Disconnections); return Task.CompletedTask; }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
@@ -331,7 +539,9 @@ public sealed class RuntimeTests
         public ConcurrentDictionary<long, OutboxMessage> Outbox { get; } = new();
         public ConcurrentBag<long> Acknowledged { get; } = [];
         private long _id;
-        public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public int Initializations;
+        public Task InitializeAsync(CancellationToken cancellationToken = default)
+        { Interlocked.Increment(ref Initializations); return Task.CompletedTask; }
         public Task AppendSamplesAsync(IReadOnlyList<TelemetrySample> samples, CancellationToken cancellationToken = default)
         { foreach (var sample in samples) Samples.Enqueue(sample); return Task.CompletedTask; }
         public Task<IReadOnlyList<TelemetrySample>> QueryHistoryAsync(HistoryQuery query, CancellationToken cancellationToken = default) =>

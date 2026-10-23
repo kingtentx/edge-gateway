@@ -24,8 +24,8 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
 
     public DeviceConfigurationDialog(DeviceConfiguration device, IDriverFactory factory, bool readOnly = false)
         : base(readOnly ? "查看设备配置" : "设备配置", readOnly
-            ? "采集运行期间仅可查看当前设备配置。停止采集后，可在此修改采集周期、通信超时与驱动连接参数。"
-            : "配置当前设备的采集周期、通信超时与驱动连接参数。确认后保存到当前配置草稿；点击主界面的“保存配置”后持久化。")
+            ? "采集运行期间仅可查看当前设备配置。停止全部运行设备后，可在此修改采集周期、通信超时与驱动连接参数。"
+            : "配置当前设备的采集周期、通信超时与驱动连接参数。点击“确定”完成校验并自动保存；取消不修改原配置。")
     {
         ArgumentNullException.ThrowIfNull(device);
         ArgumentNullException.ThrowIfNull(factory);

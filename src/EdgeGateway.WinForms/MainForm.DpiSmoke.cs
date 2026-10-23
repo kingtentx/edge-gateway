@@ -71,7 +71,7 @@ public sealed partial class MainForm
                         throw new InvalidOperationException($"{name}: requested equivalent viewport {testArea}, but Windows produced {Bounds}.");
                     if (DeviceDpi != actualDpi || GetDpiForWindow(Handle) != nativeDpi)
                         throw new InvalidOperationException($"{name}: actual DPI changed during a viewport-only test.");
-                    AssertHeaderActionsFit();
+                    AssertHeaderStatusFits();
                     foreach (var navigation in _navigation.Values)
                     {
                         BringIntoViewAndAssert(navigation, name + " navigation");
@@ -81,17 +81,18 @@ public sealed partial class MainForm
                     {
                         ShowPage(key);
                         PerformLayoutRecursively(this);
-                        AssertHeaderActionsFit();
+                        AssertHeaderStatusFits();
                         AssertPageToolbarsFit(_pages[key], name + " " + key);
                         if (key == "overview") VerifyOverviewCards(name);
+                        if (key == "devices") VerifyDeviceRowCommandsForSmoke(name);
                         if (key == "cloud")
                             foreach (var field in _cloudFields.Values)
                                 BringIntoViewAndAssert(field, name + " cloud field");
-                        ResetScrollPositions(_pages[key], _startButton);
+                        ResetScrollPositions(_pages[key], _navigation["overview"]);
                         result.CheckedPages.Add(key);
                         if (key == "overview") SaveSmokeScreenshot(this, Path.Combine(directory, name + "-overview.png"));
                     }
-                    result.HeaderMetrics = new[] { _startButton, _stopButton, _saveButton }.Select(ControlMetric.From).ToList();
+                    result.HeaderMetrics = new Control[] { _runState, _savedState, _automaticSaveState }.Select(ControlMetric.From).ToList();
                     VerifyMatrixDialogs(testArea, directory, result);
                     if (resolution == new Size(1366, 768) && percentage == 200)
                         VerifyMinimumConfigurationDialog(testArea, directory, result);
@@ -221,7 +222,7 @@ public sealed partial class MainForm
         {
             EditorDialog editor => editor.SmokeCommands.Last(),
             WriteValueDialog editor => editor.SmokeCommands.Last(),
-            MainForm main => main._startButton,
+            MainForm main => main._navigation["overview"],
             _ => form
         };
         var focusTarget = control.Enabled && control.CanSelect ? control : stableFocus;

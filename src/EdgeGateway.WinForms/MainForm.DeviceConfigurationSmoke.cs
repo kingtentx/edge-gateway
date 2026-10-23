@@ -9,7 +9,7 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private void SmokeDeviceConfigurations()
+    private async Task SmokeDeviceConfigurationsAsync()
     {
         if (!_smokeTest || _runtime.IsRunning)
             throw new InvalidOperationException("Device configuration verification requires an isolated, stopped smoke-test session.");
@@ -75,7 +75,7 @@ public sealed partial class MainForm
 
         SmokeReadOnlyDeviceConfiguration();
         SmokeInvalidDeviceConfiguration();
-        SmokeDeviceConfigurationRowActions();
+        await SmokeDeviceConfigurationRowActionsAsync();
         if (_runtime.IsRunning) throw new InvalidOperationException("Configuration smoke unexpectedly started collection.");
         Console.WriteLine($"Device configuration smoke passed: {_drivers.Drivers.Count} dedicated driver windows with saved values/layouts, "
             + "3 representative edit/reopen flows preserving identity/tags, cancel isolation, read-only view, "
@@ -275,7 +275,7 @@ public sealed partial class MainForm
             throw new InvalidOperationException(factory.Descriptor.Id + ": configuration dialog did not preserve the actual factory rejection: " + string.Join("; ", expectedErrors), rejection);
     }
 
-    private void SmokeDeviceConfigurationRowActions()
+    private async Task SmokeDeviceConfigurationRowActionsAsync()
     {
         var originalConfiguration = _configuration;
         var originalDirty = _dirty;
@@ -298,22 +298,23 @@ public sealed partial class MainForm
             if (column is not DataGridViewLinkColumn { HeaderText: "配置", Text: "配置" }
                 || column.DisplayIndex != _deviceGrid.Columns.Count - 1)
                 throw new InvalidOperationException("Device configuration action is missing from the rightmost device column or has lost its Chinese caption.");
-            SmokeDeviceConfigurationRowAction(target);
+            await SmokeDeviceConfigurationRowActionAsync(target);
             var expected = Clone(target); expected.Port = 15029;
             AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "applied non-selected device row");
             AssertConfigurationSmokeUnchanged(targetJson, target, "row action source device");
             AssertConfigurationSmokeUnchanged(selectedJson, _configuration.Devices.Single(x => x.Id == selected.Id), "other selected device row");
-            if (!_dirty || SelectedDevice()?.Id != target.Id)
-                throw new InvalidOperationException("Applied row configuration did not mark the draft dirty or preserve the target selection.");
+            if (_dirty || SelectedDevice()?.Id != target.Id)
+                throw new InvalidOperationException("Applied row configuration was not automatically saved or failed to preserve the target selection.");
+            await AssertSavedConfigurationForSmokeAsync("device row configuration");
         }
         finally
         {
-            _configuration = originalConfiguration; _dirty = originalDirty;
+            await RestoreConfigurationForSmokeAsync(originalConfiguration); _dirty = originalDirty;
             RebindConfigurationViews(originalSelection); UpdateCommands(); ShowPage(originalPage); SetFooter(originalFooter);
         }
     }
 
-    private void SmokeDeviceConfigurationRowAction(DeviceConfiguration target)
+    private async Task SmokeDeviceConfigurationRowActionAsync(DeviceConfiguration target)
     {
         if (SelectedDevice()?.Id == target.Id) throw new InvalidOperationException("Row-action smoke must start with another device selected.");
         var row = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == target.Id);
@@ -352,7 +353,7 @@ public sealed partial class MainForm
             finally { dialog.Close(); }
         };
         timer.Start();
-        try { DeviceConfigurationCellContentClick(_deviceGrid, new DataGridViewCellEventArgs(column.Index, row.Index)); }
+        try { await DeviceRowActionAsync(((DeviceRow)row.DataBoundItem!).Id, column.Name); }
         finally { timer.Stop(); }
         if (failure is not null) throw new InvalidOperationException("Non-selected device configuration row action failed.", failure);
         if (!observed) throw new InvalidOperationException("Device configuration cell action did not show the expected modal dialog.");

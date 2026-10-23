@@ -34,9 +34,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly Label _pendingCount = UiTheme.Label("0", 26, UiTheme.Ink, true);
     private readonly Label _mqttStatus = UiTheme.Label("未启用", 20, UiTheme.Muted, true);
     private readonly DataGridView _overviewGrid = UiTheme.Grid();
-    private Button _startButton = null!;
-    private Button _stopButton = null!;
-    private Button _saveButton = null!;
+    private readonly Label _automaticSaveState = UiTheme.Label("配置自动保存", 9, UiTheme.Muted);
     private string _activePage = "overview";
     private bool _dirty, _busy, _refreshing, _closing, _allowClose;
     public bool SmokeTestFailed { get; private set; }
@@ -132,21 +130,17 @@ public sealed partial class MainForm : DpiAwareForm
             FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0)
         };
         status.Controls.Add(_runState); status.Controls.Add(_savedState);
-        _startButton = UiTheme.Button("启动采集", async (_, _) => await RunBusyAsync(StartCollectionAsync), true);
-        _stopButton = UiTheme.Button("停止采集", async (_, _) => await RunBusyAsync(async () => { await _runtime.StopAsync(); SetFooter("采集已停止。"); }));
-        _saveButton = UiTheme.Button("保存配置", async (_, _) => await RunBusyAsync(PersistConfigurationAsync));
-        _startButton.Name = "StartCollection"; _stopButton.Name = "StopCollection"; _saveButton.Name = "SaveConfiguration";
-        // Keep the three application commands on one row. At narrow widths move the
-        // status above them instead of shrinking fonts or letting the status clip them.
-        var headerActions = new FlowLayoutPanel
+        // The header reports aggregate state; device commands live on their own rows.
+        var headerInfo = new FlowLayoutPanel
         {
-            Name = "HeaderActions", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Name = "HeaderSaveStatus", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
             WrapContents = false, FlowDirection = FlowDirection.LeftToRight,
             Anchor = AnchorStyles.Top | AnchorStyles.Right, Dock = DockStyle.None,
             Margin = new Padding(12, 0, 0, 0), Padding = new Padding(0)
         };
-        headerActions.Controls.AddRange(new Control[] { _startButton, _stopButton, _saveButton });
-        header.Controls.Add(status, 0, 0); header.Controls.Add(headerActions, 1, 0);
+        _automaticSaveState.Name = "AutomaticSaveState";
+        headerInfo.Controls.Add(_automaticSaveState);
+        header.Controls.Add(status, 0, 0); header.Controls.Add(headerInfo, 1, 0);
         body.Controls.Add(header, 0, 0); body.Controls.Add(_pageHost, 0, 1);
         _footer.Dock = DockStyle.Fill; _footer.Padding = new Padding(18, 0, 0, 0); _footer.AutoEllipsis = true;
         body.Controls.Add(_footer, 0, 2);
@@ -172,7 +166,7 @@ public sealed partial class MainForm : DpiAwareForm
                 if (compactHeader == narrow) return;
                 compactHeader = narrow;
                 header.SuspendLayout();
-                header.Controls.Remove(status); header.Controls.Remove(headerActions);
+                header.Controls.Remove(status); header.Controls.Remove(headerInfo);
                 header.ColumnStyles.Clear(); header.RowStyles.Clear();
                 header.ColumnCount = narrow ? 1 : 2; header.RowCount = narrow ? 2 : 1;
                 header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -182,9 +176,9 @@ public sealed partial class MainForm : DpiAwareForm
                 status.FlowDirection = narrow ? FlowDirection.LeftToRight : FlowDirection.TopDown;
                 status.WrapContents = narrow;
                 _runState.Margin = narrow ? UiTheme.Scale(status, new Padding(0, 4, 16, 4)) : UiTheme.Scale(status, new Padding(0, 4, 0, 4));
-                headerActions.Margin = narrow ? new Padding(0) : UiTheme.Scale(header, new Padding(12, 0, 0, 0));
+                headerInfo.Margin = narrow ? new Padding(0) : UiTheme.Scale(header, new Padding(12, 0, 0, 0));
                 header.Controls.Add(status, 0, 0);
-                header.Controls.Add(headerActions, narrow ? 0 : 1, narrow ? 1 : 0);
+                header.Controls.Add(headerInfo, narrow ? 0 : 1, narrow ? 1 : 0);
                 header.ResumeLayout(true);
             }
             finally { arranging = false; }
@@ -322,15 +316,15 @@ public sealed partial class MainForm : DpiAwareForm
                 var originalSize = Size;
                 Width = MinimumSize.Width;
                 PerformLayoutRecursively(this);
-                AssertHeaderActionsFit();
+                AssertHeaderStatusFits();
                 Size = originalSize;
                 foreach (var key in _pages.Keys)
                 {
                     ShowPage(key);
                     PerformLayoutRecursively(this);
-                    AssertHeaderActionsFit();
+                    AssertHeaderStatusFits();
                     AssertPageToolbarsFit(_pages[key], key);
-                    ResetScrollPositions(_pages[key], _startButton);
+                    ResetScrollPositions(_pages[key], _navigation["overview"]);
                     using var bitmap = new Bitmap(Math.Max(1, Width), Math.Max(1, Height));
                     DrawToBitmap(bitmap, new Rectangle(0, 0, Width, Height));
                     if (!string.IsNullOrWhiteSpace(_smokeScreenshotPath))
@@ -344,8 +338,9 @@ public sealed partial class MainForm : DpiAwareForm
                 }
                 SmokeDriverEditors();
                 SmokeDynamicDriverSwitch();
-                SmokeDeviceConfigurations();
-                SmokeDeviceImport();
+                await SmokeDeviceConfigurationsAsync();
+                await SmokeDeviceImportAsync();
+                await SmokeDeviceActionsAndAutosaveAsync();
                 if (_layoutMatrix) await RunLayoutMatrixAsync();
             }
             catch (Exception exception)
@@ -470,13 +465,12 @@ public sealed partial class MainForm : DpiAwareForm
         bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
     }
 
-    private void AssertHeaderActionsFit()
+    private void AssertHeaderStatusFits()
     {
-        var buttons = new[] { _startButton, _stopButton, _saveButton };
-        foreach (var button in buttons) AssertVisibleBounds(button, "header");
-        var rectangles = buttons.Select(x => x.Parent!.RectangleToScreen(x.Bounds)).ToArray();
-        if (rectangles.Any(x => x.Top != rectangles[0].Top) || rectangles[0].Right > rectangles[1].Left || rectangles[1].Right > rectangles[2].Left)
-            throw new InvalidOperationException("Header commands are wrapped or overlap; Start, Stop and Save must share one accessible row.");
+        foreach (var label in new[] { _runState, _savedState, _automaticSaveState })
+            AssertVisibleBounds(label, "header state");
+        if (Descendants(this).OfType<Button>().Any(x => x.Name is "StartCollection" or "StopCollection" or "SaveConfiguration"))
+            throw new InvalidOperationException("Removed global acquisition/save commands are still present.");
     }
 
     private static void AssertPageToolbarsFit(Control root, string page)
@@ -505,34 +499,63 @@ public sealed partial class MainForm : DpiAwareForm
 
     private async Task StartCollectionAsync()
     {
-        await PersistConfigurationAsync();
+        // AutoStart remains an explicit saved policy. There is no global start button.
+        await _configurationStore.SaveAsync(_configuration);
         await _runtime.StartAsync();
-        SetFooter("采集已启动，可在实时监控中查看数据。运行期间配置只读。");
+        SetFooter("已按自动启动设置启动启用设备；可在设备行独立停止。");
     }
 
-    private async Task PersistConfigurationAsync()
+    private async Task ExecuteDeviceActionAsync(Guid deviceId, bool start)
     {
-        if (_runtime.IsRunning) throw new InvalidOperationException("请先停止采集，再保存配置。");
-        var errors = ConfigurationValidator.Validate(_configuration, _drivers);
-        if (errors.Count > 0) throw new InvalidOperationException("配置检查未通过：\n\n" + string.Join("\n", errors));
-        if (MqttDestinationChanged(_appliedMqtt, _configuration.Mqtt))
+        if (_closing) return;
+        var device = _configuration.Devices.FirstOrDefault(x => x.Id == deviceId)
+            ?? throw new InvalidOperationException("设备不存在。");
+        if (start)
+        {
+            if (_dirty) throw new InvalidOperationException("平台设置尚未应用，请先在“平台与系统”应用设置或重置修改。");
+            if (!device.Enabled) throw new InvalidOperationException("设备未启用，请先编辑设备并勾选启用。");
+            // Persist generated default identities before their first acquisition.
+            // Starting another device must not reconfigure the active runtime.
+            if (!_runtime.IsRunning) await _configurationStore.SaveAsync(_configuration);
+            await _runtime.StartDeviceAsync(deviceId);
+            SetFooter($"设备“{device.Name}”已启动，其他设备的采集状态保持不变。");
+        }
+        else
+        {
+            await _runtime.StopDeviceAsync(deviceId);
+            SetFooter($"设备“{device.Name}”已停止，其他运行设备继续采集。");
+        }
+        UpdateCommands();
+    }
+
+    private async Task CommitConfigurationAsync(GatewayConfiguration candidate, Guid? selectDevice = null,
+        string? successMessage = null, bool replaceCloudDraft = false)
+    {
+        if (_runtime.IsRunning || _closing) throw new InvalidOperationException("请先停止所有运行设备，再修改配置。");
+        candidate = Clone(candidate);
+        var errors = ConfigurationValidator.Validate(candidate, _drivers);
+        if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：\n\n" + string.Join("\n", errors));
+        if (MqttDestinationChanged(_appliedMqtt, candidate.Mqtt))
         {
             var statistics = await _store.GetStatisticsAsync();
             if (statistics.OutboxCount > 0)
             {
                 var response = MessageBox.Show(this,
                     $"当前仍有 {statistics.OutboxCount:N0} 条待发送消息。\n\n"
-                    + $"原连接：{_appliedMqtt.Host}:{_appliedMqtt.Port}\n新连接：{_configuration.Mqtt.Host}:{_configuration.Mqtt.Port}\n\n"
-                    + "保存后，这些消息会在平台启用时使用新的连接与凭据发送，消息中仍保留原网关标识和原主题。\n\n确认将待发送消息迁移到新连接？选择“否”可先使用原连接完成补传。",
+                    + $"原连接：{_appliedMqtt.Host}:{_appliedMqtt.Port}\n新连接：{candidate.Mqtt.Host}:{candidate.Mqtt.Port}\n\n"
+                    + "应用后，这些消息会在平台启用时使用新的连接与凭据发送，消息中仍保留原网关标识和原主题。\n\n确认将待发送消息迁移到新连接？选择“否”可先使用原连接完成补传。",
                     "确认待发送消息的目标变更", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
                 if (response != DialogResult.Yes) throw new OperationCanceledException("已取消 MQTT 连接变更。");
             }
         }
-        await _configurationStore.SaveAsync(_configuration);
-        _runtime.Configure(_configuration);
-        _appliedMqtt = Clone(_configuration.Mqtt);
-        _dirty = false;
-        SetFooter("配置已保存，自动保留上一版备份。");
+        // Do not publish the candidate to the UI/runtime before the atomic write succeeds.
+        await _configurationStore.SaveAsync(candidate);
+        _runtime.Configure(candidate);
+        _configuration = candidate;
+        _appliedMqtt = Clone(candidate.Mqtt);
+        if (replaceCloudDraft) ResetCloudDraft();
+        RebindConfigurationViews(selectDevice);
+        SetFooter(successMessage ?? "配置已自动保存，上一版备份已保留。");
         UpdateCommands();
     }
 
@@ -541,8 +564,8 @@ public sealed partial class MainForm : DpiAwareForm
         if (_busy || _closing) return;
         _busy = true; UpdateCommands(); UseWaitCursor = true;
         try { await action(); }
-        catch (OperationCanceledException) { SetFooter("操作已取消。"); }
-        catch (Exception exception) { ShowError(exception.Message); }
+        catch (OperationCanceledException) { if (_smokeTest) throw; SetFooter("操作已取消。"); }
+        catch (Exception exception) { if (_smokeTest) throw; ShowError(exception.Message); }
         finally { _busy = false; UseWaitCursor = false; UpdateCommands(); }
     }
 
@@ -590,14 +613,13 @@ public sealed partial class MainForm : DpiAwareForm
     private void UpdateCommands()
     {
         var running = _runtime.IsRunning;
-        _startButton.Enabled = !_busy && !running;
-        _stopButton.Enabled = !_busy && running;
-        _saveButton.Enabled = !_busy && !running;
         foreach (var control in _configurationCommands) control.Enabled = !_busy && !running;
-        _runState.Text = _busy ? "正在处理…" : running ? "● 采集运行中" : "● 采集已停止";
+        var activeDevices = _configuration.Devices.Count(x => _runtime.IsDeviceRunning(x.Id));
+        _runState.Text = _busy ? "正在处理…" : running ? $"● {activeDevices} 台设备采集中" : "● 采集已停止";
         _runState.ForeColor = running ? UiTheme.Green : UiTheme.Muted;
-        _savedState.Text = _dirty ? "配置已修改 · 请保存" : $"{_configuration.Name}  /  {_configuration.GatewayId}";
-        _savedState.ForeColor = _dirty ? Color.FromArgb(180, 83, 9) : UiTheme.Muted;
+        _savedState.Text = $"{_configuration.Name}  /  {_configuration.GatewayId}";
+        _automaticSaveState.Text = _dirty ? "平台设置待应用" : "配置自动保存";
+        _automaticSaveState.ForeColor = _dirty ? Color.FromArgb(180, 83, 9) : UiTheme.Muted;
         UpdateDeviceConfigurationCommands();
         UpdateWriteButton();
     }
@@ -618,12 +640,13 @@ public sealed partial class MainForm : DpiAwareForm
         if (_busy) { SetFooter("正在处理当前操作，请稍后关闭窗口。"); return; }
         if (_dirty)
         {
-            var answer = MessageBox.Show(this, "配置已修改，是否保存后退出？", "保存配置", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            var answer = MessageBox.Show(this, "平台设置尚未应用，是否应用后退出？", "平台设置", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
             if (answer == DialogResult.Cancel) return;
             if (answer == DialogResult.Yes)
             {
-                try { await PersistConfigurationAsync(); }
-                catch (Exception exception) { ShowError(exception.Message); return; }
+                await RunBusyAsync(ApplyCloudSettingsAsync);
+                // Failed/cancelled application keeps the draft and window open.
+                if (_dirty) return;
             }
         }
         _closing = true; _refreshTimer.Stop(); Enabled = false;

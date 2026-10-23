@@ -149,7 +149,7 @@ public sealed partial class MainForm
         var sample = (_realtimeGrid.CurrentRow?.DataBoundItem as SampleRow)?.Sample;
         var device = _configuration.Devices.FirstOrDefault(x => x.Id == sample?.DeviceId);
         var tag = device?.Tags.FirstOrDefault(x => x.Id == sample?.TagId);
-        _writeButton.Enabled = !_busy && !_closing && _runtime.IsRunning && device?.Enabled == true && tag?.Enabled == true && tag.Writable;
+        _writeButton.Enabled = !_busy && !_closing && device is not null && _runtime.IsDeviceRunning(device.Id) && device.Enabled && tag?.Enabled == true && tag.Writable;
     }
 
     private async Task WritePointAsync()
@@ -157,7 +157,7 @@ public sealed partial class MainForm
         var sample = (_realtimeGrid.CurrentRow?.DataBoundItem as SampleRow)?.Sample;
         if (sample is null) return;
         var tag = _configuration.Devices.First(d => d.Id == sample.DeviceId).Tags.First(t => t.Id == sample.TagId);
-        if (!tag.Enabled || !tag.Writable || !_runtime.IsRunning) throw new InvalidOperationException("该点位未启用写入，或采集尚未启动。");
+        if (!tag.Enabled || !tag.Writable || !_runtime.IsDeviceRunning(sample.DeviceId)) throw new InvalidOperationException("该点位未启用写入，或采集尚未启动。");
         var current = sample.Value switch
         {
             null => "", double number => number.ToString("R", System.Globalization.CultureInfo.InvariantCulture),

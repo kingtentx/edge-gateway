@@ -53,7 +53,7 @@ internal static class UiTheme
 
     private static IconChar ActionIcon(string text) => text switch
     {
-        "启动采集" => IconChar.Play, "停止采集" => IconChar.Stop, "保存配置" => IconChar.Save,
+        "重置修改" => IconChar.SyncAlt,
         "确定" => IconChar.Check, "取消" => IconChar.Times,
         _ when text.Contains("添加") || text.Contains("新增") => IconChar.Plus,
         _ when text.Contains("编辑") || text.Contains("修改") => IconChar.Pen,

@@ -25,7 +25,7 @@ public sealed class GatewayRuntime : IAsyncDisposable
     private GatewayConfiguration _configuration;
     private CancellationTokenSource? _runCancellation;
     private Channel<IReadOnlyList<TelemetrySample>>? _historyChannel;
-    private Task[] _workers = [];
+    private Task[] _sharedWorkers = [];
     private Task? _historyTask;
     private volatile bool _running;
     private bool _disposed;
@@ -43,6 +43,7 @@ public sealed class GatewayRuntime : IAsyncDisposable
 
     public bool IsRunning => _running;
     public bool IsMqttConnected => _publisher.IsConnected;
+    public bool IsDeviceRunning(Guid deviceId) => _sessions.TryGetValue(deviceId, out var session) && session.IsActive;
 
     public void Configure(GatewayConfiguration configuration)
     {
@@ -66,33 +67,88 @@ public sealed class GatewayRuntime : IAsyncDisposable
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_running) return;
-            var errors = ConfigurationValidator.Validate(_configuration, _registry);
-            if (errors.Count > 0) throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
-            await _store.InitializeAsync(cancellationToken).ConfigureAwait(false);
-            await _store.PruneHistoryAsync(_configuration.HistoryRetentionDays, _configuration.MaxHistoryRows, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            // The Start token cancels startup; the runtime owns its lifetime after successful start.
-            _runCancellation = new CancellationTokenSource();
-            _latest.Clear();
-            _alarmStates.Clear();
-            _sessions.Clear();
-            ResetStatuses();
-            _historyChannel = Channel.CreateBounded<IReadOnlyList<TelemetrySample>>(new BoundedChannelOptions(256)
-            { SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait });
-            foreach (var device in _configuration.Devices.Where(d => d.Enabled))
-                _sessions[device.Id] = new DeviceSession(device);
-            var token = _runCancellation.Token;
-            _running = true;
-            _historyTask = Task.Run(() => StoreHistoryAsync(_historyChannel.Reader));
-            var tasks = _sessions.Values.Select(session => Task.Run(() => CollectDeviceAsync(session, token))).ToList();
-            if (_configuration.Mqtt.Enabled)
-            {
-                tasks.Add(Task.Run(() => QueueTelemetryAsync(token)));
-                tasks.Add(Task.Run(() => SendOutboxAsync(token)));
-            }
-            _workers = tasks.ToArray();
-            _log.Write(GatewayLogLevel.Information, $"采集已启动，启用 {_sessions.Count} 台设备；MQTT 上报{(_configuration.Mqtt.Enabled ? "已启用" : "未启用")}。");
+            ValidateConfiguration();
+            var devices = _configuration.Devices.Where(d => d.Enabled).ToArray();
+            if (devices.Length == 0) return;
+            await StartSharedServicesAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var device in devices) StartDeviceCore(device);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task StartDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var device = FindDevice(deviceId);
+            if (!device.Enabled) throw new InvalidOperationException("设备未启用，请先编辑设备并启用。");
+            if (IsDeviceRunning(deviceId)) return;
+            ValidateConfiguration();
+            await StartSharedServicesAsync(cancellationToken).ConfigureAwait(false);
+            StartDeviceCore(device);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    private DeviceConfiguration FindDevice(Guid deviceId) =>
+        _configuration.Devices.FirstOrDefault(d => d.Id == deviceId) ?? throw new ArgumentException("设备不存在。", nameof(deviceId));
+
+    private void ValidateConfiguration()
+    {
+        var errors = ConfigurationValidator.Validate(_configuration, _registry);
+        if (errors.Count > 0) throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
+    }
+
+    private async Task StartSharedServicesAsync(CancellationToken cancellationToken)
+    {
+        if (_runCancellation is not null) return;
+        await _store.InitializeAsync(cancellationToken).ConfigureAwait(false);
+        await _store.PruneHistoryAsync(_configuration.HistoryRetentionDays, _configuration.MaxHistoryRows, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        // The caller's token cancels startup only. Sessions own their subsequent lifetime.
+        _runCancellation = new CancellationTokenSource();
+        _historyChannel = Channel.CreateBounded<IReadOnlyList<TelemetrySample>>(new BoundedChannelOptions(256)
+        { SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait });
+        var reader = _historyChannel.Reader;
+        var token = _runCancellation.Token;
+        _running = true;
+        _historyTask = Task.Run(() => StoreHistoryAsync(reader));
+        _sharedWorkers = _configuration.Mqtt.Enabled
+            ? [Task.Run(() => QueueTelemetryAsync(token)), Task.Run(() => SendOutboxAsync(token))]
+            : [];
+    }
+
+    // Called only while holding _lifecycle, after shared services have started.
+    private void StartDeviceCore(DeviceConfiguration device)
+    {
+        if (_sessions.ContainsKey(device.Id)) return;
+        foreach (var tag in device.Tags)
+        {
+            _latest.TryRemove(tag.Id, out _);
+            _alarmStates.TryRemove(tag.Id, out _);
+        }
+        var session = new DeviceSession(device, _runCancellation!.Token);
+        _sessions[device.Id] = session;
+        _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Connecting,
+            _statuses.GetValueOrDefault(device.Id)?.LastSuccess, 0, null);
+        session.Worker = Task.Run(() => CollectDeviceAsync(session, session.Token));
+        _log.Write(GatewayLogLevel.Information, $"设备 [{device.Name}] 采集已启动，当前运行 {_sessions.Count} 台设备。");
+    }
+
+    public async Task StopDeviceAsync(Guid deviceId)
+    {
+        await _lifecycle.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            FindDevice(deviceId);
+            if (!_sessions.TryGetValue(deviceId, out var session)) return;
+            session.RequestStop();
+            await FinishDeviceStopAsync(session).ConfigureAwait(false);
+            _sessions.TryRemove(deviceId, out _);
+            if (_sessions.IsEmpty) await StopSharedServicesAsync().ConfigureAwait(false);
         }
         finally { _lifecycle.Release(); }
     }
@@ -106,27 +162,45 @@ public sealed class GatewayRuntime : IAsyncDisposable
 
     private async Task StopCoreAsync()
     {
-        if (!_running && _runCancellation is null) return;
-        _running = false;
+        if (_runCancellation is null) return;
+        var sessions = _sessions.Values.ToArray();
+        foreach (var session in sessions) session.RequestStop();
+        _runCancellation.Cancel();
+        // Cancel every device before waiting, so one slow driver does not delay cancellation of others.
+        foreach (var session in sessions) await FinishDeviceStopAsync(session).ConfigureAwait(false);
+        _sessions.Clear();
+        await StopSharedServicesAsync().ConfigureAwait(false);
+    }
+
+    private async Task FinishDeviceStopAsync(DeviceSession session)
+    {
+        try { await session.Worker.ConfigureAwait(false); }
+        catch (OperationCanceledException) when (session.Token.IsCancellationRequested) { }
+        catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"停止设备 [{session.Configuration.Name}] 时发生错误：{ex.Message}"); }
+        // A write may still be completing. Cancellation plus this gate prevents disposing
+        // its driver or returning from Stop while a device operation is still in progress.
+        await session.Gate.WaitAsync().ConfigureAwait(false);
+        try { await DisposeDriverAsync(session).ConfigureAwait(false); }
+        finally { session.Gate.Release(); }
+        var device = session.Configuration;
+        foreach (var pair in _latest.Where(pair => pair.Value.DeviceId == device.Id))
+            _latest[pair.Key] = pair.Value with { Quality = SampleQuality.Uncertain, Error = "设备采集已停止" };
+        _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Stopped,
+            _statuses.GetValueOrDefault(device.Id)?.LastSuccess, 0, null);
+        session.DisposeCancellation();
+        _log.Write(GatewayLogLevel.Information, $"设备 [{device.Name}] 采集已停止。");
+    }
+
+    private async Task StopSharedServicesAsync()
+    {
         _runCancellation?.Cancel();
-        try { await Task.WhenAll(_workers).ConfigureAwait(false); }
+        try { await Task.WhenAll(_sharedWorkers).ConfigureAwait(false); }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"停止采集任务时发生错误：{ex.Message}"); }
-        // Producer tasks have exited; drain already accepted history before releasing storage ownership.
+        catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"停止上报任务时发生错误：{ex.Message}"); }
+        // Only the last device closes the channel. Accepted history from every device
+        // is drained while stopping one of several devices leaves this consumer alive.
         _historyChannel?.Writer.TryComplete();
         if (_historyTask is not null) await _historyTask.ConfigureAwait(false);
-        foreach (var session in _sessions.Values)
-        {
-            await session.Gate.WaitAsync().ConfigureAwait(false);
-            try { await DisposeDriverAsync(session).ConfigureAwait(false); }
-            finally { session.Gate.Release(); }
-        }
-        _sessions.Clear();
-        foreach (var pair in _latest)
-            _latest[pair.Key] = pair.Value with { Quality = SampleQuality.Uncertain, Error = "采集已停止" };
-        foreach (var device in _configuration.Devices)
-            _statuses[device.Id] = new DeviceRuntimeStatus(device.Id, device.Name, DeviceState.Stopped,
-                _statuses.GetValueOrDefault(device.Id)?.LastSuccess, 0, null);
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
@@ -135,9 +209,11 @@ public sealed class GatewayRuntime : IAsyncDisposable
         catch (Exception ex) { _log.Write(GatewayLogLevel.Warning, $"断开 MQTT 时发生错误：{ex.Message}"); }
         _runCancellation?.Dispose();
         _runCancellation = null;
-        _workers = [];
+        _sharedWorkers = [];
         _historyTask = null;
-        _log.Write(GatewayLogLevel.Information, "采集已停止，历史缓冲已处理，未确认的上报仍保留在补传队列。");
+        _historyChannel = null;
+        _running = false;
+        _log.Write(GatewayLogLevel.Information, "全部设备已停止，历史缓冲已处理，未确认的上报仍保留在补传队列。");
     }
 
     public IReadOnlyList<TelemetrySample> GetLatest() => _latest.Values.OrderBy(s => s.DeviceName).ThenBy(s => s.TagName).ToArray();
@@ -145,18 +221,23 @@ public sealed class GatewayRuntime : IAsyncDisposable
 
     public async Task WriteAsync(Guid deviceId, Guid tagId, string engineeringValue, CancellationToken cancellationToken = default)
     {
-        if (!_running || !_sessions.TryGetValue(deviceId, out var session)) throw new InvalidOperationException("设备未处于采集运行状态。");
+        if (!_running || !_sessions.TryGetValue(deviceId, out var session) || !session.IsActive)
+            throw new InvalidOperationException("设备未处于采集运行状态。");
         var tag = session.Configuration.Tags.FirstOrDefault(t => t.Id == tagId) ?? throw new ArgumentException("点位不存在。");
         if (!tag.Enabled || !tag.Writable) throw new InvalidOperationException("点位未启用或不允许写入。");
         var rawValue = ConvertWriteValue(tag, engineeringValue);
-        var runtimeCancellation = _runCancellation ?? throw new InvalidOperationException("网关已停止。");
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, runtimeCancellation.Token);
+        // The captured token remains safe to read after its source has been disposed by Stop.
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, session.Token);
         timeout.CancelAfter(_registry.GetFactory(session.Configuration.DriverId).Descriptor.IsLegacy ? session.Configuration.TimeoutMs + 1500 : session.Configuration.TimeoutMs);
         await session.Gate.WaitAsync(timeout.Token).ConfigureAwait(false);
         try
         {
-            if (!_running || session.Driver is null) throw new InvalidOperationException("设备尚未连接，请等待采集恢复后再写入。");
+            if (!_running || !session.IsActive || !_sessions.TryGetValue(deviceId, out var current) || !ReferenceEquals(current, session))
+                throw new InvalidOperationException("设备未处于采集运行状态。");
+            timeout.Token.ThrowIfCancellationRequested();
+            if (session.Driver is null) throw new InvalidOperationException("设备尚未连接，请等待采集恢复后再写入。");
             await session.Driver.WriteAsync(tag, rawValue, timeout.Token).ConfigureAwait(false);
+            timeout.Token.ThrowIfCancellationRequested();
             _log.Write(GatewayLogLevel.Information, $"写入成功：设备 [{session.Configuration.Name}] 点位 [{tag.Name}]，工程值 {engineeringValue}；待读回确认。");
             if (_latest.TryGetValue(tag.Id, out var previous))
                 _latest[tag.Id] = previous with { Quality = SampleQuality.Uncertain, Error = "已写入，待读回确认" };
@@ -481,10 +562,29 @@ public sealed class GatewayRuntime : IAsyncDisposable
         finally { _lifecycle.Release(); }
     }
 
-    private sealed class DeviceSession(DeviceConfiguration configuration)
+    private sealed class DeviceSession
     {
-        public DeviceConfiguration Configuration { get; } = configuration;
+        private readonly CancellationTokenSource _cancellation;
+        private int _stopRequested;
+        public DeviceConfiguration Configuration { get; }
         public SemaphoreSlim Gate { get; } = new(1, 1);
+        public CancellationToken Token { get; }
+        public Task Worker { get; set; } = Task.CompletedTask;
         public IDeviceDriver? Driver { get; set; }
+        public bool IsActive => Volatile.Read(ref _stopRequested) == 0;
+
+        public DeviceSession(DeviceConfiguration configuration, CancellationToken runtimeToken)
+        {
+            Configuration = configuration;
+            _cancellation = CancellationTokenSource.CreateLinkedTokenSource(runtimeToken);
+            Token = _cancellation.Token;
+        }
+
+        public void RequestStop()
+        {
+            if (Interlocked.Exchange(ref _stopRequested, 1) == 0) _cancellation.Cancel();
+        }
+
+        public void DisposeCancellation() => _cancellation.Dispose();
     }
 }
