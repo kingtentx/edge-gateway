@@ -8,13 +8,13 @@
 
 界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
-**当前源码更新：** 支持其他设备运行时新增、编辑、删除设备与点位；保存运行目标的变更只重启该目标。新增点位上传开关、CSV 点表导入导出和“通信诊断”页面。设备与点位弹窗在完整校验、保存及运行时应用成功后关闭，失败保留输入。操作步骤、事务边界与本轮待核验事项见 [运行中配置与数据闭环](docs/live-configuration.md)。本轮新功能的 CI、运行包和截图以该文档后续记录为准。
+**2026-10-23 当前交付：** [下载 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487349660) · [本轮双系统 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) · [完整验证记录](docs/live-configuration-verification.md) · [机器可读证据](docs/live-configuration-verification.json)。程序源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8) 支持其他设备运行时新增、编辑、删除设备与点位；保存运行目标的变更只重启该目标。点位上传开关、CSV 点表交换和“通信诊断”已接入；设备与点位弹窗完整提交成功后关闭，失败保留输入。操作见 [运行中配置与数据闭环](docs/live-configuration.md)。
 
-**此前已验证交付（2026-10-23，配置窗合并版本）：** [历史 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39916897490/artifacts/12485477098) · [该版本双系统 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39916897490) · [历史操作说明与实际截图](docs/device-configuration-unification.md)。添加、编辑、行内“配置”和普通数据列双击统一使用 `DeviceConfigurationDialog`，重复的 `DeviceEditor` 已删除。Server 2022 / 2025 各 107 项测试、四入口保存、驱动草稿与点位保护、20 个等效工作区场景首次执行通过，实际 DPI 均为 96。这些结果和运行包对应原提交，不作为本轮运行中配置等新功能的验收结果。
+Windows Server 2022 / 2025 各通过 **163 / 163 项测试、20 / 20 个等效工作区布局**，覆盖七个主页面及四类矩阵编辑器，各保存 102 张实际 PNG，成功作业 stderr 为空、失败截图为 0。Server 2025 在 attempt 1 通过；Server 2022 首次出现焦点异常，在同一提交、未改代码或断言的情况下，仅重跑失败作业后于 attempt 2 通过。完整 CI 最终成功，不表述为首次全部通过；失败与重跑过程见验证记录。
 
-![统一设备配置窗与启用设备选项](docs/images/device-configuration-enabled-rtu.png)
+![运行设备配置提交失败后保留输入](docs/images/live-configuration-device.png)
 
-上图来自源码 `6419274` 的 Windows Server 2022 原生 WinForms 检查，实际 96 DPI，显示未启用的 COM11 RTU 示例。默认“采集设置”首行可直接勾选启用；完整验证见 [机器可读结果](docs/device-configuration-unification-verification.json)。等效工作区布局检查不替代真实多 DPI 切换或现场设备通信验收。
+上图来自本轮实际 WinForms 检查，展示运行设备编辑失败后保留草稿。两套成功环境均为 .NET 8.0.32、实际/原生窗口 DPI 96、屏幕 1024×768；20 种矩阵为等效工作区模拟，不替代真实多 DPI 切换、跨显示器或现场设备通信验收。
 
 ## 当前功能
 
@@ -189,7 +189,9 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release
 dotnet run --project src/EdgeGateway.WinForms -c Release -- --smoke-test --screenshot artifacts/ui-smoke.png
 ```
 
-核心自动测试包含实际 TCP 回环与 TLS 握手；既有结果见 [历史验证记录](docs/verification.md)。本轮新增运行中配置、CSV、上传筛选、诊断和弹窗失败保留的验收要求及证据入口见 [本轮验收](docs/live-configuration.md#验收用例与证据)，执行结果按对应提交记录，不沿用历史通过数量。**尚未连接真实 PLC、串口设备或用户现场 Broker，不应将自动测试等同于现场验收。** 现场需核对点表、字节序、串口硬件、TLS 证书和 24–72 小时长稳运行。
+核心自动测试包含实际 TCP 回环与 TLS 握手。本轮源码 `f1d398b` 的两套 Windows 作业均通过 163 项测试、运行中配置烟测和 20 个等效工作区场景，完整环境、失败重跑记录、截图和运行包信息见 [本轮验证](docs/live-configuration-verification.md)；[功能验收范围](docs/live-configuration.md#验收用例与证据) 与实际执行结果分别记录。**尚未连接真实 PLC、串口设备或用户现场 Broker，不应将自动测试等同于现场验收。** 现场需核对点表、字节序、串口硬件、TLS 证书和 24–72 小时长稳运行。
+
+历史交付另行保留：[驱动迁移基线](docs/verification.md)、[单设备启停](docs/device-control-autosave.md#此前版本验证与运行包)、[配置窗合并版本](docs/device-configuration-unification.md#实际执行结果)。这些文档中的运行包、截图和通过数量对应各自源码提交。
 
 本项目原生 Modbus 驱动按点位请求；源 Modbus / MC 驱动保留原有批量和缓存方法，需按其方法说明配置。串口仍按设备独占，不提供多个设备共享一条串行总线的调度。当前是桌面程序，关闭后停止采集；未包含 Windows Service、远程 RPC、用户角色权限、OTA、VPN 或完整平台专用消息适配。配置数量限制是输入保护，不代表已完成相同规模性能验收。源驱动中未实现的写入方法仍明确拒绝，不因迁移而宣称获得写入能力。
 

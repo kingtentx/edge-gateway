@@ -2,7 +2,7 @@
 
 本页说明当前源码的配置维护流程。设备 A 正在采集时，可以维护设备 B 及其点位；如果修改正在运行的 B，保存后只重新连接 B。新增设备保持停止，禁用或删除运行设备只停止该设备。设备、点位及点位导入弹窗等待完整校验、原子保存和运行时应用成功后才关闭，失败时保留输入。
 
-**验证状态：本轮结果待对应提交的实际执行证据补充。** 既有配置窗合并、单设备启停和 DPI 文档中的测试数量、截图与运行包属于各自历史提交，不证明本轮改动已通过。验收要求及证据记录方式见 [验收用例与证据](#验收用例与证据)。
+**验证状态：源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8) 的 [Windows CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 最终通过，两个系统各通过 163 项测试与 20 个等效工作区场景。** Server 2025 首次通过，Server 2022 首次焦点异常后仅重跑失败作业，未更改源码或断言，最终在 attempt 2 通过。下载 [Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487349660)；完整执行及重跑记录见 [验证说明](live-configuration-verification.md) 和 [机器可读证据](live-configuration-verification.json)。下文区分功能验收范围、实际执行与仍需现场验证的边界。
 
 ## 操作范围
 
@@ -170,7 +170,7 @@ JSON 配置版本继续为 **schema 2**。`TagConfiguration.UploadEnabled` 是�
 
 ## 验收用例与证据
 
-以下为本轮必须验证的场景，**不是已通过结果表**。自动化使用独立数据目录、本地模拟设备及通信回环；未实际连接用户 COM10/COM11、PLC 或现场 Broker 的检查不能写成现场验收。
+以下列出本轮功能验收范围，实际执行摘要见后面的结果表，详细证据见 [验证说明](live-configuration-verification.md)。自动化使用独立数据目录、本地模拟设备及通信回环；未实际连接用户 COM10/COM11、PLC 或现场 Broker 的检查不能写成现场验收。
 
 | 验收场景 | 需要观察的结果 |
 |---|---|
@@ -193,4 +193,47 @@ JSON 配置版本继续为 **schema 2**。`TagConfiguration.UploadEnabled` 是�
 
 自动测试位置：[运行时配置用例](../tests/EdgeGateway.Tests/RuntimeStorage/RuntimeConfigurationTests.cs)、[CSV 用例](../tests/EdgeGateway.Tests/RuntimeStorage/TagCsvExchangeTests.cs)、[上报诊断用例](../tests/EdgeGateway.Tests/RuntimeStorage/TelemetryPipelineTests.cs)。Windows 界面用例见 [运行中配置烟测](../src/EdgeGateway.WinForms/MainForm.LiveConfigurationSmoke.cs)。已有 [验收规范](../.agents/skills/develop-edge-gateway/references/acceptance.md) 与 [DPI 规范](../.agents/skills/develop-edge-gateway/references/winforms-dpi.md) 同步适用。
 
-本轮实际执行后需记录：源码 commit、CI run/attempt 与运行包链接；每个系统的 OS、.NET/WinForms 运行时、构建和测试结果、stdout/stderr；原生窗口实际 DPI、屏幕/工作区与窗口尺寸、七页及弹窗截图、布局矩阵 JSON、失败截图数量及人工核验结论。实际系统 DPI、等效工作区模拟、真实多显示器测试分别记录，未执行项明确说明。当前只提供 [Windows 工作流入口](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml)，不以既有历史 run 代替本轮证据。
+### 实际执行结果
+
+以下结果对应程序源码 `f1d398ba27728e919c3fd56f60cbf510312267d8` 和工作流 `39923092261` 的两个成功作业。后续文档与证据提交不改变该运行包的程序源码。
+
+| 检查 | Windows Server 2022 | Windows Server 2025 |
+|---|---|---|
+| 成功作业所属执行 | attempt 2；同一提交仅重跑失败作业 | attempt 1；首次通过 |
+| OS 版本 | 10.0.20348 | 10.0.26100 |
+| .NET / WinForms | .NET 8.0.32 / 8.0.0.0 | .NET 8.0.32 / 8.0.0.0 |
+| 自动测试 | 163 / 163，0 失败、0 跳过 | 163 / 163，0 失败、0 跳过 |
+| 运行中配置烟测 | 通过，A 持续采集的成功标记已核对 | 同左 |
+| 等效工作区布局 | 20 / 20 | 20 / 20 |
+| 矩阵覆盖页面 | 七页：总览、设备、实时、历史、平台、日志、通信诊断 | 同左 |
+| 矩阵编辑器 | 四类：源 Modbus 设备、点位、CSV 导入预览、多行写入 | 同左 |
+| 实际 DeviceDpi / 原生窗口 DPI | 96 / 96 | 96 / 96 |
+| 实际屏幕 / 工作区 | 1024×768 / 1024×728 | 1024×768 / 1024×720 |
+| 实际 PNG 截图 | 102 张 | 102 张 |
+| 成功作业 stderr / 失败截图 | 0 字节 / 0 张 | 0 字节 / 0 张 |
+| 成功矩阵 `focusRecoveryCount` | 0 | 0 |
+| 矩阵期间 `collectionRunning` | false | false |
+
+源码 `f1d398b` 的 Server 2022 首次作业遇到焦点异常，Server 2025 同次执行通过。只重跑失败作业后 Server 2022 通过，完整工作流最终 attempt 2 为 success，**没有为重跑修改代码或放宽断言**。成功结果不能抹去首次失败，也不能据此声称异常根因已解决；本轮此前失败尝试与完整记录保留在 [验证说明](live-configuration-verification.md)。成功矩阵的 `focusRecoveryCount=0` 仅描述这次成功执行，不替代失败记录。
+
+- [Server 2022 完整证据](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12488666311) · [Server 2025 完整证据](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487239139)：包含测试、stdout/stderr、实际截图与布局 JSON。
+- [Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487349660)：完整解压后运行 `EdgeGateway.WinForms.exe`，包版本可通过 `build-info.json` 核对；包校验值与核对结果以 [完整验证记录](live-configuration-verification.md) 为准。
+- [机器可读汇总](live-configuration-verification.json)：记录源码、执行、环境和证据，用于和历史版本区分。
+
+两套环境的实际 DPI 始终为 96，矩阵设置 `viewportSimulation=true`。20 个场景证明等效工作区布局可操作，不能写成已执行真实 100% / 125% / 150% / 175% / 200% 系统缩放或跨屏往返。真实多显示器、用户虚拟串口、现场 PLC/Broker 及长稳运行仍需对应环境验收。
+
+### 实际 WinForms 截图
+
+以下图片取自本轮成功作业的实际程序窗口，使用隔离配置和本地模拟设备，未连接现场设备。
+
+运行设备配置提交失败后，编辑器保持打开并保留草稿，其他设备继续采集：
+
+![运行设备配置失败后保留输入](images/live-configuration-device.png)
+
+CSV 导入预览提供模式、变更摘要、变更列与校验结果；新增和变化点位优先展示：
+
+![CSV 点表导入预览](images/live-configuration-tags.png)
+
+通信诊断将上报任务、连接、Broker 确认、积压与错误分别展示；截图本身不构成现场 Broker 或平台业务入库的证明：
+
+![通信诊断页面](images/live-configuration-diagnostics.png)

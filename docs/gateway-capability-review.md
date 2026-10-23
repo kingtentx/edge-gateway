@@ -113,9 +113,13 @@
 
 现场依赖也不能通过界面功能代替：Fanuc 仍需合法取得的 FWLIB64 及官方依赖；采用 Hsl 的驱动可能需要配置许可环境变量；OPC DA 依赖匹配位数的 COM/Automation、服务器注册及 DCOM；OPC UA 依赖正确的证书信任。当前串口限制是一条串口只配置一个启用设备；共享串口多从站需要专门的总线调度，不能只删除冲突校验。具体说明见[驱动依赖](driver-migration.md)与[第三方声明](../THIRD-PARTY-NOTICES.md)。
 
-## 7. 可执行验收范围
+## 7. 本轮验收结果与范围
 
-本页编写时新增用例已经落盘，统一构建与 Windows 界面验收由本轮集成流程执行；这里不预填通过结论。发布时应以同一提交的构建、测试和截图记录为准。
+本轮程序源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8) 已在 Windows Server 2022 / 2025 完成核心测试、原生窗体烟测与布局矩阵，[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 最终 attempt 2 成功。两个系统分别通过 **163 / 163 项测试、20 / 20 个等效工作区场景**，矩阵检查七个主页面和四类编辑器，各保存 102 张 PNG；成功作业 stderr 为空，失败截图为 0，`focusRecoveryCount=0`，矩阵期间采集已停止。
+
+Server 2025 在 attempt 1 首次通过；Server 2022 首次出现焦点异常，只重跑失败作业后在 attempt 2 通过，同一提交的源码和断言均未更改。不能把最终成功写成首次全部通过，也不能用成功重跑代替异常根因分析。本轮首次失败及重跑详情见 [完整验证说明](live-configuration-verification.md) 和 [机器可读证据](live-configuration-verification.json)。
+
+两套成功环境均为 .NET 8.0.32、WinForms 8.0.0.0，实际/原生窗口 DPI 为 96，屏幕为 1024×768；Server 2022 工作区为 1024×728，Server 2025 为 1024×720。布局矩阵使用等效工作区模拟，不代表真实系统多档 DPI 或多显示器切换已经验收。运行中配置、失败保留输入、CSV 和诊断的 [操作说明与实际截图](live-configuration.md#实际-winforms-截图) 可与源码逐项对照。
 
 | 用例入口 | 要证明的行为 |
 | --- | --- |
@@ -125,6 +129,8 @@
 | [在线配置界面烟测](../src/EdgeGateway.WinForms/MainForm.LiveConfigurationSmoke.cs) | 使用本地模拟设备验证在线编辑、失败保留输入、点表导入和上传设置等界面路径 |
 
 控制发布结果的伪实现用于验证确认先后、失败和恢复，不代表已完成某个业务平台的接收测试；本地模拟设备与协议回环也不替代现场 PLC、CNC、串口及 COM 验收。
+
+交付链接：[Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487349660) · [Server 2022 证据](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12488666311) · [Server 2025 证据](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487239139)。包版本、校验值与完整核对结果见验证说明，不沿用旧版本包的哈希或测试数量。
 
 [up-device-service]: https://github.com/iioter/iotgateway/blob/8de442a7dec52d2993d1e9667d799846936d681b/Plugins/Plugin/DeviceService.cs
 [up-update-devices]: https://github.com/iioter/iotgateway/blob/8de442a7dec52d2993d1e9667d799846936d681b/IoTGateway.ViewModel/BasicData/UpdateDevices.cs
