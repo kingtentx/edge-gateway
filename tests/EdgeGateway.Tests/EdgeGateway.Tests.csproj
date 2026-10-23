@@ -26,5 +26,6 @@
   <ItemGroup>
     <None Include="../../docs/driver-migration-manifest.json" Link="driver-migration-manifest.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../examples/migrated-drivers.json" Link="migrated-drivers.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../examples/modbus-rtu-com11.json" Link="modbus-rtu-com11.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

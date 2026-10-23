@@ -71,9 +71,7 @@ dotnet run --project src/EdgeGateway.WinForms -c Release --no-build
 
 也可以直接打开 `EdgeGateway.sln`，把 `EdgeGateway.WinForms` 设为启动项目。
 
-若旧版源码构建时报 `MSB3577`，提示两个文件输出到 `EdgeGateway.WinForms.MainForm.resources`，请更新 `EdgeGateway.WinForms.csproj`：`MainForm.Monitoring.resx` 已通过 `ManifestResourceName` 指定独立资源名，避免与 `MainForm.resx` 冲突。
-
-首次启动包含一台启用的“演示机组”和一台**未启用**的 Modbus TCP 示例。点击“启动采集”，即可看到温度、频率、运行状态和目标温度。默认 MQTT 关闭，程序不会自动连接现场设备或云端平台。
+首次启动且尚无已保存配置时，包含一台启用的“演示机组”、一台**未启用**的 Modbus TCP 示例，以及一台**未启用**的“Modbus RTU 从站 1（COM11）”，后者预置从站 1、9600 / 8N1、保持寄存器地址 0–9。点击“启动采集”，即可看到演示机组的温度、频率、运行状态和目标温度。默认自动启动与 MQTT 均关闭。已有配置继续原样加载，可通过“导入设备”追加 [RTU 示例](docs/modbus-rtu-com11.md)。
 
 ### 发布可直接运行的 Windows 包
 
@@ -88,6 +86,8 @@ GitHub Actions 工作流会在提交后构建、测试、启动窗体并生成�
 ## 连接现场设备
 
 在“设备与点位”的设备表最右侧点击该行的 **配置**，即可配置当前设备的采集周期、通信超时和驱动专用参数。内置 Modbus TCP 显示网络字段，RTU 显示串口字段；迁移驱动按源项目的参数、类型与枚举生成编辑器。点击“确定”后，使用主界面的“保存配置”持久化。采集运行时该入口显示“查看”，参数不可修改。详见 [设备行内配置](docs/device-configuration.md)。
+
+按 Modbus Slave 截图连接 COM10 / COM11 虚拟串口对，参见 [Modbus RTU 从站 1（COM11）配置与导入步骤](docs/modbus-rtu-com11.md)；已有配置可用“导入设备”追加 [单设备示例 JSON](examples/modbus-rtu-com11.json)，保留当前网关、MQTT 和已有设备配置。
 
 迁移驱动：在“设备与点位”选择上述原目录名对应驱动，填写驱动专用参数；添加点位时选择具体读取方法。OPC 默认选择 `ReadNode`，源 Modbus 默认选择 `HoldingRegisters` / `InputRegisters` / `Coil` / `Input` 等方法；原有演示 `Read` 入口已改为真实读取的兼容别名。Fanuc 依具体采集项选择相应方法。参数与方法说明见 [驱动清单](docs/driver-migration.md)，可导入 [12 个驱动的未启用示例](examples/migrated-drivers.json) 查看配置。
 

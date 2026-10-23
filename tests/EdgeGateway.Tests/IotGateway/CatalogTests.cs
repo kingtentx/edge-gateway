@@ -106,14 +106,16 @@ public sealed class CatalogTests(CatalogFixture catalog) : IClassFixture<Catalog
 
     public sealed class NativeStructure { public ulong Counter = ulong.MaxValue; public int[] Data = [42]; }
 
-    [Fact]
-    public async Task ShippedAllDriverConfigurationImportsAndValidatesWithoutHardwareConnections()
+    [Theory]
+    [InlineData("migrated-drivers.json", 12)]
+    [InlineData("modbus-rtu-com11.json", 1)]
+    public async Task ShippedConfigurationImportsAndValidatesWithoutHardwareConnections(string fileName, int deviceCount)
     {
-        var configuration = await new JsonConfigurationStore(Path.Combine(AppContext.BaseDirectory, "migrated-drivers.json")).LoadAsync();
-        Assert.Equal(12, configuration.Devices.Count);
+        var configuration = await new JsonConfigurationStore(Path.Combine(AppContext.BaseDirectory, fileName)).LoadAsync();
+        Assert.Equal(deviceCount, configuration.Devices.Count);
         Assert.All(configuration.Devices, d => Assert.False(d.Enabled));
         Assert.False(configuration.Mqtt.Enabled);
-        Assert.Empty(ConfigurationValidator.Validate(configuration, new DriverRegistry(catalog.Factories, new GatewayLog())));
+        Assert.Empty(ConfigurationValidator.Validate(configuration, new DriverRegistry(catalog.Factories.Append(new ModbusRtuDriverFactory()), new GatewayLog())));
     }
 
     [Theory]

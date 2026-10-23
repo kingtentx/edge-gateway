@@ -345,6 +345,7 @@ public sealed partial class MainForm : DpiAwareForm
                 SmokeDriverEditors();
                 SmokeDynamicDriverSwitch();
                 SmokeDeviceConfigurations();
+                SmokeDeviceImport();
                 if (_layoutMatrix) await RunLayoutMatrixAsync();
             }
             catch (Exception exception)

@@ -58,6 +58,7 @@ public sealed partial class MainForm
         var addDevice = ConfigurationButton("添加设备", (_, _) => AddDevice(), true);
         var editDevice = ConfigurationButton("编辑设备", (_, _) => EditDevice());
         var deleteDevice = ConfigurationButton("删除设备", (_, _) => DeleteDevice());
+        var importDevices = ConfigurationButton("导入设备", async (_, _) => await RunBusyAsync(ImportDevicesAsync));
         var import = ConfigurationButton("导入配置", async (_, _) => await RunBusyAsync(ImportConfigurationAsync));
         var export = UiTheme.Button("导出配置", async (_, _) => await RunBusyAsync(ExportConfigurationAsync));
         var content = new TableLayoutPanel { Name = "DevicesContent", ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
@@ -73,7 +74,7 @@ public sealed partial class MainForm
         tagToolbar.Name = "TagActions";
         content.Controls.Add(tagToolbar, 0, 1); content.Controls.Add(_tagGrid, 0, 2);
         var viewport = ScrollableContent(content, "DevicesViewport", () => tagToolbar.PreferredSize.Height + UiTheme.Scale(content, 320));
-        return UiTheme.PageLayout("设备与点位", "配置分组、连接和采集点表；修改后保存生效，运行中仅允许查看。", UiTheme.Toolbar(addDevice, editDevice, deleteDevice, import, export), viewport);
+        return UiTheme.PageLayout("设备与点位", "配置分组、连接和采集点表；修改后保存生效，运行中仅允许查看。", UiTheme.Toolbar(addDevice, editDevice, deleteDevice, importDevices, import, export), viewport);
     }
 
     private Button ConfigurationButton(string text, EventHandler action, bool primary = false)
@@ -216,6 +217,35 @@ public sealed partial class MainForm
             descriptor?.IsLegacy == true ? t.Endian.ToString() : t.ByteOrder.ToString(),
             TagEditor.IsNumericType(t.DataType) ? $"x × {t.Scale:G6} + {t.Offset:G6}" : "原样保存",
             t.Unit, t.Writable ? "读 / 写" : "只读", t.Enabled ? "是" : "否")).ToList() ?? [];
+    }
+
+    private async Task ImportDevicesAsync()
+    {
+        if (_runtime.IsRunning) throw new InvalidOperationException("请先停止采集，再导入设备。");
+        using var dialog = new OpenFileDialog { Filter = "网关配置 (*.json)|*.json", Title = "追加导入设备（保留当前网关与平台配置）", CheckFileExists = true };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        if (new FileInfo(dialog.FileName).Length > 2 * 1024 * 1024) throw new InvalidOperationException("配置文件超过 2 MB，请检查文件内容。");
+        var imported = await new JsonConfigurationStore(dialog.FileName).LoadAsync();
+        AppendImportedDevices(imported);
+    }
+
+    private void AppendImportedDevices(GatewayConfiguration imported)
+    {
+        if (_runtime.IsRunning || _closing) throw new InvalidOperationException("请先停止采集，再导入设备。");
+        if (imported.Devices is null || imported.Devices.Count == 0)
+            throw new InvalidDataException("配置文件中没有可导入的设备。");
+
+        // Build and validate the entire merged draft before changing any live UI state.
+        // Only devices are imported; identities, platform settings and old devices survive unchanged.
+        var candidate = Clone(_configuration);
+        var devices = Clone(imported.Devices);
+        candidate.Devices.AddRange(devices);
+        var errors = ConfigurationValidator.Validate(candidate, _drivers);
+        if (errors.Count > 0) throw new InvalidDataException("设备未导入，请检查重复标识、串口冲突或配置内容：\n" + string.Join("\n", errors));
+
+        _configuration = candidate;
+        MarkDirty(); RebindConfigurationViews(devices[0].Id);
+        SetFooter($"已追加 {devices.Count} 台设备、{devices.Sum(x => x.Tags.Count)} 个点位。请检查后点击“保存配置”。");
     }
 
     private async Task ImportConfigurationAsync()
