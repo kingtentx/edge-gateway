@@ -126,7 +126,7 @@ public sealed partial class MainForm
     {
         var descriptor = _drivers.Drivers.Single(x => x.Id == "PLC.ModBusMaster");
         var device = new DeviceConfiguration { Name = "布局检查 · Modbus", DriverId = descriptor.Id, Enabled = false };
-        using (var editor = new DeviceEditor(device, _drivers.Drivers, isNew: true))
+        using (var editor = new DeviceConfigurationDialog(device, _drivers, isNew: true))
         {
             editor.Show(this);
             try
@@ -180,13 +180,32 @@ public sealed partial class MainForm
     private void SmokeDynamicDriverSwitch()
     {
         var device = new DeviceConfiguration { Name = "显示后驱动切换检查", DriverId = "simulator", Enabled = false };
-        using var editor = new DeviceEditor(device, _drivers.Drivers, isNew: true);
+        var before = ConfigurationSmokeJson(device);
+        using var editor = new DeviceConfigurationDialog(device, _drivers, isNew: true);
         editor.Show(this);
         try
         {
-            foreach (var driverId in new[] { "PLC.ModBusMaster", "OPC.UaClient", "modbus-rtu", "PLC.ModBusMaster" })
+            var common = new Dictionary<string, string>
+            {
+                ["Name"] = "切换后保留公共配置", ["Group"] = "共享字段验证分组", ["Enabled"] = "true",
+                ["PollIntervalMs"] = "2190", ["TimeoutMs"] = "5430"
+            };
+            foreach (var field in common) editor.SetFieldForSmoke(field.Key, field.Value);
+            var visited = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var driverId in new[] { "PLC.ModBusMaster", "OPC.UaClient", "modbus-rtu", "PLC.ModBusMaster", "OPC.UaClient", "modbus-rtu" })
             {
                 editor.SelectDriverForSmoke(driverId);
+                var (key, value, inputName) = driverId switch
+                {
+                    "PLC.ModBusMaster" => ("Properties.SlaveAddress", "9", "DriverParameter_SlaveAddress"),
+                    "OPC.UaClient" => ("Properties.Uri", "opc.tcp://192.0.2.42:4840", "DriverParameter_Uri"),
+                    _ => ("SerialPortName", "COM19", "DeviceConfiguration_SerialPortName")
+                };
+                if (visited.Add(driverId)) editor.SetFieldForSmoke(key, value);
+                else AssertConfigurationSmokeInput(editor.SmokeParameterInputs.Single(x => x.Name == inputName), value, driverId + " restored draft");
+                foreach (var field in common)
+                    AssertConfigurationSmokeInput(Descendants(editor).Single(x => x.Name == "DeviceConfiguration_" + field.Key),
+                        field.Value, driverId + " common draft");
                 editor.VerifyBindingsForSmoke();
                 VerifyEditorLayout(editor, "dynamic " + driverId);
                 foreach (var input in editor.SmokeParameterInputs)
@@ -197,7 +216,14 @@ public sealed partial class MainForm
                         throw new InvalidOperationException($"Dynamic parameter {input.Name}: font unexpectedly shrank to {input.Font.SizeInPoints} pt.");
                 }
             }
-            Console.WriteLine($"Dynamic driver switch passed at actual {editor.DeviceDpi} DPI: simulator -> PLC.ModBusMaster -> OPC.UaClient -> modbus-rtu -> PLC.ModBusMaster.");
+            if (editor.Value is not null) throw new InvalidOperationException("Changing drivers committed an unconfirmed device draft.");
+            editor.SelectDriverForSmoke("modbus-tcp");
+            editor.SetFieldForSmoke("Host", "192.0.2.43");
+            var added = editor.CommitForSmoke();
+            if (added.DriverId != "modbus-tcp" || added.Host != "192.0.2.43" || added.Tags.Count != 1)
+                throw new InvalidOperationException("Adding a device did not use the last selected driver and its default point.");
+            AssertConfigurationSmokeUnchanged(before, device, "dynamic driver draft isolation");
+            Console.WriteLine($"Dynamic driver switch passed at actual {editor.DeviceDpi} DPI: native and migrated drafts survived switching back, no unconfirmed result escaped, and add used the final driver.");
         }
         catch { TrySaveSmokeFailure(editor, "dynamic-driver-switch-failed"); throw; }
         finally { editor.Close(); }

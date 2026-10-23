@@ -6,38 +6,42 @@ using System.Text.Json;
 
 namespace EdgeGateway.WinForms;
 
-/// <summary>Edits the selected device's acquisition and driver settings as an isolated draft.</summary>
+/// <summary>Creates or edits every device setting through one isolated, driver-aware draft.</summary>
 internal sealed class DeviceConfigurationDialog : EditorDialog
 {
     private readonly DeviceConfiguration _original;
-    private readonly IDriverFactory _factory;
-    private readonly DriverDescriptor _descriptor;
-    private readonly bool _readOnly;
+    private readonly IDriverRegistry _drivers;
+    private readonly bool _readOnly, _isNew;
     private readonly Dictionary<string, Control> _fields = new(StringComparer.Ordinal);
     private readonly List<Control> _connectionInputs = [];
+    private readonly List<string> _connectionKeys = [];
+    private readonly Dictionary<string, DeviceConfiguration> _driverDrafts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly TextBox _name, _group;
+    private readonly ComboBox _driver;
     private readonly CheckBox _enabled;
     private readonly NumericUpDown _cycle, _timeout;
-    private readonly DriverParameterPanel? _parameters;
+    private readonly Label _driverDetails;
+    private DriverDescriptor? _descriptor;
+    private DriverParameterPanel? _parameters;
+    private TabPage? _protocolPage;
 
     /// <summary>Available only after a successful commit; never aliases the caller's device or tags.</summary>
     public DeviceConfiguration? Value { get; private set; }
     internal IReadOnlyCollection<Control> SmokeParameterInputs => _parameters?.Inputs ?? _connectionInputs;
 
-    public DeviceConfigurationDialog(DeviceConfiguration device, IDriverFactory factory, bool readOnly = false)
-        : base(readOnly ? "查看设备配置" : "设备配置", readOnly
-            ? "采集运行期间仅可查看当前设备配置。停止全部运行设备后，可在此修改启用状态、采集周期、通信超时与驱动连接参数。"
-            : "配置当前设备的启用状态、采集周期、通信超时与驱动连接参数。点击“确定”完成校验并自动保存；取消不修改原配置。")
+    public DeviceConfigurationDialog(DeviceConfiguration device, IDriverRegistry drivers, bool readOnly = false, bool isNew = false)
+        : base(readOnly ? "查看设备配置" : isNew ? "添加采集设备" : "设备配置", readOnly
+            ? "采集运行期间仅可查看设备配置。停止全部运行设备后，可修改启用状态、名称、分组、驱动与连接参数。"
+            : "配置设备的启用状态、名称、分组、驱动与连接参数。更换协议不会自动转换已有点位；点击“确定”校验并自动保存，取消不修改原配置。")
     {
         ArgumentNullException.ThrowIfNull(device);
-        ArgumentNullException.ThrowIfNull(factory);
-        _factory = factory;
-        _descriptor = factory.Descriptor;
-        if (!string.Equals(device.DriverId, _descriptor.Id, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("所选驱动与当前设备不一致，无法打开设备配置。", nameof(factory));
+        ArgumentNullException.ThrowIfNull(drivers);
+        _drivers = drivers;
         _original = Clone(device);
-        Text = (readOnly ? "查看设备配置" : "设备配置") + " · " + _original.Name;
+        Text = (readOnly ? "查看设备配置" : isNew ? "添加采集设备" : "设备配置") + " · " + _original.Name;
         if (_original.Properties is null) throw new InvalidDataException("设备驱动参数 Properties 缺失，请检查配置文件。");
-        _readOnly = readOnly;
+        _readOnly = readOnly; _isNew = isNew;
+        _driverDrafts[_original.DriverId] = Clone(_original);
 
         var acquisition = AddTab("采集设置");
         TabOf(acquisition).Name = "AcquisitionSettings";
@@ -46,84 +50,143 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
             Text = "启用设备", Checked = _original.Enabled, AutoSize = true,
             MinimumSize = new Size(0, 32)
         });
-        var name = Register("Name", TextInput(_original.Name)); name.ReadOnly = true;
-        var driver = Register("DriverId", TextInput(_descriptor.Name + " · " + _original.DriverId)); driver.ReadOnly = true;
+        _name = Register("Name", TextInput(_original.Name));
+        _group = Register("Group", TextInput(_original.Group));
+        _driver = Register("DriverId", new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FormattingEnabled = true });
+        EditorLayout.ConfigureDropDown(_driver, 620, 440);
+        _driver.Format += (_, e) => { if (e.ListItem is DriverDescriptor descriptor) e.Value = descriptor.Name + "  ·  " + descriptor.Id; };
+        // Populate before selecting: an unbound catalog must also work before the form is shown.
+        var catalog = _drivers.Drivers.ToArray();
+        _driver.Items.AddRange(catalog.Cast<object>().ToArray());
+        _driver.SelectedIndex = Array.FindIndex(catalog, x => string.Equals(x.Id, _original.DriverId, StringComparison.OrdinalIgnoreCase));
+        if (_driver.SelectedIndex < 0) throw new InvalidOperationException("未找到设备使用的采集驱动：" + _original.DriverId);
         _cycle = Register("PollIntervalMs", Number(_original.PollIntervalMs, 100, 3_600_000));
         _timeout = Register("TimeoutMs", Number(_original.TimeoutMs, 100, 120_000));
         Field(acquisition, "启用状态", _enabled);
-        Field(acquisition, "设备名称", name);
-        Field(acquisition, "采集驱动", driver);
+        Field(acquisition, "设备名称", _name);
+        Field(acquisition, "设备分组", _group);
+        Field(acquisition, "采集驱动", _driver);
         Field(acquisition, "采集周期 (ms)", _cycle);
         Field(acquisition, "通信超时 (ms)", _timeout);
         Hint(acquisition, "启用后可在设备行点击“启动”；取消勾选后禁止启动该设备。采集周期为 100–3600000 ms，通信超时为 100–120000 ms。");
-        if (!string.IsNullOrWhiteSpace(_descriptor.Prerequisites))
-            Hint(acquisition, "运行条件：" + _descriptor.Prerequisites);
+        _driverDetails = EditorLayout.WrappingLabel("", 10, UiTheme.Muted);
+        var detailsRow = acquisition.RowCount++;
+        acquisition.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        acquisition.Controls.Add(_driverDetails, 0, detailsRow); acquisition.SetColumnSpan(_driverDetails, 2);
+        _driver.SelectedIndexChanged += (_, _) => UpdateProtocolFields();
+        _cycle.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
+        _timeout.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
+        UpdateProtocolFields();
+        Tabs.SelectedTab = TabOf(acquisition);
+        if (readOnly) SetReadOnlyView();
+    }
 
-        if (_descriptor.IsLegacy || _descriptor.Parameters.Count > 0)
+    private void UpdateProtocolFields()
+    {
+        var descriptor = _driver.SelectedItem as DriverDescriptor
+            ?? throw new InvalidOperationException("请选择采集驱动。");
+        if (ReferenceEquals(descriptor, _descriptor)) return;
+        if (_readOnly && _descriptor is not null)
         {
-            _parameters = new DriverParameterPanel();
-            var parameterPage = new TabPage("驱动参数") { Name = "DriverConfigurationParameters", BackColor = Color.White };
-            parameterPage.Controls.Add(_parameters);
-            Tabs.TabPages.Add(parameterPage);
-            _parameters.LoadParameters(_descriptor, BoundDevice(), _original.Properties, "采集设置");
-            _parameters.SetReadOnly(readOnly);
+            _driver.SelectedItem = _descriptor;
+            return;
         }
-        else if (_descriptor.Id == "modbus-tcp")
+        if (_descriptor is not null) CaptureDriverDraft();
+        Tabs.SuspendLayout();
+        try
         {
-            var connection = AddTab("网络连接"); TabOf(connection).Name = "NativeConnection";
-            AddConnection(connection, "Host", "主机地址", TextInput(_original.Host));
-            AddConnection(connection, "Port", "TCP 端口", Number(_original.Port, 1, 65535));
-            AddConnection(connection, "UnitId", "Modbus 站号", Number(_original.UnitId, 1, 247));
-            Hint(connection, "主机填写设备 IP 或域名；TCP 端口为 1–65535，站号为 1–247。寄存器地址、类型与字节序在点位中配置。");
+            foreach (var key in _connectionKeys) _fields.Remove(key);
+            _connectionKeys.Clear(); _connectionInputs.Clear();
+            if (_protocolPage is not null)
+            {
+                Tabs.TabPages.Remove(_protocolPage);
+                _protocolPage.Dispose();
+                _protocolPage = null;
+            }
+            _parameters = null;
+            _descriptor = descriptor;
+            if (!_driverDrafts.TryGetValue(descriptor.Id, out var draft))
+            {
+                draft = Clone(_original);
+                draft.DriverId = descriptor.Id;
+                // Each protocol owns its properties. Keep the former protocol's unknown
+                // keys in its draft, so switching back never silently discards them.
+                draft.Properties = new Dictionary<string, string>(StringComparer.Ordinal);
+                _driverDrafts.Add(descriptor.Id, draft);
+            }
+            if (descriptor.IsLegacy || descriptor.Parameters.Count > 0)
+            {
+                _parameters = new DriverParameterPanel();
+                _parameters.SetReadOnly(_readOnly);
+                _protocolPage = new TabPage("驱动参数") { Name = "DriverConfigurationParameters", BackColor = Color.White };
+                _protocolPage.Controls.Add(_parameters);
+                Tabs.TabPages.Add(_protocolPage);
+                _parameters.LoadParameters(descriptor, BoundDevice(), draft.Properties, "采集设置");
+            }
+            else if (descriptor.Id is "modbus-tcp" or "modbus-rtu") BuildNativePage(descriptor.Id, draft);
+            _driverDetails.Text = descriptor.Description
+                + (string.IsNullOrWhiteSpace(descriptor.Prerequisites) ? "" : "\n运行条件：" + descriptor.Prerequisites)
+                + (descriptor.RequiresSta ? "\n此驱动使用专用 STA 线程运行。" : "");
+            ApplyReadOnlyState();
+            Value = null;
         }
-        else if (_descriptor.Id == "modbus-rtu")
+        finally { Tabs.ResumeLayout(true); }
+    }
+
+    private void BuildNativePage(string driverId, DeviceConfiguration draft)
+    {
+        // Build the complete 96-DPI subtree before attaching it to an already shown
+        // TabControl. The viewport then scales only this new protocol page once.
+        var viewport = new EditorLayout.FieldViewport();
+        var connection = viewport.Table;
+        var rtu = driverId == "modbus-rtu";
+        _protocolPage = new TabPage(rtu ? "串口连接" : "网络连接") { Name = "NativeConnection", BackColor = Color.White };
+        if (rtu)
         {
-            var connection = AddTab("串口连接"); TabOf(connection).Name = "NativeConnection";
-            AddConnection(connection, "SerialPortName", "串口名称", TextInput(_original.SerialPortName));
-            AddConnection(connection, "BaudRate", "波特率", Number(_original.BaudRate, 300, 4_000_000));
-            AddConnection(connection, "DataBits", "数据位", Number(_original.DataBits, 5, 8));
-            AddConnection(connection, "Parity", "校验位", Choice(["None", "Odd", "Even", "Mark", "Space"], _original.Parity));
-            AddConnection(connection, "StopBits", "停止位", Choice(["One", "Two"], _original.StopBits));
-            AddConnection(connection, "UnitId", "Modbus 站号", Number(_original.UnitId, 1, 247));
+            AddConnection(connection, "SerialPortName", "串口名称", TextInput(draft.SerialPortName));
+            AddConnection(connection, "BaudRate", "波特率", Number(draft.BaudRate, 300, 4_000_000));
+            AddConnection(connection, "DataBits", "数据位", Number(draft.DataBits, 5, 8));
+            AddConnection(connection, "Parity", "校验位", Choice(["None", "Odd", "Even", "Mark", "Space"], draft.Parity));
+            AddConnection(connection, "StopBits", "停止位", Choice(["One", "Two"], draft.StopBits));
+            AddConnection(connection, "UnitId", "Modbus 站号", Number(draft.UnitId, 1, 247));
             Hint(connection, "Modbus RTU 二进制通信要求 8 个数据位，停止位选择 One 或 Two；同一串口当前只允许一个启用设备。");
         }
         else
         {
-            Hint(acquisition, _descriptor.Id == "simulator"
-                ? "模拟数据驱动无需网络或串口通信参数。模拟函数与地址在各点位中配置。"
-                : "当前驱动未公开额外连接参数。可在本页调整采集周期与通信超时。");
+            AddConnection(connection, "Host", "主机地址", TextInput(draft.Host));
+            AddConnection(connection, "Port", "TCP 端口", Number(draft.Port, 1, 65535));
+            AddConnection(connection, "UnitId", "Modbus 站号", Number(draft.UnitId, 1, 247));
+            Hint(connection, "主机填写设备 IP 或域名；TCP 端口为 1–65535，站号为 1–247。寄存器地址、类型与字节序在点位中配置。");
         }
-
-        Tabs.SelectedTab = TabOf(acquisition);
-        _cycle.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
-        _timeout.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
-        if (readOnly)
-        {
-            foreach (var input in _fields.Values)
-            {
-                if (input is TextBoxBase text) text.ReadOnly = true;
-                else input.Enabled = false;
-            }
-            SetReadOnlyView();
-        }
+        _protocolPage.Controls.Add(viewport);
+        Tabs.TabPages.Add(_protocolPage);
+        viewport.CompleteInitialization();
+        viewport.PerformAutoScale();
+        viewport.PerformLayout();
     }
 
-    protected override void Commit()
+    private void ApplyReadOnlyState()
     {
-        Value = null;
-        if (_readOnly) throw new InvalidOperationException("当前设备配置为只读，停止采集后才能修改。");
-        var candidate = Clone(_original);
-        candidate.Enabled = _enabled.Checked;
-        candidate.PollIntervalMs = IntegerValue(_cycle);
-        candidate.TimeoutMs = IntegerValue(_timeout);
+        foreach (var input in _fields.Values)
+        {
+            if (input is TextBoxBase text) text.ReadOnly = _readOnly;
+            else input.Enabled = !_readOnly;
+        }
+        _parameters?.SetReadOnly(_readOnly);
+    }
+
+    private DeviceConfiguration CaptureDriverDraft()
+    {
+        var descriptor = _descriptor ?? throw new InvalidOperationException("请选择采集驱动。");
+        var candidate = Clone(_driverDrafts[descriptor.Id]);
         if (_parameters is not null) candidate.Properties = _parameters.CaptureProperties();
-        else if (_descriptor.Id == "modbus-tcp")
+        else if (descriptor.Id == "modbus-tcp")
         {
             candidate.Host = _fields["Host"].Text.Trim();
             candidate.Port = IntegerValue((NumericUpDown)_fields["Port"]);
             candidate.UnitId = IntegerValue((NumericUpDown)_fields["UnitId"]);
         }
-        else if (_descriptor.Id == "modbus-rtu")
+        else if (descriptor.Id == "modbus-rtu")
         {
             candidate.SerialPortName = _fields["SerialPortName"].Text.Trim();
             candidate.BaudRate = IntegerValue((NumericUpDown)_fields["BaudRate"]);
@@ -132,7 +195,23 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
             candidate.StopBits = ((ComboBox)_fields["StopBits"]).SelectedItem?.ToString() ?? "";
             candidate.UnitId = IntegerValue((NumericUpDown)_fields["UnitId"]);
         }
+        _driverDrafts[descriptor.Id] = candidate;
+        return candidate;
+    }
 
+    protected override void Commit()
+    {
+        Value = null;
+        if (_readOnly) throw new InvalidOperationException("当前设备配置为只读，停止采集后才能修改。");
+        var descriptor = _descriptor ?? throw new InvalidOperationException("请选择采集驱动。");
+        var candidate = Clone(CaptureDriverDraft());
+        candidate.Name = Required(_name, "设备名称");
+        candidate.Group = Required(_group, "设备分组");
+        candidate.DriverId = descriptor.Id;
+        candidate.Enabled = _enabled.Checked;
+        candidate.PollIntervalMs = IntegerValue(_cycle);
+        candidate.TimeoutMs = IntegerValue(_timeout);
+        if (_isNew) candidate.Tags = [TagEditor.CreateDefaultTag(descriptor, "采集点位")];
         var errors = new List<string>();
         if (candidate.PollIntervalMs is < 100 or > 3_600_000) errors.Add("采集周期必须为 100–3600000 ms。");
         if (candidate.TimeoutMs is < 100 or > 120_000) errors.Add("通信超时必须为 100–120000 ms。");
@@ -141,7 +220,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         // unknown keys that the factory may reject. Never remove keys to evade validation.
         var validation = Clone(candidate);
         validation.Tags = [];
-        errors.AddRange(_factory.Validate(validation));
+        errors.AddRange(_drivers.GetFactory(descriptor.Id).Validate(validation));
         if (errors.Count > 0) throw new InvalidOperationException(string.Join(Environment.NewLine, errors.Distinct(StringComparer.Ordinal)));
         Value = candidate;
     }
@@ -150,11 +229,15 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     {
         if (_fields["Enabled"] is not CheckBox enabled || !ReferenceEquals(enabled, _enabled))
             throw new InvalidOperationException("Device configuration lost its enabled-state field.");
-        if (_fields["Name"].Text != _original.Name || _fields["Name"] is not TextBox { ReadOnly: true }
-            || _fields["DriverId"] is not TextBox { ReadOnly: true }
-            || !_fields["DriverId"].Text.EndsWith(" · " + _original.DriverId, StringComparison.Ordinal))
-            throw new InvalidOperationException("Device configuration lost its read-only identity fields.");
-        _parameters?.VerifyBindingsForSmoke(_descriptor, BoundDevice(), verifyInitialSelection: false);
+        if (!ReferenceEquals(_fields["Name"], _name) || !ReferenceEquals(_fields["Group"], _group)
+            || !ReferenceEquals(_fields["DriverId"], _driver))
+            throw new InvalidOperationException("Device configuration lost its common device fields.");
+        var descriptor = _descriptor ?? throw new InvalidOperationException("Device configuration has no selected driver.");
+        if (!ReferenceEquals(_driver.SelectedItem, descriptor))
+            throw new InvalidOperationException("Device configuration lost the current driver selection.");
+        if (descriptor.IsLegacy && _connectionInputs.Count > 0)
+            throw new InvalidOperationException("A migrated driver shows unrelated native connection fields.");
+        _parameters?.VerifyBindingsForSmoke(descriptor, BoundDevice(), verifyInitialSelection: false);
         if (_readOnly)
         {
             if (Value is not null || SmokeCommands.Count != 1 || SmokeCommands[0].Text != "关闭"
@@ -169,6 +252,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     internal void SetFieldForSmoke(string key, string value)
     {
         if (_readOnly) throw new InvalidOperationException("当前设备配置为只读，不能修改字段。");
+        if (key == "DriverId") { SelectDriverForSmoke(value); return; }
         Control input;
         if (key.StartsWith("Properties.", StringComparison.Ordinal))
             input = _parameters?.Inputs.Single(x => x.Name == "DriverParameter_" + key[11..])
@@ -185,6 +269,14 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
             case CheckBox toggle: toggle.Checked = bool.Parse(value); break;
             default: input.Text = value; break;
         }
+    }
+
+    internal void SelectDriverForSmoke(string driverId)
+    {
+        if (_readOnly) throw new InvalidOperationException("当前设备配置为只读，不能切换驱动。");
+        _driver.SelectedItem = _driver.Items.Cast<DriverDescriptor>()
+            .FirstOrDefault(x => string.Equals(x.Id, driverId, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ArgumentException("未找到采集驱动：" + driverId, nameof(driverId));
     }
 
     internal DeviceConfiguration CommitForSmoke()
@@ -208,6 +300,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     private void AddConnection(TableLayoutPanel table, string key, string caption, Control input)
     {
         Field(table, caption, Register(key, input));
+        _connectionKeys.Add(key);
         _connectionInputs.Add(input);
     }
 

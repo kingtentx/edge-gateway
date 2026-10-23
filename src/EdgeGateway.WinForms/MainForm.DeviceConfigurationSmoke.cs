@@ -23,7 +23,7 @@ public sealed partial class MainForm
             var originalJson = ConfigurationSmokeJson(original);
             AssertConfigurationSmokeFixture(factory, original);
             DeviceConfiguration? committed = null;
-            using (var editor = new DeviceConfigurationDialog(original, factory))
+            using (var editor = new DeviceConfigurationDialog(original, _drivers))
             {
                 editor.Show(this);
                 try
@@ -46,6 +46,8 @@ public sealed partial class MainForm
                     else if (descriptor.Id == "simulator")
                     {
                         editor.SetFieldForSmoke("Enabled", "true");
+                        editor.SetFieldForSmoke("Name", "不应保存的设备名称");
+                        editor.SetFieldForSmoke("Group", "不应保存的分组");
                         editor.SetFieldForSmoke("PollIntervalMs", "9990");
                         var cancel = (Button)editor.CancelButton!;
                         BringIntoViewAndAssert(cancel, "cancel dedicated configuration");
@@ -63,7 +65,7 @@ public sealed partial class MainForm
                 // These three representatives cover native settings, a long parameter
                 // page, and PLC enum values; avoid repeating the same edit flow 15 times.
                 var saved = Clone(committed);
-                using var reopened = new DeviceConfigurationDialog(saved, factory);
+                using var reopened = new DeviceConfigurationDialog(saved, _drivers);
                 reopened.Show(this);
                 try
                 {
@@ -76,6 +78,7 @@ public sealed partial class MainForm
 
         SmokeReadOnlyDeviceConfiguration();
         SmokeInvalidDeviceConfiguration();
+        await SmokeExistingDeviceDriverChangeAsync();
         await SmokeDeviceConfigurationRowActionsAsync();
         if (_runtime.IsRunning) throw new InvalidOperationException("Configuration smoke unexpectedly started collection.");
         Console.WriteLine($"Device configuration smoke passed: {_drivers.Drivers.Count} dedicated driver windows with saved values/layouts, "
@@ -104,6 +107,8 @@ public sealed partial class MainForm
     {
         var result = Clone(source);
         result.Enabled = !source.Enabled;
+        result.Name = source.Name + " · 已更新";
+        result.Group = "统一窗口验证分组";
         result.PollIntervalMs = 2190; result.TimeoutMs = 5430;
         if (descriptor.IsLegacy || descriptor.Parameters.Count > 0)
         {
@@ -138,6 +143,8 @@ public sealed partial class MainForm
         var values = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["Enabled"] = device.Enabled ? "true" : "false",
+            ["Name"] = device.Name,
+            ["Group"] = device.Group,
             ["PollIntervalMs"] = device.PollIntervalMs.ToString(CultureInfo.InvariantCulture),
             ["TimeoutMs"] = device.TimeoutMs.ToString(CultureInfo.InvariantCulture)
         };
@@ -172,7 +179,7 @@ public sealed partial class MainForm
         if (editor.SelectedSmokeTab?.Name != defaultTab)
             throw new InvalidOperationException($"{descriptor.Id}: dedicated configuration opened '{editor.SelectedSmokeTab?.Name}', expected '{defaultTab}'.");
         var values = ConfigurationSmokeNativeValues(expected, descriptor);
-        values["Name"] = expected.Name; values["DriverId"] = descriptor.Name + " · " + expected.DriverId;
+        values["DriverId"] = expected.DriverId;
         var inputs = Descendants(editor).Where(x => x.Name.StartsWith("DeviceConfiguration_", StringComparison.Ordinal))
             .ToDictionary(x => x.Name[20..], StringComparer.Ordinal);
         if (!values.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(inputs.Keys))
@@ -186,7 +193,7 @@ public sealed partial class MainForm
                 AssertConfigurationSmokeInput(editor.SmokeParameterInputs.Single(x => x.Name == "DriverParameter_" + parameter.Key),
                     expected.Properties.GetValueOrDefault(parameter.Key, parameter.DefaultValue), descriptor.Id);
         }
-        else if (editor.SmokeParameterInputs.Count != values.Count - 5)
+        else if (editor.SmokeParameterInputs.Count != values.Count - 6)
             throw new InvalidOperationException(descriptor.Id + ": native connection field coverage differs from the displayed driver.");
     }
 
@@ -196,6 +203,7 @@ public sealed partial class MainForm
         {
             NumericUpDown number => number.Value.ToString(CultureInfo.InvariantCulture),
             CheckBox toggle => toggle.Checked ? "true" : "false",
+            ComboBox { SelectedItem: DriverDescriptor descriptor } => descriptor.Id,
             ComboBox choice => choice.SelectedItem?.ToString() ?? "",
             _ => control.Text
         };
@@ -226,7 +234,7 @@ public sealed partial class MainForm
         var factory = _drivers.GetFactory("PLC.ModBusMaster");
         var device = CreateConfigurationSmokeDevice(factory.Descriptor);
         var before = ConfigurationSmokeJson(device);
-        using var editor = new DeviceConfigurationDialog(device, factory, readOnly: true);
+        using var editor = new DeviceConfigurationDialog(device, _drivers, readOnly: true);
         editor.Show(this);
         try
         {
@@ -251,7 +259,7 @@ public sealed partial class MainForm
         var before = ConfigurationSmokeJson(original);
         var invalid = Clone(original);
         invalid.Properties["SlaveAddress"] = "0";
-        using var editor = new DeviceConfigurationDialog(original, factory);
+        using var editor = new DeviceConfigurationDialog(original, _drivers);
         editor.Show(this);
         try
         {
@@ -275,6 +283,51 @@ public sealed partial class MainForm
         catch (InvalidOperationException exception) { rejection = exception; }
         if (rejection is null || editor.Value is not null || expectedErrors.Any(error => !rejection.Message.Contains(error, StringComparison.Ordinal)))
             throw new InvalidOperationException(factory.Descriptor.Id + ": configuration dialog did not preserve the actual factory rejection: " + string.Join("; ", expectedErrors), rejection);
+    }
+
+    private async Task SmokeExistingDeviceDriverChangeAsync()
+    {
+        var originalConfiguration = _configuration;
+        var originalDirty = _dirty;
+        var originalSelection = SelectedDevice()?.Id;
+        try
+        {
+            var device = CreateConfigurationSmokeDevice(_drivers.GetFactory("simulator").Descriptor);
+            device.Tags[0].Address = "ramp";
+            var fixture = Clone(_configuration); fixture.Devices = [device];
+            await CommitConfigurationAsync(fixture, device.Id);
+            var before = DeviceImportSmokeJson(_configuration);
+            var source = _configuration.Devices.Single();
+            var sourceJson = ConfigurationSmokeJson(source);
+            using var editor = new DeviceConfigurationDialog(source, _drivers);
+            editor.Show(this);
+            try
+            {
+                editor.SelectDriverForSmoke("modbus-tcp");
+                editor.SetFieldForSmoke("Host", "192.0.2.44");
+                var changed = editor.CommitForSmoke();
+                if (changed.Id != source.Id || changed.DriverId != "modbus-tcp"
+                    || JsonSerializer.Serialize(changed.Tags, JsonConfigurationStore.SerializerOptions)
+                        != JsonSerializer.Serialize(source.Tags, JsonConfigurationStore.SerializerOptions))
+                    throw new InvalidOperationException("Changing an existing device driver replaced its identity or points.");
+                var candidate = Clone(_configuration); candidate.Devices[0] = changed;
+                var rejected = false;
+                try { await CommitConfigurationAsync(candidate, source.Id); }
+                catch (InvalidDataException) { rejected = true; }
+                if (!rejected || DeviceImportSmokeJson(_configuration) != before)
+                    throw new InvalidOperationException("An incompatible driver change was saved or changed the current configuration.");
+                AssertConfigurationSmokeUnchanged(sourceJson, source, "existing driver change source");
+                await AssertSavedConfigurationForSmokeAsync("rejected incompatible driver change");
+                Console.WriteLine("Existing device driver change smoke passed: identity and points preserved, incompatible addresses rejected by full configuration validation, saved data unchanged.");
+            }
+            catch { TrySaveSmokeFailure(editor, "existing-driver-change-failed"); throw; }
+            finally { editor.Close(); }
+        }
+        finally
+        {
+            await RestoreConfigurationForSmokeAsync(originalConfiguration); _dirty = originalDirty;
+            RebindConfigurationViews(originalSelection); UpdateCommands();
+        }
     }
 
     private async Task SmokeDeviceConfigurationRowActionsAsync()
@@ -312,6 +365,10 @@ public sealed partial class MainForm
             expected.Port = 15030; expected.Enabled = false;
             AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "double-clicked non-selected device row");
             AssertSavedDeviceEnabledRowForSmoke(target.Id, false);
+            await SmokeDeviceConfigurationRowActionAsync(expected, toolbarEdit: true, port: 15031, enabled: true);
+            expected.Port = 15031; expected.Enabled = true;
+            AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "toolbar edited device");
+            AssertSavedDeviceEnabledRowForSmoke(target.Id, true);
             AssertConfigurationSmokeUnchanged(targetJson, target, "row action source device");
             AssertConfigurationSmokeUnchanged(selectedJson, _configuration.Devices.Single(x => x.Id == selected.Id), "other selected device row");
             if (_dirty || SelectedDevice()?.Id != target.Id)
@@ -319,6 +376,28 @@ public sealed partial class MainForm
             await AssertSavedConfigurationForSmokeAsync("device row configuration");
             Console.WriteLine("Device row entry smoke passed: configuration link and data-cell double-click opened the same dedicated dialog for clicked B while A was selected, and both automatically saved.");
             Console.WriteLine("Device enabled configuration smoke passed: enabled via configuration link, disabled via row double-click, saved JSON and row start availability matched; cancelled edits stayed isolated and running views remained read-only.");
+            var added = await SmokeDeviceConfigurationModalAsync(AddDeviceAsync, dialog =>
+            {
+                if (dialog.Value is not null || dialog.SelectedSmokeTab?.Name != "AcquisitionSettings")
+                    throw new InvalidOperationException("Unified add dialog has an unexpected initial result or page.");
+                dialog.SelectDriverForSmoke("modbus-tcp");
+                dialog.SetFieldForSmoke("Enabled", "false");
+                dialog.SetFieldForSmoke("Name", "统一窗口新增设备 C");
+                dialog.SetFieldForSmoke("Group", "统一窗口新增分组");
+                dialog.SetFieldForSmoke("Host", "192.0.2.33");
+                dialog.SetFieldForSmoke("Port", "15032");
+                dialog.VerifyBindingsForSmoke();
+                VerifyEditorLayout(dialog, "unified add device modal");
+            }, "add device toolbar");
+            if (_configuration.Devices.Count != 3 || added.DriverId != "modbus-tcp" || added.Tags.Count != 1
+                || added.Name != "统一窗口新增设备 C" || added.Group != "统一窗口新增分组"
+                || added.Enabled || SelectedDevice()?.Id != added.Id)
+                throw new InvalidOperationException("Unified add entry did not save the selected driver, identity, default point or device selection.");
+            AssertConfigurationSmokeEqual(added, _configuration.Devices.Single(x => x.Id == added.Id), "added unified device");
+            AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "existing device after add");
+            AssertConfigurationSmokeUnchanged(selectedJson, _configuration.Devices.Single(x => x.Id == selected.Id), "selected device after add");
+            await AssertSavedConfigurationForSmokeAsync("unified add device");
+            Console.WriteLine("Unified device dialog smoke passed: add, toolbar edit, configuration link and row double-click all used DeviceConfigurationDialog and saved through the same configuration pipeline.");
         }
         finally
         {
@@ -336,12 +415,26 @@ public sealed partial class MainForm
             throw new InvalidOperationException("Saved Enabled state did not update the device row/start command, or unexpectedly started collection.");
     }
 
-    private async Task SmokeDeviceConfigurationRowActionAsync(DeviceConfiguration target, bool doubleClick = false, int port = 15029, bool? enabled = null)
+    private async Task SmokeDeviceConfigurationRowActionAsync(DeviceConfiguration target, bool doubleClick = false, int port = 15029, bool? enabled = null, bool toolbarEdit = false)
     {
-        if (SelectedDevice()?.Id == target.Id) throw new InvalidOperationException("Row-action smoke must start with another device selected.");
+        if (toolbarEdit) RebindConfigurationViews(target.Id);
+        else if (SelectedDevice()?.Id == target.Id) throw new InvalidOperationException("Row-action smoke must start with another device selected.");
         var row = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == target.Id);
         var column = _deviceGrid.Columns[doubleClick ? "Name" : DeviceConfigurationColumnName];
+        await SmokeDeviceConfigurationModalAsync(
+            toolbarEdit ? EditDeviceAsync : () => DeviceGridActionAsync(new DataGridViewCellEventArgs(column.Index, row.Index), doubleClick),
+            dialog =>
+            {
+                VerifyConfigurationSmokeFields(dialog, _drivers.GetFactory(target.DriverId).Descriptor, target);
+                if (enabled.HasValue) dialog.SetFieldForSmoke("Enabled", enabled.Value ? "true" : "false");
+                dialog.SetFieldForSmoke("Port", port.ToString(CultureInfo.InvariantCulture));
+            }, toolbarEdit ? "edit device toolbar" : "non-selected device row");
+    }
+
+    private async Task<DeviceConfiguration> SmokeDeviceConfigurationModalAsync(Func<Task> open, Action<DeviceConfigurationDialog> edit, string context)
+    {
         var observed = false;
+        DeviceConfiguration? confirmed = null;
         Exception? failure = null;
         var elapsed = Stopwatch.StartNew();
         using var timer = new System.Windows.Forms.Timer { Interval = 20 };
@@ -351,7 +444,7 @@ public sealed partial class MainForm
             if (dialog is null)
             {
                 if (elapsed.Elapsed < TimeSpan.FromSeconds(5)) return;
-                failure = new InvalidOperationException("Device configuration row action did not open its modal window within 5 seconds.");
+                failure = new InvalidOperationException(context + ": unified device configuration did not open within 5 seconds.");
                 timer.Stop();
                 foreach (var modal in Application.OpenForms.Cast<Form>().Where(x => x.Modal).ToArray()) modal.Close();
                 return;
@@ -359,12 +452,10 @@ public sealed partial class MainForm
             timer.Stop(); observed = true;
             try
             {
-                VerifyConfigurationSmokeFields(dialog, _drivers.GetFactory(target.DriverId).Descriptor, target);
-                if (enabled.HasValue) dialog.SetFieldForSmoke("Enabled", enabled.Value ? "true" : "false");
-                dialog.SetFieldForSmoke("Port", port.ToString(CultureInfo.InvariantCulture));
+                edit(dialog);
                 // Exercise the production Commit path and ShowDialog's OK result
                 // without leaving an unexpected validation MessageBox blocking CI.
-                dialog.CommitForSmoke();
+                confirmed = dialog.CommitForSmoke();
                 dialog.DialogResult = DialogResult.OK;
             }
             catch (Exception exception)
@@ -376,17 +467,18 @@ public sealed partial class MainForm
             finally { dialog.Close(); }
         };
         timer.Start();
-        try { await DeviceGridActionAsync(new DataGridViewCellEventArgs(column.Index, row.Index), doubleClick); }
+        try { await open(); }
         finally { timer.Stop(); }
-        if (failure is not null) throw new InvalidOperationException("Non-selected device configuration row action failed.", failure);
-        if (!observed) throw new InvalidOperationException("Device configuration cell action did not show the expected modal dialog.");
+        if (failure is not null) throw new InvalidOperationException(context + ": unified device configuration failed.", failure);
+        if (!observed || confirmed is null) throw new InvalidOperationException(context + ": expected device dialog was not confirmed.");
+        return confirmed;
     }
 
     private void VerifyMinimumConfigurationDialog(Rectangle area, string directory, LayoutCaseResult result)
     {
         var factory = _drivers.GetFactory("PLC.ModBusMaster");
         var device = CreateConfigurationSmokeDevice(factory.Descriptor);
-        using var editor = new DeviceConfigurationDialog(device, factory);
+        using var editor = new DeviceConfigurationDialog(device, _drivers);
         editor.Show(this);
         try
         {

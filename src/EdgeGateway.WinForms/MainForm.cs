@@ -372,8 +372,9 @@ public sealed partial class MainForm : DpiAwareForm
     {
         foreach (var driver in _drivers.Drivers)
         {
-            var device = new DeviceConfiguration { Name = "配置检查 · " + driver.Name, DriverId = driver.Id, Enabled = false };
-            using (var editor = new DeviceEditor(device, _drivers.Drivers, isNew: true))
+            var device = CreateConfigurationSmokeDevice(driver);
+            var before = ConfigurationSmokeJson(device);
+            using (var editor = new DeviceConfigurationDialog(device, _drivers, isNew: true))
             {
                 editor.Show(this);
                 try
@@ -381,6 +382,14 @@ public sealed partial class MainForm : DpiAwareForm
                     editor.VerifyBindingsForSmoke();
                     VerifyEditorLayout(editor, driver.Id + " device");
                     SaveEditorScreenshot(editor, "device", driver.Id);
+                    var added = editor.CommitForSmoke();
+                    if (added.DriverId != driver.Id || added.Id != device.Id || added.Tags.Count != 1
+                        || device.Tags.Any(original => added.Tags[0].Id == original.Id))
+                        throw new InvalidOperationException(driver.Id + ": unified add dialog lost the selected driver or reused an existing point.");
+                    foreach (var parameter in driver.Parameters.Where(x => x.BoundProperty is null))
+                        if (!added.Properties.ContainsKey(parameter.Key))
+                            throw new InvalidOperationException(driver.Id + ": unified add dialog lost parameter " + parameter.Key);
+                    AssertConfigurationSmokeUnchanged(before, device, driver.Id + " unified add source");
                 }
                 catch { SaveEditorScreenshot(editor, "device-failed", driver.Id); throw; }
                 editor.Close();

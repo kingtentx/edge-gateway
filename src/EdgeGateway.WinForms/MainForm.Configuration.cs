@@ -156,13 +156,13 @@ public sealed partial class MainForm
         try
         {
             var readOnly = _runtime.IsRunning;
-            using var dialog = new DeviceConfigurationDialog(device, _drivers.GetFactory(device.DriverId), readOnly);
+            using var dialog = new DeviceConfigurationDialog(device, _drivers, readOnly: readOnly);
             if (dialog.ShowDialog(this) != DialogResult.OK || readOnly || dialog.Value is null) return;
             if (!CanEdit()) { SetFooter("采集状态已变化，设备配置未应用。请停止采集后重新配置。"); return; }
             var index = _configuration.Devices.FindIndex(x => x.Id == deviceId);
             if (index < 0) return;
-            if (dialog.Value.Id != device.Id || dialog.Value.DriverId != device.DriverId)
-                throw new InvalidOperationException("设备配置不能更改设备标识或采集驱动。");
+            if (dialog.Value.Id != device.Id)
+                throw new InvalidOperationException("设备配置不能更改设备唯一标识。");
             var candidate = Clone(_configuration);
             candidate.Devices[index] = Clone(dialog.Value);
             await RunBusyAsync(() => CommitConfigurationAsync(candidate, deviceId, $"设备“{device.Name}”的配置已自动保存。"));
@@ -203,7 +203,7 @@ public sealed partial class MainForm
             cell.ActiveLinkColor = cell.VisitedLinkColor = cell.LinkColor;
             cell.ToolTipText = _runtime.IsRunning
                 ? "查看该设备当前驱动的配置；停止全部运行设备后可修改。"
-                : "配置该行设备的采集周期、通信超时及当前驱动专用参数。";
+                : "配置该行设备的启用状态、名称、分组、采集驱动及通信参数。";
         }
         _deviceGrid.Invalidate();
     }
@@ -217,8 +217,9 @@ public sealed partial class MainForm
     {
         if (!CanEdit()) return;
         var device = new DeviceConfiguration { Name = $"设备 {_configuration.Devices.Count + 1}", Tags = [new TagConfiguration { Name = "采集点位", Address = "sine", DataType = TagDataType.Float64 }] };
-        using var editor = new DeviceEditor(device, _drivers.Drivers, isNew: true);
-        if (editor.ShowDialog(this) != DialogResult.OK) return;
+        using var editor = new DeviceConfigurationDialog(device, _drivers, isNew: true);
+        if (editor.ShowDialog(this) != DialogResult.OK || editor.Value is null) return;
+        if (!CanEdit()) { SetFooter("采集状态已变化，设备未添加。请停止采集后重新操作。"); return; }
         var candidate = Clone(_configuration);
         candidate.Devices.Add(Clone(editor.Value));
         await RunBusyAsync(() => CommitConfigurationAsync(candidate, editor.Value.Id, "设备已添加并自动保存。"));
@@ -226,14 +227,9 @@ public sealed partial class MainForm
 
     private async Task EditDeviceAsync()
     {
-        if (!CanEdit()) return;
         var device = SelectedDevice();
         if (device is null) { SetFooter("请先选择一个设备。"); return; }
-        using var editor = new DeviceEditor(Clone(device), _drivers.Drivers);
-        if (editor.ShowDialog(this) != DialogResult.OK) return;
-        var candidate = Clone(_configuration);
-        candidate.Devices[candidate.Devices.FindIndex(x => x.Id == device.Id)] = Clone(editor.Value);
-        await RunBusyAsync(() => CommitConfigurationAsync(candidate, device.Id, "设备已更新并自动保存。"));
+        await ConfigureDeviceAsync(device.Id);
     }
 
     private async Task DeleteDeviceAsync()

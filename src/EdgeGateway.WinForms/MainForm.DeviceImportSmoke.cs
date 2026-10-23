@@ -64,7 +64,7 @@ public sealed partial class MainForm
                 throw new InvalidOperationException("Imported RTU points are missing from the selected device grid.");
             SaveEditorScreenshot(this, "preset", "modbus-rtu-com11");
             var factory = _drivers.GetFactory(added.DriverId);
-            using var editor = new DeviceConfigurationDialog(added, factory);
+            using var editor = new DeviceConfigurationDialog(added, _drivers);
             editor.Show(this);
             try
             {
