@@ -45,12 +45,8 @@ public sealed partial class MainForm
         _deviceGrid.Columns.Add(configurationColumn);
         if (_deviceGrid is DpiDataGridView dpiGrid) dpiGrid.RegisterColumn(configurationColumn, 80);
         _deviceGrid.SelectionChanged += (_, _) => BindTags();
-        _deviceGrid.CellContentClick += DeviceConfigurationCellContentClick;
-        _deviceGrid.CellDoubleClick += async (_, e) =>
-        {
-            if (e.RowIndex >= 0 && e.ColumnIndex >= 0
-                && _deviceGrid.Columns[e.ColumnIndex].Name is not (DeviceConfigurationColumnName or DeviceStartColumnName or DeviceStopColumnName)) await EditDeviceAsync();
-        };
+        _deviceGrid.CellContentClick += async (_, e) => await HandleDeviceGridActionAsync(e);
+        _deviceGrid.CellDoubleClick += async (_, e) => await HandleDeviceGridActionAsync(e, doubleClick: true);
         UiTheme.AddColumn(_tagGrid, "Name", "点位名称", 120, 130);
         UiTheme.AddColumn(_tagGrid, "Address", "地址", 95);
         UiTheme.AddColumn(_tagGrid, "Method", "读取方法", 160, 160);
@@ -106,19 +102,32 @@ public sealed partial class MainForm
 
     private bool CanEdit() => !_runtime.IsRunning && !_busy && !_closing;
 
-    private async void DeviceConfigurationCellContentClick(object? sender, DataGridViewCellEventArgs e)
+    private async Task HandleDeviceGridActionAsync(DataGridViewCellEventArgs e, bool doubleClick = false)
     {
-        if (e.RowIndex < 0 || e.RowIndex >= _deviceGrid.Rows.Count || e.ColumnIndex < 0
-            || e.ColumnIndex >= _deviceGrid.Columns.Count) return;
-        // Resolve the clicked row's stable identity; keyboard selection or a previous
-        // selection must never redirect this action to a different device.
-        if (_deviceGrid.Rows[e.RowIndex].DataBoundItem is not DeviceRow row) return;
-        try { await DeviceRowActionAsync(row.Id, _deviceGrid.Columns[e.ColumnIndex].Name); }
+        try { await DeviceGridActionAsync(e, doubleClick); }
         catch (Exception exception)
         {
             if (_smokeTest) throw;
             ShowError(exception.Message);
         }
+    }
+
+    private Task DeviceGridActionAsync(DataGridViewCellEventArgs e, bool doubleClick = false)
+    {
+        if (e.RowIndex < 0 || e.RowIndex >= _deviceGrid.Rows.Count || e.ColumnIndex < 0
+            || e.ColumnIndex >= _deviceGrid.Columns.Count) return Task.CompletedTask;
+        // Resolve the event row's stable identity for both click paths; the current
+        // selection must never redirect configuration to a different device.
+        if (_deviceGrid.Rows[e.RowIndex].DataBoundItem is not DeviceRow row) return Task.CompletedTask;
+        var columnName = _deviceGrid.Columns[e.ColumnIndex].Name;
+        if (doubleClick)
+        {
+            // Action columns already handle their first click. Do not invoke them twice.
+            if (columnName is DeviceConfigurationColumnName or DeviceStartColumnName or DeviceStopColumnName)
+                return Task.CompletedTask;
+            columnName = DeviceConfigurationColumnName;
+        }
+        return DeviceRowActionAsync(row.Id, columnName);
     }
 
     private async Task DeviceRowActionAsync(Guid deviceId, string columnName)

@@ -304,6 +304,9 @@ public sealed partial class MainForm : DpiAwareForm
             nav.Value.BackColor = nav.Key == key ? Color.FromArgb(39, 67, 106) : UiTheme.Navy;
             nav.Value.ForeColor = nav.Key == key ? Color.White : Color.FromArgb(190, 205, 225);
         }
+        // Hidden grids may create their bound rows only when first displayed.
+        // Refresh commands now rather than waiting for the next polling tick.
+        UpdateCommands();
     }
 
     private async void OnShown(object? sender, EventArgs e)

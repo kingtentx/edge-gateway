@@ -91,6 +91,8 @@ public sealed partial class MainForm
                         ResetScrollPositions(_pages[key], _navigation["overview"]);
                         result.CheckedPages.Add(key);
                         if (key == "overview") SaveSmokeScreenshot(this, Path.Combine(directory, name + "-overview.png"));
+                        if (key == "devices" && name == "1920x1080-125pct")
+                            SaveSmokeScreenshot(this, Path.Combine(directory, name + "-devices.png"));
                     }
                     result.HeaderMetrics = new Control[] { _runState, _savedState, _automaticSaveState }.Select(ControlMetric.From).ToList();
                     VerifyMatrixDialogs(testArea, directory, result);

@@ -1,6 +1,8 @@
 # 验证记录
 
-> 本页记录上一轮全部驱动迁移基线。2026-10-23 的 DPI 与现代界面升级及最新验证见 [界面验证记录](ui-dpi.md)。
+> 当前功能与本次验证入口见 [单设备启停与配置自动保存](device-control-autosave.md)，最新运行包以 [README 最新交付](../README.md) 为准。
+>
+> 本页保留 2026-10-22 全部驱动迁移基线的历史验证。后续历史记录包括 [DPI 与界面升级](ui-dpi.md)、[设备行内配置](device-configuration.md) 和 [COM11 RTU 初始交付](modbus-rtu-com11.md)；这些既有结果不作为单设备启停与自动保存改动的验证结论。
 
 验证日期：2026-10-22。目标框架：.NET 8，Windows Forms。
 

@@ -301,11 +301,18 @@ public sealed partial class MainForm
             await SmokeDeviceConfigurationRowActionAsync(target);
             var expected = Clone(target); expected.Port = 15029;
             AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "applied non-selected device row");
+            // Double-click a normal data cell while A is selected: it must use
+            // the very same dedicated configuration dialog and row identity.
+            RebindConfigurationViews(selected.Id);
+            await SmokeDeviceConfigurationRowActionAsync(expected, doubleClick: true, port: 15030);
+            expected.Port = 15030;
+            AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "double-clicked non-selected device row");
             AssertConfigurationSmokeUnchanged(targetJson, target, "row action source device");
             AssertConfigurationSmokeUnchanged(selectedJson, _configuration.Devices.Single(x => x.Id == selected.Id), "other selected device row");
             if (_dirty || SelectedDevice()?.Id != target.Id)
                 throw new InvalidOperationException("Applied row configuration was not automatically saved or failed to preserve the target selection.");
             await AssertSavedConfigurationForSmokeAsync("device row configuration");
+            Console.WriteLine("Device row entry smoke passed: configuration link and data-cell double-click opened the same dedicated dialog for clicked B while A was selected, and both automatically saved.");
         }
         finally
         {
@@ -314,11 +321,11 @@ public sealed partial class MainForm
         }
     }
 
-    private async Task SmokeDeviceConfigurationRowActionAsync(DeviceConfiguration target)
+    private async Task SmokeDeviceConfigurationRowActionAsync(DeviceConfiguration target, bool doubleClick = false, int port = 15029)
     {
         if (SelectedDevice()?.Id == target.Id) throw new InvalidOperationException("Row-action smoke must start with another device selected.");
         var row = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == target.Id);
-        var column = _deviceGrid.Columns[DeviceConfigurationColumnName];
+        var column = _deviceGrid.Columns[doubleClick ? "Name" : DeviceConfigurationColumnName];
         var observed = false;
         Exception? failure = null;
         var elapsed = Stopwatch.StartNew();
@@ -338,7 +345,7 @@ public sealed partial class MainForm
             try
             {
                 VerifyConfigurationSmokeFields(dialog, _drivers.GetFactory(target.DriverId).Descriptor, target);
-                dialog.SetFieldForSmoke("Port", "15029");
+                dialog.SetFieldForSmoke("Port", port.ToString(CultureInfo.InvariantCulture));
                 // Exercise the production Commit path and ShowDialog's OK result
                 // without leaving an unexpected validation MessageBox blocking CI.
                 dialog.CommitForSmoke();
@@ -353,7 +360,7 @@ public sealed partial class MainForm
             finally { dialog.Close(); }
         };
         timer.Start();
-        try { await DeviceRowActionAsync(((DeviceRow)row.DataBoundItem!).Id, column.Name); }
+        try { await DeviceGridActionAsync(new DataGridViewCellEventArgs(column.Index, row.Index), doubleClick); }
         finally { timer.Stop(); }
         if (failure is not null) throw new InvalidOperationException("Non-selected device configuration row action failed.", failure);
         if (!observed) throw new InvalidOperationException("Device configuration cell action did not show the expected modal dialog.");
