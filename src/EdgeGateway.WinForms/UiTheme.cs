@@ -83,6 +83,7 @@ internal static class UiTheme
             AllowUserToResizeRows = false, AutoGenerateColumns = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect, MultiSelect = false,
             RowHeadersVisible = false, EnableHeadersVisualStyles = false,
+            ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
             CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
@@ -94,6 +95,8 @@ internal static class UiTheme
         grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(250, 252, 255);
         grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(237, 243, 251);
         grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(76, 94, 119);
+        grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = grid.ColumnHeadersDefaultCellStyle.BackColor;
+        grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = grid.ColumnHeadersDefaultCellStyle.ForeColor;
         grid.DataError += (_, e) => e.ThrowException = false;
         return grid;
     }

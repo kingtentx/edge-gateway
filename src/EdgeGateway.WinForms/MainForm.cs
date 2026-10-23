@@ -107,7 +107,7 @@ public sealed partial class MainForm : DpiAwareForm
             sidebar.Controls.Add(button, 0, i + 1);
         }
         sidebar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var edition = UiTheme.Label(".NET 8 · WinForms\n本地采集 / 可靠上报", 10, Color.FromArgb(142, 162, 190));
+        var edition = UiTheme.Label("边缘数据工作台\n本地采集 / 可靠上报", 10, Color.FromArgb(142, 162, 190));
         edition.Name = "NavigationEdition"; edition.Dock = DockStyle.Fill; edition.Margin = new Padding(0, 20, 0, 0);
         sidebar.Controls.Add(edition, 0, 7);
         navigationViewport.Controls.Add(sidebar);

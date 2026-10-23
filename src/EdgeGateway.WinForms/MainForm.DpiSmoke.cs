@@ -1,4 +1,5 @@
 using EdgeGateway.Model;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
@@ -6,6 +7,8 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
+    private static readonly List<string> SmokeFocusRecoveries = [];
+
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr window);
 
@@ -220,8 +223,7 @@ public sealed partial class MainForm
             _ => form
         };
         var focusTarget = control.Enabled && control.CanSelect ? control : stableFocus;
-        if (!focusTarget.Focus() || !focusTarget.ContainsFocus)
-            throw new InvalidOperationException($"{context}: cannot focus {focusTarget.Name} before scrolling {control.Name}.");
+        FocusForSmoke(focusTarget, control, form, context);
         for (var parent = control.Parent; parent is not null && parent != form; parent = parent.Parent)
             if (parent is ScrollableControl scroll && scroll.AutoScroll) scroll.ScrollControlIntoView(control);
         PerformLayoutRecursively(form);
@@ -230,6 +232,37 @@ public sealed partial class MainForm
         foreach (var child in Descendants(control).Where(x => x.Visible && x is TextBoxBase))
             AssertVisibleBounds(child, context + " input content");
     }
+
+    private static void FocusForSmoke(Control target, Control requested, Form window, string context)
+    {
+        if (target.Focus() && target.ContainsFocus) return;
+        var initial = DescribeSmokeControl(target);
+        // A modeless owned dialog was just closed, or a whole page was shown after
+        // resizing. The CI message loop can still have window-activation/focus work
+        // queued. Complete that lifecycle before judging keyboard reachability.
+        // Never skip the focus or clipping assertions and never click a command.
+        var timer = Stopwatch.StartNew();
+        for (var attempt = 1; attempt <= 3 && timer.Elapsed < TimeSpan.FromMilliseconds(500); attempt++)
+        {
+            if (window.IsDisposed || target.IsDisposed || !window.Visible || !target.Visible || !target.Enabled) break;
+            window.Activate();
+            Application.DoEvents();
+            if (window.IsDisposed || target.IsDisposed) break;
+            PerformLayoutRecursively(window);
+            if (target.Focus() && target.ContainsFocus)
+            {
+                var recovery = $"{context}: completed focus after {attempt} activation/message-loop pass(es); target={DescribeSmokeControl(target)}; requested={DescribeSmokeControl(requested)}; initial={initial}.";
+                SmokeFocusRecoveries.Add(recovery);
+                Console.WriteLine(recovery);
+                return;
+            }
+        }
+        throw new InvalidOperationException($"{context}: cannot focus target={DescribeSmokeControl(target)} before scrolling requested={DescribeSmokeControl(requested)}; initial={initial}; "
+            + $"window={window.GetType().Name} '{window.Text}', active={ReferenceEquals(Form.ActiveForm, window)}, containsFocus={window.ContainsFocus}, activeControl={DescribeSmokeControl(window.ActiveControl)}.");
+    }
+
+    private static string DescribeSmokeControl(Control? control) => control is null ? "<none>"
+        : $"{control.GetType().Name} name='{control.Name}' text='{control.Text}' bounds={control.Bounds} visible={control.Visible} enabled={control.Enabled} handleCreated={control.IsHandleCreated} canFocus={control.CanFocus} containsFocus={control.ContainsFocus}";
 
     private static void AssertButtonContentFits(Button button, string context)
     {
@@ -291,6 +324,8 @@ public sealed partial class MainForm
             ActualMonitorWorkingArea = Screen.FromControl(this).WorkingArea,
             ExpectedCases = 20, ExecutedCases = results.Count, PassedCases = results.Count(x => x.Passed),
             CollectionRunning = _runtime.IsRunning,
+            FocusRecoveryCount = SmokeFocusRecoveries.Count,
+            FocusRecoveries = SmokeFocusRecoveries,
             Cases = results
         };
         File.WriteAllText(Path.Combine(directory, "layout-matrix.json"), JsonSerializer.Serialize(report,
