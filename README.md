@@ -6,11 +6,11 @@
 
 界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
-**2026-10-23 当前更新，待验证：** 添加设备、编辑设备、设备行“配置”和普通数据列双击统一使用同一个配置窗，移除重复的 `DeviceEditor` 类。默认“采集设置”页首行提供“启用设备”，并统一提供名称、分组、驱动选择、周期和超时；确认后完整校验并自动保存。勾选启用不会自动开始采集，任意设备运行时仍禁止修改配置。最终源码、Windows CI、实际截图与运行包结果待补充，见 [设备配置窗合并与启用状态](docs/device-configuration-unification.md) 及 [构建工作流](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml)。此前单设备启停版本的下载与验证保留在 [历史交付记录](docs/device-control-autosave.md#此前版本验证与运行包)，不作为本轮窗体合并的验证结果。
+**2026-10-23 最新交付：** [下载 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39916897490/artifacts/12485477098) · [已通过的双系统 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39916897490) · [操作说明与实际截图](docs/device-configuration-unification.md)。添加、编辑、行内“配置”和普通数据列双击统一使用 `DeviceConfigurationDialog`，重复的 `DeviceEditor` 已删除。默认第一页首行恢复“启用设备”，统一编辑名称、分组、驱动、周期、超时和协议参数。Server 2022 / 2025 各 107 项测试、四入口保存、驱动草稿与点位保护、20 个等效工作区场景首次执行通过。实际 DPI 均为 96；勾选启用不自动开始采集。
 
-![Edge Gateway 单设备启停与配置界面](docs/images/devices-independent.png)
+![统一设备配置窗与启用设备选项](docs/images/device-configuration-enabled-rtu.png)
 
-上图来自恢复配置窗“启用设备”选项及合并设备窗体之前的 Windows Server 2022 原生 WinForms 检查，使用默认配置、全部设备停止；等效工作区窗口 1536×816，实际 96 DPI。每行包含启动、停止和驱动配置；该版本完整验证见 [机器可读结果](docs/device-control-autosave-verification.json)。这不是本轮合并窗体、实际多 DPI 切换或现场设备通信的验收结果。
+上图来自源码 `6419274` 的 Windows Server 2022 原生 WinForms 检查，实际 96 DPI，显示未启用的 COM11 RTU 示例。默认“采集设置”首行可直接勾选启用；完整验证见 [机器可读结果](docs/device-configuration-unification-verification.json)。等效工作区布局检查不替代真实多 DPI 切换或现场设备通信验收。
 
 ## 当前功能
 
