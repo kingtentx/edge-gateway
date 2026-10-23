@@ -61,10 +61,49 @@
 
 所有迁移驱动的专用字段继续按元数据生成，参见 [设备行内配置](device-configuration.md)。单设备启停不改变串口独占校验：两个启用设备不能同时配置同一串口；当前未提供共享串行总线调度。
 
-## 验证范围
+## 当前版本实际截图
 
-本改动需验证两设备独立启停、停止与写入竞态、重复启动、最后设备停止时共享任务清理，以及配置保存成功、校验拒绝和真实文件写入失败时的状态一致性。Windows 界面检查使用隔离配置与本地模拟设备，覆盖被点击行定位、按钮禁用状态、平台草稿隔离和小工作区的行操作可达性；普通数据列双击与配置按钮还需核对目标设备、弹窗内容及运行时只读行为一致，操作列双击不会额外打开配置弹窗，工具栏“编辑设备”保持原功能。本地模拟采集结束后再执行布局矩阵，不连接现场设备。
+以下图片来自本次 Windows Server 2022 原生 WinForms 检查，实际 DPI 为 96，图像未修改。设备页使用默认配置、全部设备停止，窗口为 1536×816 的等效工作区；RTU 弹框展示 COM11 / 从站 1 / 9600 / 8N1 示例。
 
-构建、自动测试和 Windows 界面运行结果由本次实际执行记录补充。此前的 [行内配置验证](device-configuration-verification.json) 和 [RTU 初始交付验证](modbus-rtu-com11-verification.json) 对应各自历史提交，不用于宣称本改动已通过。运行包与最新验证入口见 [README](../README.md)。
+![每台设备独立启动、停止与配置](images/devices-independent.png)
+
+双击设备普通数据单元格或点击同一行“配置”均进入 `DeviceConfigurationDialog`，按当前驱动生成参数；下图展示该弹框的 RTU 串口页。“编辑设备”工具栏仍用于设备名称、分组、驱动及启用状态。
+
+![统一设备配置弹框的 RTU 串口页](images/device-configuration-unified-rtu.png)
+
+## 本次验证与运行包
+
+程序源码提交 [`e5f55a8`](https://github.com/kingtentx/edge-gateway/commit/e5f55a866d10f0adfc2daf48f2665a7d9d6f1dfc) 的 [Windows CI 39908629770](https://github.com/kingtentx/edge-gateway/actions/runs/39908629770) 首次执行全部通过。机器可读证据见 [本次验证记录](device-control-autosave-verification.json)。本页补录执行结果，不改变运行包的程序源码。
+
+| 检查 | Windows Server 2022 | Windows Server 2025 |
+|---|---|---|
+| 干净 Release 构建 | 通过，0 错误 | 通过，0 错误 |
+| 自动测试 | 107 / 107，0 失败、0 跳过 | 107 / 107，0 失败、0 跳过 |
+| 配置链接 / 数据行双击 | 同一弹框，按被点击行 ID 操作，自动保存通过 | 同左 |
+| 独立启停与自动保存检查 | 通过 | 通过 |
+| 驱动专用配置弹框 | 15 / 15 | 15 / 15 |
+| 等效工作区布局 | 20 / 20 | 20 / 20 |
+| 实际 DeviceDpi / 原生窗口 DPI | 96 / 96 | 96 / 96 |
+| 真实程序截图 | 97 张 | 97 张 |
+| 错误输出 / 失败截图 | 0 字节 / 0 张 | 0 字节 / 0 张 |
+
+两套干净构建各保留 419 个迁入源码警告，类别与 [驱动迁移基线记录](verification.md#保留源码的编译警告) 一致；没有为消除这些警告改动厂商 ABI 或全局屏蔽。
+
+界面检查实际打开两个入口，先选中 A、再操作 B，核对同一个专用弹框及 B 的参数保存。独立启停使用两台本地模拟设备，验证停止 B 后 A 继续采样、B 的旧值变为不确定且写入按钮禁用。自动保存检查使用真实文件排他锁制造保存失败，并核对原配置和磁盘内容不变；还覆盖校验失败、平台草稿保持和应用时不覆盖之后的设备修改。全过程不连接现场设备，模拟采集结束后执行布局矩阵。
+
+- [下载 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39908629770/artifacts/12481628960)：解出 artifact 内的 `EdgeGateway-win-x64.zip`，完整解压后运行 `EdgeGateway.WinForms.exe`。
+- [Server 2022 完整证据](https://github.com/kingtentx/edge-gateway/actions/runs/39908629770/artifacts/12482151823) · [Server 2025 完整证据](https://github.com/kingtentx/edge-gateway/actions/runs/39908629770/artifacts/12481797133)：包含 TRX、标准输出、实际截图及完整布局 JSON。
+
+运行包已核对内外层 ZIP CRC、592 个条目、23 个项目及驱动依赖程序集（含全部 12 个迁移驱动）、Windows Desktop 运行时、COM11 示例、操作说明和开发 Skill。应用 ZIP 为 78,938,628 字节，SHA-256：
+
+```text
+9141caad243859ca465aa6091f035761bb2de5347dcb1f1c0cf867a7f651a214
+```
+
+包内文档反映代码提交时的状态，最终验证结果以本页与上述 CI 为准。两套 CI 的实际屏幕均为 1024×768；矩阵按不同名义分辨率/缩放调整窗口，实际 DPI 始终为 96。真实 Windows 缩放切换、多显示器往返、用户 COM10 ↔ COM11 虚拟串口及现场设备通信仍需在对应环境验收。
+
+## 验证边界
+
+此前的 [行内配置验证](device-configuration-verification.json) 和 [RTU 初始交付验证](modbus-rtu-com11-verification.json) 对应各自历史提交；本改动以本页的新记录为准。运行包与最新验证入口见 [README](../README.md)。
 
 等效工作区布局验证与真实多 DPI、多显示器切换分别记录。自动测试和界面截图不能替代用户虚拟串口、真实 PLC 或现场 MQTT 的通信验收。

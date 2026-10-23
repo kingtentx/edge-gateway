@@ -1,0 +1,122 @@
+{
+  "verifiedOn": "2026-10-23",
+  "codeCommit": "e5f55a866d10f0adfc2daf48f2665a7d9d6f1dfc",
+  "perDeviceRuntimeCommit": "cb238becd648759cda8423be83515d99ae3f6e8e",
+  "workflowRunId": 39908629770,
+  "workflowUrl": "https://github.com/kingtentx/edge-gateway/actions/runs/39908629770",
+  "workflowAttempt": 1,
+  "conclusion": "success",
+  "windows": [
+    {
+      "runner": "windows-2022",
+      "operatingSystem": "Microsoft Windows 10.0.20348",
+      "runtime": ".NET 8.0.32",
+      "winFormsVersion": "8.0.0.0",
+      "jobId": 120266232417,
+      "artifactId": 12482151823,
+      "totalTests": 107,
+      "passedTests": 107,
+      "failedTests": 0,
+      "buildErrors": 0,
+      "upstreamBuildWarnings": 419,
+      "driverConfigurationDialogs": 15,
+      "configurationClickAndDoubleClickSameDialog": true,
+      "deviceActionsAndAutosaveSmokePassed": true,
+      "deviceImportSmokePassed": true,
+      "layoutCases": 20,
+      "layoutCasesPassed": 20,
+      "actualDeviceDpi": 96,
+      "nativeWindowDpi": 96,
+      "actualMonitorBounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 768
+      },
+      "actualMonitorWorkingArea": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 728
+      },
+      "realDpiTransitionsTested": false,
+      "simulatorCollectionTested": true,
+      "fieldDeviceCollectionTested": false,
+      "mqttEnabledDuringDeviceSmoke": false,
+      "collectionRunningAfterSmoke": false,
+      "focusRecoveryCount": 0,
+      "screenshotCount": 97,
+      "stderrEmpty": true,
+      "layoutReportSha256": "50e3bbed8bc66ae518a4ec6b1d2e8008fbe29b50c15ba456b12af537dc990965"
+    },
+    {
+      "runner": "windows-2025",
+      "operatingSystem": "Microsoft Windows 10.0.26100",
+      "runtime": ".NET 8.0.32",
+      "winFormsVersion": "8.0.0.0",
+      "jobId": 120266232648,
+      "artifactId": 12481797133,
+      "totalTests": 107,
+      "passedTests": 107,
+      "failedTests": 0,
+      "buildErrors": 0,
+      "upstreamBuildWarnings": 419,
+      "driverConfigurationDialogs": 15,
+      "configurationClickAndDoubleClickSameDialog": true,
+      "deviceActionsAndAutosaveSmokePassed": true,
+      "deviceImportSmokePassed": true,
+      "layoutCases": 20,
+      "layoutCasesPassed": 20,
+      "actualDeviceDpi": 96,
+      "nativeWindowDpi": 96,
+      "actualMonitorBounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 768
+      },
+      "actualMonitorWorkingArea": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 720
+      },
+      "realDpiTransitionsTested": false,
+      "simulatorCollectionTested": true,
+      "fieldDeviceCollectionTested": false,
+      "mqttEnabledDuringDeviceSmoke": false,
+      "collectionRunningAfterSmoke": false,
+      "focusRecoveryCount": 0,
+      "screenshotCount": 97,
+      "stderrEmpty": true,
+      "layoutReportSha256": "2fbe440d178c92fd005b630b4f054d5da3f59689b4d581fa75b0bc31fb5e46e3"
+    }
+  ],
+  "package": {
+    "codeCommit": "e5f55a866d10f0adfc2daf48f2665a7d9d6f1dfc",
+    "artifactId": 12481628960,
+    "bytes": 78938628,
+    "sha256": "9141caad243859ca465aa6091f035761bb2de5347dcb1f1c0cf867a7f651a214",
+    "entryCount": 592,
+    "requiredAssemblies": 23,
+    "migratedDriverAssemblies": 12,
+    "rtuExampleMatchesSourceIgnoringLineEndings": true,
+    "operationGuideAndSkillMatchSourceIgnoringLineEndings": true,
+    "zipCrcPassed": true
+  },
+  "physicalOrVirtualSerialSessionTested": false,
+  "screenshots": [
+    {
+      "file": "docs/images/devices-independent.png",
+      "sourceArtifactId": 12482151823,
+      "sourcePath": "ui-smoke-layout-matrix/1920x1080-125pct-devices.png",
+      "sha256": "0cacc628ecd79968db774ebe055650cad88474c0f2a75b7c38d7bddcf6897cc8"
+    },
+    {
+      "file": "docs/images/device-configuration-unified-rtu.png",
+      "sourceArtifactId": 12482151823,
+      "sourcePath": "ui-smoke-preset-configuration-modbus-rtu-com11.png",
+      "sha256": "0cd4a9f8b0632849190bf592764a17421a59d4a060176834bac274a4bc268661"
+    }
+  ]
+}

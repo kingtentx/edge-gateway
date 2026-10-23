@@ -6,11 +6,11 @@
 
 界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
-**2026-10-23 本次更新：** 顶部“启动 / 停止”已移到每台设备所在行，并移除“保存配置”；设备与点位确认后自动保存，平台输入通过页面内“应用设置”提交。操作方式见 [单设备启停与自动保存](docs/device-control-autosave.md)，本次 Windows 验证与运行包见 [构建工作流](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml)。此前 COM11 示例及导入功能保留，见 [Modbus RTU 配置](docs/modbus-rtu-com11.md)。
+**2026-10-23 最新交付：** [下载 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39908629770/artifacts/12481628960) · [已通过的双系统 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39908629770) · [操作说明与实际截图](docs/device-control-autosave.md)。启动/停止移到各设备行，顶部保存按钮移除，配置确认后自动保存；双击设备数据行与点击“配置”打开同一驱动配置弹框。Server 2022 / 2025 各 107 项测试、两种配置入口与独立启停检查、20 个等效工作区场景通过。两台构建机实际 DPI 均为 96；此前 COM11 示例与导入功能保留。
 
-![Edge Gateway 现代总览界面](docs/images/overview-modern.png)
+![Edge Gateway 单设备启停与配置界面](docs/images/devices-independent.png)
 
-上图为此前版本的实际 WinForms 总览截图，使用默认演示配置、未启动采集；窗口 1536×816，实际 96 DPI。当前版本已将启停移到设备行并移除顶部“保存配置”，使用方式见 [单设备启停与自动保存](docs/device-control-autosave.md)。
+上图来自本次 Windows Server 2022 原生 WinForms 检查，使用默认配置、全部设备停止；等效工作区窗口 1536×816，实际 96 DPI。每行包含启动、停止和驱动配置；完整验证见 [机器可读结果](docs/device-control-autosave-verification.json)。这不是实际多 DPI 切换或现场设备通信验收。
 
 ## 当前功能
 
