@@ -1,0 +1,133 @@
+{
+  "generatedAtUtc": "2026-10-23T02:38:28.827523+00:00",
+  "codeCommit": "caf169abc22e91d116212ee4513b8c5fadd95a5b",
+  "workflowRun": {
+    "id": 39889634176,
+    "url": "https://github.com/kingtentx/edge-gateway/actions/runs/39889634176",
+    "conclusion": "success",
+    "finalRunAttempt": 2
+  },
+  "driverInventory": {
+    "upstreamProjects": 12,
+    "originalParameters": 74,
+    "adapterParameterExtensions": 3,
+    "originalReadMethods": 65,
+    "upstreamSourceFiles": 176
+  },
+  "localVerification": {
+    "releaseBuildErrors": 0,
+    "releaseBuildWarnings": 419,
+    "testsPassed": 101,
+    "testsFailed": 0,
+    "finalUiBuildErrors": 0,
+    "finalUiBuildWarnings": 0,
+    "skillValidation": "passed"
+  },
+  "windows": [
+    {
+      "runner": "windows-2022",
+      "successfulJobId": 120207588379,
+      "successfulAttempt": 2,
+      "artifactId": 12473709130,
+      "testCounters": {
+        "total": 101,
+        "executed": 101,
+        "passed": 101,
+        "failed": 0,
+        "notExecuted": 0
+      },
+      "releaseBuildWarnings": 419,
+      "releaseBuildErrors": 0,
+      "actualDeviceDpi": 96,
+      "layoutCasesPassed": 20,
+      "layoutCasesExpected": 20,
+      "focusRecoveryCount": 0,
+      "pngScreenshots": 92,
+      "collectionRunning": false,
+      "deviceConfigurationSmoke": "Device configuration smoke passed: 15 dedicated driver windows with saved values/layouts, 3 representative edit/reopen flows preserving identity/tags, cancel isolation, read-only view, factory-rejected invalid station, and a non-selected-row modal apply; collection remained stopped.",
+      "minimumConfigurationCase": {
+        "name": "1366x768-200pct",
+        "workArea": {
+          "isEmpty": false,
+          "width": 683,
+          "height": 336
+        },
+        "parameterControls": 12,
+        "passed": true
+      },
+      "stderrEmpty": true
+    },
+    {
+      "runner": "windows-2025",
+      "successfulJobId": 120206028850,
+      "successfulAttempt": 1,
+      "artifactId": 12474501776,
+      "testCounters": {
+        "total": 101,
+        "executed": 101,
+        "passed": 101,
+        "failed": 0,
+        "notExecuted": 0
+      },
+      "releaseBuildWarnings": 419,
+      "releaseBuildErrors": 0,
+      "actualDeviceDpi": 96,
+      "layoutCasesPassed": 20,
+      "layoutCasesExpected": 20,
+      "focusRecoveryCount": 0,
+      "pngScreenshots": 92,
+      "collectionRunning": false,
+      "deviceConfigurationSmoke": "Device configuration smoke passed: 15 dedicated driver windows with saved values/layouts, 3 representative edit/reopen flows preserving identity/tags, cancel isolation, read-only view, factory-rejected invalid station, and a non-selected-row modal apply; collection remained stopped.",
+      "minimumConfigurationCase": {
+        "name": "1366x768-200pct",
+        "workArea": {
+          "isEmpty": false,
+          "width": 683,
+          "height": 336
+        },
+        "parameterControls": 12,
+        "passed": true
+      },
+      "stderrEmpty": true
+    }
+  ],
+  "package": {
+    "artifactId": 12474760624,
+    "url": "https://github.com/kingtentx/edge-gateway/actions/runs/39889634176/artifacts/12474760624",
+    "fileName": "EdgeGateway-win-x64.zip",
+    "bytes": 78741960,
+    "sha256": "9746612ae4bf56448f7b73d2c129268774cdffc3d7e3927f0bbea19d146100b9",
+    "zipEntries": 582,
+    "outerAndInnerCrcPassed": true,
+    "requiredFileCount": 21,
+    "allRequiredFilesPresent": true,
+    "migratedDriverAssemblies": [
+      "CNC.Fanuc.dll",
+      "CNC.Fanuc.H.dll",
+      "CNC.MTConnect.dll",
+      "Mock.TcpClient.dll",
+      "OPC.DaClient.dll",
+      "OPC.UaClient.dll",
+      "Other.Toledo.dll",
+      "PLC.AllenBradley.dll",
+      "PLC.MelsecMc.dll",
+      "PLC.ModBusMaster.dll",
+      "PLC.OmronFins.dll",
+      "PLC.SiemensS7.dll"
+    ]
+  },
+  "priorAttempt": {
+    "runner": "windows-2022",
+    "jobId": 120206029206,
+    "artifactId": 12473799228,
+    "conclusion": "failure",
+    "completedLayoutCases": 18,
+    "failedCase": "3200x2000-175pct",
+    "reason": "Native focus check could not focus the device toolbar; managed Visible and Enabled were true while CanFocus was false. Root cause was not determined.",
+    "resolution": "Reran only the failed Windows 2022 job with the same code and unchanged assertions; it passed all cases. The Windows 2025 first attempt passed."
+  },
+  "limits": [
+    "Both Windows runners used actual 96 DPI; equivalent work-area checks are not real multi-monitor DPI transitions.",
+    "No collection was started and no field equipment was connected during UI verification."
+  ]
+}

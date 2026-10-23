@@ -6,7 +6,7 @@
 
 界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
-**2026-10-23 最新交付：** [下载 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39885093582/artifacts/12472745656) · [已通过的双系统 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39885093582)。Server 2022 / 2025 各 101 项测试与 20 个等效工作区场景通过；两台构建机的实际 DPI 均为 96，真实多 DPI / 多显示器切换的现场验收范围见 [验证说明](docs/ui-dpi.md)。
+**2026-10-23 最新交付：** [下载 Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39889634176/artifacts/12474760624) · [已通过的双系统 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39889634176) · [设备行内配置与实际截图](docs/device-configuration.md)。设备表右侧增加逐行“配置”，按当前驱动展示专用参数。Server 2022 / 2025 各 101 项测试、15 种专用配置窗及 20 个等效工作区场景通过；首次 2022 焦点异常与同代码重跑结果记录在配置说明中。两台构建机的实际 DPI 均为 96，真实多 DPI / 多显示器切换的现场验收范围见 [DPI 验证说明](docs/ui-dpi.md)。
 
 ![Edge Gateway 现代总览界面](docs/images/overview-modern.png)
 
