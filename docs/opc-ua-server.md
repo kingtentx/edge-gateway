@@ -168,7 +168,7 @@ PKI 位于当前数据目录的 `opcua/pki`：`own` 存本应用证书与私钥�
 dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --filter FullyQualifiedName~OpcUaServerTests
 ```
 
-2026-10-23 本地 `.NET 8` 定向测试实际通过 11/11，0 失败、0 跳过，耗时 54 秒。首轮发现官方客户端回环名称校验与默认证书生成不对称的问题后，已补齐 SAN 并保持 `checkDomain=true` 重测通过。全套测试、Windows 启动/布局结果与发布包信息以本次提交的 CI 和验收记录为准；本说明不把未执行的现场客户端测试写成已通过。
+2026-10-23 本地 `.NET 8` 定向测试实际通过 11/11，0 失败、0 跳过，耗时 54 秒。首轮发现官方客户端回环名称校验与默认证书生成不对称的问题后，已补齐 SAN 并保持 `checkDomain=true` 重测通过。后续 [CI 39972261116](https://github.com/kingtentx/edge-gateway/actions/runs/39972261116) 在 Windows Server 2022 / 2025 各通过全套 330 项测试（包含全部 11 项 UA TCP 测试）、UA 服务/证书实际操作和 20 个等效工作区；发布包已下载核对，详见 [本轮验收记录](kepware-opcua-verification.md)。这些结果不代表未执行的现场客户端验收已经通过。
 
 ## 官方实现依据
 

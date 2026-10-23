@@ -1,6 +1,6 @@
 # 采集网关能力对照与本轮改进范围
 
-更新日期：2026-10-23。上游固定为 [iioter/iotgateway `8de442a7dec52d2993d1e9667d799846936d681b`](https://github.com/iioter/iotgateway/tree/8de442a7dec52d2993d1e9667d799846936d681b)。本页最初相对 `83743cf0870649d9bbf7bd147df17dfb1fbcc158` 审查运行中配置，历史发布证据对应 `f1d398b`；现已按当前源码同步六项差距、Kepware 核心能力和 OPC UA 服务集成范围。新增功能的完整测试、Windows 布局矩阵和运行包待统一 CI，旧数量不作为新功能验收依据。
+更新日期：2026-10-23。上游固定为 [iioter/iotgateway `8de442a7dec52d2993d1e9667d799846936d681b`](https://github.com/iioter/iotgateway/tree/8de442a7dec52d2993d1e9667d799846936d681b)。本页最初相对 `83743cf0870649d9bbf7bd147df17dfb1fbcc158` 审查运行中配置，历史发布证据对应 `f1d398b`；现已按当前源码同步六项差距、Kepware 核心能力和 OPC UA 服务集成范围。新增功能已由 [CI 39972261116](https://github.com/kingtentx/edge-gateway/actions/runs/39972261116) 完成统一验证，源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。完整证据见 [本轮验收记录](kepware-opcua-verification.md)，旧数量仍只对应其历史提交。
 
 运行中局部配置、点表批量提交与点位上传开关继续保留。此前列出的停止设备诊断、筛选复制、写后读回、单点表达式、变化/心跳上报、平台适配/RPC 六项差距均已补充代码；本轮同时加入通道调度、点位周期、故障降速和北向 OPC UA 服务。具体操作与边界见 [Kepware 核心能力实现](kepware-core-capabilities.md)、[平台协议](platform-protocols.md) 和 [OPC UA 服务](opc-ua-server.md)，不声明完整复刻 Kepware。
 
@@ -49,7 +49,7 @@
 | P1 | 写入提交与现场值核对混在一起 | 写入只下发一次，按命令 ID 主动读回并比较，返回状态、原值、工程值、次数和耗时 | 超时或取消不能证明现场未执行，核对失败不自动重写 |
 | P1 | 线性换算与周期全量不能覆盖常用数据处理 | 受限单点表达式和预览；变化死区、质量变化、周期心跳；成功持久化后推进基线 | 表达式只读；不保存检查周期内每一次短暂变化 |
 | P1 | 专用平台协议与远程操作缺少闭环 | 五平台主题/载荷、实际订阅、请求响应、权限校验、持久写命令去重与结果 | 远程写默认关闭，租户物模型和现场设备需要部署验收 |
-| P1 | 只有南向 UA Client，缺少标准北向访问 | 新增独立 OPC UA Server 工程与第八页入口，浏览/读/订阅及授权读回写入 | 服务、证书与认证单独配置；标准客户端与 Windows 验收待统一 CI |
+| P1 | 只有南向 UA Client，缺少标准北向访问 | 新增独立 OPC UA Server 工程与服务页面入口，浏览/读/订阅及授权读回写入 | 服务、证书与认证单独配置；两套 Windows 的 11 项安全 UA TCP 测试和服务/证书界面操作通过，现场客户端另验 |
 
 相关实现入口：
 
@@ -122,7 +122,7 @@
 
 ## 7. 本轮验证范围与历史证据
 
-当前六项能力和 UA 集成的新提交、全部测试数量、八页界面及布局截图数量待统一 CI，汇总入口为 [验证记录](verification.md)。以下已执行数据属于**历史基线**：源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8) 在 Windows Server 2022 / 2025 完成核心测试、原生窗体烟测与布局矩阵，[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 最终 attempt 2 成功。当时两系统各通过 **163 / 163 项测试、20 / 20 个等效工作区场景**，覆盖七个主页面和四类编辑器，各保存 102 张 PNG；成功作业 stderr 为空，失败截图为 0，`focusRecoveryCount=0`，矩阵期间采集已停止。
+当前六项能力和 UA 集成已完成统一验证：源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。源码、作业、产物与修复过程见 [本轮验收记录](kepware-opcua-verification.md)。以下已执行数据属于**历史基线**：源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8) 在 Windows Server 2022 / 2025 完成核心测试、原生窗体烟测与布局矩阵，[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 最终 attempt 2 成功。当时两系统各通过 **163 / 163 项测试、20 / 20 个等效工作区场景**，覆盖七个主页面和四类编辑器，各保存 102 张 PNG；成功作业 stderr 为空，失败截图为 0，`focusRecoveryCount=0`，矩阵期间采集已停止。
 
 历史作业中 Server 2025 在 attempt 1 首次通过；Server 2022 首次焦点异常，只重跑失败作业后在 attempt 2 通过，同一提交源码和断言未更改。最终成功不代表首次全部通过或异常根因已解决。原始详情见 [历史验证说明](live-configuration-verification.md) 和 [机器可读证据](live-configuration-verification.json)。
 

@@ -32,7 +32,7 @@
 
 专用平台由 [PlatformMqttAdapter](../src/EdgeGateway.Service/PlatformMqttAdapter.cs) 生成对应主题和 JSON：ThingsBoard 使用 `v1/gateway/telemetry`，ThingsCloud 使用 `gateway/attributes`，ThingsPanel 使用 `gateway/telemetry`，IoTSharp 使用 `devices/{设备名称}/telemetry`。普通值字段只包含 Good 且非 null 的点位；`_edge` 元数据携带消息 ID、网关标识、生成时间、每点质量、原采样时间和错误。平台物模型须接纳该元数据，不可只读此前留下的普通值来判断当前质量。详细协议、认证与样例见 [平台接入与 RPC](platform-protocols.md)。
 
-ThingsCloud 和 IoTSharp 将快照拆成每设备一条消息，同一快照共享消息 ID，接收端按设备标识与消息 ID 联合去重。Generic 消息仍为 `schemaVersion: 1`，本地 JSON 配置为 schema 2，SQLite 数据库亦独立维护自己的版本；三者不是同一个 schema。新功能的完整验证结果待本轮统一 CI，不沿用旧发布数量。
+ThingsCloud 和 IoTSharp 将快照拆成每设备一条消息，同一快照共享消息 ID，接收端按设备标识与消息 ID 联合去重。Generic 消息仍为 `schemaVersion: 1`，本地 JSON 配置为 schema 2，SQLite 数据库亦独立维护自己的版本；三者不是同一个 schema。新功能的统一执行结果见 [本轮验收记录](kepware-opcua-verification.md)：两套 Windows 各通过 330 项测试及完整能力/UA 界面检查，不沿用旧发布数量。
 
 ## 质量
 

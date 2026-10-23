@@ -99,4 +99,4 @@ JSON 配置仍为 schema 2：通道列表默认空、设备默认独立通信与
 
 核心回归入口：`AcquisitionPoliciesTests`、`ExpressionTests`、`DeviceOperationTests`、`PlatformAdapterTests`、`RpcRuntimeTests`、`MqttRpcTransportTests`、`TagCsvExchangeTests`，另有真实 UA TCP 客户端集成测试。Windows 检查增加完整功能操作烟测、通道弹窗、OPC UA 页面与证书管理、读回核对输入的可见性/焦点覆盖；执行八页面、五档缩放对应的 20 个等效工作区组合。
 
-执行记录见 [验证记录](verification.md)。真实 PLC/CNC/串口、用户 OPC UA 客户端与平台租户、24–72 小时长稳仍需要对应环境验收。Windows Service、跨点位计算、共享串口多从站、全部驱动逐帧抓包及 Kepware 全部商业插件不属于本轮完成声明。
+本轮执行结果见 [Kepware 核心能力与 OPC UA 验证](kepware-opcua-verification.md)，旧基线保留在 [历史验证记录](verification.md)。真实 PLC/CNC/串口、用户 OPC UA 客户端与平台租户、24–72 小时长稳仍需要对应环境验收。Windows Service、跨点位计算、共享串口多从站、全部驱动逐帧抓包及 Kepware 全部商业插件不属于本轮完成声明。

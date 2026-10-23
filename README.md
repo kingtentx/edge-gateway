@@ -8,19 +8,19 @@
 
 界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
-**2026-10-23 当前状态：本轮功能集成中，新的源码提交、运行包和完整验证结果待统一 CI 确认。** 下方功能说明对应当前开发源码；此前列出的六项差距已补充代码，OPC UA 对外服务正在同轮集成。不能用旧版本的测试数、页面数或截图数证明新增功能已经验收。
+**2026-10-23 最新交付：六项差距、Kepware 核心采集能力及 OPC UA 对外服务已实现并通过本轮 Windows 验证。** 源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。下载 [Windows x64 自包含运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39972261116/artifacts/12509917670)，完整结果见 [CI 39972261116](https://github.com/kingtentx/edge-gateway/actions/runs/39972261116)、[本轮验收记录](docs/kepware-opcua-verification.md) 和 [机器可读证据](docs/kepware-opcua-verification.json)。包内 `build-info.json` 绑定实际程序提交；本仓库后补的验收文档不改变该二进制来源。
 
 **历史发布基线：** 程序源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8)、[Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487349660)、[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 对应上一轮运行中配置功能。Windows Server 2022 / 2025 当时各通过 **163 / 163 项测试、20 / 20 个等效工作区布局**，覆盖七个主页面及四类矩阵编辑器，各保存 102 张实际 PNG。Server 2025 在 attempt 1 通过；Server 2022 首次焦点异常后，在同一提交、未改代码或断言的情况下仅重跑失败作业，于 attempt 2 通过。详情保留在 [历史验证记录](docs/live-configuration-verification.md) 和 [机器可读证据](docs/live-configuration-verification.json)。
 
-![运行设备配置提交失败后保留输入](docs/images/live-configuration-device.png)
+![OPC UA 服务设置与状态](docs/images/opcua-service.png)
 
-上图来自历史基线 `f1d398b` 的实际 WinForms 检查，展示运行设备编辑失败后保留草稿。两套成功环境均为 .NET 8.0.32、实际/原生窗口 DPI 96、屏幕 1024×768；20 种矩阵为等效工作区模拟，不替代真实多 DPI 切换、跨显示器或现场设备通信验收。
+上图取自本轮 `b5ac830` 的真实 WinForms 产物，展示 OPC UA 服务页的初始未启用状态。两套成功运行器的实际窗口及原生 DPI 均为 96；20 种矩阵为等效工作区模拟，不替代真实 125%–200% 系统缩放、跨显示器或现场设备/客户端验收。前三轮对话框回读、导航截断及字段滚动问题的修复、第四轮 2022 两次焦点失败和后续原生窗口诊断均保留在本轮记录中；焦点异常根因尚未确认。
 
 ## 当前功能
 
 | 模块 | 已实现内容 |
 |---|---|
-| 桌面管理 | 深色导航、FontAwesome 图标、圆角按钮与卡片、统一表格；运行总览、设备与点位、实时监控、历史与趋势、平台与系统、运行日志、通信诊断、OPC UA 服务八个页面；本轮布局矩阵结果待 CI |
+| 桌面管理 | 深色导航、FontAwesome 图标、圆角按钮与卡片、统一表格；运行总览、设备与点位、实时监控、历史与趋势、平台与系统、运行日志、通信诊断、OPC UA 服务八个页面；本轮两套 Windows 均通过 20 个等效工作区布局检查 |
 | DPI 与分辨率 | PerMonitorV2、统一 96 DPI 基准、当前屏幕工作区约束、跨 DPI 后重排；小屏卡片换列、滚动表单与固定操作栏 |
 | 设备配置 | 添加、编辑、行内配置及双击共用一个窗体；运行中可维护设备与点位，保存后仅重启发生变更的运行设备，其他会话保持；失败保留配置及弹窗输入 |
 | 设备维护 | 通道/分组筛选与关键字查找；复制设备生成新的设备、点位 ID，副本默认停用；通道调度、设备连接与点表分别配置 |
@@ -157,7 +157,7 @@ RPC 与“允许远程写入”分别默认关闭。启用后真实订阅对应�
 
 新增“OPC UA 服务”页提供北向服务的配置、独立启停和证书/认证入口。默认端点为 `opc.tcp://localhost:4840/EdgeGateway`，服务默认关闭；标准客户端可浏览设备/点位、读取和订阅。仅启用 `Basic256Sha256` 的 `SignAndEncrypt`，需要双方证书信任。匿名访问默认只读；用户认证和远程写分别配置，密码仅从环境变量读取。授权写入复用设备写入与读回核对，只有匹配成功返回 Good。
 
-UA 服务独立于采集会话：停止最后一台设备后端点仍可在线，但相应值的质量不能冒充新成功采样；普通设备配置更新不会重新启动手动停止的 UA 服务。它与南向 `OPC.UaClient` 驱动各自承担不同方向的连接。部署和客户端操作见 [OPC UA 服务说明](docs/opc-ua-server.md)；本轮标准客户端回环与 Windows 页面验收结果待统一记录。
+UA 服务独立于采集会话：停止最后一台设备后端点仍可在线，但相应值的质量不能冒充新成功采样；普通设备配置更新不会重新启动手动停止的 UA 服务。它与南向 `OPC.UaClient` 驱动各自承担不同方向的连接。部署和客户端操作见 [OPC UA 服务说明](docs/opc-ua-server.md)；本轮两套 Windows 均已通过 11 项真实安全客户端回环及服务/证书界面操作，见 [本轮验收记录](docs/kepware-opcua-verification.md)。
 
 ## 本地数据与恢复
 
@@ -203,10 +203,10 @@ JSON 配置仍为 schema 2；旧版本 1 在加载时内存迁移，保存前不
 ```powershell
 dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release
 # Windows 上执行；检查界面与隔离配置中的本地模拟采集，不连接现场设备
-dotnet run --project src/EdgeGateway.WinForms -c Release -- --smoke-test --screenshot artifacts/ui-smoke.png
+./scripts/smoke-test-winforms.ps1
 ```
 
-核心自动测试包含实际 TCP 回环与 TLS 握手；本轮新增采集策略、表达式、读写核对、五平台 JSON、MQTT 订阅/回复、ThingsCloud 应用响应和持久请求去重用例，UA 服务另补标准客户端回环。新的完整通过数量、八页布局矩阵和截图数量待统一 CI，见 [验证记录](docs/verification.md)。历史 `f1d398b` 的 163 项结果只见证其原有功能，保留在 [历史验证](docs/live-configuration-verification.md)。**尚未连接真实 PLC、串口设备或用户现场平台租户，自动测试不等于现场验收。** 现场仍需核对点表、字节序、串口硬件、证书与 24–72 小时长稳运行。
+核心自动测试包含实际 TCP 回环与 TLS 握手；本轮覆盖采集策略、表达式、读写核对、五平台 JSON、MQTT 订阅/回复、ThingsCloud 应用响应、持久请求去重和安全 UA TCP 标准客户端。源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。详情见 [本轮验收记录](docs/kepware-opcua-verification.md)，历史结果仍单独保留。**尚未连接真实 PLC、串口设备、用户现场平台租户或商业 UA 客户端，自动测试不等于现场验收。** 现场仍需核对点表、字节序、串口硬件、双向证书信任与 24–72 小时长稳运行。
 
 历史交付另行保留：[驱动迁移基线](docs/verification.md)、[单设备启停](docs/device-control-autosave.md#此前版本验证与运行包)、[配置窗合并版本](docs/device-configuration-unification.md#实际执行结果)。这些文档中的运行包、截图和通过数量对应各自源码提交。
 

@@ -6,45 +6,81 @@
 
 | 上游结构 | 本项目对应 | 适配决策 |
 |---|---|---|
-| IoTGateway.Model | src/EdgeGateway.Model | 设备、点位配置与运行时样本分开 |
+| IoTGateway.Model | src/EdgeGateway.Model | 通道、设备、点位、上报与 UA 配置和运行时样本分开 |
 | IoTGateway.DataAccess | src/EdgeGateway.DataAccess | 本地 JSON 配置；SQLite 历史与 outbox |
 | Plugins/PluginInterface | Plugins/PluginInterface + src/EdgeGateway.IotGateway | 保留源契约；适配至 Abstractions 异步工厂接口 |
 | Plugins/Drivers | Plugins/Drivers 下相同的 12 个原目录 | 保留方法与参数，逐工程迁移 .NET 8，每设备独立实例 |
 | DriverService | Service/DriverRegistry | 工厂注册、插件依赖解析与契约共享 |
-| DeviceService / DeviceThread | Service/GatewayRuntime | 设备会话与配置应用共用生命周期锁；目标局部重启、互斥、质量、退避与独立发布 |
-| MessageService / PlatformHandler | Service/MqttTelemetryPublisher | 通用 JSON 遥测；厂商格式另行适配 |
-| IoTGateway / ViewModel / WalkingTec.Mvvm | EdgeGateway.WinForms | 替换控制器、Web 视图和 WTM 依赖 |
+| DeviceService / DeviceThread | Service/GatewayRuntime、DeviceScanPlanner | 生命周期锁内局部重启；设备/通道互斥、点位扫描、降速、质量、真实诊断与写后读回 |
+| MessageService / PlatformHandler | Service/PlatformMqttAdapter、MqttTelemetryPublisher、GatewayRuntime.Rpc | Generic、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp 的主题/载荷/响应；持久补传与受控读写 RPC |
+| 本项目新增北向数据服务 | src/EdgeGateway.OpcUa | 独立安全 UA TCP 端点，读取共享采样，订阅与受控写入；与南向 OPC.UaClient 分开 |
+| IoTGateway / ViewModel / WalkingTec.Mvvm | EdgeGateway.WinForms | 替换控制器、Web 视图和 WTM 依赖；八页及独立平台/UA 草稿 |
 
 ## 运行流程
 
 ```mermaid
 flowchart TD
-    UI[WinForms 配置与监控] --> Config[生命周期锁内完整校验与原子保存]
-    Config --> Runtime[采集运行时]
-    Runtime --> Drivers[每设备驱动实例]
-    Drivers --> Samples[原始值 工程值 质量 时间戳]
+    UI["WinForms 配置与监控"] --> Config["生命周期锁内校验与原子保存"]
+    Config --> Runtime["采集与设备操作运行时"]
+    Runtime --> Drivers["设备锁、通道租约与驱动实例"]
+    Drivers --> Samples["原始值、工程值、质量与源时间戳"]
     Samples --> UI
-    Samples --> History[SQLite 历史]
-    Samples --> Snapshot[按启用和上传配置生成快照]
-    Snapshot --> Outbox[SQLite 待发送队列]
-    Outbox --> MQTT[MQTT QoS 1]
-    MQTT --> Ack[收到 Broker PUBACK 后删除]
-    Ack --> Outbox
+    Samples -->|"仅采集样本"| History["SQLite 采集历史"]
+    Samples --> Report["周期、变化或心跳选择"]
+    Samples --> UA["独立安全 OPC UA 端点"]
+    Report --> Adapter["五平台主题与载荷"]
+    Adapter --> Outbox["SQLite 待发送队列"]
+    Outbox --> MQTT["MQTT QoS 1"]
+    MQTT --> Ack["PUBACK；ThingsCloud 另需属性成功"]
+    Ack -->|"按确认 ID 删除"| Outbox
+    MQTT --> RPC["有界 RPC 与持久写占位"]
+    RPC -->|"真实读写"| Runtime
+    UA -->|"授权写入与读回"| Runtime
 ```
 
-配置编辑对象不得直接交给运行中的采集任务。驱动实例由运行时持有；存储与发布器由程序组合根持有和释放。原生 UI 限 Windows；OPC DA 和 FOCAS 的实际调用还有 Windows、COM 或厂商原生库要求，不能将核心跨平台编译能力等同于这些驱动可在任意系统运行。
+配置编辑对象不得直接交给运行中的采集任务。驱动实例由运行时持有；存储、发布器和独立 UA 服务由程序组合根持有和释放。普通采集与真实写入读回发布共享最新样本，UA 不另建南向轮询连接或写入成功缓存；历史仍由采集扫描链路保存。原生 UI 限 Windows；OPC DA 和 FOCAS 的实际调用还有 Windows、COM 或厂商原生库要求，不能将核心跨平台编译能力等同于这些驱动可在任意系统运行。
 
 ## 配置事务与会话边界
 
 `GatewayRuntime.ApplyConfigurationAsync` 接收完整候选及 `IConfigurationStore`，与设备启停共用生命周期锁。先深拷贝并校验所有设备和点位，再原子保存；提交前失败或取消不动现有会话。保存提交后完成同步，不再因调用方取消留下磁盘和运行时不同步的状态。
 
-按稳定 ID 计算新增、变更和删除：新建与原本停止的设备保持停止；配置发生实质变化且原本运行的设备取消并等待旧会话与写入，再用新配置建立会话；禁用或删除只停止对应目标。其他设备的连接、状态、最新样本和共享历史/MQTT 工作任务保持不变。仅重启唯一运行设备时仍复用共享任务；禁用或删除最后一个运行目标时才排空历史并关闭共享任务。旧 `Configure` 保留给全停初始化，不用于 UI 先保存后配置的流程。
+按稳定 ID 计算新增、变更和删除：新建与原本停止的设备保持停止；配置发生实质变化且原本运行的设备取消并等待旧会话与写入，再用新配置建立会话；禁用或删除只停止对应目标。其他设备的连接、状态、最新样本和共享历史/MQTT 工作任务保持不变。仅重启唯一运行设备时仍复用共享任务；禁用或删除最后一个运行目标时才排空历史并关闭共享 MQTT/RPC，独立 UA 端点不随之停止。旧 `Configure` 保留给全停初始化，不用于 UI 先保存后配置的流程。
 
 每设备变更包含其点位集合，因此运行设备增删点位、切换上传或换算参数会重启该设备；旧显示样本被清除，等待新会话产生新数据，历史数据库不因编辑或删除被清空。字典键顺序不触发无意义的重启，点位数组顺序继续有意义。配置应用完成表示新会话已调度，实际连接结果通过设备状态、错误与重连机制报告。
 
-平台草稿独立于已应用配置，未应用时按已有设置启动。修改网关、历史、MQTT 全局字段及整份配置替换仍要求全停。设备与点位弹窗通过可等待回调，校验、保存及运行时应用全部成功才关闭；失败保留输入。流程、结果集合和验收用例见 [运行中配置与数据闭环](../../../../docs/live-configuration.md)。
+平台与 UA 各有独立草稿，未应用时设备及 UA 启动使用各自已保存设置，普通设备提交保留两套草稿。修改通道定义、网关/历史/上报、MQTT 或 UA 全局设置，以及整份配置替换，均要求全部设备停止；这不要求原本运行的 UA 端点预先停机。应用页面设置时从最新配置克隆，只覆盖该页面负责字段，保留后来设备变更与另一页草稿；完整导入经确认后替换两套草稿。
 
-遥测筛选当前配置中的启用设备、启用点位及 `UploadEnabled`。上传关闭不改变采集和历史，已经持久化的 outbox 保留原主题、原消息 ID 与原载荷；Broker 确认不等于平台业务入库。诊断使用不可变快照供 UI 读取，后台不直接访问控件。
+设备、点位及 CSV 弹窗通过可等待回调，校验、保存及运行时应用全部成功才关闭，失败保留输入。UA 配置保存与端点启动分别报告，端口、证书或密码错误不回滚已经保存的候选，也不伪报服务运行。流程和结果集合见 [运行中配置与数据闭环](../../../../docs/live-configuration.md)。
+
+设备复制保留完整点表与参数，重新生成设备和所有点位 Guid，默认禁用且不启动。点位 CSV 当前导出 20 列，保留原 17 个必需表头并兼容旧文件；`Expression`、`ScanIntervalMs`、`Deadband` 是可选扩展，按名称更新时缺列保留，显式空表达式清除，数值扩展不可留空。CSV 不接受 Id，整批经同一配置事务保存。
+
+## 采集、诊断与写入
+
+通道是通信调度域，每设备仍持有独立驱动连接。采集、诊断和写入按设备锁再通道租约串行进入，同通道互斥、跨通道并行；请求间隔从上批完成起计算。通道不是共享串口实现，同一物理串口仍只允许一个启用设备。`DeviceScanPlanner` 按单调时间选择到期点，周期 0 继承设备，不追赶慢通信期间积压的轮次。故障降速等待释放通道，真实读取恢复后回到正常周期，状态与批次统计供界面诊断。
+
+`ProbeDeviceAsync` 对停止设备建立短生命周期真实驱动，连接/读取后释放；对运行设备复用当前会话及相同锁。仅连接成功而没有可读点位时返回 Uncertain，普通诊断不写最新值或历史。`WriteVerifiedAsync` 取得锁后再次核对会话与权限，只下发一次写入，随后在同一设备/通道租约内有界主动读回；保留实际尝试、提交状态和 Submitted/Matched/Mismatched/TimedOut/Failed/Cancelled，不能把取消或超时解释为设备未执行。
+
+正常实际读回在设备锁内更新共享最新值，匹配和不匹配均按真实值、质量与时间发布；取消或过期后的迟到结果不得变成 Good。未核对提交先将旧值标为 Uncertain，后续真实采样恢复质量。倍率/偏移后可执行 `NumericExpression` 受限单点数值表达式，预览和运行使用同一解析器，限制语法、长度、深度与计算范围；计算失败标 Bad，表达式点只读，不执行任意脚本、跨点依赖或自动反解。实现边界见 [核心采集能力](../../../../docs/kepware-core-capabilities.md)。
+
+## 上报与平台 RPC
+
+`TelemetryReportPlanner` 对启用设备、启用点位与 `UploadEnabled` 合格的最新样本执行周期全量、仅变化或变化加心跳选择。死区相对最后成功入队值累计，质量/错误变化独立触发，心跳保留原采样时间；只有完整快照的全部平台消息落盘后才推进基线。进程、配置或设备会话重启重新发初值。上传关闭不改变本地采集和历史，已经持久化的 outbox 保留原主题、原消息 ID 与原载荷；队列回压和检查间隔内未生成的中间变化不会逐条还原。
+
+`PlatformMqttAdapter` 生成 Generic、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp 的真实主题与 JSON，`MqttTelemetryPublisher` 负责 QoS 1、订阅确认、子设备通知与相应平台响应。四种非 ThingsCloud 模式收到 PUBACK 后才能删除 outbox；ThingsCloud 当前运行目标还须先完成匹配地址的注册应用确认，属性发送须同时取得 PUBACK 和 `gateway/attributes/response result=1`。拒绝、超时或响应丢失保留消息。停止或已删除目标的旧载荷仍补传，必要的临时历史路由不改变本地运行状态、质量或时间。上述确认不证明所有下游规则或业务入库，传输仍为至少一次；分设备消息按设备标识与消息 ID 联合去重。
+
+平台类型改变时，outbox 非空则在保存前拒绝；同平台连接目标变化也不会改写积压主题或载荷，应按界面确认和部署流程处理。平台详细字段、主题、应用响应及历史投递边界统一见 [平台接入与 RPC](../../../../docs/platform-protocols.md) 和 [遥测语义](../../../../docs/telemetry.md)。
+
+RPC 默认关闭，远程写许可另行关闭；仅开放 `read`/`write`，不暴露任意驱动方法、脚本、配置或启停命令。MQTT 回调进入有界队列，独立任务执行真实单点读取或统一写后读回，拒绝 retained、超限与过期请求，写入在设备锁内再核权限。SQLite `rpc_commands` 在写前持久占位、完成后保存回复；相同去重域内重复同 ID 重放，内容或方法冲突拒绝，未完成占位返回 Indeterminate 而不重写。去重域含平台/连接/网关/配置账号身份及设备，令牌使用环境变量名称而非可轮换内容；读响应只用有界进程缓存。写审计满时保留证据并拒绝新远程写，不宣称端到端恰好一次或无限期无容量限制。
+
+## 独立 OPC UA 数据服务
+
+`GatewayOpcUaServer` 管理北向端点与证书，`GatewayNodeManager` 按运行时配置版本刷新设备、点位和元数据，使用固定 namespace URI 与设备/点位 Guid NodeId。读取与订阅使用共享真实样本、源时间和质量；无变换 Int64/UInt64 不经过 Double，变换数值及结构值的映射限制见 [OPC UA 服务](../../../../docs/opc-ua-server.md)。热删通知原监控 BadNodeIdUnknown，恢复相同 Guid 时重绑现有监控；停机、故障及重启等待首次数据不能返回旧 Good。
+
+默认不开启端点，仅提供 Basic256Sha256 / SignAndEncrypt 数据会话，没有 None 或自动信任回退。客户端应用证书须明确受信任；匿名始终只读，用户名来自已应用配置，密码只从环境变量读取。写入还需全局许可、点位可写和运行会话，在统一设备锁内复核并主动读回，只有实际 Matched/Good 才返回写成功；协议 Cancel 关联请求取消，已经提交的动作不能宣称撤销。UA 写入不继承 MQTT RPC 的跨会话持久命令去重。
+
+证书管理只导入/导出单张公共证书，信任、撤销和服务端证书重建须明确确认，不导入私钥或 CA 扩大信任。移除信任关闭已有通道；显式重建只替换 own 证书/私钥，保留 trusted/rejected 并准确报告失败状态。默认 localhost URL 不等于仅绑定回环接口，监听地址和 SAN 按实际部署配置，不跳过域名检查。
+
+UA 启停独立于设备采集；普通设备编辑不重新启动手动停止的 UA 服务。设置变化可重建端点，启动错误可见且不停止设备采集；退出先停止 UA 连接/订阅和后台任务，再关闭采集与存储。状态以线程安全快照交给八页 WinForms，后台不直接操作控件；六类弹窗的布局矩阵与真实 DPI 边界见 [验收规范](acceptance.md)。
 
 ## 源码定位
 
@@ -58,3 +94,5 @@ flowchart TD
 ## 迁移边界
 
 全部 12 个驱动的目录、文件、原方法和参数有显式迁移清单与自动检查。完整信息见 [驱动迁移说明](../../../../docs/driver-migration.md)。保留 3 个本项目原生驱动入口，共 15 个工厂。驱动迁入和程序集加载不等于每个型号都经过现场验证；新增依赖核对许可证、目标框架和包版本，不直接复制上游 .NET 10 的包清单。
+
+上述结构只说明本项目已实现的核心采集、平台与 UA 路径，不扩大为 Kepware 全部功能对等声明。Windows Service、共享串口多从站、跨点计算、多用户 RBAC、UA 历史访问/报警条件/冗余及现场逐型号认证不在本轮完成范围。本轮执行结果统一记录在 [Kepware 核心能力与 OPC UA 验证记录](../../../../docs/kepware-opcua-verification.md)，保留旧版本证据；构建、协议回环、Windows 等效工作区、真实系统 DPI/跨屏和现场联调分别记录，不将未通过或未执行的 CI 写成已完成。

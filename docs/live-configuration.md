@@ -2,7 +2,7 @@
 
 本页说明当前源码的配置维护流程。设备 A 正在采集时，可以维护设备 B 及其点位；修改运行 B 后只重新连接 B。新增设备保持停止，禁用或删除只停止目标。设备、点位及导入弹窗等待完整校验、原子保存和运行时应用成功后才关闭，失败保留输入。本轮还补充通道/筛选/复制、真实诊断、读回核对、表达式、20 列 CSV、变化上报与平台 RPC；OPC UA 使用独立服务入口。
 
-**当前验证状态：新增功能集成中，本轮完整通过数量、八页界面与布局矩阵结果待统一 CI。** 本页后半部分保留的源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8)、[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 和 163 项测试属于历史基线，不覆盖新功能。其运行包、首次失败及重跑证据保留在 [历史验证说明](live-configuration-verification.md) 和 [机器可读证据](live-configuration-verification.json)，新的统一结果以 [验证记录](verification.md) 为准。
+**当前验证状态：本轮统一 Windows 验证及发布包核验通过。** 源码 [`b5ac830`](https://github.com/kingtentx/edge-gateway/commit/b5ac830cf55483f6b28f65918403b235799772b4) 在 Windows Server 2022 / 2025 各通过 **330/330 项测试（含 11 项真实安全 OPC UA TCP 测试）、20/20 个等效工作区场景**，八个主页面、六类矩阵弹窗及每套环境 143 张实际 PNG 均已核验。见 [CI 39972261116](https://github.com/kingtentx/edge-gateway/actions/runs/39972261116)、[本轮完整记录](kepware-opcua-verification.md) 和 [机器可读证据](kepware-opcua-verification.json)。本页后半部分的 `f1d398b`、工作流 39923092261 和 163 项测试仍属于历史基线；旧运行包与首次失败/重跑证据保留在 [历史验证说明](live-configuration-verification.md)。
 
 ## 操作范围
 
@@ -177,7 +177,7 @@ Task<ConfigurationApplyResult> ApplyConfigurationAsync(
 
 ### 如何定位链路问题
 
-设备表的“最近成功采集”“连续失败”和“采集诊断”用于区分尚未采样、正常、重连与失败。“通信诊断”从运行时和存储读取快照，增加读写/失败批次、最近耗时、降速及 RPC 状态，可导出 JSON。批次计数不代表底层物理帧数。主界面本轮增加第八页“OPC UA 服务”，具体页面与布局验收待 CI。
+设备表的“最近成功采集”“连续失败”和“采集诊断”用于区分尚未采样、正常、重连与失败。“通信诊断”从运行时和存储读取快照，增加读写/失败批次、最近耗时、降速及 RPC 状态，可导出 JSON。批次计数不代表底层物理帧数。主界面增加“OPC UA 服务”页，共八个主页面。两套 Windows 的页面操作及 20 个等效工作区均已核验，见 [本轮记录](kepware-opcua-verification.md)。
 
 | 信息 | 能证明什么 | 不能据此推断什么 |
 |---|---|---|
@@ -200,7 +200,7 @@ JSON 配置版本继续为 **schema 2**。新增字段提供兼容缺省：上�
 
 ## 验收用例与证据
 
-以下为当前功能验收范围；本轮新增能力的执行结果待统一记录在 [验证记录](verification.md)。后面的旧结果表只描述 `f1d398b` 历史基线。自动化使用隔离目录、本地模拟设备及通信回环，未连接用户 COM10/COM11、PLC 或现场平台租户时不能写成现场验收。
+以下为当前功能验收范围；本轮新增能力已执行的统一结果见 [Kepware 核心能力与 OPC UA 验证](kepware-opcua-verification.md)。后面的旧结果表只描述 `f1d398b` 历史基线。自动化使用隔离目录、本地模拟设备及通信回环，未连接用户 COM10/COM11、PLC 或现场平台租户时不能写成现场验收。
 
 | 验收场景 | 需要观察的结果 |
 |---|---|
