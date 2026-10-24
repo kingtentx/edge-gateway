@@ -73,7 +73,7 @@ public sealed class GatewayHost : IAsyncDisposable
             log.ApplyConfiguration(configuration.Logging);
             IDriverFactory[] builtInDrivers = [new SimulatorDriverFactory(), new ModbusTcpDriverFactory(), new ModbusRtuDriverFactory()];
             var drivers = new DriverRegistry(builtInDrivers.Concat(IotGatewayDriverCatalog.CreateFactories(log)), log);
-            drivers.LoadPlugins(pluginDirectory ?? Path.Combine(AppContext.BaseDirectory, "plugins"));
+            drivers.LoadPlugins(pluginDirectory ?? Path.Combine(directory, "plugins"));
             cancellationToken.ThrowIfCancellationRequested();
             publisher = new MqttTelemetryPublisher();
             var databases = new ExternalDatabaseConnector();
