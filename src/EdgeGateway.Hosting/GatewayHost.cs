@@ -77,13 +77,21 @@ public sealed class GatewayHost : IAsyncDisposable
             await store.InitializeAsync(cancellationToken).ConfigureAwait(false);
             log = new GatewayLog(Path.Combine(directory, "logs"));
             log.ApplyConfiguration(configuration.Logging);
-            var driversDirectory = Path.GetFullPath(pluginDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
+            var packagedDriversDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "drivers"));
+            var driversDirectory = Path.GetFullPath(pluginDirectory ?? packagedDriversDirectory);
+            Directory.CreateDirectory(packagedDriversDirectory);
             Directory.CreateDirectory(driversDirectory);
-            DriverAssemblyResolver.Configure(driversDirectory);
-            // Every protocol factory is discovered from the unified drivers directory. Existing
-            // legacy driver assemblies are resolved from that directory rather than the app root.
+            DriverAssemblyResolver.Configure(packagedDriversDirectory);
+            if (!string.Equals(packagedDriversDirectory, driversDirectory,
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                DriverAssemblyResolver.Configure(driversDirectory);
+            // Protocol assemblies ship under the executable's drivers directory. Isolated UI
+            // smoke runs may use a temporary upload directory without losing bundled drivers.
             var drivers = new DriverRegistry(IotGatewayDriverCatalog.CreateFactories(log), log, configurations);
-            drivers.LoadPlugins(driversDirectory);
+            drivers.LoadPlugins(packagedDriversDirectory);
+            if (!string.Equals(packagedDriversDirectory, driversDirectory,
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                drivers.LoadPlugins(driversDirectory);
             var installedRoot = Path.GetFullPath(Path.Combine(driversDirectory, "installed")) + Path.DirectorySeparatorChar;
             var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
             var inventory = drivers.Drivers.Select(descriptor =>
@@ -92,8 +100,10 @@ public sealed class GatewayHost : IAsyncDisposable
                 var assemblyName = descriptor.IsLegacy
                     ? descriptor.Id
                     : factory.GetType().Assembly.GetName().Name ?? descriptor.Id;
+                var legacyAssembly = Path.Combine(driversDirectory, assemblyName + ".dll");
+                if (!File.Exists(legacyAssembly)) legacyAssembly = Path.Combine(packagedDriversDirectory, assemblyName + ".dll");
                 var assemblyPath = descriptor.IsLegacy
-                    ? Path.Combine(driversDirectory, assemblyName + ".dll")
+                    ? legacyAssembly
                     : factory.GetType().Assembly.Location;
                 var fullAssemblyPath = string.IsNullOrWhiteSpace(assemblyPath) ? "" : Path.GetFullPath(assemblyPath);
                 var exists = fullAssemblyPath.Length > 0 && File.Exists(fullAssemblyPath);
