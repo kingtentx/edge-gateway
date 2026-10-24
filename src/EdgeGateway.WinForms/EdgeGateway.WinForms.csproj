@@ -16,6 +16,62 @@
       <ManifestResourceName>$(RootNamespace).MainForm.Monitoring</ManifestResourceName>
     </EmbeddedResource>
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="AppData/.gitkeep" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="drivers/.gitkeep" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <!-- Runtime protocol assemblies live under drivers/, not beside the executable. -->
+  <Target Name="StageDriverAssemblies" AfterTargets="Build">
+    <PropertyGroup>
+      <DriverOutputDirectory>$(TargetDir)drivers</DriverOutputDirectory>
+    </PropertyGroup>
+    <MakeDir Directories="$(DriverOutputDirectory)" />
+    <ItemGroup>
+      <DriverAssembly Include="$(TargetDir)CNC.Fanuc.dll" Condition="Exists('$(TargetDir)CNC.Fanuc.dll')" />
+      <DriverAssembly Include="$(TargetDir)CNC.Fanuc.H.dll" Condition="Exists('$(TargetDir)CNC.Fanuc.H.dll')" />
+      <DriverAssembly Include="$(TargetDir)CNC.MTConnect.dll" Condition="Exists('$(TargetDir)CNC.MTConnect.dll')" />
+      <DriverAssembly Include="$(TargetDir)Mock.TcpClient.dll" Condition="Exists('$(TargetDir)Mock.TcpClient.dll')" />
+      <DriverAssembly Include="$(TargetDir)OPC.DaClient.dll" Condition="Exists('$(TargetDir)OPC.DaClient.dll')" />
+      <DriverAssembly Include="$(TargetDir)OPC.UaClient.dll" Condition="Exists('$(TargetDir)OPC.UaClient.dll')" />
+      <DriverAssembly Include="$(TargetDir)Other.Toledo.dll" Condition="Exists('$(TargetDir)Other.Toledo.dll')" />
+      <DriverAssembly Include="$(TargetDir)PLC.AllenBradley.dll" Condition="Exists('$(TargetDir)PLC.AllenBradley.dll')" />
+      <DriverAssembly Include="$(TargetDir)PLC.MelsecMc.dll" Condition="Exists('$(TargetDir)PLC.MelsecMc.dll')" />
+      <DriverAssembly Include="$(TargetDir)PLC.ModBusMaster.dll" Condition="Exists('$(TargetDir)PLC.ModBusMaster.dll')" />
+      <DriverAssembly Include="$(TargetDir)PLC.OmronFins.dll" Condition="Exists('$(TargetDir)PLC.OmronFins.dll')" />
+      <DriverAssembly Include="$(TargetDir)PLC.SiemensS7.dll" Condition="Exists('$(TargetDir)PLC.SiemensS7.dll')" />
+      <DriverAssembly Include="$(TargetDir)PluginInterface.dll" Condition="Exists('$(TargetDir)PluginInterface.dll')" />
+      <DriverAssembly Include="$(TargetDir)Interop.OPCAutomation.dll" Condition="Exists('$(TargetDir)Interop.OPCAutomation.dll')" />
+      <DriverAssembly Include="$(TargetDir)EdgeGateway.Driver.Modbus.dll" Condition="Exists('$(TargetDir)EdgeGateway.Driver.Modbus.dll')" />
+      <DriverAssembly Include="$(TargetDir)EdgeGateway.Driver.Simulator.dll" Condition="Exists('$(TargetDir)EdgeGateway.Driver.Simulator.dll')" />
+    </ItemGroup>
+    <Move SourceFiles="@(DriverAssembly)" DestinationFolder="$(DriverOutputDirectory)" />
+  </Target>
+  <Target Name="StagePublishedDriverAssemblies" AfterTargets="Publish">
+    <PropertyGroup>
+      <PublishedDriverDirectory>$(PublishDir)drivers</PublishedDriverDirectory>
+    </PropertyGroup>
+    <MakeDir Directories="$(PublishedDriverDirectory)" />
+    <ItemGroup>
+      <PublishedDriverAssembly Include="$(PublishDir)CNC.Fanuc.dll" Condition="Exists('$(PublishDir)CNC.Fanuc.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)CNC.Fanuc.H.dll" Condition="Exists('$(PublishDir)CNC.Fanuc.H.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)CNC.MTConnect.dll" Condition="Exists('$(PublishDir)CNC.MTConnect.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)Mock.TcpClient.dll" Condition="Exists('$(PublishDir)Mock.TcpClient.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)OPC.DaClient.dll" Condition="Exists('$(PublishDir)OPC.DaClient.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)OPC.UaClient.dll" Condition="Exists('$(PublishDir)OPC.UaClient.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)Other.Toledo.dll" Condition="Exists('$(PublishDir)Other.Toledo.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)PLC.AllenBradley.dll" Condition="Exists('$(PublishDir)PLC.AllenBradley.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)PLC.MelsecMc.dll" Condition="Exists('$(PublishDir)PLC.MelsecMc.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)PLC.ModBusMaster.dll" Condition="Exists('$(PublishDir)PLC.ModBusMaster.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)PLC.OmronFins.dll" Condition="Exists('$(PublishDir)PLC.OmronFins.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)PLC.SiemensS7.dll" Condition="Exists('$(PublishDir)PLC.SiemensS7.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)PluginInterface.dll" Condition="Exists('$(PublishDir)PluginInterface.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)Interop.OPCAutomation.dll" Condition="Exists('$(PublishDir)Interop.OPCAutomation.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)EdgeGateway.Driver.Modbus.dll" Condition="Exists('$(PublishDir)EdgeGateway.Driver.Modbus.dll')" />
+      <PublishedDriverAssembly Include="$(PublishDir)EdgeGateway.Driver.Simulator.dll" Condition="Exists('$(PublishDir)EdgeGateway.Driver.Simulator.dll')" />
+    </ItemGroup>
+    <Move SourceFiles="@(PublishedDriverAssembly)" DestinationFolder="$(PublishedDriverDirectory)" />
+  </Target>
   <ItemGroup>
     <PackageReference Include="FontAwesome.Sharp" Version="6.6.0" />
   </ItemGroup>

@@ -14,6 +14,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly IGatewayApplication _application;
     private readonly IGatewayLog _log;
     private readonly string _dataDirectory;
+    private readonly string _driverDirectory;
     private readonly bool _smokeTest;
     private readonly bool _layoutMatrix;
     private readonly string? _smokeScreenshotPath;
@@ -40,13 +41,14 @@ public sealed partial class MainForm : DpiAwareForm
 
     public MainForm(IGatewayApplication application, string dataDirectory,
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
-        Func<IDisposable>? configurationWriteFailureForSmoke = null)
+        Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
         _drivers = application.Drivers;
         _log = application.Log;
         _dataDirectory = dataDirectory;
+        _driverDirectory = Path.GetFullPath(driverDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
         _smokeTest = smokeTest || layoutMatrix;
         _configurationWriteFailureForSmoke = configurationWriteFailureForSmoke;
         _layoutMatrix = layoutMatrix;

@@ -1,8 +1,8 @@
+using System.Reflection;
+using System.Security.Cryptography;
 using EdgeGateway.Abstractions;
 using EdgeGateway.Application;
 using EdgeGateway.DataAccess;
-using EdgeGateway.Driver.Modbus;
-using EdgeGateway.Driver.Simulator;
 using EdgeGateway.Infrastructure.Mqtt;
 using EdgeGateway.IotGateway;
 using EdgeGateway.Service;
@@ -41,11 +41,12 @@ public sealed class GatewayHost : IAsyncDisposable
     public IGatewayApplication Application { get; }
 
     public static async Task<GatewayHost> CreateAsync(string dataDirectory, string? pluginDirectory = null,
-        CancellationToken cancellationToken = default, bool enableVerificationFaults = false)
+        CancellationToken cancellationToken = default, bool enableVerificationFaults = false, string? runtimeDirectory = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dataDirectory);
         cancellationToken.ThrowIfCancellationRequested();
         var directory = Path.GetFullPath(dataDirectory);
+        var runtimeRoot = Path.GetFullPath(runtimeDirectory ?? AppContext.BaseDirectory);
         FileStream? directoryLock = null;
         FileGatewayStore? store = null;
         SqliteConfigurationStore? configurations = null;
@@ -57,7 +58,7 @@ public sealed class GatewayHost : IAsyncDisposable
             Directory.CreateDirectory(directory);
             try
             {
-                directoryLock = new FileStream(Path.Combine(directory, "gateway.lock"), FileMode.OpenOrCreate,
+                directoryLock = new FileStream(Path.Combine(runtimeRoot, "gateway.lock"), FileMode.OpenOrCreate,
                     FileAccess.ReadWrite, FileShare.None);
             }
             catch (IOException exception)
@@ -67,15 +68,59 @@ public sealed class GatewayHost : IAsyncDisposable
             var configurationPath = Path.Combine(directory, "gateway.config.db");
             configurations = new SqliteConfigurationStore(configurationPath, Service.DemoConfiguration.Create);
             var configuration = await configurations.LoadAsync(cancellationToken).ConfigureAwait(false);
-            store = new FileGatewayStore(Path.Combine(directory, "messaging"));
+            if (!configurations.HasSavedConfiguration)
+            {
+                // First launch writes the complete default configuration to SQLite immediately,
+                // so a restart never depends on transient in-memory defaults.
+                await configurations.SaveAsync(configuration, cancellationToken).ConfigureAwait(false);
+            }
+            store = new FileGatewayStore(Path.Combine(runtimeRoot, "messaging"));
             await store.InitializeAsync(cancellationToken).ConfigureAwait(false);
-            log = new GatewayLog(Path.Combine(directory, "logs"));
+            log = new GatewayLog(Path.Combine(runtimeRoot, "logs"));
             log.ApplyConfiguration(configuration.Logging);
-            IDriverFactory[] builtInDrivers = [new SimulatorDriverFactory(), new ModbusTcpDriverFactory(), new ModbusRtuDriverFactory()];
-            var drivers = new DriverRegistry(builtInDrivers.Concat(IotGatewayDriverCatalog.CreateFactories(log)), log);
-            // Keep trusted plugins shipped beside the application, while user uploads live in the writable data directory.
-            drivers.LoadPlugins(Path.Combine(AppContext.BaseDirectory, "plugins"));
-            drivers.LoadPlugins(pluginDirectory ?? Path.Combine(directory, "plugins"));
+            var packagedDriversDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "drivers"));
+            var driversDirectory = Path.GetFullPath(pluginDirectory ?? packagedDriversDirectory);
+            Directory.CreateDirectory(packagedDriversDirectory);
+            Directory.CreateDirectory(driversDirectory);
+            DriverAssemblyResolver.Configure(packagedDriversDirectory);
+            if (!string.Equals(packagedDriversDirectory, driversDirectory,
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                DriverAssemblyResolver.Configure(driversDirectory);
+            // Protocol assemblies ship under the executable's drivers directory. Isolated UI
+            // smoke runs may use a temporary upload directory without losing bundled drivers.
+            var drivers = new DriverRegistry(IotGatewayDriverCatalog.CreateFactories(log), log, configurations);
+            drivers.LoadPlugins(packagedDriversDirectory);
+            if (!string.Equals(packagedDriversDirectory, driversDirectory,
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                drivers.LoadPlugins(driversDirectory);
+            var installedRoot = Path.GetFullPath(Path.Combine(driversDirectory, "installed")) + Path.DirectorySeparatorChar;
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var inventory = drivers.Drivers.Select(descriptor =>
+            {
+                var factory = drivers.GetFactory(descriptor.Id);
+                var assemblyName = descriptor.IsLegacy
+                    ? descriptor.Id
+                    : factory.GetType().Assembly.GetName().Name ?? descriptor.Id;
+                var legacyAssembly = Path.Combine(driversDirectory, assemblyName + ".dll");
+                if (!File.Exists(legacyAssembly)) legacyAssembly = Path.Combine(packagedDriversDirectory, assemblyName + ".dll");
+                var assemblyPath = descriptor.IsLegacy
+                    ? legacyAssembly
+                    : factory.GetType().Assembly.Location;
+                var fullAssemblyPath = string.IsNullOrWhiteSpace(assemblyPath) ? "" : Path.GetFullPath(assemblyPath);
+                var exists = fullAssemblyPath.Length > 0 && File.Exists(fullAssemblyPath);
+                var source = exists && fullAssemblyPath.StartsWith(installedRoot, comparison) ? "uploaded" : "bundled";
+                var version = "unknown";
+                var sha256 = "";
+                if (exists)
+                {
+                    var assemblyIdentity = AssemblyName.GetAssemblyName(fullAssemblyPath);
+                    version = assemblyIdentity.Version?.ToString() ?? "unknown";
+                    sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(fullAssemblyPath)));
+                }
+                return new DriverInventoryRecord(descriptor.Id, descriptor.Name, descriptor.Description,
+                    descriptor.SupportsWrite, descriptor.IsLegacy, assemblyName, version, sha256, source);
+            }).ToArray();
+            await configurations.ReplaceDriverInventoryAsync(inventory, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             publisher = new MqttTelemetryPublisher();
             var databases = new ExternalDatabaseConnector();

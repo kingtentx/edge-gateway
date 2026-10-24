@@ -15,9 +15,11 @@ internal static class Program
         var smokeTest = layoutMatrix || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
         var screenshotIndex = Array.FindIndex(args, x => x.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
         var screenshotPath = screenshotIndex >= 0 && screenshotIndex + 1 < args.Length ? args[screenshotIndex + 1] : null;
-        var dataDirectory = smokeTest
+        var runtimeRoot = smokeTest
             ? Path.Combine(Path.GetTempPath(), "EdgeGateway.Smoke", Guid.NewGuid().ToString("N"))
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EdgeGateway");
+            : AppContext.BaseDirectory;
+        var dataDirectory = Path.Combine(runtimeRoot, "AppData");
+        var driverDirectory = Path.Combine(runtimeRoot, "drivers");
         var mutexKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(dataDirectory)))[..24];
         using var instanceLock = new Mutex(true, "Local\\EdgeGateway." + mutexKey, out var ownsLock);
         if (!ownsLock)
@@ -29,9 +31,10 @@ internal static class Program
         GatewayHost? host = null;
         try
         {
-            host = GatewayHost.CreateAsync(dataDirectory, enableVerificationFaults: smokeTest).GetAwaiter().GetResult();
+            host = GatewayHost.CreateAsync(dataDirectory, pluginDirectory: driverDirectory,
+                enableVerificationFaults: smokeTest, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
             using var window = new MainForm(host.Application, host.DataDirectory, smokeTest, screenshotPath, layoutMatrix,
-                smokeTest ? host.BeginConfigurationWriteFailureForVerification : null);
+                smokeTest ? host.BeginConfigurationWriteFailureForVerification : null, driverDirectory);
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }
@@ -39,7 +42,7 @@ internal static class Program
         {
             var message = "启动失败：" + exception.Message + Environment.NewLine + Environment.NewLine
                 + "数据目录：" + dataDirectory + Environment.NewLine
-                + "请检查 gateway.config.db 配置数据库、配置内容与数据目录权限后重试。";
+                + "请检查 AppData/gateway.config.db 配置数据库、drivers 驱动目录及其写入权限后重试。";
             if (smokeTest) Console.Error.WriteLine(exception);
             else MessageBox.Show(message, "采集网关启动失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return 1;

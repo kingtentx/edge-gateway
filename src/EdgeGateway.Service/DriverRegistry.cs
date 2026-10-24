@@ -18,11 +18,26 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
     private readonly List<AssemblyLoadContext> _contexts = [];
     private readonly Dictionary<string, DriverPluginInfo> _plugins = new(StringComparer.OrdinalIgnoreCase);
     private readonly IGatewayLog _log;
+    private readonly IDriverPluginStore? _pluginStore;
     private string? _pluginDirectory;
 
-    public DriverRegistry(IEnumerable<IDriverFactory> factories, IGatewayLog log)
+    public DriverRegistry(IEnumerable<IDriverFactory> factories, IGatewayLog log, IDriverPluginStore? pluginStore = null)
     {
         _log = log ?? throw new ArgumentNullException(nameof(log));
+        _pluginStore = pluginStore;
+        if (_pluginStore is not null)
+        {
+            try
+            {
+                foreach (var plugin in _pluginStore.GetDriverPluginsAsync().GetAwaiter().GetResult())
+                    _plugins[plugin.Id] = plugin with { Status = "等待文件校验" };
+            }
+            catch (Exception exception)
+            {
+                _log.Write(GatewayLogLevel.Error, $"读取 SQLite 驱动清单失败：{SafeMessage(exception)}");
+                throw new InvalidOperationException("无法读取 SQLite 中的驱动注册信息，已停止初始化以避免配置与驱动状态不一致。", exception);
+            }
+        }
         foreach (var factory in factories) Register(factory);
     }
 
@@ -158,9 +173,11 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 {
                     File.WriteAllText(temporaryManifest, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
                     File.Move(temporaryManifest, manifestPath, overwrite: true);
+                    var pluginInfo = new DriverPluginInfo(factory.Descriptor.Id, factory.Descriptor.Name, version, simpleName, sha256, "已加载");
+                    _pluginStore?.SaveDriverPluginAsync(pluginInfo).GetAwaiter().GetResult();
                     _factories.Add(factory.Descriptor.Id, factory);
                     _contexts.Add(context);
-                    _plugins[factory.Descriptor.Id] = new(factory.Descriptor.Id, factory.Descriptor.Name, version, simpleName, sha256, "已加载");
+                    _plugins[factory.Descriptor.Id] = pluginInfo;
                     registered = true;
                 }
                 catch
@@ -202,11 +219,15 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 if (duplicate is not null) throw new InvalidOperationException($"驱动标识重复：{duplicate.Descriptor.Id}");
                 foreach (var factory in loaded)
                 {
+                    if (manifest is not null)
+                    {
+                        var pluginInfo = new DriverPluginInfo(factory.Descriptor.Id, factory.Descriptor.Name,
+                            manifest.Version, Path.GetFileNameWithoutExtension(path), manifest.Sha256, "已加载");
+                        _pluginStore?.SaveDriverPluginAsync(pluginInfo).GetAwaiter().GetResult();
+                        _plugins[factory.Descriptor.Id] = pluginInfo;
+                    }
                     _factories.Add(factory.Descriptor.Id, factory);
                     _log.Write(GatewayLogLevel.Information, $"加载扩展驱动：{factory.Descriptor.Name} ({factory.Descriptor.Id})");
-                    if (manifest is not null)
-                        _plugins[factory.Descriptor.Id] = new(factory.Descriptor.Id, factory.Descriptor.Name,
-                            manifest.Version, Path.GetFileNameWithoutExtension(path), manifest.Sha256, "已加载");
                 }
                 _contexts.Add(context);
             }

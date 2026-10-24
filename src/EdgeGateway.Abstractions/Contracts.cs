@@ -32,6 +32,22 @@ public interface IDriverPluginManager
 
 public sealed record DriverPluginInfo(string Id, string Name, string Version, string AssemblyName, string Sha256, string Status);
 
+/// <summary>Persistent inventory for installed driver plugin metadata; DLL bytes stay in the drivers directory.</summary>
+public interface IDriverPluginStore
+{
+    Task SaveDriverPluginAsync(DriverPluginInfo plugin, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DriverPluginInfo>> GetDriverPluginsAsync(CancellationToken cancellationToken = default);
+}
+
+public sealed record DriverInventoryRecord(string Id, string Name, string Description, bool SupportsWrite,
+    bool IsLegacy, string AssemblyName, string Version, string Sha256, string Source);
+
+public interface IDriverInventoryStore
+{
+    Task ReplaceDriverInventoryAsync(IReadOnlyList<DriverInventoryRecord> drivers, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DriverInventoryRecord>> GetDriverInventoryAsync(CancellationToken cancellationToken = default);
+}
+
 public interface IGatewayLog
 {
     void Write(GatewayLogLevel level, string message);
