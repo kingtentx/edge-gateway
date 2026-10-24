@@ -3,7 +3,7 @@ using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
 
-/// <summary>Local administrator UI for installing trusted, single-file IDriverFactory plugins.</summary>
+/// <summary>Local administrator UI for installing trusted, single-file driver factory plugins.</summary>
 internal sealed class DriverPluginDialog : DpiAwareForm
 {
     private readonly IGatewayApplication _application;
