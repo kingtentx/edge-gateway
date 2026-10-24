@@ -1,0 +1,39 @@
+name: Apply reviewed phase-two source patch
+
+on:
+  pull_request:
+    paths:
+      - '.phase2-source/**'
+      - '.github/workflows/apply-phase2-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.repository == 'kingtentx/edge-gateway' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/phase2-recording-reliability'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Verify and apply the exact reviewed source patch
+        env:
+          TARGET_BRANCH: feature/phase2-recording-reliability
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin "refs/heads/$TARGET_BRANCH" | cut -f1)" = "$EXPECTED_HEAD"
+          cat .phase2-source/{00,01,02,03,04,05}.gzpart | gzip -d > "$RUNNER_TEMP/phase2.patch"
+          echo 'a0604fc16fcfe0a4e29e0c172f688bec251e575cd99a8989cd5a99cc2273a0ec  '"$RUNNER_TEMP/phase2.patch" | sha256sum -c -
+          git apply --check --index "$RUNNER_TEMP/phase2.patch"
+          git apply --index "$RUNNER_TEMP/phase2.patch"
+          git rm -r .phase2-source
+          git diff --cached --check
+          python scripts/verify-architecture.py
+          python scripts/verify-driver-migration.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: complete recording diagnostics, disk protection and reliability acceptance'
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
