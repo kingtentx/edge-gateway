@@ -55,7 +55,28 @@ public sealed class ConfigurationStoreTests : IDisposable
         using var reader = command.ExecuteReader();
         var tables = new List<string>();
         while (reader.Read()) tables.Add(reader.GetString(0));
-        Assert.Equal(["configuration_versions"], tables);
+        Assert.Equal(["configuration_versions", "driver_plugins"], tables);
+    }
+
+
+    [Fact]
+    public async Task DriverPluginInventoryPersistsInTheSameSqliteDatabase()
+    {
+        await using (var store = new SqliteConfigurationStore(DatabasePath, DemoConfiguration.Create))
+        {
+            _ = await store.LoadAsync();
+            await store.SaveAsync(new DriverPluginInfo("custom-plc", "自定义 PLC", "1.2.3.0",
+                "Custom.Plc.Driver", new string('A', 64), "已加载"));
+        }
+
+        await using var reopened = new SqliteConfigurationStore(DatabasePath);
+        var plugin = Assert.Single(await reopened.GetDriverPluginsAsync());
+        Assert.Equal("custom-plc", plugin.Id);
+        Assert.Equal("自定义 PLC", plugin.Name);
+        Assert.Equal("1.2.3.0", plugin.Version);
+        Assert.Equal("Custom.Plc.Driver", plugin.AssemblyName);
+        Assert.Equal(new string('A', 64), plugin.Sha256);
+        Assert.Equal("已加载", plugin.Status);
     }
 
     [Fact]
