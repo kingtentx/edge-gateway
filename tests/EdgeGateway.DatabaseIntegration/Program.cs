@@ -6,14 +6,15 @@ using EdgeGateway.DataAccess;
 using EdgeGateway.Model;
 using MySqlConnector;
 using Npgsql;
+using Oracle.ManagedDataAccess.Client;
 
 // Explicit integration executable: missing services/credentials fail, never count as skipped or passed.
 // It creates randomly named tables in the supplied dedicated test database and removes only those tables.
-if (args.Length != 1 || args[0] is not ("mysql" or "postgres"))
-    throw new ArgumentException("Usage: dotnet run --project tests/EdgeGateway.DatabaseIntegration -- mysql|postgres");
+if (args.Length != 1 || args[0] is not ("mysql" or "postgres" or "oracle"))
+    throw new ArgumentException("Usage: dotnet run --project tests/EdgeGateway.DatabaseIntegration -- mysql|postgres|oracle");
 if (Environment.GetEnvironmentVariable("EDGE_DB_TEST_ALLOW_DDL") != "1")
     throw new InvalidOperationException("Set EDGE_DB_TEST_ALLOW_DDL=1 and select a dedicated test database before running.");
-var provider = args[0] == "mysql" ? ExternalDatabaseProvider.MySql : ExternalDatabaseProvider.PostgreSql;
+var provider = args[0] switch { "mysql" => ExternalDatabaseProvider.MySql, "postgres" => ExternalDatabaseProvider.PostgreSql, _ => ExternalDatabaseProvider.Oracle };
 var configuration = new DatabaseConnectionConfiguration
 {
     Provider = provider, Host = Required("EDGE_DB_TEST_HOST"), Port = int.Parse(Required("EDGE_DB_TEST_PORT"), CultureInfo.InvariantCulture),
@@ -24,7 +25,7 @@ var configuration = new DatabaseConnectionConfiguration
 _ = Required(configuration.PasswordEnvironmentVariable);
 var connector = new ExternalDatabaseConnector();
 var prefix = "eg_it_" + Guid.NewGuid().ToString("N")[..12];
-var schema = provider == ExternalDatabaseProvider.PostgreSql ? "public" : configuration.Database;
+var schema = provider switch { ExternalDatabaseProvider.PostgreSql => "public", ExternalDatabaseProvider.Oracle => configuration.Username.ToUpperInvariant(), _ => configuration.Database };
 var pointTable = new DatabaseTableInfo(schema, prefix + "_points");
 var customTable = new DatabaseTableInfo(schema, prefix + "_custom");
 var conflictTable = new DatabaseTableInfo(schema, prefix + "_conflict");
@@ -48,7 +49,7 @@ try
     created.Add(pointTable);
     Check((await connector.GetTablesAsync(configuration)).Contains(pointTable), "table discovery");
     var columns = await connector.GetColumnsAsync(configuration, pointTable);
-    Check(DatabasePointTable.Columns.All(column => columns.Any(metadata => metadata.Name == column)), "standard column discovery");
+    Check(DatabasePointTable.Columns.All(column => columns.Any(metadata => metadata.Name == (provider == ExternalDatabaseProvider.Oracle ? column.ToUpperInvariant() : column))), "standard column discovery");
     await connector.EnsurePointTableAsync(configuration, pointTable);
     await connector.WriteRowsAsync(configuration, pointGroup, rows.Take(200).ToArray());
     var timer = Stopwatch.StartNew();
@@ -64,9 +65,9 @@ try
     Check((await connector.QueryPointHistoryAsync(configuration, pointGroup, new(device, Guid.NewGuid(), timestamp.AddSeconds(-1), timestamp.AddSeconds(10), 100))).Count == 0, "tag filter");
     Check((await connector.QueryPointHistoryAsync(configuration, pointGroup, new(device, tag, timestamp.AddSeconds(-1), timestamp.AddSeconds(10), 7))).Count == 7, "history limit");
 
-    var identity = provider == ExternalDatabaseProvider.PostgreSql ? "bigint GENERATED ALWAYS AS IDENTITY UNIQUE" : "bigint AUTO_INCREMENT UNIQUE";
-    var timeType = provider == ExternalDatabaseProvider.PostgreSql ? "timestamp(6) without time zone" : "datetime(6)";
-    var boolType = provider == ExternalDatabaseProvider.PostgreSql ? "boolean" : "tinyint(1)";
+    var identity = provider switch { ExternalDatabaseProvider.PostgreSql => "bigint GENERATED ALWAYS AS IDENTITY UNIQUE", ExternalDatabaseProvider.Oracle => "NUMBER GENERATED ALWAYS AS IDENTITY UNIQUE", _ => "bigint AUTO_INCREMENT UNIQUE" };
+    var timeType = provider switch { ExternalDatabaseProvider.PostgreSql => "timestamp(6) without time zone", ExternalDatabaseProvider.Oracle => "TIMESTAMP(6)", _ => "datetime(6)" };
+    var boolType = provider switch { ExternalDatabaseProvider.PostgreSql => "boolean", ExternalDatabaseProvider.Oracle => "NUMBER(1)", _ => "tinyint(1)" };
     await Execute($"CREATE TABLE {Table(customTable)} ({Q("row_id")} {identity}, {Q("event_key")} varchar(64) NOT NULL PRIMARY KEY, {Q("温度")} decimal(28,8) NOT NULL, {Q("at_utc")} {timeType} NOT NULL, {Q("flag")} {boolType} NOT NULL, {Q("note")} varchar(120) NOT NULL, {Q("big_value")} decimal(20,0) NULL)" + (provider == ExternalDatabaseProvider.MySql ? " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4" : ""));
     created.Add(customTable);
     var metadata = await connector.GetColumnsAsync(configuration, customTable);
@@ -87,7 +88,7 @@ try
         Check(await reader.ReadAsync(), "custom row read");
         Check(reader.GetDecimal(0) == 12345678901234567890.12345678m, "decimal precision");
         Check(reader.GetDateTime(1).Ticks == timestamp.UtcTicks, "custom timestamp UTC clock");
-        Check(reader.GetBoolean(2), "boolean binding");
+        Check(provider == ExternalDatabaseProvider.Oracle ? reader.GetDecimal(2) == 1 : reader.GetBoolean(2), "boolean binding");
         Check(reader.GetString(3) == "温度'; DROP TABLE test;--", "SQL text remains a parameter value");
         Check(reader.GetDecimal(4) == (decimal)ulong.MaxValue, "unsigned 64-bit precision");
     }
@@ -149,6 +150,12 @@ static string Required(string name) => Environment.GetEnvironmentVariable(name) 
 static DbConnection CreateRawConnection(DatabaseConnectionConfiguration configuration)
 {
     var password = Required(configuration.PasswordEnvironmentVariable);
+    if (configuration.Provider == ExternalDatabaseProvider.Oracle)
+        return new OracleConnection(new OracleConnectionStringBuilder
+        {
+            DataSource = $"{configuration.Host}:{configuration.Port}/{configuration.Database}", UserID = configuration.Username,
+            Password = password, Pooling = false, ConnectionTimeout = configuration.ConnectionTimeoutSeconds
+        }.ConnectionString);
     return configuration.Provider == ExternalDatabaseProvider.MySql
         ? new MySqlConnection(new MySqlConnectionStringBuilder { Server = configuration.Host, Port = (uint)configuration.Port, Database = configuration.Database, UserID = configuration.Username, Password = password, Pooling = false, SslMode = configuration.UseTls ? MySqlSslMode.VerifyFull : MySqlSslMode.Disabled }.ConnectionString)
         : new NpgsqlConnection(new NpgsqlConnectionStringBuilder { Host = configuration.Host, Port = configuration.Port, Database = configuration.Database, Username = configuration.Username, Password = password, Pooling = false, SslMode = configuration.UseTls ? SslMode.VerifyFull : SslMode.Disable, Timezone = "Asia/Shanghai" }.ConnectionString);

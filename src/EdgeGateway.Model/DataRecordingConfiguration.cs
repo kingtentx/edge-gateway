@@ -7,8 +7,16 @@ public sealed class GatewayLoggingConfiguration
     public int MaxFileSizeMb { get; set; } = 10;
     public int RetainedFileCount { get; set; } = 30;
     public int RetainedDays { get; set; } = 30;
+    public int MinimumFreeDiskSpaceMb { get; set; } = 256;
+    public int DiskResumeMarginMb { get; set; } = 64;
 }
-public sealed record GatewayLoggingStatus(long PendingEntries, long DroppedEntries, long FailedEntries, string? FileError);
+public sealed record GatewayLoggingStatus(long PendingEntries, long DroppedEntries, long FailedEntries, string? FileError)
+{
+    public long PendingBytes { get; init; }
+    public long? AvailableDiskBytes { get; init; }
+    public bool DiskProtectionActive { get; init; }
+    public long DiskRejectedEntries { get; init; }
+}
 
 public enum ExternalDatabaseProvider { MySql, PostgreSql, Oracle }
 public enum DatabaseStorageMode { PointRows, ColumnMapping }
@@ -77,7 +85,18 @@ public sealed record DatabaseConnectionTestResult(bool Success, string Message, 
 public sealed record DatabaseWriteRow(string EventId, DateTimeOffset RecordedAt, IReadOnlyDictionary<string, object?> Values);
 public sealed record ExternalDatabaseStatus(Guid ConnectionId, string Name, bool Enabled, long QueuedRows,
     long WrittenRows, long DroppedRows, long FailedBatches, long SkippedRows,
-    DateTimeOffset? LastSuccess, string? Error, bool IsConnected);
+    DateTimeOffset? LastSuccess, string? Error, bool IsConnected)
+{
+    // Queue reservations include the in-flight batch until it succeeds or is discarded.
+    public long QueuedBytes { get; init; }
+    public long PeakQueuedRows { get; init; }
+    public long RetriedBatches { get; init; }
+    public long TimedOutOperations { get; init; }
+    public int InFlightBatches { get; init; }
+    public double LastWriteMilliseconds { get; init; }
+    public DateTimeOffset? LastFailure { get; init; }
+    public bool IsBackpressured { get; init; }
+}
 
 public static class DatabasePointTable
 {

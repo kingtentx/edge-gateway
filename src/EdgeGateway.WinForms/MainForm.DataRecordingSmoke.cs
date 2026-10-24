@@ -181,6 +181,8 @@ public sealed partial class MainForm
             ShowPage("logs"); _logTabs.SelectedIndex = 1;
             ((NumericUpDown)_loggingFields["RetainedDays"]).Value = 17;
             ((NumericUpDown)_loggingFields["MaxFileSizeMb"]).Value = 12;
+            ((NumericUpDown)_loggingFields["MinimumFreeDiskSpaceMb"]).Value = 128;
+            ((NumericUpDown)_loggingFields["DiskResumeMarginMb"]).Value = 32;
             Check(_loggingDirty && _loggingApply.Enabled, "logging controls did not support a live draft.");
             using (RejectConfigurationWritesForSmoke())
             {
@@ -193,6 +195,7 @@ public sealed partial class MainForm
             var beforeSample = _application.GetLatest().Max(sample => sample.Timestamp);
             await ApplyLoggingSettingsAsync();
             Check(!_loggingDirty && _configuration.Logging.RetainedDays == 17 && _configuration.Logging.MaxFileSizeMb == 12
+                && _configuration.Logging.MinimumFreeDiskSpaceMb == 128 && _configuration.Logging.DiskResumeMarginMb == 32
                 && _application.IsDeviceRunning(device.Id), "logging hot apply did not persist or interrupted the device.");
             timer.Restart();
             while (!_application.GetLatest().Any(sample => sample.Timestamp > beforeSample) && timer.Elapsed < TimeSpan.FromSeconds(5)) await Task.Delay(25);
@@ -200,6 +203,28 @@ public sealed partial class MainForm
             foreach (var input in _loggingFields.Values) BringIntoViewAndAssert(input, "logging settings " + input.Name);
             ResetScrollPositions(_pages["logs"], _navigation["overview"]); _logTabs.SelectedIndex = 1;
             SaveEditorScreenshot(this, "recording", "log-settings");
+            _logTabs.SelectedIndex = 2;
+            foreach (var control in new Control[] { _archiveFrom, _archiveTo, _archiveLevel, _archiveText, _archiveSamples,
+                _archiveLimit, _archiveBudget, _archiveSearch, _archiveExport })
+                BringIntoViewAndAssert(control, "log archive " + control.Name);
+            await QueryArchiveAsync();
+            Check(_archiveResult is not null && _archiveExport.Enabled && !_archiveCancel.Enabled, "archive query did not complete through application boundary.");
+            var previewFixture = new DatabaseWritePreview(DateTimeOffset.UtcNow, true, false,
+                [new("temperature", "double", "EngineeringValue", "NULL", null, "缺少活跃采样")],
+                ["缺少活跃采样"], ["界面验证样例，不代表真实数据库验收。"]);
+            using (var previewDialog = new DatabasePreviewDialog(previewFixture))
+            {
+                previewDialog.Show(this);
+                try
+                {
+                    VerifyEditorLayout(previewDialog, "database read-only preview");
+                    foreach (var tab in previewDialog.SmokeTabs)
+                    { previewDialog.SelectedSmokeTab = tab; VerifyEditorLayout(previewDialog, "database preview " + tab.Text); }
+                    Check(previewDialog.SmokeCommands.Count == 1, "preview unexpectedly exposes a save action.");
+                }
+                finally { previewDialog.Close(); }
+            }
+            _logTabs.SelectedIndex = 1;
             await AssertSavedConfigurationForSmokeAsync("data recording configuration");
             Console.WriteLine($"Data recording configuration smoke passed: connection save failure/retry, 16 connection inputs, standard point selection, custom required/generated columns and point/type/constant bindings, history empty/source states, stopped-only database apply, and logging hot apply with retained failure drafts at actual {DeviceDpi} DPI; metadata fixtures tested UI only, no external database was contacted.");
         }

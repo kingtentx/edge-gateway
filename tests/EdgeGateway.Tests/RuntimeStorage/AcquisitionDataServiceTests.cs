@@ -303,6 +303,61 @@ public sealed class AcquisitionDataServiceTests
         finally { release.TrySetResult(); }
     }
 
+    [Fact]
+    public async Task PermanentFailuresStopRetryingAndReleaseAllReservations()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration);
+        connection.MaxRetryAttempts = 5; AddPointGroup(configuration, connection);
+        var attempts = 0;
+        var connector = new Connector { OnWrite = (_, _, _, _) => { Interlocked.Increment(ref attempts); throw new DatabaseWriteException("bad schema", false); } };
+        await using var sink = await Start(configuration, connector);
+        await sink.AppendAsync([Sample(configuration, 0, 1)]); await sink.StopAsync();
+        var status = Assert.Single(sink.GetStatuses());
+        Assert.Equal(1, attempts); Assert.Equal(0, status.RetriedBatches); Assert.Equal(1, status.FailedBatches);
+        Assert.Equal(1, status.DroppedRows); Assert.Equal(0, status.QueuedRows); Assert.Equal(0, status.QueuedBytes);
+        Assert.Equal(0, status.InFlightBatches); Assert.NotNull(status.LastFailure); Assert.Equal(1, status.PeakQueuedRows);
+    }
+
+    [Fact]
+    public async Task TransientRecoveryKeepsEventIdsAndExposesRetryMetrics()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration); AddPointGroup(configuration, connection);
+        var identifiers = new ConcurrentQueue<string>(); var attempts = 0;
+        var connector = new Connector { OnWrite = (_, _, rows, _) =>
+        {
+            identifiers.Enqueue(rows[0].EventId);
+            if (Interlocked.Increment(ref attempts) < 3) throw new DatabaseWriteException("temporarily offline", true);
+            return Task.CompletedTask;
+        } };
+        await using var sink = await Start(configuration, connector);
+        await sink.AppendAsync([Sample(configuration, 0, 1)]); await sink.StopAsync();
+        var status = Assert.Single(sink.GetStatuses());
+        Assert.Equal(3, attempts); Assert.Single(identifiers.Distinct()); Assert.Equal(2, status.RetriedBatches);
+        Assert.Equal(1, status.WrittenRows); Assert.Equal(0, status.DroppedRows); Assert.Equal(0, status.InFlightBatches);
+    }
+
+    [Fact]
+    public async Task TimeoutQuarantinesOriginalOperationWithoutOverlappingRetry()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration, capacity: 2);
+        connection.ConnectionTimeoutSeconds = connection.CommandTimeoutSeconds = 1;
+        AddPointGroup(configuration, connection);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var attempts = 0;
+        var connector = new Connector { OnWrite = (_, _, _, _) => { Interlocked.Increment(ref attempts); return release.Task; } };
+        await using var sink = await Start(configuration, connector);
+        try
+        {
+            await sink.AppendAsync([Sample(configuration, 0, 1)]);
+            await Until(() => Assert.Single(sink.GetStatuses()).TimedOutOperations == 1);
+            var status = Assert.Single(sink.GetStatuses());
+            Assert.Equal(1, attempts); Assert.Equal(1, status.InFlightBatches); Assert.Equal(1, status.QueuedRows);
+            Assert.True(status.QueuedBytes > 0); Assert.Equal(0, status.RetriedBatches);
+            release.TrySetResult(); await sink.StopAsync();
+            Assert.Equal(1, Assert.Single(sink.GetStatuses()).WrittenRows);
+        }
+        finally { release.TrySetResult(); }
+    }
+
     private static GatewayConfiguration Configuration() => new()
     {
         Devices = [new DeviceConfiguration { Name = "Test", DriverId = "simulator", Tags = [new() { Name = "counter" }, new() { Name = "temperature" }] }]

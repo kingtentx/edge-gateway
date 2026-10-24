@@ -169,7 +169,21 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
             LoadColumns(columns); _status.Text = $"已读取 {columns.Count} 个字段。请在“字段映射”页完成必填列；转换类型和实际采样值仍须满足目标列的类型与非空约束。";
         })); _loadColumns.Name = "ReadDatabaseColumns";
         _createTable = UiTheme.Button("创建标准点行表", async (_, _) => await CreateTableAsync()); _createTable.Name = "CreateDatabasePointTable";
-        Span(fields, UiTheme.Toolbar(_loadColumns, _createTable)); _status.Name = "DatabaseGroupResult"; Span(fields, _status);
+        var preview = UiTheme.Button("检查与预览", async (_, _) =>
+        {
+            try
+            {
+                Commit(); var draft = GatewayJson.Clone(Value); var connection = CurrentConnection();
+                await InspectAsync(async () =>
+                {
+                    var result = await _application.PreviewDatabaseWriteAsync(connection, draft);
+                    using var dialog = new DatabasePreviewDialog(result); dialog.ShowDialog(this);
+                });
+            }
+            catch (Exception exception) { _status.Text = exception.Message; }
+        });
+        preview.Name = "PreviewDatabaseWrite";
+        Span(fields, UiTheme.Toolbar(_loadColumns, _createTable, preview)); _status.Name = "DatabaseGroupResult"; Span(fields, _status);
         Section(fields, "自定义整行策略", "只对自定义字段映射生效；标准点行会保留 Bad / Uncertain 质量以便追溯。");
         Add(fields, "DatabaseWriteInterval", "最小写入间隔（ms）", _interval); Add(fields, "DatabaseMaxSampleAge", "点位最大数据年龄（ms）", _maxAge);
         Add(fields, "DatabaseRequireGood", "写入质量要求", _goodOnly);

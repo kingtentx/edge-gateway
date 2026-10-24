@@ -32,6 +32,9 @@ public sealed partial class MainForm
         { var input = new NumericUpDown { Minimum = min, Maximum = max, ThousandsSeparator = true }; input.ValueChanged += (_, _) => Changed(); Add(key, label, input); }
         EditorDialog.Section(fields, "文件保留", "文件达到大小后轮转；超过保留文件数或天数的旧日志将清理。");
         Number("MaxFileSizeMb", "单文件最大大小（MiB）", 1, 1024); Number("RetainedFileCount", "最多保留文件数", 1, 1000); Number("RetainedDays", "最多保留天数", 1, 3650);
+        EditorDialog.Section(fields, "磁盘保护", "低于保护阈值暂停文件写入；空间达到阈值加恢复余量后自动恢复。保护期间的日志不补写，丢弃数可见。不会删除其他业务文件。");
+        Number("MinimumFreeDiskSpaceMb", "最低剩余空间（MiB）", 16, 1048576);
+        Number("DiskResumeMarginMb", "恢复余量（MiB）", 1, 65536);
         EditorDialog.Hint(fields, "采样日志用于本地追溯。需要按设备、点位查询长期数据时，请配置外部数据库的标准点行写入组。" + Environment.NewLine + Path.Combine(_dataDirectory, "logs"));
         var openLogs = UiTheme.Button("打开日志目录", (_, _) =>
         {
@@ -52,7 +55,7 @@ public sealed partial class MainForm
         footer.Controls.Add(actions, 0, 1);
         footer.SizeChanged += (_, _) => SetWrappingWidth(_loggingState, footer.ClientSize.Width - footer.Padding.Horizontal);
         content.Controls.Add(viewport, 0, 0); content.Controls.Add(footer, 0, 1); settingsTab.Controls.Add(content);
-        _logTabs.TabPages.Add(eventsTab); _logTabs.TabPages.Add(settingsTab);
+        _logTabs.TabPages.Add(eventsTab); _logTabs.TabPages.Add(settingsTab); _logTabs.TabPages.Add(BuildLogArchivePage());
         return _logTabs;
     }
     private void BindLoggingFields()
@@ -64,7 +67,7 @@ public sealed partial class MainForm
             var settings = _configuration.Logging;
             ((ComboBox)_loggingFields["MinimumLevel"]).SelectedItem = settings.MinimumLevel;
             ((CheckBox)_loggingFields["Samples"]).Checked = settings.LogAcquisitionSamples;
-            foreach (var (key, value) in new[] { ("MaxFileSizeMb", settings.MaxFileSizeMb), ("RetainedFileCount", settings.RetainedFileCount), ("RetainedDays", settings.RetainedDays) })
+            foreach (var (key, value) in new[] { ("MaxFileSizeMb", settings.MaxFileSizeMb), ("RetainedFileCount", settings.RetainedFileCount), ("RetainedDays", settings.RetainedDays), ("MinimumFreeDiskSpaceMb", settings.MinimumFreeDiskSpaceMb), ("DiskResumeMarginMb", settings.DiskResumeMarginMb) })
             { var input = (NumericUpDown)_loggingFields[key]; input.Value = Math.Clamp(value, (int)input.Minimum, (int)input.Maximum); }
         }
         finally { _bindingLogging = false; }
@@ -75,7 +78,9 @@ public sealed partial class MainForm
         LogAcquisitionSamples = ((CheckBox)_loggingFields["Samples"]).Checked,
         MaxFileSizeMb = (int)((NumericUpDown)_loggingFields["MaxFileSizeMb"]).Value,
         RetainedFileCount = (int)((NumericUpDown)_loggingFields["RetainedFileCount"]).Value,
-        RetainedDays = (int)((NumericUpDown)_loggingFields["RetainedDays"]).Value
+        RetainedDays = (int)((NumericUpDown)_loggingFields["RetainedDays"]).Value,
+        MinimumFreeDiskSpaceMb = (int)((NumericUpDown)_loggingFields["MinimumFreeDiskSpaceMb"]).Value,
+        DiskResumeMarginMb = (int)((NumericUpDown)_loggingFields["DiskResumeMarginMb"]).Value
     };
     private async Task ApplyLoggingSettingsAsync()
     {
@@ -91,6 +96,7 @@ public sealed partial class MainForm
         _loggingState.ForeColor = _loggingDirty ? UiTheme.Warning : UiTheme.Muted;
         var status = _application.GetLoggingStatus();
         _loggingFileState.Text = $"日志队列：{status.PendingEntries:N0} 条；累计丢弃：{status.DroppedEntries:N0} 条；写入失败：{status.FailedEntries:N0} 条。"
+            + $"\n队列载荷：{status.PendingBytes / 1048576d:F2} MiB；可用磁盘：{(status.AvailableDiskBytes.HasValue ? (status.AvailableDiskBytes.Value / 1048576d).ToString("F0") + " MiB" : "未探测")}；磁盘保护：{(status.DiskProtectionActive ? "已暂停" : "未触发")}；保护丢弃：{status.DiskRejectedEntries:N0}。"
             + (string.IsNullOrWhiteSpace(status.FileError) ? "" : "\n文件写入错误：" + status.FileError);
         _loggingFileState.ForeColor = string.IsNullOrWhiteSpace(status.FileError) ? UiTheme.Muted : UiTheme.Red;
     }

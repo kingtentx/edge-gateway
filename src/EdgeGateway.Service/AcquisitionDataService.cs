@@ -240,7 +240,10 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
     {
         private readonly object _gate = new();
         private long _queued, _bytes, _written, _dropped, _failed, _skipped;
-        private DateTimeOffset? _lastSuccess;
+        private DateTimeOffset? _lastSuccess, _lastFailure;
+        private long _peak, _retries, _timeouts;
+        private int _inFlight;
+        private double _lastWriteMilliseconds;
         private readonly Dictionary<Guid, string> _errors = [];
         private bool _connected;
         private bool _stopped;
@@ -251,12 +254,12 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
             lock (_gate)
             {
                 if (_queued >= Configuration.QueueCapacityRows || _bytes + bytes > Configuration.QueueCapacityMb * 1024L * 1024) return false;
-                _queued++; _bytes += bytes; return true;
+                _queued++; _bytes += bytes; _peak = Math.Max(_peak, _queued); return true;
             }
         }
         public void Release(int rows, long bytes) { lock (_gate) { _queued -= rows; _bytes -= bytes; } }
         public void Success(Guid groupId, int rows) { lock (_gate) { _written += rows; _lastSuccess = DateTimeOffset.UtcNow; _errors.Remove(groupId); _connected = !_stopped && _errors.Count == 0; } }
-        public void Failure(Guid groupId, string error) { lock (_gate) { _failed++; _connected = false; _errors[groupId] = error; Warn(error); } }
+        public void Failure(Guid groupId, string error) { lock (_gate) { _failed++; _lastFailure = DateTimeOffset.UtcNow; _connected = false; _errors[groupId] = error; Warn(error); } }
         public void Drop(Guid groupId, int rows, string error) { lock (_gate) { _dropped += rows; _errors[groupId] = error; _connected = false; Warn(error); } }
         public void Skip(Guid groupId, string error) { lock (_gate) { _skipped++; _errors[groupId] = error; _connected = false; Warn(error); } }
         private void Warn(string error)
@@ -266,10 +269,26 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
             _nextWarning = now + 10 * Stopwatch.Frequency;
             logger.Write(GatewayLogLevel.Warning, $"数据库 [{Configuration.Name}]：{error}");
         }
+        public void AttemptStarted(bool retry) { lock (_gate) { _inFlight++; if (retry) _retries++; } }
+        public void AttemptFinished(long started) { lock (_gate) { _inFlight--; _lastWriteMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds; } }
+        public void Stalled(Guid groupId)
+        {
+            lock (_gate)
+            {
+                _timeouts++; _lastFailure = DateTimeOffset.UtcNow; _connected = false;
+                _errors[groupId] = "数据库调用未响应截止或取消；正在隔离并等待原调用退出，不会并发重试。";
+                Warn(_errors[groupId]);
+            }
+        }
         public void SetStopped() { lock (_gate) { _stopped = true; _connected = false; } }
         public ExternalDatabaseStatus Snapshot(bool enabled)
         {
-            lock (_gate) return new(Configuration.Id, Configuration.Name, enabled, _queued, _written, _dropped, _failed, _skipped, _lastSuccess, _errors.Count == 0 ? null : string.Join("；", _errors.Values.Distinct().Take(4)), _connected);
+            lock (_gate) return new(Configuration.Id, Configuration.Name, enabled, _queued, _written, _dropped, _failed, _skipped, _lastSuccess, _errors.Count == 0 ? null : string.Join("；", _errors.Values.Distinct().Take(4)), _connected)
+            {
+                QueuedBytes = _bytes, PeakQueuedRows = _peak, RetriedBatches = _retries, TimedOutOperations = _timeouts,
+                InFlightBatches = _inFlight, LastWriteMilliseconds = _lastWriteMilliseconds, LastFailure = _lastFailure,
+                IsBackpressured = _queued >= Configuration.QueueCapacityRows * 0.8 || _bytes >= Configuration.QueueCapacityMb * 1024L * 1024 * 0.8
+            };
         }
     }
 
@@ -345,26 +364,42 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
         private async Task WriteBatchAsync(IReadOnlyList<QueuedRow> batch)
         {
             var rows = batch.Select(item => item.Row).ToArray();
+            string? terminalReason = null;
             for (var attempt = 1; attempt <= State.Configuration.MaxRetryAttempts; attempt++)
             {
                 _token.ThrowIfCancellationRequested();
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_token);
                 timeout.CancelAfter(TimeSpan.FromSeconds(State.Configuration.ConnectionTimeoutSeconds + State.Configuration.CommandTimeoutSeconds + 2));
+                var started = Stopwatch.GetTimestamp();
+                State.AttemptStarted(attempt > 1);
                 try
                 {
                     // The same event IDs and values survive every attempt. Standard tables deduplicate by event_id.
-                    await _connector.WriteRowsAsync(State.Configuration, Group, rows, timeout.Token).ConfigureAwait(false);
+                    var operation = _connector.WriteRowsAsync(State.Configuration, Group, rows, timeout.Token);
+                    try { await operation.WaitAsync(timeout.Token).ConfigureAwait(false); }
+                    catch (OperationCanceledException) when (!operation.IsCompleted)
+                    {
+                        // Cancellation is not proof that a provider/native call stopped. Retain the
+                        // worker and its reservation until the actual operation ends; never overlap retries.
+                        State.Stalled(Group.Id);
+                        await operation.ConfigureAwait(false);
+                    }
                     State.Success(Group.Id, rows.Length); return;
                 }
                 catch (OperationCanceledException) when (_token.IsCancellationRequested) { throw; }
                 catch (Exception exception)
                 {
                     State.Failure(Group.Id, $"写入组 [{Group.Name}] 第 {attempt}/{State.Configuration.MaxRetryAttempts} 次写入失败：{SafeError(exception)}");
+                    if (exception is DatabaseWriteException { IsTransient: false } or ArgumentException or InvalidDataException or NotSupportedException)
+                    { terminalReason = "不可重试的配置、权限或数据错误：" + SafeError(exception); break; }
                     if (attempt == State.Configuration.MaxRetryAttempts) break;
-                    await System.Threading.Tasks.Task.Delay(TimeSpan.FromMilliseconds(Math.Min(30000, 250 * Math.Pow(2, attempt - 1))), _token).ConfigureAwait(false);
                 }
+                finally { State.AttemptFinished(started); }
+                // Independent workers use bounded jitter to avoid a simultaneous reconnect storm.
+                var delay = Math.Min(30000, 250 * Math.Pow(2, attempt - 1));
+                await System.Threading.Tasks.Task.Delay(TimeSpan.FromMilliseconds(delay * (0.8 + 0.2 * Random.Shared.NextDouble())), _token).ConfigureAwait(false);
             }
-            State.Drop(Group.Id, rows.Length, $"写入组 [{Group.Name}] 已达最大尝试次数，本批 {rows.Length} 行未保存。");
+            State.Drop(Group.Id, rows.Length, $"写入组 [{Group.Name}] {terminalReason ?? "已达最大尝试次数"}，本批 {rows.Length} 行未获入库确认。");
         }
         private string SafeError(Exception exception)
         {

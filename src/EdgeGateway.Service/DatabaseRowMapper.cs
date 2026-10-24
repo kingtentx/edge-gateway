@@ -32,30 +32,37 @@ internal static class DatabaseRowMapper
         foreach (var mapping in group.Columns)
         {
             var sample = mapping.TagId.HasValue ? samples.GetValueOrDefault(mapping.TagId.Value) : null;
-            object? value = mapping.Source switch
-            {
-                DatabaseValueSource.EngineeringValue => sample!.Value,
-                DatabaseValueSource.RawValue => sample!.RawValue,
-                DatabaseValueSource.NumericValue => sample!.NumericValue,
-                DatabaseValueSource.SampleTime => sample!.Timestamp.ToUniversalTime(),
-                DatabaseValueSource.Quality => sample!.Quality.ToString(),
-                DatabaseValueSource.DeviceId => sample!.DeviceId.ToString("D"),
-                DatabaseValueSource.DeviceName => sample!.DeviceName,
-                DatabaseValueSource.TagId => sample!.TagId.ToString("D"),
-                DatabaseValueSource.TagName => sample!.TagName,
-                DatabaseValueSource.Address => sample!.Address,
-                DatabaseValueSource.Unit => sample!.Unit,
-                DatabaseValueSource.Error => sample!.Error,
-                DatabaseValueSource.RecordTime => now,
-                DatabaseValueSource.EventId => eventId,
-                DatabaseValueSource.Constant => mapping.ConstantValue,
-                _ => throw new InvalidDataException("不支持的字段值来源。")
-            };
-            try { values.Add(mapping.Column, ConvertField(value, mapping.FieldType)); }
-            catch (Exception exception) when (exception is FormatException or OverflowException or InvalidCastException or ArgumentException)
-            { throw new InvalidDataException($"字段 [{mapping.Column}] 不能转换为 {mapping.FieldType}：{exception.Message}", exception); }
+            values.Add(mapping.Column, ResolveField(mapping, sample, eventId, now));
         }
         return new(eventId, now, values);
+    }
+
+    internal static object? ResolveField(DatabaseColumnMapping mapping, TelemetrySample? sample, string eventId, DateTimeOffset now)
+    {
+        if (mapping.Source is not (DatabaseValueSource.RecordTime or DatabaseValueSource.EventId or DatabaseValueSource.Constant) && sample is null)
+            throw new InvalidDataException($"字段 [{mapping.Column}] 尚无关联点位采样。");
+        object? value = mapping.Source switch
+        {
+            DatabaseValueSource.EngineeringValue => sample!.Value,
+            DatabaseValueSource.RawValue => sample!.RawValue,
+            DatabaseValueSource.NumericValue => sample!.NumericValue,
+            DatabaseValueSource.SampleTime => sample!.Timestamp.ToUniversalTime(),
+            DatabaseValueSource.Quality => sample!.Quality.ToString(),
+            DatabaseValueSource.DeviceId => sample!.DeviceId.ToString("D"),
+            DatabaseValueSource.DeviceName => sample!.DeviceName,
+            DatabaseValueSource.TagId => sample!.TagId.ToString("D"),
+            DatabaseValueSource.TagName => sample!.TagName,
+            DatabaseValueSource.Address => sample!.Address,
+            DatabaseValueSource.Unit => sample!.Unit,
+            DatabaseValueSource.Error => sample!.Error,
+            DatabaseValueSource.RecordTime => now,
+            DatabaseValueSource.EventId => eventId,
+            DatabaseValueSource.Constant => mapping.ConstantValue,
+            _ => throw new InvalidDataException("不支持的字段值来源。")
+        };
+        try { return ConvertField(value, mapping.FieldType); }
+        catch (Exception exception) when (exception is FormatException or OverflowException or InvalidCastException or ArgumentException)
+        { throw new InvalidDataException($"字段 [{mapping.Column}] 不能转换为 {mapping.FieldType}：{exception.Message}", exception); }
     }
 
     public static object? ConvertField(object? value, DatabaseFieldType type)

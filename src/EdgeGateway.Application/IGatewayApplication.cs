@@ -75,5 +75,8 @@ public interface IGatewayApplication : IAsyncDisposable
     Task<IReadOnlyList<TelemetrySample>> QueryExternalHistoryAsync(Guid groupId, HistoryQuery query, CancellationToken cancellationToken = default);
     IReadOnlyList<ExternalDatabaseStatus> GetDatabaseStatuses();
     GatewayLoggingStatus GetLoggingStatus();
+    Task<DatabaseWritePreview> PreviewDatabaseWriteAsync(DatabaseConnectionConfiguration connection, DatabaseWriteGroupConfiguration group, CancellationToken cancellationToken = default);
+    Task<GatewayLogQueryResult> QueryLogFilesAsync(GatewayLogQuery query, CancellationToken cancellationToken = default);
+    Task ExportLogQueryAsync(GatewayLogQueryResult result, string path, CancellationToken cancellationToken = default);
     Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
 }
