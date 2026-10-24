@@ -55,7 +55,7 @@ public sealed class ConfigurationStoreTests : IDisposable
         using var reader = command.ExecuteReader();
         var tables = new List<string>();
         while (reader.Read()) tables.Add(reader.GetString(0));
-        Assert.Equal(["configuration_versions", "driver_plugins"], tables);
+        Assert.Equal(["configuration_versions", "driver_catalog", "driver_plugins"], tables);
     }
 
 
@@ -77,6 +77,26 @@ public sealed class ConfigurationStoreTests : IDisposable
         Assert.Equal("Custom.Plc.Driver", plugin.AssemblyName);
         Assert.Equal(new string('A', 64), plugin.Sha256);
         Assert.Equal("已加载", plugin.Status);
+    }
+
+
+    [Fact]
+    public async Task DriverCatalogInventoryIsReplacedAtomicallyInSqlite()
+    {
+        await using var store = new SqliteConfigurationStore(DatabasePath, DemoConfiguration.Create);
+        _ = await store.LoadAsync();
+        await store.ReplaceDriverInventoryAsync([
+            new("modbus-tcp", "Modbus TCP", "TCP driver", true, false, "EdgeGateway.Driver.Modbus", "1.0.0.0", new string('A', 64), "bundled"),
+            new("custom-plc", "Custom PLC", "Uploaded protocol", false, false, "Custom.Plc.Driver", "2.0.0.0", new string('B', 64), "uploaded")
+        ]);
+        var first = await store.GetDriverInventoryAsync();
+        Assert.Equal(2, first.Count);
+        Assert.Contains(first, item => item.Id == "custom-plc" && item.Source == "uploaded");
+        await store.ReplaceDriverInventoryAsync([
+            new("modbus-tcp", "Modbus TCP", "TCP driver", true, false, "EdgeGateway.Driver.Modbus", "1.0.0.0", new string('A', 64), "bundled")
+        ]);
+        var current = Assert.Single(await store.GetDriverInventoryAsync());
+        Assert.Equal("modbus-tcp", current.Id);
     }
 
     [Fact]
