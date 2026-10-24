@@ -37,6 +37,15 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
             throw new InvalidOperationException($"未安装驱动：{driverId}");
     }
 
+    private void Register(IDriverFactory factory)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        ValidateDescriptor(factory.Descriptor);
+        lock (_sync)
+            if (!_factories.TryAdd(factory.Descriptor.Id, factory))
+                throw new InvalidOperationException($"驱动标识重复：{factory.Descriptor.Id}");
+    }
+
     public IReadOnlyList<DriverPluginInfo> GetInstalledPlugins()
     {
         lock (_sync) return _plugins.Values.OrderBy(p => p.Id, StringComparer.OrdinalIgnoreCase).ToArray();
