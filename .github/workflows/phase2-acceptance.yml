@@ -1,0 +1,30 @@
+name: Phase 2 acceptance evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Archive tracked source and identify the revision
+        run: |
+          mkdir -p artifacts
+          git rev-parse HEAD > artifacts/SOURCE_COMMIT.txt
+          git archive --format=zip --output=artifacts/edge-gateway-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: edge-gateway-source
+          path: |
+            artifacts/edge-gateway-source.zip
+            artifacts/SOURCE_COMMIT.txt
+          if-no-files-found: error
+          retention-days: 7
