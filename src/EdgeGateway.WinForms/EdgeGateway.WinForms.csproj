@@ -45,7 +45,7 @@
       <DriverAssembly Include="$(TargetDir)EdgeGateway.Driver.Modbus.dll" Condition="Exists('$(TargetDir)EdgeGateway.Driver.Modbus.dll')" />
       <DriverAssembly Include="$(TargetDir)EdgeGateway.Driver.Simulator.dll" Condition="Exists('$(TargetDir)EdgeGateway.Driver.Simulator.dll')" />
     </ItemGroup>
-    <Copy SourceFiles="@(DriverAssembly)" DestinationFolder="$(DriverOutputDirectory)" SkipUnchangedFiles="true" />
+    <Move SourceFiles="@(DriverAssembly)" DestinationFolder="$(DriverOutputDirectory)" />
   </Target>
   <Target Name="StagePublishedDriverAssemblies" AfterTargets="Publish">
     <PropertyGroup>
