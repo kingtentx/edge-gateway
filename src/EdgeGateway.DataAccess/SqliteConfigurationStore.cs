@@ -9,7 +9,7 @@ namespace EdgeGateway.DataAccess;
 /// SQLite contains configuration only. Current/previous configuration are replaced in one FULL-synchronous
 /// transaction. Only the current configuration schema is accepted.
 /// </summary>
-public sealed class SqliteConfigurationStore(string path, Func<GatewayConfiguration>? defaultFactory = null) : IConfigurationStore, IAsyncDisposable
+public sealed class SqliteConfigurationStore(string path, Func<GatewayConfiguration>? defaultFactory = null) : IConfigurationStore, IDriverPluginStore, IAsyncDisposable
 {
     private readonly string _path = Path.GetFullPath(path);
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -89,12 +89,75 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
                     schema_version INTEGER NOT NULL,
                     payload TEXT NOT NULL,
                     saved_ms INTEGER NOT NULL);
+                CREATE TABLE IF NOT EXISTS driver_plugins (
+                    driver_id TEXT PRIMARY KEY NOT NULL,
+                    name TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    assembly_name TEXT NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    updated_ms INTEGER NOT NULL);
                 PRAGMA user_version=3;
                 """;
             command.ExecuteNonQuery();
             return _connection = connection;
         }
         catch { connection.Dispose(); throw; }
+    }
+
+
+    public async Task SaveDriverPluginAsync(DriverPluginInfo plugin, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(plugin);
+        if (string.IsNullOrWhiteSpace(plugin.Id) || string.IsNullOrWhiteSpace(plugin.AssemblyName)
+            || string.IsNullOrWhiteSpace(plugin.Sha256))
+            throw new ArgumentException("驱动插件元数据不完整。", nameof(plugin));
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            await Task.Run(() =>
+            {
+                using var command = OpenCore().CreateCommand();
+                command.CommandText = """
+                    INSERT INTO driver_plugins(driver_id,name,version,assembly_name,sha256,status,updated_ms)
+                    VALUES($id,$name,$version,$assembly,$sha256,$status,$time)
+                    ON CONFLICT(driver_id) DO UPDATE SET
+                        name=excluded.name,version=excluded.version,assembly_name=excluded.assembly_name,
+                        sha256=excluded.sha256,status=excluded.status,updated_ms=excluded.updated_ms;
+                    """;
+                command.Parameters.AddWithValue("$id", plugin.Id);
+                command.Parameters.AddWithValue("$name", plugin.Name);
+                command.Parameters.AddWithValue("$version", plugin.Version);
+                command.Parameters.AddWithValue("$assembly", plugin.AssemblyName);
+                command.Parameters.AddWithValue("$sha256", plugin.Sha256);
+                command.Parameters.AddWithValue("$status", plugin.Status);
+                command.Parameters.AddWithValue("$time", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                command.ExecuteNonQuery();
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task<IReadOnlyList<DriverPluginInfo>> GetDriverPluginsAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return await Task.Run<IReadOnlyList<DriverPluginInfo>>(() =>
+            {
+                using var command = OpenCore().CreateCommand();
+                command.CommandText = "SELECT driver_id,name,version,assembly_name,sha256,status FROM driver_plugins ORDER BY driver_id";
+                using var reader = command.ExecuteReader();
+                var plugins = new List<DriverPluginInfo>();
+                while (reader.Read())
+                    plugins.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2),
+                        reader.GetString(3), reader.GetString(4), reader.GetString(5)));
+                return plugins.AsReadOnly();
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
     }
 
     private static string? ReadSlot(SqliteConnection connection, string slot)
