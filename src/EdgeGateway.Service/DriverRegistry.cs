@@ -59,10 +59,13 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
 
         // Backward-compatible discovery of trusted, directly deployed EdgeGateway.Driver.* DLLs.
         // Installed uploads are manifest-driven so dependency DLLs are never mistaken for plugins.
-        foreach (var file in Directory.EnumerateFiles(_pluginDirectory, "EdgeGateway.Driver.*.dll", SearchOption.TopDirectoryOnly))
+        var installed = Path.Combine(_pluginDirectory, "installed");
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        foreach (var file in Directory.EnumerateFiles(_pluginDirectory, "EdgeGateway.Driver.*.dll", SearchOption.AllDirectories)
+            .Where(file => !Path.GetFullPath(file).StartsWith(Path.GetFullPath(installed) + Path.DirectorySeparatorChar, comparison)))
             TryLoadPlugin(file, null);
 
-        var installed = Path.Combine(_pluginDirectory, "installed");
+
         if (!Directory.Exists(installed)) return;
         foreach (var manifestPath in Directory.EnumerateFiles(installed, "driver-plugin.json", SearchOption.AllDirectories))
         {
