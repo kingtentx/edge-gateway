@@ -10,7 +10,7 @@
 
 界面与显示适配：[本轮操作改造与验收](docs/ui-usability.md) · [DPI 规范与历史说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
-**本轮改造：** 按 Application、Hosting 和 MQTT 基础设施分离桌面用例、资源组装与传输，调整设备/点位操作层级、平台分组、选择保持、查询条件和保存反馈。本轮构建、回归、Windows 界面及发布包结果待实际执行，统一记录在 [操作改造与验收](docs/ui-usability.md)，不使用旧版通过结果代替。
+**本轮数据记录改造：** SQLite 仅保存 schema 3 网关配置；采集默认输出可配置的滚动日志，外部 MySQL / PostgreSQL / Oracle 支持标准点行和自定义字段映射。旧 SQLite 历史和旧配置不迁移、不兼容。核心回归已通过 382 项，真实 PostgreSQL / MySQL 集成分别通过 22 / 24 项，详细证据与边界见 [数据记录](docs/data-recording.md)。Windows 原生界面和发布包以 [PR #1 的实际检查](https://github.com/kingtentx/edge-gateway/pull/1/checks) 为准，操作规则与证据入口见 [操作改造与验收](docs/ui-usability.md)。
 
 **已验证的上一版：** OPC UA 对外服务端及其配置字段、页面、专用依赖和验收入口已完整移除，不保留兼容层；本轮继续保持这一范围。全部 12 个迁移驱动（含南向 `OPC.UaClient`）、核心采集和 MQTT/RPC 保留。程序提交 `e3c5466` 通过 [Windows Server 2022 / 2025 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638)：当时两个作业各 319 项测试通过，分别完成 7 页、5 类弹窗、20 个等效工作区及 122 张截图检查，实际 DPI 为 96。[该版 Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638/artifacts/12513230047)及完整证据见 [服务端移除与验证记录](docs/opc-ua-service-removal.md)，不代表本轮改造或真实高 DPI 跨屏已验证。
 
@@ -208,7 +208,7 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release
 ./scripts/smoke-test-winforms.ps1
 ```
 
-核心自动测试包含实际 TCP 回环与 TLS 握手，覆盖采集策略、表达式、读写核对、五平台 JSON、MQTT 订阅/回复、ThingsCloud 应用响应和持久请求去重。本轮门禁为 8 个主页面、7 类矩阵弹窗、20 个等效工作区、149 张 PNG 和 14 个完成标记，加入真实菜单/页签、选择保持、查询条件与反馈检查，保留真实焦点与 DPI 边界断言。**这些是待执行目标；** 实际数量和结果以 [本轮验收](docs/ui-usability.md) 对应源码及原始产物为准。真实 PLC、串口、南向 OPC UA 目标服务器和用户现场平台租户仍需对应环境验收，自动测试不等于现场验收；现场还需核对点表、字节序、串口硬件、证书信任与 24–72 小时长稳运行。
+核心自动测试包含实际 TCP 回环与 TLS 握手，覆盖采集策略、表达式、读写核对、五平台 JSON、MQTT 订阅/回复、ThingsCloud 应用响应和持久请求去重。本轮 Windows 脚本必须实际验证 8 个主页面、7 类矩阵弹窗、20 个等效工作区、149 张 PNG 和 14 个完成标记，包含真实菜单/页签、选择保持、查询条件与反馈检查，并保留真实焦点与 DPI 边界断言；发布前再次核对同一源码的测试、截图和矩阵证据。实际运行结果及产物见 [PR 检查](https://github.com/kingtentx/edge-gateway/pull/1/checks) 和 [本轮验收入口](docs/ui-usability.md#执行证据)。真实 PLC、串口、南向 OPC UA 目标服务器和用户现场平台租户仍需对应环境验收，自动测试不等于现场验收；现场还需核对点表、字节序、串口硬件、证书信任与 24–72 小时长稳运行。
 
 历史交付另行保留：[驱动迁移基线](docs/verification.md)、[单设备启停](docs/device-control-autosave.md#此前版本验证与运行包)、[配置窗合并版本](docs/device-configuration-unification.md#实际执行结果)。这些文档中的运行包、截图和通过数量对应各自源码提交。
 
