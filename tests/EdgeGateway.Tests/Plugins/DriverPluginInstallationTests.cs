@@ -69,10 +69,11 @@ public sealed class DriverPluginInstallationTests
             var registry = new DriverRegistry(Array.Empty<IDriverFactory>(), log);
             registry.LoadPlugins(root);
             registry.InstallPlugin(Path.Combine(AppContext.BaseDirectory, "EdgeGateway.Driver.TestPlugin.dll"));
-            var dll = Directory.GetFiles(Path.Combine(root, "installed"), "EdgeGateway.Driver.TestPlugin.dll", SearchOption.AllDirectories).Single();
-            var bytes = await File.ReadAllBytesAsync(dll);
-            bytes[^1] ^= 0x01;
-            await File.WriteAllBytesAsync(dll, bytes);
+            var manifestPath = Directory.GetFiles(Path.Combine(root, "installed"), "driver-plugin.json", SearchOption.AllDirectories).Single();
+            var manifestJson = await File.ReadAllTextAsync(manifestPath);
+            using var manifest = System.Text.Json.JsonDocument.Parse(manifestJson);
+            var originalHash = manifest.RootElement.GetProperty("Sha256").GetString()!;
+            await File.WriteAllTextAsync(manifestPath, manifestJson.Replace(originalHash, new string('0', 64), StringComparison.Ordinal));
 
             var restarted = new DriverRegistry(Array.Empty<IDriverFactory>(), log);
             restarted.LoadPlugins(root);
