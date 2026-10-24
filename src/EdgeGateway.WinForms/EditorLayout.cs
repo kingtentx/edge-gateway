@@ -52,6 +52,7 @@ internal static class EditorLayout
     internal sealed class EditorTabs : TabControl
     {
         private DpiAwareForm? _dpiHost;
+        private bool _creatingHandle;
 
         public EditorTabs()
         {
@@ -86,6 +87,18 @@ internal static class EditorLayout
         protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
         protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
 
+        protected override void CreateHandle()
+        {
+            _creatingHandle = true;
+            try { base.CreateHandle(); }
+            finally { _creatingHandle = false; }
+            // TabControl.Padding recreates an existing HWND. Wait until the entire
+            // native creation has returned, especially for pages first shown after
+            // the host completed its initial DPI layout. Recreating in HandleCreated
+            // destroys the HWND still being returned by CreateWindowEx (error 1400).
+            UpdatePadding();
+        }
+
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
@@ -96,14 +109,13 @@ internal static class EditorLayout
                 _dpiHost = host;
                 if (_dpiHost is not null) _dpiHost.DpiLayoutCompleted += OnHostDpiLayoutCompleted;
             }
-            UpdatePadding();
         }
 
         protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); UpdatePadding(); }
         private void OnHostDpiLayoutCompleted(object? sender, EventArgs e) => UpdatePadding();
         private void UpdatePadding()
         {
-            if (!IsHandleCreated || IsDisposed || _dpiHost is { IsDpiLayoutReady: false }) return;
+            if (_creatingHandle || !IsHandleCreated || IsDisposed || _dpiHost is { IsDpiLayoutReady: false }) return;
             // TabControl.Padding is a Point; the framework does not own this metric.
             var padding = new Point(UiTheme.Scale(this, 18), UiTheme.Scale(this, 9));
             if (Padding != padding) Padding = padding;

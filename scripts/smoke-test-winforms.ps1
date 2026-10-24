@@ -62,6 +62,7 @@ def require(condition, message):
         raise RuntimeError(message)
 
 markers = [
+    'Deferred tab navigation passed:',
     'WinForms editor smoke passed: 15 drivers',
     'Device configuration smoke passed: 15 dedicated driver windows',
     'Existing device driver change smoke passed:',
@@ -212,7 +213,7 @@ if os.environ.get('GITHUB_ACTIONS') == 'true':
 summary = dict(sourceCommit=os.environ.get('GITHUB_SHA'), workflowRunId=os.environ.get('GITHUB_RUN_ID'),
     actualDeviceDpi=actual_dpi, nativeWindowDpi=report['nativeWindowDpi'], viewportSimulation=True,
     layoutCasesPassed=20, layoutCasesExpected=20, checkedPages=sorted(pages), checkedDialogs=sorted(dialogs),
-    screenshotCount=149, capabilitiesSmokePassed=True, usabilitySmokePassed=True, dataRecordingSmokePassed=True,
+    screenshotCount=149, deferredNavigationSmokePassed=True, capabilitiesSmokePassed=True, usabilitySmokePassed=True, dataRecordingSmokePassed=True,
     screenshotVisibilityRestoreCount=len(capture_restores),
     controlMetricCounts=metric_counts, markersPassed=markers, testResultsSummary=test_results_summary,
     reportSha256=hashlib.sha256(report_path.read_bytes()).hexdigest())

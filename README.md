@@ -10,6 +10,8 @@
 
 界面与显示适配：[本轮操作改造与验收](docs/ui-usability.md) · [DPI 规范与历史说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
+**2026-10-24 数据库菜单修复：** 修正高 DPI 下首次点击“数据库”时的窗口句柄创建异常，共用页签的修复同时覆盖平台与日志页面；本机 192 DPI 导航及 418 项核心测试通过。完整布局矩阵仍存在数据库写入组弹窗焦点检查失败，详见 [本次验证与限制](docs/ui-usability.md#数据库菜单句柄修复2026-10-24)。
+
 **本轮数据记录改造：** SQLite 仅保存 schema 3 网关配置；采集默认输出可配置的滚动日志，外部 MySQL / PostgreSQL / Oracle 支持标准点行和自定义字段映射。旧 SQLite 历史和旧配置不迁移、不兼容。核心回归已通过 388 项，真实 PostgreSQL / MySQL 集成分别通过 22 / 24 项，详细证据与边界见 [数据记录](docs/data-recording.md)。Windows 原生界面和发布包以 [PR #1 的实际检查](https://github.com/kingtentx/edge-gateway/pull/1/checks) 为准，操作规则与证据入口见 [操作改造与验收](docs/ui-usability.md)。
 
 **已验证的上一版：** OPC UA 对外服务端及其配置字段、页面、专用依赖和验收入口已完整移除，不保留兼容层；本轮继续保持这一范围。全部 12 个迁移驱动（含南向 `OPC.UaClient`）、核心采集和 MQTT/RPC 保留。程序提交 `e3c5466` 通过 [Windows Server 2022 / 2025 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638)：当时两个作业各 319 项测试通过，分别完成 7 页、5 类弹窗、20 个等效工作区及 122 张截图检查，实际 DPI 为 96。[该版 Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638/artifacts/12513230047)及完整证据见 [服务端移除与验证记录](docs/opc-ua-service-removal.md)，不代表本轮改造或真实高 DPI 跨屏已验证。

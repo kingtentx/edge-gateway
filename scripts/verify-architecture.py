@@ -56,7 +56,7 @@ for path in (ROOT / "src/EdgeGateway.WinForms").glob("*.cs"):
     assert not re.search(r"using\s+EdgeGateway\.(?:Service|DataAccess|Infrastructure|IotGateway)\b", text), \
         "Presentation imports an infrastructure/runtime namespace: " + str(path.relative_to(ROOT))
 
-contract = (ROOT / "src/EdgeGateway.Application/IGatewayApplication.cs").read_text()
+contract = (ROOT / "src/EdgeGateway.Application/IGatewayApplication.cs").read_text(encoding="utf-8-sig")
 for forbidden in ("GatewayRuntime", "IGatewayStore", "IConfigurationStore", "IDriverFactory", "ITelemetryPublisher"):
     assert not re.search(r"\b" + forbidden + r"\b", contract), "Application contract exposes implementation ownership: " + forbidden
 for name in ("EdgeGateway.Application", "EdgeGateway.Hosting", "EdgeGateway.Infrastructure.Mqtt"):

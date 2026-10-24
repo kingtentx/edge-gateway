@@ -327,6 +327,7 @@ public sealed partial class MainForm : DpiAwareForm
             try
             {
                 await RefreshSnapshotsAsync();
+                SmokeDeferredPageNavigation();
                 var originalSize = Size;
                 Width = MinimumSize.Width;
                 PerformLayoutRecursively(this);

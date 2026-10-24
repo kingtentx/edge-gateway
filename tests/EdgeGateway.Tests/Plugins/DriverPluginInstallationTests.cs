@@ -1,4 +1,5 @@
 using EdgeGateway.Abstractions;
+using EdgeGateway.Model;
 using EdgeGateway.Service;
 
 namespace EdgeGateway.Tests.Plugins;
