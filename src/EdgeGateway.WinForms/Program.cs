@@ -33,7 +33,7 @@ internal static class Program
         {
             host = GatewayHost.CreateAsync(dataDirectory, pluginDirectory: driverDirectory, enableVerificationFaults: smokeTest).GetAwaiter().GetResult();
             using var window = new MainForm(host.Application, host.DataDirectory, smokeTest, screenshotPath, layoutMatrix,
-                smokeTest ? host.BeginConfigurationWriteFailureForVerification : null);
+                smokeTest ? host.BeginConfigurationWriteFailureForVerification : null, driverDirectory);
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }
