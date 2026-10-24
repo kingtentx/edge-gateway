@@ -65,6 +65,12 @@ public sealed class GatewayHost : IAsyncDisposable
             var configurationPath = Path.Combine(directory, "gateway.config.db");
             configurations = new SqliteConfigurationStore(configurationPath, Service.DemoConfiguration.Create);
             var configuration = await configurations.LoadAsync(cancellationToken).ConfigureAwait(false);
+            if (!configurations.HasSavedConfiguration)
+            {
+                // First launch writes the complete default configuration to SQLite immediately,
+                // so a restart never depends on transient in-memory defaults.
+                await configurations.SaveAsync(configuration, cancellationToken).ConfigureAwait(false);
+            }
             store = new FileGatewayStore(Path.Combine(directory, "messaging"));
             await store.InitializeAsync(cancellationToken).ConfigureAwait(false);
             log = new GatewayLog(Path.Combine(directory, "logs"));
