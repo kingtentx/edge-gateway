@@ -32,8 +32,8 @@ public sealed partial class GatewayRuntime
             ObjectDisposedException.ThrowIf(_disposed, this);
             var errors = ConfigurationValidator.Validate(next, _registry);
             if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors));
-            if (_running && !ConfigurationValuesEqual(_configuration, next, nameof(GatewayConfiguration.Devices)))
-                throw new InvalidOperationException("设备运行期间可以修改设备与点位；修改网关或平台全局设置，请先停止全部设备。");
+            if (_running && !RuntimeGlobalSettingsEqual(_configuration, next))
+                throw new InvalidOperationException("设备运行期间可以修改设备、点位与日志；修改网关、平台或数据库设置，请先停止全部设备。");
             if (_configuration.Mqtt.Platform != next.Mqtt.Platform)
             {
                 await _store.InitializeAsync(cancellationToken).ConfigureAwait(false);
@@ -77,6 +77,7 @@ public sealed partial class GatewayRuntime
             }
 
             _configuration = next;
+            _dataSink.UpdateConfiguration(next);
             if (!_running) _channels.Clear();
             foreach (var sample in _latest.Where(pair => affected.Contains(pair.Value.DeviceId)))
                 _latest.TryRemove(sample.Key, out _);
@@ -108,6 +109,15 @@ public sealed partial class GatewayRuntime
 
     private static bool ConfigurationValuesEqual<T>(T first, T second, string? ignoredRootProperty = null) =>
         JsonValuesEqual(JsonSerializer.SerializeToElement(first), JsonSerializer.SerializeToElement(second), ignoredRootProperty);
+
+    private static bool RuntimeGlobalSettingsEqual(GatewayConfiguration first, GatewayConfiguration second)
+    {
+        var left = Clone(first);
+        var right = Clone(second);
+        left.Devices = []; right.Devices = [];
+        left.Logging = new(); right.Logging = new();
+        return ConfigurationValuesEqual(left, right);
+    }
 
     // Object members (including driver property dictionaries) have no semantic order.
     // Array order remains significant, including the configured sequence of point reads.

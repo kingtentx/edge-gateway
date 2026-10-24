@@ -9,8 +9,8 @@ using EdgeGateway.Model;
 namespace EdgeGateway.Service;
 
 /// <summary>
-/// One sequential worker per device; acquisition, history storage and northbound publication are independent.
-/// This instance owns driver sessions, but the caller retains ownership of the store and publisher.
+/// One sequential worker per device; acquisition, configured data outputs and northbound publication are independent.
+/// This instance owns driver sessions and the acquisition sink; the caller owns the message store and publisher.
 /// </summary>
 public sealed partial class GatewayRuntime : IAsyncDisposable
 {
@@ -18,6 +18,7 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     private readonly IGatewayStore _store;
     private readonly ITelemetryPublisher _publisher;
     private readonly IGatewayLog _log;
+    private readonly IAcquisitionDataSink _dataSink;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly ConcurrentDictionary<Guid, TelemetrySample> _latest = new();
     private readonly ConcurrentDictionary<Guid, DeviceRuntimeStatus> _statuses = new();
@@ -25,20 +26,22 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     private readonly ConcurrentDictionary<Guid, string> _alarmStates = new();
     private volatile GatewayConfiguration _configuration;
     private CancellationTokenSource? _runCancellation;
-    private Channel<IReadOnlyList<TelemetrySample>>? _historyChannel;
+    private Channel<IReadOnlyList<TelemetrySample>>? _acquisitionChannel;
     private Task[] _sharedWorkers = [];
-    private Task? _historyTask;
+    private Task? _acquisitionTask;
     private volatile bool _running;
     private bool _disposed;
 
     public GatewayRuntime(GatewayConfiguration configuration, IDriverRegistry registry,
-        IGatewayStore store, ITelemetryPublisher publisher, IGatewayLog log)
+        IGatewayStore store, ITelemetryPublisher publisher, IGatewayLog log, IAcquisitionDataSink? dataSink = null)
     {
         _configuration = Clone(configuration);
         _registry = registry;
         _store = store;
         _publisher = publisher;
         _log = log;
+        _dataSink = dataSink ?? new AcquisitionDataService(null, log);
+        _dataSink.UpdateConfiguration(_configuration);
         ResetStatuses();
     }
 
@@ -56,6 +59,7 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
             var errors = ConfigurationValidator.Validate(configuration, _registry);
             if (errors.Count > 0) throw new ArgumentException(string.Join(Environment.NewLine, errors), nameof(configuration));
             _configuration = Clone(configuration);
+            _dataSink.UpdateConfiguration(_configuration);
             _channels.Clear();
             _latest.Clear();
             ResetStatuses();
@@ -107,16 +111,16 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     {
         if (_runCancellation is not null) return;
         await _store.InitializeAsync(cancellationToken).ConfigureAwait(false);
-        await _store.PruneHistoryAsync(_configuration.HistoryRetentionDays, _configuration.MaxHistoryRows, cancellationToken).ConfigureAwait(false);
-        cancellationToken.ThrowIfCancellationRequested();
+        _dataSink.UpdateConfiguration(_configuration);
+        await _dataSink.StartAsync(cancellationToken).ConfigureAwait(false);
         // The caller's token cancels startup only. Sessions own their subsequent lifetime.
         _runCancellation = new CancellationTokenSource();
-        _historyChannel = Channel.CreateBounded<IReadOnlyList<TelemetrySample>>(new BoundedChannelOptions(256)
+        _acquisitionChannel = Channel.CreateBounded<IReadOnlyList<TelemetrySample>>(new BoundedChannelOptions(256)
         { SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait });
-        var reader = _historyChannel.Reader;
+        var reader = _acquisitionChannel.Reader;
         var token = _runCancellation.Token;
         _running = true;
-        _historyTask = Task.Run(() => StoreHistoryAsync(reader));
+        _acquisitionTask = Task.Run(() => ProcessAcquisitionAsync(reader));
         _sharedWorkers = _configuration.Mqtt.Enabled
             ? [Task.Run(() => QueueTelemetryAsync(token)), Task.Run(() => SendOutboxAsync(token)), Task.Run(() => RunPlatformSessionAsync(token))]
             : [];
@@ -135,6 +139,7 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
         SetDemotion(device.Id, null);
         var session = new DeviceSession(device, _runCancellation!.Token);
         _sessions[device.Id] = session;
+        _dataSink.SetDeviceActive(device.Id, true);
         _statuses[device.Id] = new(device.Id, device.Name, DeviceState.Connecting,
             _statuses.GetValueOrDefault(device.Id)?.LastSuccess, 0, null);
         session.Worker = Task.Run(() => CollectDeviceAsync(session, session.Token));
@@ -178,6 +183,7 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
 
     private async Task FinishDeviceStopAsync(DeviceSession session)
     {
+        _dataSink.SetDeviceActive(session.Configuration.Id, false);
         try { await session.Worker.ConfigureAwait(false); }
         catch (OperationCanceledException) when (session.Token.IsCancellationRequested) { }
         catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"停止设备 [{session.Configuration.Name}] 时发生错误：{ex.Message}"); }
@@ -201,10 +207,11 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
         try { await Task.WhenAll(_sharedWorkers).ConfigureAwait(false); }
         catch (OperationCanceledException) { }
         catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"停止上报任务时发生错误：{ex.Message}"); }
-        // Only the last device closes the channel. Accepted history from every device
+        // Only the last device closes the channel. Accepted samples from every device
         // is drained while stopping one of several devices leaves this consumer alive.
-        _historyChannel?.Writer.TryComplete();
-        if (_historyTask is not null) await _historyTask.ConfigureAwait(false);
+        _acquisitionChannel?.Writer.TryComplete();
+        if (_acquisitionTask is not null) await _acquisitionTask.ConfigureAwait(false);
+        await _dataSink.StopAsync().ConfigureAwait(false);
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
@@ -214,15 +221,16 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
         _runCancellation?.Dispose();
         _runCancellation = null;
         _sharedWorkers = [];
-        _historyTask = null;
-        _historyChannel = null;
+        _acquisitionTask = null;
+        _acquisitionChannel = null;
         _running = false;
-        _log.Write(GatewayLogLevel.Information, "全部设备已停止，历史缓冲已处理，未确认的上报仍保留在补传队列。");
+        _log.Write(GatewayLogLevel.Information, "全部设备已停止，采集输出缓冲已处理；外部数据库结果请查看写入统计，未确认的上报仍保留在补传队列。");
     }
 
     public IReadOnlyList<TelemetrySample> GetLatest() => _latest.Values.OrderBy(s => s.DeviceName).ThenBy(s => s.TagName).ToArray();
     public TelemetrySample? GetLatestSample(Guid tagId) => _latest.GetValueOrDefault(tagId);
     public IReadOnlyList<DeviceRuntimeStatus> GetDeviceStatuses() => _statuses.Values.OrderBy(s => s.DeviceName).ToArray();
+    public IReadOnlyList<ExternalDatabaseStatus> GetDatabaseStatuses() => _dataSink.GetStatuses();
 
     /// <summary>Compatibility submission-only API. Successful completion does not confirm readback; failures retain their exception types.</summary>
     public Task WriteAsync(Guid deviceId, Guid tagId, string engineeringValue, CancellationToken cancellationToken = default) =>
@@ -315,17 +323,18 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
                     {
                         // Publish this read while still owning the device gate. Otherwise a
                         // newer write can mark Uncertain and then be overwritten by this old read.
+                        var tagsById = tags.ToDictionary(tag => tag.Id);
                         foreach (var sample in samples)
                         {
                             _latest[sample.TagId] = sample;
-                            UpdateAlarm(tags.First(t => t.Id == sample.TagId), sample);
+                            UpdateAlarm(tagsById[sample.TagId], sample);
                         }
                     }
                     finally { session.Gate.Release(); }
                 }
                 planner.Complete(tags, clock.ElapsedMilliseconds);
                 if (!failed) delay = planner.DelayUntilNext(clock.ElapsedMilliseconds);
-                if (samples.Count > 0) await _historyChannel!.Writer.WriteAsync(samples, cancellationToken).ConfigureAwait(false);
+                if (samples.Count > 0) await _acquisitionChannel!.Writer.WriteAsync(samples, cancellationToken).ConfigureAwait(false);
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -343,24 +352,17 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
         }
     }
 
-    private async Task StoreHistoryAsync(ChannelReader<IReadOnlyList<TelemetrySample>> reader)
+    private async Task ProcessAcquisitionAsync(ChannelReader<IReadOnlyList<TelemetrySample>> reader)
     {
-        var nextPrune = DateTimeOffset.UtcNow.AddMinutes(1);
         await foreach (var batch in reader.ReadAllAsync().ConfigureAwait(false))
         {
             try
             {
-                await _store.AppendSamplesAsync(batch).ConfigureAwait(false);
-                if (DateTimeOffset.UtcNow >= nextPrune)
-                {
-                    await _store.PruneHistoryAsync(_configuration.HistoryRetentionDays, _configuration.MaxHistoryRows).ConfigureAwait(false);
-                    nextPrune = DateTimeOffset.UtcNow.AddMinutes(1);
-                }
+                await _dataSink.AppendAsync(batch).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                // Keep acquisition alive, but explicitly report that this batch was NOT persisted.
-                _log.Write(GatewayLogLevel.Error, $"历史写入失败，本批 {batch.Count} 条未保存，请检查磁盘：{ex.Message}");
+                _log.Write(GatewayLogLevel.Error, $"采集输出失败，本批 {batch.Count} 条未完整处理，请检查日志与数据库状态：{ex.Message}");
             }
         }
     }
@@ -475,6 +477,7 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
         {
             if (_disposed) return;
             await StopCoreAsync().ConfigureAwait(false);
+            await _dataSink.DisposeAsync().ConfigureAwait(false);
             _disposed = true;
         }
         finally { _lifecycle.Release(); }

@@ -111,7 +111,7 @@ public sealed class CatalogTests(CatalogFixture catalog) : IClassFixture<Catalog
     [InlineData("modbus-rtu-com11.json", 1)]
     public async Task ShippedConfigurationImportsAndValidatesWithoutHardwareConnections(string fileName, int deviceCount)
     {
-        var configuration = await new JsonConfigurationStore(Path.Combine(AppContext.BaseDirectory, fileName)).LoadAsync();
+        var configuration = await new JsonConfigurationFiles().ReadAsync(Path.Combine(AppContext.BaseDirectory, fileName));
         Assert.Equal(deviceCount, configuration.Devices.Count);
         Assert.All(configuration.Devices, d => Assert.False(d.Enabled));
         Assert.False(configuration.Mqtt.Enabled);

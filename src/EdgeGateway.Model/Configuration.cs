@@ -4,12 +4,10 @@ namespace EdgeGateway.Model;
 
 public sealed class GatewayConfiguration
 {
-    public int SchemaVersion { get; set; } = 2;
+    public int SchemaVersion { get; set; } = 3;
     public string GatewayId { get; set; } = "edge-001";
     public string Name { get; set; } = "边缘采集网关";
     public bool AutoStart { get; set; }
-    public int HistoryRetentionDays { get; set; } = 30;
-    public int MaxHistoryRows { get; set; } = 1_000_000;
     public int MaxOutboxMessages { get; set; } = 50_000;
     public int PublishIntervalMs { get; set; } = 5_000;
     public TelemetryReportMode ReportMode { get; set; } = TelemetryReportMode.Periodic;
@@ -17,6 +15,9 @@ public sealed class GatewayConfiguration
     public MqttConfiguration Mqtt { get; set; } = new();
     public List<ChannelConfiguration> Channels { get; set; } = [];
     public List<DeviceConfiguration> Devices { get; set; } = [];
+    public GatewayLoggingConfiguration Logging { get; set; } = new();
+    public List<DatabaseConnectionConfiguration> Databases { get; set; } = [];
+    public List<DatabaseWriteGroupConfiguration> DatabaseWriteGroups { get; set; } = [];
 }
 
 public sealed class MqttConfiguration

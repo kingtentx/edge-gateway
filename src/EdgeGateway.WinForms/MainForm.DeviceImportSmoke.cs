@@ -24,7 +24,7 @@ public sealed partial class MainForm
             fixture.Devices.RemoveAll(x => x.Id == source.Id);
             fixture.GatewayId = "device-import-smoke";
             fixture.Name = "保留当前网关";
-            fixture.HistoryRetentionDays = 17;
+            fixture.Logging.RetainedDays = 17;
             fixture.Mqtt.Host = "existing-broker.invalid";
             await CommitConfigurationAsync(fixture, replaceCloudDraft: true);
             var before = DeviceImportSmokeJson(_configuration);

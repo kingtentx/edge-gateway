@@ -126,7 +126,7 @@ public sealed class MqttRpcTransportTests
         Directory.CreateDirectory(directory);
         try
         {
-            await using var store = new SqliteGatewayStore(Path.Combine(directory, "gateway.db"));
+            await using var store = new FileGatewayStore(Path.Combine(directory, "messaging"));
             await using var publisher = new MqttTelemetryPublisher();
             var config = new GatewayConfiguration
             {

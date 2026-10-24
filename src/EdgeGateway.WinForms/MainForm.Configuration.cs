@@ -402,8 +402,9 @@ public sealed partial class MainForm
     {
         if (!CanEdit()) return;
         var device = deviceId.HasValue ? _configuration.Devices.FirstOrDefault(d => d.Id == deviceId) : SelectedDevice(); if (device is null) return;
+        if (DatabasePointReferenceWarning(device.Tags) is { } referenceWarning) { ShowError(referenceWarning); return; }
         var runningNotice = _application.IsDeviceRunning(device.Id) ? "\n该设备正在运行，删除成功后只停止本设备，其他设备继续采集。" : "";
-        if (MessageBox.Show(this, $"删除设备“{device.Name}”及其 {device.Tags.Count} 个配置点位？已有历史数据仍然保留。{runningNotice}", "删除设备", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+        if (MessageBox.Show(this, $"删除设备“{device.Name}”及其 {device.Tags.Count} 个配置点位？外部数据库已有数据和日志文件仍然保留。{runningNotice}", "删除设备", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
         await RunBusyAsync(async () => CompleteConfigurationCommit(await _application.DeleteDeviceAsync(device.Id),
             successMessage: $"设备“{device.Name}”已删除并自动保存。"));
     }
@@ -445,6 +446,7 @@ public sealed partial class MainForm
         var device = deviceId.HasValue ? _configuration.Devices.FirstOrDefault(d => d.Id == deviceId) : SelectedDevice();
         var tag = tagId.HasValue ? device?.Tags.FirstOrDefault(t => t.Id == tagId) : SelectedTag();
         if (device is null || tag is null) return;
+        if (DatabasePointReferenceWarning([tag]) is { } referenceWarning) { ShowError(referenceWarning); return; }
         var notice = _application.IsDeviceRunning(device.Id) ? "\n保存后仅重新连接该点位所属设备，其他设备继续采集。" : "";
         if (MessageBox.Show(this, $"删除点位“{tag.Name}”？{notice}", "删除点位", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
         await RunBusyAsync(async () => CompleteConfigurationCommit(await _application.DeleteTagAsync(device.Id, tag.Id),
@@ -455,7 +457,7 @@ public sealed partial class MainForm
     {
         RefreshDeviceFilters();
         BindDeviceRows(selectDevice);
-        BindTags(selectTag); BindCloudFields(); BindDeviceChoices(); UpdateDeviceConfigurationCommands();
+        BindTags(selectTag); BindCloudFields(); BindDeviceChoices(); BindDatabaseViews(); BindHistoryGroups(); BindLoggingFields(); UpdateDeviceConfigurationCommands();
     }
 
     private void BindTags(Guid? selectTag = null)

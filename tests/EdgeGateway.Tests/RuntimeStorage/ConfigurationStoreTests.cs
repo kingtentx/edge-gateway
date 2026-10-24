@@ -2,144 +2,126 @@ using System.Text.Json;
 using EdgeGateway.DataAccess;
 using EdgeGateway.Model;
 using EdgeGateway.Service;
+using Microsoft.Data.Sqlite;
 
 namespace EdgeGateway.Tests.RuntimeStorage;
 
 public sealed class ConfigurationStoreTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "edge-config-tests-" + Guid.NewGuid().ToString("N"));
-    private string FilePath => Path.Combine(_directory, "gateway.json");
+    private string DatabasePath => Path.Combine(_directory, "gateway.config.db");
 
     [Fact]
-    public async Task MissingFileUsesFactoryButDoesNotCreateFileUntilSaved()
+    public async Task FreshDatabaseDoesNotClaimDefaultsAreSaved()
     {
-        var store = new JsonConfigurationStore(FilePath, DemoConfiguration.Create);
-        var config = await store.LoadAsync();
-        Assert.Contains(config.Devices, d => d.DriverId == "simulator" && d.Enabled);
-        Assert.False(File.Exists(FilePath));
+        await using var store = new SqliteConfigurationStore(DatabasePath, DemoConfiguration.Create);
+        var configuration = await store.LoadAsync();
+        Assert.False(store.HasSavedConfiguration);
+        Assert.Equal(3, configuration.SchemaVersion);
+        Assert.Contains(configuration.Devices, device => device.DriverId == "simulator");
+        await store.SaveAsync(configuration);
+        Assert.True(store.HasSavedConfiguration);
     }
 
     [Fact]
-    public async Task AtomicSaveKeepsPreviousVersionAndReadsEnums()
+    public async Task ConfigurationAndPreviousVersionRoundTripWithNewRecordingSettings()
     {
-        var store = new JsonConfigurationStore(FilePath);
-        var config = DemoConfiguration.Create();
-        await store.SaveAsync(config);
-        config.Name = "第二版配置";
-        await store.SaveAsync(config);
-        var current = await store.LoadAsync();
-        var backup = await new JsonConfigurationStore(FilePath + ".bak").LoadAsync();
+        var configuration = DemoConfiguration.Create();
+        configuration.Logging.MaxFileSizeMb = 17;
+        configuration.Databases.Add(new DatabaseConnectionConfiguration { Name = "生产数据", Provider = ExternalDatabaseProvider.PostgreSql });
+        await using (var store = new SqliteConfigurationStore(DatabasePath))
+        {
+            await store.SaveAsync(configuration);
+            configuration.Name = "第二版配置";
+            configuration.Logging.MinimumLevel = GatewayLogLevel.Warning;
+            await store.SaveAsync(configuration);
+        }
+        await using var reopened = new SqliteConfigurationStore(DatabasePath);
+        var current = await reopened.LoadAsync();
+        Assert.True(reopened.HasSavedConfiguration);
         Assert.Equal("第二版配置", current.Name);
-        Assert.Equal("边缘采集网关", backup.Name);
-        Assert.Equal(TagDataType.Float64, current.Devices[0].Tags[0].DataType);
-        Assert.Empty(Directory.GetFiles(_directory, "*.tmp"));
+        Assert.Equal(GatewayLogLevel.Warning, current.Logging.MinimumLevel);
+        Assert.Equal(17, current.Logging.MaxFileSizeMb);
+        Assert.Equal(ExternalDatabaseProvider.PostgreSql, Assert.Single(current.Databases).Provider);
+        var previous = await reopened.LoadPreviousAsync();
+        Assert.NotNull(previous);
+        Assert.Equal("边缘采集网关", previous.Name);
+        Assert.Equal(GatewayLogLevel.Information, previous.Logging.MinimumLevel);
+        Assert.Equal(current.Devices[0].Id, previous.Devices[0].Id);
+        using var check = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = DatabasePath, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
+        check.Open();
+        using var command = check.CreateCommand();
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
+        using var reader = command.ExecuteReader();
+        var tables = new List<string>();
+        while (reader.Read()) tables.Add(reader.GetString(0));
+        Assert.Equal(["configuration_versions"], tables);
     }
 
     [Fact]
-    public async Task MalformedFileNeverFallsBackOrOverwrites()
+    public async Task SerializationFailureAndCancellationPreserveBothVersions()
     {
-        Directory.CreateDirectory(_directory);
-        const string original = "{invalid JSON content";
-        await File.WriteAllTextAsync(FilePath, original);
-        var factoryCalled = false;
-        var store = new JsonConfigurationStore(FilePath, () => { factoryCalled = true; return new GatewayConfiguration(); });
-        await Assert.ThrowsAsync<InvalidDataException>(() => store.LoadAsync());
-        Assert.False(factoryCalled);
-        Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
-    }
-
-    [Fact]
-    public async Task SerializationFailureLeavesExistingConfigurationIntact()
-    {
-        var store = new JsonConfigurationStore(FilePath);
+        await using var store = new SqliteConfigurationStore(DatabasePath);
         var config = DemoConfiguration.Create();
         await store.SaveAsync(config);
-        var original = await File.ReadAllTextAsync(FilePath);
+        config.Name = "已保存";
+        await store.SaveAsync(config);
+        config.Name = "禁止提交";
         config.Devices[0].Tags[0].Scale = double.NaN;
         await Assert.ThrowsAsync<ArgumentException>(() => store.SaveAsync(config));
-        Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
-    }
-
-    [Fact]
-    public async Task CancellationBeforeReplacePreservesExistingConfiguration()
-    {
-        var store = new JsonConfigurationStore(FilePath);
-        var config = DemoConfiguration.Create();
-        await store.SaveAsync(config);
-        var original = await File.ReadAllTextAsync(FilePath);
-        config.Name = "不应写入";
+        config.Devices[0].Tags[0].Scale = 1;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.SaveAsync(config, new CancellationToken(true)));
-        Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
-    }
-
-    [Fact]
-    public async Task VersionOneUpgradesOnlyInMemoryUntilExplicitSaveAndRetainsOriginalBackup()
-    {
-        Directory.CreateDirectory(_directory);
-        var originalConfiguration = DemoConfiguration.Create();
-        originalConfiguration.SchemaVersion = 1;
-        var original = JsonSerializer.Serialize(originalConfiguration, JsonConfigurationStore.SerializerOptions);
-        await File.WriteAllTextAsync(FilePath, original);
-        var store = new JsonConfigurationStore(FilePath);
-        var upgraded = await store.LoadAsync();
-        Assert.Equal(2, upgraded.SchemaVersion);
-        Assert.Equal(originalConfiguration.Devices[0].Id, upgraded.Devices[0].Id);
-        Assert.Equal(originalConfiguration.Devices[0].Tags[0].Id, upgraded.Devices[0].Tags[0].Id);
-        Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
-        Assert.False(File.Exists(FilePath + ".bak"));
-        await store.SaveAsync(upgraded);
-        Assert.Equal(original, await File.ReadAllTextAsync(FilePath + ".bak"));
-        using var saved = JsonDocument.Parse(await File.ReadAllTextAsync(FilePath));
-        Assert.Equal(2, saved.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("已保存", (await store.LoadAsync()).Name);
+        Assert.Equal("边缘采集网关", (await store.LoadPreviousAsync())!.Name);
     }
 
     [Theory]
-    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
     [InlineData(99)]
-    public async Task UnknownSchemaVersionFailsWithoutChangingOriginal(int version)
+    public async Task UnsupportedJsonSchemasAreRejectedWithoutMigration(int version)
     {
         Directory.CreateDirectory(_directory);
-        var original = "{\"schemaVersion\":" + version + "}";
-        await File.WriteAllTextAsync(FilePath, original);
-        await Assert.ThrowsAsync<InvalidDataException>(() => new JsonConfigurationStore(FilePath).LoadAsync());
-        Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
+        var path = Path.Combine(_directory, "import.json");
+        var original = "{\"schemaVersion\":" + version + ",\"name\":\"原文件\"}";
+        await File.WriteAllTextAsync(path, original);
+        await Assert.ThrowsAsync<InvalidDataException>(() => new JsonConfigurationFiles().ReadAsync(path));
+        Assert.Equal(original, await File.ReadAllTextAsync(path));
+        Assert.False(File.Exists(DatabasePath));
     }
 
     [Fact]
-    public async Task ExistingSchemaTwoFileKeepsAcquisitionAndSecurityDefaultsWhenNewCapabilitiesAreAbsent()
+    public async Task JsonExchangeUsesCurrentSchemaWithoutBecomingRuntimeStorage()
     {
         Directory.CreateDirectory(_directory);
-        const string original = """
-            {"schemaVersion":2,"gatewayId":"existing-gateway","devices":[
-              {"id":"07bc5395-2c6f-4945-b815-57e72bf6ae21","name":"旧设备","driverId":"simulator","tags":[
-                {"id":"d38ace68-4e8c-4786-bdc4-b1ba3959cdb2","name":"原点位","address":"constant:42","dataType":"Float64"}
-              ]}
-            ]}
-            """;
-        await File.WriteAllTextAsync(FilePath, original);
-        var store = new JsonConfigurationStore(FilePath);
-        var configuration = await store.LoadAsync();
-        var device = Assert.Single(configuration.Devices);
-        var tag = Assert.Single(device.Tags);
-        Assert.Equal(2, configuration.SchemaVersion);
-        Assert.Empty(configuration.Channels);
-        Assert.Null(device.ChannelId);
-        Assert.Equal(DeviceScanMode.DeviceRate, device.ScanMode);
-        Assert.False(device.AutoDemotionEnabled);
-        Assert.Equal("", tag.Expression);
-        Assert.Equal(0, tag.ScanIntervalMs);
-        Assert.Equal(0d, tag.Deadband);
-        Assert.True(tag.UploadEnabled);
-        Assert.Equal(TelemetryReportMode.Periodic, configuration.ReportMode);
-        Assert.Equal(MqttPlatform.Generic, configuration.Mqtt.Platform);
-        Assert.False(configuration.Mqtt.RpcEnabled);
-        Assert.False(configuration.Mqtt.AllowRemoteWrite);
-        Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
-        await store.SaveAsync(configuration);
-        Assert.Equal(original, await File.ReadAllTextAsync(FilePath + ".bak"));
-        var reloaded = await store.LoadAsync();
-        Assert.Equal(device.Id, reloaded.Devices[0].Id);
-        Assert.Equal(tag.Id, reloaded.Devices[0].Tags[0].Id);
+        var path = Path.Combine(_directory, "exchange.json");
+        var exchange = new JsonConfigurationFiles();
+        var config = DemoConfiguration.Create();
+        await exchange.ExportAsync(path, config);
+        var loaded = await exchange.ReadAsync(path);
+        Assert.Equal(config.Devices[0].Id, loaded.Devices[0].Id);
+        Assert.Equal(3, loaded.SchemaVersion);
+        Assert.False(File.Exists(DatabasePath));
+        await File.WriteAllTextAsync(path, "{ malformed");
+        await Assert.ThrowsAsync<InvalidDataException>(() => exchange.ReadAsync(path));
+        Assert.Equal("{ malformed", await File.ReadAllTextAsync(path));
+    }
+
+    [Fact]
+    public async Task CorruptSavedPayloadNeverFallsBackToDefaults()
+    {
+        await using (var store = new SqliteConfigurationStore(DatabasePath)) await store.SaveAsync(DemoConfiguration.Create());
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = DatabasePath, Pooling = false }.ToString()))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE configuration_versions SET payload='{broken' WHERE slot='current'";
+            command.ExecuteNonQuery();
+        }
+        var factoryCalled = false;
+        await using var reopened = new SqliteConfigurationStore(DatabasePath, () => { factoryCalled = true; return DemoConfiguration.Create(); });
+        await Assert.ThrowsAsync<InvalidDataException>(() => reopened.LoadAsync());
+        Assert.False(factoryCalled);
     }
 
     public void Dispose()

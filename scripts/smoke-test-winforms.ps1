@@ -74,6 +74,7 @@ markers = [
     'Live configuration smoke passed: A kept collecting',
     'Completed capabilities smoke passed at actual',
     'Usability smoke passed at actual',
+    'Data recording configuration smoke passed:',
     'Layout matrix passed: 20 equivalent viewport cases',
 ]
 for marker in markers:
@@ -95,9 +96,9 @@ for restoration in capture_restores:
     require(before == restored and before ^ captured == 0x10000000 and before & 0x10000000 != 0
             and restoration['context'], 'Screenshot restoration changed more than the recorded visibility side effect.')
 
-pages = {'overview', 'devices', 'realtime', 'history', 'diagnostics', 'cloud', 'logs'}
+pages = {'overview', 'devices', 'realtime', 'history', 'diagnostics', 'database', 'cloud', 'logs'}
 dialogs = {'PLC.ModBusMaster device', 'PLC.ModBusMaster tag', 'WriteValueDialog multiline',
-           'TagImportDialog preview', 'ChannelEditor'}
+           'TagImportDialog preview', 'ChannelEditor', 'DatabaseConnectionDialog', 'DatabaseWriteGroupDialog'}
 resolutions = [(1366, 768), (1920, 1080), (2560, 1440), (3200, 2000)]
 percentages = [100, 125, 150, 175, 200]
 case_specs = {f'{width}x{height}-{percent}pct': (width, height, percent)
@@ -106,9 +107,14 @@ cases = report['cases']
 require(len(cases) == 20 and {case['name'] for case in cases} == set(case_specs),
         'Layout case names are missing, duplicated, or unexpected.')
 channel_names = {'ChannelName', 'ChannelDelay', 'ChannelDescription'}
+database_names = {'DatabaseName', 'DatabaseEnabled', 'DatabaseProvider', 'DatabaseHost', 'DatabasePort',
+                  'DatabaseCatalog', 'DatabaseUsername', 'DatabasePasswordEnvironment', 'DatabaseTls',
+                  'DatabaseConnectTimeout', 'DatabaseCommandTimeout', 'DatabaseBatchSize', 'DatabaseFlushInterval',
+                  'DatabaseQueueCapacity', 'DatabaseQueueCapacityMb', 'DatabaseMaxRetryAttempts'}
+logging_names = {'Logging_MinimumLevel', 'Logging_Samples', 'Logging_MaxFileSizeMb', 'Logging_RetainedFileCount', 'Logging_RetainedDays'}
 write_names = {'WriteVerifyReadBack', 'WriteVerificationTimeout', 'WriteAbsoluteTolerance', 'WriteRelativeTolerance'}
 metric_counts = {'headerMetrics': 3, 'deviceParameterMetrics': 12, 'channelInputMetrics': 3,
-                 'writeVerificationMetrics': 4}
+                 'writeVerificationMetrics': 4, 'databaseConnectionMetrics': 16, 'loggingInputMetrics': 5}
 
 def check_metrics(values, count, context, names=None):
     require(len(values) == count, f'{context}: expected {count} control metrics, got {len(values)}.')
@@ -139,14 +145,17 @@ for case in cases:
     require(case['requestedWindowBounds']['width'] == round(logical_width * actual_dpi / 96.0)
             and case['requestedWindowBounds']['height'] == round(logical_height * actual_dpi / 96.0),
             name + ': requested physical viewport does not match its unchanged actual DPI.')
-    require(len(case['checkedPages']) == 7 and set(case['checkedPages']) == pages, name + ': not all seven pages were checked.')
+    require(len(case['checkedPages']) == 8 and set(case['checkedPages']) == pages, name + ': not all eight pages were checked.')
     smallest = name == '1366x768-200pct'
     expected_dialogs = dialogs | ({'PLC.ModBusMaster dedicated configuration'} if smallest else set())
     require(len(case['checkedDialogs']) == len(expected_dialogs) and set(case['checkedDialogs']) == expected_dialogs,
             name + ': missing, duplicate, or unexpected dialog checks.')
     for key, count in metric_counts.items():
-        names = {'channelInputMetrics': channel_names, 'writeVerificationMetrics': write_names}.get(key)
+        names = {'channelInputMetrics': channel_names, 'writeVerificationMetrics': write_names,
+                 'databaseConnectionMetrics': database_names, 'loggingInputMetrics': logging_names}.get(key)
         check_metrics(case[key], count, name + ' ' + key, names)
+    require(case['databaseMappingCellsChecked'] == 7 and case['databasePointSelectionVerified'] is True,
+            name + ': database mapping cells or point selection were not verified with real focus and scrolling.')
     check_metrics(case['configurationParameterMetrics'], 12 if smallest else 0, name + ' minimum configuration')
     check_metrics([case['writeInputMetric']], 1, name + ' multiline write input', {'WriteValue'})
 
@@ -160,10 +169,11 @@ for driver in drivers:
 expected_images.update('ui-smoke-' + name + '.png' for name in (
     'devices-running', 'devices-stopped', 'preset-modbus-rtu-com11', 'preset-configuration-modbus-rtu-com11',
     'tag-import-preview', 'live-configuration-devices', 'live-configuration-diagnostics', 'live-configuration-retained-draft',
-    'usability-menu', 'usability-platform'))
+    'usability-menu', 'usability-platform', 'recording-connection', 'recording-point-rows',
+    'recording-column-mapping', 'recording-log-settings'))
 for name in case_specs:
     expected_images.update(f'ui-smoke-layout-matrix/{name}-{kind}.png'
-                          for kind in ('overview', 'modbus-device', 'channel'))
+                          for kind in ('overview', 'modbus-device', 'channel', 'database-write-group'))
 expected_images.update({'ui-smoke-layout-matrix/1920x1080-125pct-devices.png',
                         'ui-smoke-layout-matrix/1366x768-200pct-modbus-configuration.png'})
 images = list(output.glob('ui-smoke*.png'))
@@ -171,8 +181,8 @@ for directory in output.glob('ui-smoke-*'):
     if directory.is_dir():
         images.extend(directory.rglob('*.png'))
 actual_images = {image.relative_to(output).as_posix() for image in images}
-require(len(expected_images) == 124, 'The expected screenshot manifest is internally inconsistent.')
-require(actual_images == expected_images and len(images) == 124,
+require(len(expected_images) == 149, 'The expected screenshot manifest is internally inconsistent.')
+require(actual_images == expected_images and len(images) == 149,
         f'Screenshot manifest mismatch: missing={sorted(expected_images - actual_images)}; unexpected={sorted(actual_images - expected_images)}.')
 png_sizes = {}
 for image in images:
@@ -202,12 +212,12 @@ if os.environ.get('GITHUB_ACTIONS') == 'true':
 summary = dict(sourceCommit=os.environ.get('GITHUB_SHA'), workflowRunId=os.environ.get('GITHUB_RUN_ID'),
     actualDeviceDpi=actual_dpi, nativeWindowDpi=report['nativeWindowDpi'], viewportSimulation=True,
     layoutCasesPassed=20, layoutCasesExpected=20, checkedPages=sorted(pages), checkedDialogs=sorted(dialogs),
-    screenshotCount=124, capabilitiesSmokePassed=True, usabilitySmokePassed=True,
+    screenshotCount=149, capabilitiesSmokePassed=True, usabilitySmokePassed=True, dataRecordingSmokePassed=True,
     screenshotVisibilityRestoreCount=len(capture_restores),
     controlMetricCounts=metric_counts, markersPassed=markers, testResultsSummary=test_results_summary,
     reportSha256=hashlib.sha256(report_path.read_bytes()).hexdigest())
 (output / 'ui-smoke-verification.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-print(f'Validated WinForms evidence: 7 pages, 5 dialog types, 20 equivalent work areas, 124 PNGs; actual {actual_dpi} DPI. Capability and usability smoke markers are present.')
+print(f'Validated WinForms evidence: 8 pages, 7 dialog types, 20 equivalent work areas, 149 PNGs; actual {actual_dpi} DPI. Capability, usability and data-recording smoke markers are present; external server integration is separately verified.')
 '@
     $checker | & python - $repositoryRoot $outputRoot
     if ($LASTEXITCODE -ne 0) { throw 'WinForms evidence verification failed.' }

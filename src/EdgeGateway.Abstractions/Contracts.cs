@@ -38,14 +38,11 @@ public interface IConfigurationStore
 public interface IGatewayStore : IAsyncDisposable
 {
     Task InitializeAsync(CancellationToken cancellationToken = default);
-    Task AppendSamplesAsync(IReadOnlyList<TelemetrySample> samples, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<TelemetrySample>> QueryHistoryAsync(HistoryQuery query, CancellationToken cancellationToken = default);
     // Never silently evict unacknowledged messages. Return false if capacity is exhausted.
     Task<bool> EnqueueAsync(string topic, string payload, int maxMessages, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<OutboxMessage>> ReadOutboxAsync(int limit, CancellationToken cancellationToken = default);
     Task AcknowledgeAsync(long id, CancellationToken cancellationToken = default);
     Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
-    Task PruneHistoryAsync(int retentionDays, int maxRows, CancellationToken cancellationToken = default);
 }
 
 public interface ITelemetryPublisher : IAsyncDisposable

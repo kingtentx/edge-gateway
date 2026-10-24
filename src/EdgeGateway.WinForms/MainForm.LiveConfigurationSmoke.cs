@@ -148,12 +148,11 @@ public sealed partial class MainForm
     private async Task SmokeRetainedDeviceInputAsync(Guid id)
     {
         var original = Clone(_configuration);
-        var path = Path.Combine(_dataDirectory, "gateway.json");
-        var disk = await File.ReadAllBytesAsync(path);
+        var disk = DeviceImportSmokeJson(await _application.ReadSavedConfigurationAsync());
         var draftName = "保存失败后保留并重试 B";
         Exception? failure = null;
         var observed = false;
-        FileStream? lockedFile = new(path, FileMode.Open, FileAccess.Read, FileShare.None);
+        IDisposable? rejectedWrites = RejectConfigurationWritesForSmoke();
         using var timer = new System.Windows.Forms.Timer { Interval = 20 };
         var elapsed = Stopwatch.StartNew();
         timer.Tick += async (_, _) =>
@@ -171,13 +170,13 @@ public sealed partial class MainForm
                 editor.SetFieldForSmoke("Name", draftName);
                 var rejected = false;
                 try { await editor.ApplyAndAcceptForSmokeAsync(); }
-                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { rejected = true; }
+                catch (Exception exception) when (IsConfigurationWriteFailureForSmoke(exception)) { rejected = true; }
                 var input = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DeviceConfiguration_Name");
                 if (!rejected || !editor.Visible || input.Text != draftName || !_application.IsDeviceRunning(id)
                     || DeviceImportSmokeJson(_configuration) != DeviceImportSmokeJson(original))
                     throw new InvalidOperationException("Failed save closed the editor, lost draft inputs, or changed a live device.");
-                lockedFile.Dispose(); lockedFile = null;
-                if (!disk.SequenceEqual(await File.ReadAllBytesAsync(path))) throw new InvalidOperationException("Failed live save modified gateway.json.");
+                rejectedWrites.Dispose(); rejectedWrites = null;
+                if (disk != DeviceImportSmokeJson(await _application.ReadSavedConfigurationAsync())) throw new InvalidOperationException("Failed live save modified the persisted SQLite configuration.");
                 SaveEditorScreenshot(editor, "live-configuration", "retained-draft");
                 await editor.ApplyAndAcceptForSmokeAsync();
                 if (_configuration.Devices.Single(device => device.Id == id).Name != draftName)
@@ -191,7 +190,7 @@ public sealed partial class MainForm
         };
         timer.Start();
         try { await ConfigureDeviceAsync(id); }
-        finally { timer.Stop(); lockedFile?.Dispose(); }
+        finally { timer.Stop(); rejectedWrites?.Dispose(); }
         if (!observed || failure is not null) throw new InvalidOperationException("Retained-input smoke failed.", failure);
     }
 }

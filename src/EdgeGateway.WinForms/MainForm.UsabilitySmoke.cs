@@ -112,7 +112,10 @@ public sealed partial class MainForm
                 "live refresh changed the operator's row/column/scroll position.");
 
             ShowPage("history"); SelectChoice(_historyDevice, a.Id); SelectChoice(_historyTag, a.Tags[0].Id);
-            await QueryHistoryAsync();
+            CheckUsability(!_historyQuery.Enabled && _historySummary.Text.Contains("尚未配置"), "history without external storage did not show its empty state.");
+            // This fixture checks presentation only; actual database query behavior has separate provider integration tests.
+            var presentationQuery = new HistoryQuery(a.Id, a.Tags[0].Id, new DateTimeOffset(_historyFrom.Value), new DateTimeOffset(_historyTo.Value), (int)_historyLimit.Value);
+            PresentHistoryResults(null, "界面测试数据", a.Name, a.Tags[0].Name, presentationQuery, samples.Where(sample => sample.TagId == a.Tags[0].Id).ToArray());
             var executed = _executedHistoryQuery;
             _historyFrom.Value = _historyFrom.Value.AddMinutes(-5);
             CheckUsability(_historyConditionsChanged && _executedHistoryQuery == executed

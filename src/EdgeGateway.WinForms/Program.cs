@@ -29,8 +29,9 @@ internal static class Program
         GatewayHost? host = null;
         try
         {
-            host = GatewayHost.CreateAsync(dataDirectory).GetAwaiter().GetResult();
-            using var window = new MainForm(host.Application, host.DataDirectory, smokeTest, screenshotPath, layoutMatrix);
+            host = GatewayHost.CreateAsync(dataDirectory, enableVerificationFaults: smokeTest).GetAwaiter().GetResult();
+            using var window = new MainForm(host.Application, host.DataDirectory, smokeTest, screenshotPath, layoutMatrix,
+                smokeTest ? host.BeginConfigurationWriteFailureForVerification : null);
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }
@@ -38,7 +39,7 @@ internal static class Program
         {
             var message = "启动失败：" + exception.Message + Environment.NewLine + Environment.NewLine
                 + "数据目录：" + dataDirectory + Environment.NewLine
-                + "已有配置和历史数据未被重置。请检查 gateway.json 或从 gateway.json.bak 恢复配置后重试。";
+                + "请检查 gateway.config.db 配置数据库、配置内容与数据目录权限后重试。";
             if (smokeTest) Console.Error.WriteLine(exception);
             else MessageBox.Show(message, "采集网关启动失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return 1;

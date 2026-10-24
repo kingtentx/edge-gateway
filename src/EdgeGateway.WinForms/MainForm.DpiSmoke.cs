@@ -99,6 +99,28 @@ public sealed partial class MainForm
                         if (key == "cloud")
                             foreach (var field in _cloudFields.Values)
                                 BringIntoViewAndAssert(field, name + " cloud field");
+                        if (key == "database")
+                        {
+                            foreach (TabPage tab in _databaseTabs.TabPages)
+                            {
+                                _databaseTabs.SelectedTab = tab; PerformLayoutRecursively(this);
+                                AssertPageToolbarsFit(tab, name + " database " + tab.Text);
+                                foreach (var button in Descendants(tab).OfType<Button>())
+                                    BringIntoViewAndAssert(button, name + " database command " + button.Text);
+                            }
+                            _databaseTabs.SelectedIndex = 0;
+                        }
+                        if (key == "logs")
+                        {
+                            foreach (var field in _loggingFields.Values)
+                                BringIntoViewAndAssert(field, name + " logging field " + field.Name);
+                            foreach (var command in new Control[] { _loggingApply, _loggingReset })
+                                BringIntoViewAndAssert(command, name + " logging command");
+                            BringIntoViewAndAssert(Descendants(_pages["logs"]).Single(control => control.Name == "OpenLogDirectory"), name + " log directory command");
+                            BringIntoViewAndAssert(_loggingFileState, name + " log file status");
+                            result.LoggingInputMetrics = _loggingFields.Values.Select(ControlMetric.From).ToList();
+                            _logTabs.SelectedIndex = 0;
+                        }
                         ResetScrollPositions(_pages[key], _navigation["overview"]);
                         result.CheckedPages.Add(key);
                         if (key == "overview")
@@ -114,6 +136,7 @@ public sealed partial class MainForm
                     result.HeaderMetrics = new Control[] { _runState, _savedState, _automaticSaveState }.Select(ControlMetric.From).ToList();
                     focusDiagnostics?.Capture(name + " before matrix dialogs");
                     VerifyMatrixDialogs(testArea, directory, result);
+                    VerifyDatabaseMatrixDialogs(testArea, directory, result);
                     if (resolution == new Size(1366, 768) && percentage == 200)
                         VerifyMinimumConfigurationDialog(testArea, directory, result);
                     focusDiagnostics?.Capture(name + " after matrix dialogs");
@@ -220,6 +243,46 @@ public sealed partial class MainForm
                 result.CheckedDialogs.Add("ChannelEditor");
             }
             catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-channel-failed.png")); throw; }
+            finally { editor.Close(); }
+        }
+    }
+
+    private void VerifyDatabaseMatrixDialogs(Rectangle area, string directory, LayoutCaseResult result)
+    {
+        var connection = RecordingConnectionFixture();
+        using (var editor = new DatabaseConnectionDialog(connection, _application))
+        {
+            editor.Show(this);
+            try
+            {
+                FitSmokeDialog(editor, area); VerifyEditorLayout(editor, result.Name + " database connection");
+                foreach (var input in editor.SmokeInputs) BringIntoViewAndAssert(input, result.Name + " database " + input.Name);
+                foreach (var button in Descendants(editor).OfType<Button>()) BringIntoViewAndAssert(button, result.Name + " database connection command");
+                result.DatabaseConnectionMetrics = editor.SmokeInputs.Select(ControlMetric.From).ToList();
+                result.CheckedDialogs.Add("DatabaseConnectionDialog");
+            }
+            catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-database-connection-failed.png")); throw; }
+            finally { editor.Close(); }
+        }
+        var device = new DeviceConfiguration { Name = "字段布局验证设备", DriverId = "simulator",
+            Tags = [new() { Name = "温度", Address = "constant:25", DataType = TagDataType.Float64 },
+                    new() { Name = "流量", Address = "ramp", DataType = TagDataType.Float64 }] };
+        var group = RecordingMappingFixture(connection.Id, device.Tags[0].Id); group.TagIds = [device.Tags[0].Id];
+        using (var editor = new DatabaseWriteGroupDialog(group, [connection], [device], _application))
+        {
+            editor.LoadColumnsForSmoke(RecordingColumnFixtures()); editor.Show(this);
+            try
+            {
+                FitSmokeDialog(editor, area); VerifyEditorLayout(editor, result.Name + " database write group");
+                foreach (var button in Descendants(editor).OfType<Button>()) BringIntoViewAndAssert(button, result.Name + " database write-group command");
+                VerifyDatabasePointSelectionForSmoke(editor, result.Name + " database point selection");
+                result.DatabasePointSelectionVerified = true;
+                result.DatabaseMappingCellsChecked = VerifyDatabaseMappingForSmoke(editor, result.Name + " database column mapping");
+                editor.SmokeMapping.CurrentCell = editor.SmokeMapping.Rows[1].Cells["Column"];
+                SaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-database-write-group.png"));
+                result.CheckedDialogs.Add("DatabaseWriteGroupDialog");
+            }
+            catch { TrySaveSmokeScreenshot(editor, Path.Combine(directory, result.Name + "-database-write-group-failed.png")); throw; }
             finally { editor.Close(); }
         }
     }
@@ -551,6 +614,10 @@ public sealed partial class MainForm
         public List<ControlMetric> DeviceParameterMetrics { get; set; } = [];
         public List<ControlMetric> ConfigurationParameterMetrics { get; set; } = [];
         public List<ControlMetric> ChannelInputMetrics { get; set; } = [];
+        public List<ControlMetric> DatabaseConnectionMetrics { get; set; } = [];
+        public List<ControlMetric> LoggingInputMetrics { get; set; } = [];
+        public int DatabaseMappingCellsChecked { get; set; }
+        public bool DatabasePointSelectionVerified { get; set; }
         public List<ControlMetric> WriteVerificationMetrics { get; set; } = [];
         public ControlMetric? WriteInputMetric { get; set; }
         public bool Passed { get; set; }

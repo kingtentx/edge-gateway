@@ -65,6 +65,15 @@ public interface IGatewayApplication : IAsyncDisposable
     Task<DeviceProbeResult> ProbeDeviceAsync(Guid deviceId, Guid? tagId, DeviceProbeOptions options, CancellationToken cancellationToken = default);
     Task<WriteCommandResult> WriteVerifiedAsync(Guid deviceId, Guid tagId, string engineeringValue,
         WriteVerificationOptions? options = null, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<TelemetrySample>> QueryHistoryAsync(HistoryQuery query, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> ApplyLoggingSettingsAsync(GatewayLoggingConfiguration settings, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> ApplyDatabaseSettingsAsync(IReadOnlyList<DatabaseConnectionConfiguration> connections,
+        IReadOnlyList<DatabaseWriteGroupConfiguration> groups, CancellationToken cancellationToken = default);
+    Task<DatabaseConnectionTestResult> TestDatabaseConnectionAsync(DatabaseConnectionConfiguration connection, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DatabaseTableInfo>> GetDatabaseTablesAsync(DatabaseConnectionConfiguration connection, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DatabaseColumnInfo>> GetDatabaseColumnsAsync(DatabaseConnectionConfiguration connection, DatabaseTableInfo table, CancellationToken cancellationToken = default);
+    Task CreateDatabasePointTableAsync(DatabaseConnectionConfiguration connection, DatabaseTableInfo table, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TelemetrySample>> QueryExternalHistoryAsync(Guid groupId, HistoryQuery query, CancellationToken cancellationToken = default);
+    IReadOnlyList<ExternalDatabaseStatus> GetDatabaseStatuses();
+    GatewayLoggingStatus GetLoggingStatus();
     Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
 }

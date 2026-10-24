@@ -240,12 +240,12 @@ public sealed class TelemetryPipelineTests
     }
 
     [Fact]
-    public async Task SqliteStatisticsFollowTheOldestUnacknowledgedRow()
+    public async Task FileQueueStatisticsFollowTheOldestUnacknowledgedMessage()
     {
         var directory = Path.Combine(Path.GetTempPath(), "edge-telemetry-statistics-" + Guid.NewGuid().ToString("N"));
         try
         {
-            await using var store = new SqliteGatewayStore(Path.Combine(directory, "gateway.db"));
+            await using var store = new FileGatewayStore(Path.Combine(directory, "messaging"));
             await store.InitializeAsync();
             Assert.Null((await store.GetStatisticsAsync()).OldestOutboxAt);
             await store.EnqueueAsync("topic", "first", 10);
@@ -300,7 +300,7 @@ public sealed class TelemetryPipelineTests
         public PipelinePublisher Publisher { get; } = new();
         public GatewayLog Log { get; } = new();
         public GatewayRuntime Runtime { get; }
-        public Harness() => Runtime = new GatewayRuntime(Configuration, new DriverRegistry([new PipelineFactory()], Log), Store, Publisher, Log);
+        public Harness() => Runtime = new GatewayRuntime(Configuration, new DriverRegistry([new PipelineFactory()], Log), Store, Publisher, Log, new RecordingDataSink(Store.Samples));
         public ValueTask DisposeAsync() => Runtime.DisposeAsync();
     }
 
@@ -359,10 +359,6 @@ public sealed class TelemetryPipelineTests
             return id;
         }
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task AppendSamplesAsync(IReadOnlyList<TelemetrySample> samples, CancellationToken cancellationToken = default)
-        { foreach (var sample in samples) Samples.Enqueue(sample); return Task.CompletedTask; }
-        public Task<IReadOnlyList<TelemetrySample>> QueryHistoryAsync(HistoryQuery query, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<TelemetrySample>>(Samples.ToArray());
         public Task<bool> EnqueueAsync(string topic, string payload, int maxMessages, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -386,8 +382,7 @@ public sealed class TelemetryPipelineTests
             return Task.CompletedTask;
         }
         public Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new StoreStatistics(Samples.Count, Outbox.Count, Outbox.Values.OrderBy(row => row.Id).FirstOrDefault()?.CreatedAt));
-        public Task PruneHistoryAsync(int retentionDays, int maxRows, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            Task.FromResult(new StoreStatistics(Outbox.Count, Outbox.Values.OrderBy(row => row.Id).FirstOrDefault()?.CreatedAt));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 

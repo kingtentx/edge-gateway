@@ -43,11 +43,15 @@ public sealed partial class MainForm
             new("连续补传失败", status.ConsecutiveFailures.ToString(), "补传读取、发送或确认移除的连续失败；成功后归零，正常停止不计入失败。"),
             new("下次重试", Time(status.NextRetryAt), "失败按退避策略重试；设备采集独立继续。"),
             new("当前发送错误", status.SendError ?? "无", "恢复成功后清除；历史错误保留在运行日志。"),
-            new("队列容量", status.QueueCapacityBlocked ? "已满，暂停生成快照" : "正常", "已排队数据保留；本地采集与历史记录继续。"),
+            new("队列容量", status.QueueCapacityBlocked ? "已满，暂停生成快照" : "正常", "已排队数据保留；采集、采样日志与独立配置的数据库写入继续。"),
             new("当前持久化错误", status.PersistenceError ?? "无", "包括快照入队或确认后移除失败，请检查数据目录和磁盘。"),
             new("最近发送失败", Time(status.LastSendFailureAt), "最近失败事件时间，恢复后仍保留用于排查。"),
-            new("本地历史记录", statistics.HistoryCount.ToString("N0"), "上传开关不影响本地采集和历史保存。")
+            new("采样记录方式", _configuration.Logging.LogAcquisitionSamples ? "采样日志已开启" : "采样日志已关闭", "SQLite 仅保存配置。历史查询使用已配置的外部数据库标准点行表。")
         };
+        foreach (var database in _application.GetDatabaseStatuses())
+        {
+            rows.Add(new(database.Name + " · 数据库写入", $"已写 {database.WrittenRows:N0} / 排队 {database.QueuedRows:N0} / 丢弃 {database.DroppedRows:N0} / 跳过 {database.SkippedRows:N0}", database.Error ?? "数据库记录独立于 MQTT 上传开关；积压、失败或丢弃须检查连接、权限及表结构。"));
+        }
         var rpc = _application.GetRpcStatus();
         rows.AddRange([
             new("RPC 订阅", !rpc.Enabled ? "未启用" : rpc.Subscribed ? "已订阅" : "等待连接 / 订阅", "仅接受 read/write 单点命令，保留消息不执行。"),
@@ -77,7 +81,7 @@ public sealed partial class MainForm
         var snapshot = new
         {
             capturedAt = DateTimeOffset.UtcNow, gatewayId = _configuration.GatewayId,
-            telemetry = _application.GetTelemetryStatus(), rpc = _application.GetRpcStatus(),
+            telemetry = _application.GetTelemetryStatus(), rpc = _application.GetRpcStatus(), databases = _application.GetDatabaseStatuses(),
             devices = _application.GetDeviceStatuses(), communication = _application.GetCommunicationStatistics()
         };
         await File.WriteAllTextAsync(dialog.FileName, System.Text.Json.JsonSerializer.Serialize(snapshot,

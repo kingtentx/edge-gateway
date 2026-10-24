@@ -1,0 +1,170 @@
+using System.Data.Common;
+using System.Diagnostics;
+using System.Globalization;
+using System.Text.Json;
+using EdgeGateway.DataAccess;
+using EdgeGateway.Model;
+using MySqlConnector;
+using Npgsql;
+
+// Explicit integration executable: missing services/credentials fail, never count as skipped or passed.
+// It creates randomly named tables in the supplied dedicated test database and removes only those tables.
+if (args.Length != 1 || args[0] is not ("mysql" or "postgres"))
+    throw new ArgumentException("Usage: dotnet run --project tests/EdgeGateway.DatabaseIntegration -- mysql|postgres");
+if (Environment.GetEnvironmentVariable("EDGE_DB_TEST_ALLOW_DDL") != "1")
+    throw new InvalidOperationException("Set EDGE_DB_TEST_ALLOW_DDL=1 and select a dedicated test database before running.");
+var provider = args[0] == "mysql" ? ExternalDatabaseProvider.MySql : ExternalDatabaseProvider.PostgreSql;
+var configuration = new DatabaseConnectionConfiguration
+{
+    Provider = provider, Host = Required("EDGE_DB_TEST_HOST"), Port = int.Parse(Required("EDGE_DB_TEST_PORT"), CultureInfo.InvariantCulture),
+    Database = Required("EDGE_DB_TEST_DATABASE"), Username = Required("EDGE_DB_TEST_USERNAME"),
+    PasswordEnvironmentVariable = "EDGE_DB_TEST_PASSWORD", UseTls = Environment.GetEnvironmentVariable("EDGE_DB_TEST_TLS") == "1",
+    ConnectionTimeoutSeconds = 5, CommandTimeoutSeconds = 10
+};
+_ = Required(configuration.PasswordEnvironmentVariable);
+var connector = new ExternalDatabaseConnector();
+var prefix = "eg_it_" + Guid.NewGuid().ToString("N")[..12];
+var schema = provider == ExternalDatabaseProvider.PostgreSql ? "public" : configuration.Database;
+var pointTable = new DatabaseTableInfo(schema, prefix + "_points");
+var customTable = new DatabaseTableInfo(schema, prefix + "_custom");
+var conflictTable = new DatabaseTableInfo(schema, prefix + "_conflict");
+var created = new List<DatabaseTableInfo>();
+var checks = new List<string>();
+await using var raw = CreateRawConnection(configuration);
+await raw.OpenAsync();
+try
+{
+    var connectionTest = await connector.TestConnectionAsync(configuration);
+    Check(connectionTest.Success, "connect");
+    var pointGroup = new DatabaseWriteGroupConfiguration { Schema = schema, Table = pointTable.Name, Mode = DatabaseStorageMode.PointRows };
+    var timestamp = new DateTimeOffset(2026, 10, 24, 14, 32, 10, TimeSpan.FromHours(8)).AddTicks(1234560);
+    var device = Guid.NewGuid();
+    var tag = Guid.NewGuid();
+    var rows = Enumerable.Range(0, 4000).Select(index => PointRow(index, timestamp.AddMilliseconds(index), device, tag)).ToArray();
+
+    await ExpectFailure(() => connector.WriteRowsAsync(configuration, pointGroup, [rows[0]]));
+    Check(!(await connector.GetTablesAsync(configuration)).Contains(pointTable), "ordinary write never creates a missing table");
+    await connector.EnsurePointTableAsync(configuration, pointTable);
+    created.Add(pointTable);
+    Check((await connector.GetTablesAsync(configuration)).Contains(pointTable), "table discovery");
+    var columns = await connector.GetColumnsAsync(configuration, pointTable);
+    Check(DatabasePointTable.Columns.All(column => columns.Any(metadata => metadata.Name == column)), "standard column discovery");
+    await connector.EnsurePointTableAsync(configuration, pointTable);
+    await connector.WriteRowsAsync(configuration, pointGroup, rows.Take(200).ToArray());
+    var timer = Stopwatch.StartNew();
+    foreach (var batch in rows.Skip(200).Chunk(200)) await connector.WriteRowsAsync(configuration, pointGroup, batch);
+    timer.Stop();
+    await connector.WriteRowsAsync(configuration, pointGroup, rows.Take(200).ToArray());
+    Check(await Count(pointTable) == rows.Length, "stable event_id replay is idempotent");
+    var history = await connector.QueryPointHistoryAsync(configuration, pointGroup, new(device, tag, timestamp.AddSeconds(-1), timestamp.AddSeconds(10), 10000));
+    Check(history.Count == rows.Length, "filtered standard history");
+    Check(history[^1].Timestamp == timestamp.ToUniversalTime(), "UTC and microsecond timestamp round trip");
+    Check(history[^1].RawValue is long integer && integer == long.MaxValue, "64-bit raw value round trip");
+    Check(history[^1].Value is JsonElement element && element.GetProperty("文本").GetString() == "温度; SELECT 'quoted';--", "structured JSON and Unicode round trip");
+    Check((await connector.QueryPointHistoryAsync(configuration, pointGroup, new(device, Guid.NewGuid(), timestamp.AddSeconds(-1), timestamp.AddSeconds(10), 100))).Count == 0, "tag filter");
+    Check((await connector.QueryPointHistoryAsync(configuration, pointGroup, new(device, tag, timestamp.AddSeconds(-1), timestamp.AddSeconds(10), 7))).Count == 7, "history limit");
+
+    var identity = provider == ExternalDatabaseProvider.PostgreSql ? "bigint GENERATED ALWAYS AS IDENTITY UNIQUE" : "bigint AUTO_INCREMENT UNIQUE";
+    var timeType = provider == ExternalDatabaseProvider.PostgreSql ? "timestamp(6) without time zone" : "datetime(6)";
+    var boolType = provider == ExternalDatabaseProvider.PostgreSql ? "boolean" : "tinyint(1)";
+    await Execute($"CREATE TABLE {Table(customTable)} ({Q("row_id")} {identity}, {Q("event_key")} varchar(64) NOT NULL PRIMARY KEY, {Q("温度")} decimal(28,8) NOT NULL, {Q("at_utc")} {timeType} NOT NULL, {Q("flag")} {boolType} NOT NULL, {Q("note")} varchar(120) NOT NULL, {Q("big_value")} decimal(20,0) NULL)" + (provider == ExternalDatabaseProvider.MySql ? " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4" : ""));
+    created.Add(customTable);
+    var metadata = await connector.GetColumnsAsync(configuration, customTable);
+    Check(metadata.Single(column => column.Name == "row_id").IsGenerated, "generated column metadata");
+    var mappings = new[] { ("event_key", DatabaseFieldType.Text), ("温度", DatabaseFieldType.Decimal), ("at_utc", DatabaseFieldType.Timestamp), ("flag", DatabaseFieldType.Boolean), ("note", DatabaseFieldType.Text), ("big_value", DatabaseFieldType.Decimal) };
+    var customGroup = new DatabaseWriteGroupConfiguration { Schema = schema, Table = customTable.Name, Mode = DatabaseStorageMode.ColumnMapping,
+        Columns = mappings.Select(mapping => new DatabaseColumnMapping { Column = mapping.Item1, FieldType = mapping.Item2 }).ToList() };
+    var customRows = Enumerable.Range(0, 1001).Select(index => CustomRow(index, timestamp)).ToArray();
+    var duplicate = CustomRow(0, timestamp);
+    await ExpectFailure(() => connector.WriteRowsAsync(configuration, customGroup, customRows.Take(1000).Append(duplicate).ToArray()));
+    Check(await Count(customTable) == 0, "later chunk constraint error rolls back earlier chunks");
+    await connector.WriteRowsAsync(configuration, customGroup, customRows);
+    Check(await Count(customTable) == customRows.Length, "custom mapped multi-row transaction");
+    await using (var command = raw.CreateCommand())
+    {
+        command.CommandText = $"SELECT {Q("温度")}, {Q("at_utc")}, {Q("flag")}, {Q("note")}, {Q("big_value")} FROM {Table(customTable)} WHERE {Q("event_key")} = 'custom-0'";
+        await using var reader = await command.ExecuteReaderAsync();
+        Check(await reader.ReadAsync(), "custom row read");
+        Check(reader.GetDecimal(0) == 12345678901234567890.12345678m, "decimal precision");
+        Check(reader.GetDateTime(1).Ticks == timestamp.UtcTicks, "custom timestamp UTC clock");
+        Check(reader.GetBoolean(2), "boolean binding");
+        Check(reader.GetString(3) == "温度'; DROP TABLE test;--", "SQL text remains a parameter value");
+        Check(reader.GetDecimal(4) == (decimal)ulong.MaxValue, "unsigned 64-bit precision");
+    }
+
+    // A write locked by another session must cancel without committing a partial batch.
+    await using (var lockConnection = CreateRawConnection(configuration))
+    {
+        await lockConnection.OpenAsync();
+        await using var transaction = await lockConnection.BeginTransactionAsync();
+        await using var held = lockConnection.CreateCommand();
+        held.Transaction = transaction;
+        held.CommandText = $"UPDATE {Table(customTable)} SET {Q("note")} = 'locked' WHERE {Q("event_key")} = 'custom-0'";
+        await held.ExecuteNonQueryAsync();
+        using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
+        try { await connector.WriteRowsAsync(configuration, customGroup, [CustomRow(2000, timestamp), CustomRow(0, timestamp)], cancel.Token); throw new InvalidOperationException("Blocked write ignored cancellation"); }
+        catch (OperationCanceledException) { checks.Add("blocked write cancellation"); }
+        await transaction.RollbackAsync();
+    }
+    Check(await Count(customTable) == customRows.Length, "cancelled transaction leaves no new row");
+
+    if (provider == ExternalDatabaseProvider.MySql)
+    {
+        // Exercise the dangerous cached-schema window: another unique index must never hide a row.
+        await connector.EnsurePointTableAsync(configuration, conflictTable);
+        created.Add(conflictTable);
+        var conflictGroup = new DatabaseWriteGroupConfiguration { Schema = schema, Table = conflictTable.Name };
+        await connector.WriteRowsAsync(configuration, conflictGroup, [rows[0]]);
+        await Execute($"ALTER TABLE {Table(conflictTable)} ADD UNIQUE KEY {Q("only_tag")} ({Q("tag_id")})");
+        await ExpectFailure(() => connector.WriteRowsAsync(configuration, conflictGroup, [rows[1]]));
+        Check(await Count(conflictTable) == 1, "cached MySQL metadata cannot hide a new business-key conflict");
+        var oversized = CustomRow(3000, timestamp);
+        var oversizedValues = new Dictionary<string, object?>(oversized.Values) { ["note"] = new string('x', 300) };
+        await ExpectFailure(() => connector.WriteRowsAsync(configuration, customGroup, [oversized with { Values = oversizedValues }]));
+        Check(await Count(customTable) == customRows.Length, "strict session rejects oversized text instead of truncating");
+    }
+
+    Console.WriteLine(JsonSerializer.Serialize(new { provider = provider.ToString(), serverVersion = connectionTest.ServerVersion, passed = checks.Count,
+        checks, measuredRows = 3800, batchSize = 200, elapsedMilliseconds = timer.Elapsed.TotalMilliseconds,
+        rowsPerSecond = Math.Round(3800 / timer.Elapsed.TotalSeconds, 1), note = "Local-loopback functional smoke measurement; not an endurance or capacity guarantee." }, new JsonSerializerOptions { WriteIndented = true }));
+}
+finally
+{
+    foreach (var table in created.AsEnumerable().Reverse()) await Execute($"DROP TABLE {Table(table)}");
+}
+
+void Check(bool value, string description)
+{ if (!value) throw new InvalidOperationException("FAIL: " + description); checks.Add(description); }
+string Q(string identifier) => provider == ExternalDatabaseProvider.MySql ? "`" + identifier + "`" : "\"" + identifier + "\"";
+string Table(DatabaseTableInfo table) => Q(table.Schema) + "." + Q(table.Name);
+async Task Execute(string sql) { await using var command = raw.CreateCommand(); command.CommandText = sql; await command.ExecuteNonQueryAsync(); }
+async Task<long> Count(DatabaseTableInfo table) { await using var command = raw.CreateCommand(); command.CommandText = "SELECT COUNT(*) FROM " + Table(table); return Convert.ToInt64(await command.ExecuteScalarAsync(), CultureInfo.InvariantCulture); }
+static async Task ExpectFailure(Func<Task> action)
+{
+    try { await action(); }
+    catch (InvalidOperationException exception) { if (exception.InnerException is not null) throw new InvalidOperationException("Provider exception leaked through connector", exception); return; }
+    throw new InvalidOperationException("Expected operation failure, but it succeeded");
+}
+static string Required(string name) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : throw new InvalidOperationException("Required test setting missing: " + name);
+static DbConnection CreateRawConnection(DatabaseConnectionConfiguration configuration)
+{
+    var password = Required(configuration.PasswordEnvironmentVariable);
+    return configuration.Provider == ExternalDatabaseProvider.MySql
+        ? new MySqlConnection(new MySqlConnectionStringBuilder { Server = configuration.Host, Port = (uint)configuration.Port, Database = configuration.Database, UserID = configuration.Username, Password = password, Pooling = false, SslMode = configuration.UseTls ? MySqlSslMode.VerifyFull : MySqlSslMode.Disabled }.ConnectionString)
+        : new NpgsqlConnection(new NpgsqlConnectionStringBuilder { Host = configuration.Host, Port = configuration.Port, Database = configuration.Database, Username = configuration.Username, Password = password, Pooling = false, SslMode = configuration.UseTls ? SslMode.VerifyFull : SslMode.Disable, Timezone = "Asia/Shanghai" }.ConnectionString);
+}
+static DatabaseWriteRow PointRow(int index, DateTimeOffset time, Guid device, Guid tag)
+{
+    var id = Guid.NewGuid().ToString("N");
+    return new(id, time, new Dictionary<string, object?>
+    {
+        ["event_id"] = id, ["sample_time"] = time, ["device_id"] = device.ToString("D"), ["device_name"] = "验证设备", ["tag_id"] = tag.ToString("D"), ["tag_name"] = "温度", ["address"] = "0",
+        ["raw_value"] = index == 0 ? JsonSerializer.Serialize(long.MaxValue) : JsonSerializer.Serialize(index), ["value_text"] = JsonSerializer.Serialize(new Dictionary<string, object?> { ["文本"] = "温度; SELECT 'quoted';--", ["index"] = index }),
+        ["numeric_value"] = null, ["quality"] = "Good", ["unit"] = "℃", ["error"] = null
+    });
+}
+static DatabaseWriteRow CustomRow(int index, DateTimeOffset time) => new(Guid.NewGuid().ToString("N"), time, new Dictionary<string, object?>
+{
+    ["event_key"] = "custom-" + index, ["温度"] = 12345678901234567890.12345678m, ["at_utc"] = time, ["flag"] = index % 2 == 0,
+    ["note"] = "温度'; DROP TABLE test;--", ["big_value"] = (decimal)ulong.MaxValue
+});

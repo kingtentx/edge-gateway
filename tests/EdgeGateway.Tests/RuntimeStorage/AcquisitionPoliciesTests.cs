@@ -358,8 +358,6 @@ public sealed partial class RuntimeTests
         public TaskCompletionSource<bool> EnqueueBlocked { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource<bool> ReleaseEnqueue { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Task InitializeAsync(CancellationToken cancellationToken = default) => _inner.InitializeAsync(cancellationToken);
-        public Task AppendSamplesAsync(IReadOnlyList<TelemetrySample> samples, CancellationToken cancellationToken = default) => _inner.AppendSamplesAsync(samples, cancellationToken);
-        public Task<IReadOnlyList<TelemetrySample>> QueryHistoryAsync(HistoryQuery query, CancellationToken cancellationToken = default) => _inner.QueryHistoryAsync(query, cancellationToken);
         public async Task<bool> EnqueueAsync(string topic, string payload, int maxMessages, CancellationToken cancellationToken = default)
         {
             Attempts.Enqueue(payload);
@@ -379,7 +377,6 @@ public sealed partial class RuntimeTests
         public Task<IReadOnlyList<OutboxMessage>> ReadOutboxAsync(int limit, CancellationToken cancellationToken = default) => _inner.ReadOutboxAsync(limit, cancellationToken);
         public Task AcknowledgeAsync(long id, CancellationToken cancellationToken = default) => _inner.AcknowledgeAsync(id, cancellationToken);
         public Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default) => _inner.GetStatisticsAsync(cancellationToken);
-        public Task PruneHistoryAsync(int retentionDays, int maxRows, CancellationToken cancellationToken = default) => _inner.PruneHistoryAsync(retentionDays, maxRows, cancellationToken);
         public ValueTask DisposeAsync() => _inner.DisposeAsync();
     }
 }

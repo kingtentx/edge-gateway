@@ -11,6 +11,7 @@ public sealed partial class MainForm
     private readonly DataGridView _logGrid = UiTheme.Grid();
     private readonly ComboBox _realtimeDevice = ChoiceBox(200);
     private readonly TextBox _realtimeSearch = new() { PlaceholderText = "搜索点位名称 / 地址", Width = 220, Margin = new Padding(0, 4, 8, 0) };
+    private readonly ComboBox _historyGroup = ChoiceBox(240);
     private readonly ComboBox _historyDevice = ChoiceBox(180);
     private readonly ComboBox _historyTag = ChoiceBox(220);
     private readonly DateTimePicker _historyFrom = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "yyyy-MM-dd HH:mm:ss", Width = 190, Value = DateTime.Now.AddHours(-1), Margin = new Padding(0, 4, 8, 0) };
@@ -21,8 +22,9 @@ public sealed partial class MainForm
     private readonly TrendChart _trend = new() { Dock = DockStyle.Fill };
     private readonly Label _historySummary = UiTheme.Label("选择时间范围并查询，最多返回 10,000 条。", 9, UiTheme.Muted);
     private IReadOnlyList<TelemetrySample> _queriedHistory = [];
-    private Button _writeButton = null!, _historyExport = null!;
+    private Button _writeButton = null!, _historyExport = null!, _historyQuery = null!;
     private HistoryQuery? _executedHistoryQuery;
+    private Guid? _executedHistoryGroupId;
     private string _executedHistorySummary = "";
     private bool _historyConditionsChanged;
 
@@ -46,11 +48,12 @@ public sealed partial class MainForm
         ConfigureSampleColumns(_historyGrid, includeRaw: true);
         _historyGrid.CellFormatting += SampleCellFormatting;
         _historyDevice.SelectedIndexChanged += (_, _) => BindHistoryTags();
-        var query = UiTheme.Button("查询", async (_, _) => await RunBusyAsync(QueryHistoryAsync), true);
+        var query = _historyQuery = UiTheme.Button("查询", async (_, _) => await RunBusyAsync(QueryHistoryAsync), true); query.Name = "QueryExternalHistory";
+        _historyGroup.Name = "ExternalHistoryGroup"; _historyGroup.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
         _historyExport = UiTheme.Button("导出查询结果", async (_, _) => await RunBusyAsync(ExportHistoryAsync));
         var recent = UiTheme.Button("最近一小时", (_, _) => { _historyTo.Value = DateTime.Now; _historyFrom.Value = DateTime.Now.AddHours(-1); });
         foreach (var button in new[] { query, recent, _historyExport }) button.Margin = new Padding(0, 23, 8, 6);
-        var toolbar = UiTheme.Toolbar(UiTheme.FilterField("设备", _historyDevice), UiTheme.FilterField("点位", _historyTag),
+        var toolbar = UiTheme.Toolbar(UiTheme.FilterField("外部数据库写入组", _historyGroup), UiTheme.FilterField("设备", _historyDevice), UiTheme.FilterField("点位", _historyTag),
             UiTheme.FilterField("开始时间", _historyFrom), UiTheme.FilterField("结束时间", _historyTo),
             UiTheme.FilterField("最多条数", _historyLimit), query, recent, _historyExport);
         _historyDevice.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
@@ -69,7 +72,7 @@ public sealed partial class MainForm
         content.SizeChanged += (_, _) => ArrangeSummary();
         DpiLayoutCompleted += (_, _) => ArrangeSummary();
         var viewport = ScrollableContent(content, "HistoryViewport", () => UiTheme.Scale(content, _trend.Visible ? 385 : 190) + _historySummary.PreferredHeight);
-        return UiTheme.PageLayout("历史与趋势", "选择设备、点位和时间范围查询；选中单个点位时同时显示趋势。", toolbar, viewport);
+        return UiTheme.PageLayout("历史与趋势", "查询外部数据库的标准点行表；自定义业务表可通过各自的数据库工具查询。", toolbar, viewport);
     }
 
     private Control BuildLogsPage()
@@ -95,8 +98,8 @@ public sealed partial class MainForm
             if (e.RowIndex >= 0 && _logGrid.Rows[e.RowIndex].DataBoundItem is LogRow row)
                 MessageBox.Show(this, row.Time + "  " + row.Level + "\n\n" + row.Message, "日志详情", MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
-        return UiTheme.PageLayout("运行日志", "最近 500 条运行事件；双击记录查看完整详情。",
-            UiTheme.Toolbar(UiTheme.FilterField("日志级别", _logLevel), UiTheme.FilterField("查找内容", _logSearch), export), _logGrid);
+        return WithLoggingSettings(UiTheme.PageLayout("运行日志", "当前列表显示最近 500 条运行事件。采集数据默认写入日志文件；文件与轮转策略在日志设置中维护。",
+            UiTheme.Toolbar(UiTheme.FilterField("日志级别", _logLevel), UiTheme.FilterField("查找内容", _logSearch), export), _logGrid));
     }
 
     private static ComboBox ChoiceBox(int width)
@@ -138,6 +141,17 @@ public sealed partial class MainForm
     {
         for (var i = 0; i < box.Items.Count; i++) if (box.Items[i] is Choice choice && choice.Id == id) { box.SelectedIndex = i; return; }
         if (box.Items.Count > 0) box.SelectedIndex = 0;
+    }
+
+    private void BindHistoryGroups()
+    {
+        var selected = (_historyGroup.SelectedItem as Choice)?.Id;
+        var choices = _configuration.DatabaseWriteGroups.Where(group => group.Enabled && group.Mode == DatabaseStorageMode.PointRows
+            && _configuration.Databases.Any(connection => connection.Id == group.ConnectionId && connection.Enabled))
+            .Select(group => new Choice(group.Id, _configuration.Databases.Single(connection => connection.Id == group.ConnectionId).Name + " / " + group.Name)).ToArray();
+        _historyGroup.DataSource = choices.Length == 0 ? new[] { new Choice(null, "尚无已启用的标准点行写入组") } : choices;
+        SelectChoice(_historyGroup, selected);
+        UpdateHistoryQueryState();
     }
 
     private void BindHistoryTags()
@@ -206,20 +220,29 @@ public sealed partial class MainForm
         if (_historyFrom.Value >= _historyTo.Value) throw new InvalidOperationException("开始时间必须早于结束时间。");
         var deviceId = (_historyDevice.SelectedItem as Choice)?.Id;
         var tagId = (_historyTag.SelectedItem as Choice)?.Id;
+        var groupId = (_historyGroup.SelectedItem as Choice)?.Id ?? throw new InvalidOperationException("请先配置并启用外部数据库的标准点行写入组。");
+        var queriedGroupName = _historyGroup.Text;
         var queriedDeviceName = _historyDevice.Text;
         var queriedTagName = _historyTag.Text;
         var query = new HistoryQuery(deviceId, tagId, new DateTimeOffset(_historyFrom.Value), new DateTimeOffset(_historyTo.Value), (int)_historyLimit.Value);
-        _queriedHistory = await _application.QueryHistoryAsync(query);
+        var samples = await _application.QueryExternalHistoryAsync(groupId, query);
+        PresentHistoryResults(groupId, queriedGroupName, queriedDeviceName, queriedTagName, query, samples);
+        SetFooter("外部数据库历史查询完成。");
+    }
+
+    private void PresentHistoryResults(Guid? groupId, string groupName, string deviceName, string tagName, HistoryQuery query, IReadOnlyList<TelemetrySample> samples)
+    {
+        _queriedHistory = samples;
         _historyGrid.DataSource = _queriedHistory.Select(ToRow).ToList();
-        _executedHistoryQuery = query;
+        _executedHistoryQuery = query; _executedHistoryGroupId = groupId;
+        var tagId = query.TagId;
         _trend.Visible = tagId.HasValue;
         if (_trend.Parent is TableLayoutPanel historyLayout)
             historyLayout.RowStyles[0].Height = tagId.HasValue ? UiTheme.Scale(_trend, 205) : 0;
-        _trend.SetSamples(tagId.HasValue ? _queriedHistory : [], tagId.HasValue ? queriedTagName : "");
+        _trend.SetSamples(tagId.HasValue ? _queriedHistory : [], tagId.HasValue ? tagName : "");
         var limited = _queriedHistory.Count == query.Limit ? "；已达到条数上限，可缩小时间范围" : "";
-        _executedHistorySummary = $"{queriedDeviceName} / {queriedTagName}  ·  {query.From:MM-dd HH:mm} — {query.To:MM-dd HH:mm}  ·  {_queriedHistory.Count:N0} 条{limited}。";
+        _executedHistorySummary = $"{groupName} · {deviceName} / {tagName}  ·  {query.From:MM-dd HH:mm} — {query.To:MM-dd HH:mm}  ·  {_queriedHistory.Count:N0} 条{limited}。";
         UpdateHistoryQueryState();
-        SetFooter("历史查询完成。");
     }
 
     private void UpdateHistoryQueryState()
@@ -227,8 +250,10 @@ public sealed partial class MainForm
         if (_historyExport is null) return;
         var current = new HistoryQuery((_historyDevice.SelectedItem as Choice)?.Id, (_historyTag.SelectedItem as Choice)?.Id,
             new DateTimeOffset(_historyFrom.Value), new DateTimeOffset(_historyTo.Value), (int)_historyLimit.Value);
-        _historyConditionsChanged = _executedHistoryQuery is not null && current != _executedHistoryQuery;
-        _historySummary.Text = _executedHistoryQuery is null ? "选择查询条件后点击“查询”。可按单个点位查看趋势。"
+        var source = (_historyGroup.SelectedItem as Choice)?.Id;
+        _historyConditionsChanged = _executedHistoryQuery is not null && (current != _executedHistoryQuery || source != _executedHistoryGroupId);
+        if (_historyQuery is not null) _historyQuery.Enabled = !_busy && !_closing && source.HasValue;
+        _historySummary.Text = _executedHistoryQuery is null ? source.HasValue ? "选择查询条件后点击“查询”。可按单个点位查看趋势。" : "尚未配置可查询的数据库。请在“数据库”页启用连接与标准点行写入组；默认采集结果保存在日志文件。"
             : (_historyConditionsChanged ? "查询条件已修改，请重新查询。下方仍为上次结果：\n" : "查询结果：") + _executedHistorySummary;
         _historySummary.ForeColor = _historyConditionsChanged ? UiTheme.Warning : UiTheme.Muted;
         _historyExport.Text = _historyConditionsChanged ? "导出上次结果" : "导出查询结果";

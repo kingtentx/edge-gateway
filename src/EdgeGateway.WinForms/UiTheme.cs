@@ -49,7 +49,7 @@ internal static class UiTheme
         {
             "overview" => IconChar.TachometerAlt, "devices" => IconChar.NetworkWired,
             "realtime" => IconChar.WaveSquare, "history" => IconChar.ChartLine,
-            "cloud" => IconChar.Cloud, "logs" => IconChar.ListAlt, "diagnostics" => IconChar.Plug, _ => IconChar.Circle
+            "database" => IconChar.Database, "cloud" => IconChar.Cloud, "logs" => IconChar.ListAlt, "diagnostics" => IconChar.Plug, _ => IconChar.Circle
         }, Cursor = Cursors.Hand
     };
 

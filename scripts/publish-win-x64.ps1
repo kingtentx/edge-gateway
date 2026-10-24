@@ -16,6 +16,7 @@ try {
     $requiredAssemblies = @('EdgeGateway.Model', 'EdgeGateway.Abstractions', 'EdgeGateway.Application', 'EdgeGateway.Hosting',
         'EdgeGateway.Service', 'EdgeGateway.DataAccess', 'EdgeGateway.Infrastructure.Mqtt', 'EdgeGateway.Driver.Simulator', 'EdgeGateway.Driver.Modbus',
         'EdgeGateway.IotGateway', 'PluginInterface', 'Interop.OPCAutomation', 'FontAwesome.Sharp',
+        'MySqlConnector', 'Npgsql', 'Oracle.ManagedDataAccess',
         'Opc.Ua.Client', 'Opc.Ua.Configuration', 'Opc.Ua.Core', 'Opc.Ua.Types', 'Opc.Ua.Security.Certificates') + @($migration.drivers | ForEach-Object { $_.assembly })
     foreach ($assembly in $requiredAssemblies) {
         if (-not (Test-Path (Join-Path $publishDirectory ($assembly + '.dll')))) {
@@ -52,8 +53,8 @@ try {
             throw 'Publication requires all 20 equivalent work-area cases and an explicit viewport-simulation boundary.'
         }
         if ($smoke.sourceCommit -ne $env:GITHUB_SHA -or $smoke.workflowRunId -ne $env:GITHUB_RUN_ID -or
-            $smoke.capabilitiesSmokePassed -ne $true -or $smoke.usabilitySmokePassed -ne $true -or $smoke.screenshotCount -ne 124 -or
-            @($smoke.checkedPages).Count -ne 7 -or @($smoke.checkedDialogs).Count -ne 5) {
+            $smoke.capabilitiesSmokePassed -ne $true -or $smoke.usabilitySmokePassed -ne $true -or $smoke.dataRecordingSmokePassed -ne $true -or $smoke.screenshotCount -ne 149 -or
+            @($smoke.checkedPages).Count -ne 8 -or @($smoke.checkedDialogs).Count -ne 7) {
             throw 'Publication requires complete capability smoke evidence from this CI source and run.'
         }
         $verification = [ordered]@{
@@ -71,6 +72,9 @@ try {
             checkedDialogTypeCount = @($smoke.checkedDialogs).Count
             capabilitiesSmokePassed = $smoke.capabilitiesSmokePassed
             usabilitySmokePassed = $smoke.usabilitySmokePassed
+            dataRecordingSmokePassed = $smoke.dataRecordingSmokePassed
+            databaseConnectionMetricsPerCase = $smoke.controlMetricCounts.databaseConnectionMetrics
+            loggingInputMetricsPerCase = $smoke.controlMetricCounts.loggingInputMetrics
             channelInputMetricsPerCase = $smoke.controlMetricCounts.channelInputMetrics
             writeVerificationMetricsPerCase = $smoke.controlMetricCounts.writeVerificationMetrics
         }
