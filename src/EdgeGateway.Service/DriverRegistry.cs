@@ -130,16 +130,27 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 throw new InvalidDataException($"一个驱动 DLL 必须且只能公开一个 IDriverFactory；当前找到 {factories.Count} 个。");
             var factory = CreateFactory(factories[0]);
             ValidateDescriptor(factory.Descriptor);
+            manifest = new(simpleName + ".dll", sha256, factory.Descriptor.Id, factory.Descriptor.Name, version);
+            var manifestPath = Path.Combine(installedRoot, "driver-plugin.json");
             lock (_sync)
             {
                 if (_factories.ContainsKey(factory.Descriptor.Id))
                     throw new InvalidOperationException($"驱动标识“{factory.Descriptor.Id}”已注册。为避免影响正在运行的设备，本版本不允许覆盖同 ID 驱动；请使用唯一驱动 ID。");
-                _factories.Add(factory.Descriptor.Id, factory);
-                _contexts.Add(context);
-                manifest = new(simpleName + ".dll", sha256, factory.Descriptor.Id, factory.Descriptor.Name, version);
-                _plugins[factory.Descriptor.Id] = new(factory.Descriptor.Id, factory.Descriptor.Name, version, simpleName, sha256, "已加载");
+                var temporaryManifest = manifestPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                try
+                {
+                    File.WriteAllText(temporaryManifest, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+                    File.Move(temporaryManifest, manifestPath, overwrite: true);
+                    _factories.Add(factory.Descriptor.Id, factory);
+                    _contexts.Add(context);
+                    _plugins[factory.Descriptor.Id] = new(factory.Descriptor.Id, factory.Descriptor.Name, version, simpleName, sha256, "已加载");
+                }
+                catch
+                {
+                    try { if (File.Exists(temporaryManifest)) File.Delete(temporaryManifest); } catch { }
+                    throw;
+                }
             }
-            File.WriteAllText(Path.Combine(installedRoot, "driver-plugin.json"), JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
             _log.Write(GatewayLogLevel.Information, $"驱动插件已安装并热加载：{factory.Descriptor.Name} ({factory.Descriptor.Id})，版本 {version}，SHA-256 {sha256}");
             return $"驱动 {factory.Descriptor.Name} ({factory.Descriptor.Id}) 版本 {version} 已安装并立即注册。无需重启网关；新建该类型设备前请先完成驱动参数与通信验证。";
         }
