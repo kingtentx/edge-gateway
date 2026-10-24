@@ -119,6 +119,7 @@ internal sealed class DpiDataGridView : DataGridView
 {
     private readonly Dictionary<DataGridViewColumn, int> _logicalColumnWidths = [];
     private bool _updating;
+    private bool _revealingColumn;
     private Font? _headerFont;
     private DpiAwareForm? _dpiForm;
     public DpiDataGridView() { DoubleBuffered = true; }
@@ -143,6 +144,27 @@ internal sealed class DpiDataGridView : DataGridView
     protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); RefreshDpiMetrics(); }
     protected override void OnFontChanged(EventArgs e) { base.OnFontChanged(e); if (IsHandleCreated) RefreshDpiMetrics(); }
     protected override void OnDataBindingComplete(DataGridViewBindingCompleteEventArgs e) { base.OnDataBindingComplete(e); RefreshDpiMetrics(); }
+    protected override void OnCurrentCellChanged(EventArgs e)
+    {
+        base.OnCurrentCellChanged(e);
+        if (_revealingColumn || _updating || !IsHandleCreated || !Visible
+            || FindForm() is DpiAwareForm { IsDpiLayoutReady: false }
+            || CurrentCell?.OwningColumn is not { Visible: true, Frozen: false } column) return;
+        var frozenWidth = Columns.Cast<DataGridViewColumn>().Where(item => item.Visible && item.Frozen).Sum(item => item.Width);
+        var available = ClientSize.Width - frozenWidth - (RowHeadersVisible ? RowHeadersWidth : 0)
+            - SystemInformation.VerticalScrollBarWidth;
+        if (available <= 0 || ClientSize.Height <= ColumnHeadersHeight + SystemInformation.HorizontalScrollBarHeight) return;
+        var full = GetCellDisplayRectangle(column.Index, -1, false);
+        var clipped = GetCellDisplayRectangle(column.Index, -1, true);
+        if (full.Width == column.Width && full.X == clipped.X && clipped.Width == full.Width) return;
+        // .NET 8 ScrollColumnIntoView can abort a multi-column jump near the right
+        // edge even though the target is still outside the viewport. The public
+        // first-column setter includes a one-column-at-a-time correction. Run it
+        // only when the current cell changes, preserving deliberate manual scrolling.
+        _revealingColumn = true;
+        try { FirstDisplayedScrollingColumnIndex = column.Index; }
+        finally { _revealingColumn = false; }
+    }
     private void RefreshDpiMetrics()
     {
         if (_updating || IsDisposed || FindForm() is DpiAwareForm { IsDpiLayoutReady: false }) return;
