@@ -31,6 +31,19 @@ public interface IConfigurableGatewayLog : IGatewayLog
     void WriteSample(TelemetrySample sample);
 }
 
+/// <summary>Read-only bounded log queries and export of the exact displayed result.</summary>
+public interface IGatewayLogArchive
+{
+    Task<GatewayLogQueryResult> QueryAsync(GatewayLogQuery query, CancellationToken cancellationToken = default);
+    Task ExportAsync(GatewayLogQueryResult result, string path, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Sanitized provider failure. No provider exception or credentials are retained.</summary>
+public class DatabaseWriteException(string message, bool isTransient) : InvalidOperationException(message)
+{
+    public bool IsTransient { get; } = isTransient;
+}
+
 public interface IGatewayLogStatus
 {
     GatewayLoggingStatus GetStatus();

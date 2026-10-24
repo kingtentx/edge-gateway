@@ -14,6 +14,9 @@ public sealed partial class MainForm
         UiTheme.AddColumn(_databaseGrid, "Name", "连接名称", 150, 150); UiTheme.AddColumn(_databaseGrid, "Provider", "类型", 110, 110);
         UiTheme.AddColumn(_databaseGrid, "Target", "服务器 / 数据库", 220, 220); UiTheme.AddColumn(_databaseGrid, "State", "状态", 130, 130);
         UiTheme.AddColumn(_databaseGrid, "Queued", "排队行数", 100); UiTheme.AddColumn(_databaseGrid, "Written", "已写行数", 100);
+        UiTheme.AddColumn(_databaseGrid, "Load", "队列载荷 / 峰值", 180, 180);
+        UiTheme.AddColumn(_databaseGrid, "Retry", "失败 / 重试 / 超时", 180, 180);
+        UiTheme.AddColumn(_databaseGrid, "Duration", "在途 / 最近耗时", 180, 180);
         UiTheme.AddColumn(_databaseGrid, "Dropped", "丢弃 / 跳过", 120); UiTheme.AddColumn(_databaseGrid, "Error", "最近错误", 260, 260);
         UiTheme.AddColumn(_databaseGroupGrid, "Name", "写入组", 150, 150); UiTheme.AddColumn(_databaseGroupGrid, "Connection", "数据库连接", 150, 150);
         UiTheme.AddColumn(_databaseGroupGrid, "Mode", "数据格式", 180, 180); UiTheme.AddColumn(_databaseGroupGrid, "Table", "目标表", 200, 200);
@@ -31,7 +34,7 @@ public sealed partial class MainForm
         var groups = new TabPage("采集写入组") { BackColor = Color.White };
         groups.Controls.Add(DatabasePanel(UiTheme.Toolbar(
             Change("添加写入组", () => EditDatabaseGroupAsync(true)), Change("编辑写入组", () => EditDatabaseGroupAsync(false)),
-            Change("启用 / 停用写入组", ToggleDatabaseGroupAsync), Change("删除写入组", DeleteDatabaseGroupAsync)), _databaseGroupGrid));
+            Change("启用 / 停用写入组", ToggleDatabaseGroupAsync), Change("删除写入组", DeleteDatabaseGroupAsync), UiTheme.Button("检查与预览", async (_, _) => await RunBusyAsync(PreviewSelectedDatabaseGroupAsync))), _databaseGroupGrid));
         _databaseTabs.TabPages.Add(connections); _databaseTabs.TabPages.Add(groups);
         _databaseGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseConnectionAsync(false)); };
         _databaseGroupGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseGroupAsync(false)); };
@@ -61,7 +64,10 @@ public sealed partial class MainForm
             var state = !connection.Enabled ? "未启用" : !_application.IsRunning ? "等待设备启动" : status?.Error is not null ? "写入异常" : status?.IsConnected == true ? "已连接" : "等待写入";
             return new DatabaseConnectionRow(connection.Id, connection.Name, DatabaseUiText.Provider(connection.Provider),
                 $"{connection.Host}:{connection.Port} / {connection.Database}", state, status?.QueuedRows ?? 0, status?.WrittenRows ?? 0,
-                $"{status?.DroppedRows ?? 0} / {status?.SkippedRows ?? 0}", status?.Error ?? "—");
+                $"{status?.DroppedRows ?? 0} / {status?.SkippedRows ?? 0}", status?.Error ?? "—",
+                $"{(status?.QueuedBytes ?? 0) / 1048576d:F2} MiB / {status?.PeakQueuedRows ?? 0:N0} 行" + (status?.IsBackpressured == true ? "（高水位）" : ""),
+                $"{status?.FailedBatches ?? 0} / {status?.RetriedBatches ?? 0} / {status?.TimedOutOperations ?? 0}",
+                $"{status?.InFlightBatches ?? 0} 批 / {status?.LastWriteMilliseconds ?? 0:F1} ms");
         }).ToArray();
         GridViewState.Rebind(_databaseGrid, rows, row => row.Id, connectionId);
         var groups = _configuration.DatabaseWriteGroups.Select(group => new DatabaseGroupRow(group.Id, group.Name,
@@ -170,6 +176,14 @@ public sealed partial class MainForm
         MessageBox.Show(this, result.Message + (result.ServerVersion is null ? "" : "\n服务器版本：" + result.ServerVersion), "数据库连接测试",
             MessageBoxButtons.OK, result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
     }
-    private sealed record DatabaseConnectionRow(Guid Id, string Name, string Provider, string Target, string State, long Queued, long Written, string Dropped, string Error);
+    private async Task PreviewSelectedDatabaseGroupAsync()
+    {
+        var current = _application.GetConfiguration();
+        var group = current.DatabaseWriteGroups.Single(item => item.Id == SelectedDatabaseGroupId());
+        var connection = current.Databases.Single(item => item.Id == group.ConnectionId);
+        var preview = await _application.PreviewDatabaseWriteAsync(connection, group);
+        using var dialog = new DatabasePreviewDialog(preview); dialog.ShowDialog(this);
+    }
+    private sealed record DatabaseConnectionRow(Guid Id, string Name, string Provider, string Target, string State, long Queued, long Written, string Dropped, string Error, string Load, string Retry, string Duration);
     private sealed record DatabaseGroupRow(Guid Id, string Name, string Connection, string Mode, string Table, string Selection, string Enabled);
 }

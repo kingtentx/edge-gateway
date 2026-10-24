@@ -111,10 +111,10 @@ database_names = {'DatabaseName', 'DatabaseEnabled', 'DatabaseProvider', 'Databa
                   'DatabaseCatalog', 'DatabaseUsername', 'DatabasePasswordEnvironment', 'DatabaseTls',
                   'DatabaseConnectTimeout', 'DatabaseCommandTimeout', 'DatabaseBatchSize', 'DatabaseFlushInterval',
                   'DatabaseQueueCapacity', 'DatabaseQueueCapacityMb', 'DatabaseMaxRetryAttempts'}
-logging_names = {'Logging_MinimumLevel', 'Logging_Samples', 'Logging_MaxFileSizeMb', 'Logging_RetainedFileCount', 'Logging_RetainedDays'}
+logging_names = {'Logging_MinimumLevel', 'Logging_Samples', 'Logging_MaxFileSizeMb', 'Logging_RetainedFileCount', 'Logging_RetainedDays','Logging_MinimumFreeDiskSpaceMb','Logging_DiskResumeMarginMb'}
 write_names = {'WriteVerifyReadBack', 'WriteVerificationTimeout', 'WriteAbsoluteTolerance', 'WriteRelativeTolerance'}
 metric_counts = {'headerMetrics': 3, 'deviceParameterMetrics': 12, 'channelInputMetrics': 3,
-                 'writeVerificationMetrics': 4, 'databaseConnectionMetrics': 16, 'loggingInputMetrics': 5}
+                 'writeVerificationMetrics': 4, 'databaseConnectionMetrics': 16, 'loggingInputMetrics': 7}
 
 def check_metrics(values, count, context, names=None):
     require(len(values) == count, f'{context}: expected {count} control metrics, got {len(values)}.')

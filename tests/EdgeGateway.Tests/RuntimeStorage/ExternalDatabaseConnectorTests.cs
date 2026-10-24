@@ -202,7 +202,7 @@ public sealed class ExternalDatabaseConnectorTests
     {
         var database = new RecordingConnection { FailWriteNumber = 2 };
         var connector = new ExternalDatabaseConnector(_ => database);
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => connector.WriteRowsAsync(Configuration(), MappedGroup(), Enumerable.Range(0, 1001).Select(_ => Row("sample-secret")).ToArray()));
+        var exception = await Assert.ThrowsAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() => connector.WriteRowsAsync(Configuration(), MappedGroup(), Enumerable.Range(0, 1001).Select(_ => Row("sample-secret")).ToArray()));
         Assert.Equal(0, database.CommitCount);
         Assert.Equal(1, database.RollbackCount);
         Assert.DoesNotContain("sample-secret", exception.ToString());
@@ -254,7 +254,7 @@ public sealed class ExternalDatabaseConnectorTests
         var database = new RecordingConnection { FailWriteNumber = 2 };
         var connector = new ExternalDatabaseConnector(_ => database);
         await connector.WriteRowsAsync(Configuration(), MappedGroup(), [Row("one")]);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => connector.WriteRowsAsync(Configuration(), MappedGroup(), [Row("two")]));
+        await Assert.ThrowsAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() => connector.WriteRowsAsync(Configuration(), MappedGroup(), [Row("two")]));
         Assert.Single(database.Commands, command => command.Sql.Contains("information_schema.columns"));
         await connector.WriteRowsAsync(Configuration(), MappedGroup(), [Row("three")]);
         Assert.Equal(2, database.Commands.Count(command => command.Sql.Contains("information_schema.columns")));

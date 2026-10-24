@@ -8,7 +8,7 @@ using EdgeGateway.Model;
 namespace EdgeGateway.Service;
 
 /// <summary>Bounded, asynchronous JSON-line logging; acquisition never performs filesystem I/O.</summary>
-public sealed class GatewayLog : IConfigurableGatewayLog, IGatewayLogStatus, IAsyncDisposable
+public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogStatus, IGatewayLogArchive, IAsyncDisposable
 {
     private readonly object _sync = new();
     private readonly Queue<GatewayLogEntry> _entries = new();
@@ -34,9 +34,12 @@ public sealed class GatewayLog : IConfigurableGatewayLog, IGatewayLogStatus, IAs
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public GatewayLog(string? directory = null, int capacity = 2000, int fileQueueCapacity = 8192)
+    public GatewayLog(string? directory = null, int capacity = 2000, int fileQueueCapacity = 8192,
+        Func<string, long>? availableDiskBytes = null, TimeProvider? timeProvider = null)
     {
         _directory = directory is null ? null : Path.GetFullPath(directory);
+        _diskProbe = availableDiskBytes ?? ReadAvailableDiskBytes;
+        _clock = timeProvider ?? TimeProvider.System;
         _capacity = Math.Clamp(capacity, 100, 10000);
         if (_directory is null) return;
         _writes = Channel.CreateBounded<LogWork>(new BoundedChannelOptions(Math.Clamp(fileQueueCapacity, 1, 65536))
@@ -49,13 +52,18 @@ public sealed class GatewayLog : IConfigurableGatewayLog, IGatewayLogStatus, IAs
     public long PendingEntries => Interlocked.Read(ref _pendingEntries);
     public long PendingBytes => Interlocked.Read(ref _pendingBytes);
     public string? FileError { get { lock (_sync) return _fileError; } }
-    public GatewayLoggingStatus GetStatus() => new(PendingEntries, DroppedEntries, FailedEntries, FileError);
+    public GatewayLoggingStatus GetStatus() => new(PendingEntries, DroppedEntries, FailedEntries, FileError)
+    {
+        PendingBytes = PendingBytes, AvailableDiskBytes = Interlocked.Read(ref _diskFreeBytes) is var free && free >= 0 ? free : null,
+        DiskProtectionActive = Volatile.Read(ref _diskPaused) != 0, DiskRejectedEntries = Interlocked.Read(ref _diskRejected)
+    };
 
     public void ApplyConfiguration(GatewayLoggingConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         if (!Enum.IsDefined(configuration.MinimumLevel) || configuration.MaxFileSizeMb is < 1 or > 1024
-            || configuration.RetainedFileCount is < 1 or > 1000 || configuration.RetainedDays is < 1 or > 3650)
+            || configuration.RetainedFileCount is < 1 or > 1000 || configuration.RetainedDays is < 1 or > 3650
+            || configuration.MinimumFreeDiskSpaceMb is < 16 or > 1048576 || configuration.DiskResumeMarginMb is < 1 or > 65536)
             throw new ArgumentException("日志级别或文件策略无效；单文件 1–1024 MB，保留 1–1000 份及 1–3650 天。", nameof(configuration));
         Volatile.Write(ref _configuration, new GatewayLoggingConfiguration
         {
@@ -63,7 +71,9 @@ public sealed class GatewayLog : IConfigurableGatewayLog, IGatewayLogStatus, IAs
             LogAcquisitionSamples = configuration.LogAcquisitionSamples,
             MaxFileSizeMb = configuration.MaxFileSizeMb,
             RetainedFileCount = configuration.RetainedFileCount,
-            RetainedDays = configuration.RetainedDays
+            RetainedDays = configuration.RetainedDays,
+            MinimumFreeDiskSpaceMb = configuration.MinimumFreeDiskSpaceMb,
+            DiskResumeMarginMb = configuration.DiskResumeMarginMb
         });
     }
 
@@ -169,6 +179,13 @@ public sealed class GatewayLog : IConfigurableGatewayLog, IGatewayLogStatus, IAs
                         if (bytes.LongLength > limit)
                             throw new InvalidDataException($"单条日志超过单文件 {work.Configuration.MaxFileSizeMb} MB 上限，本条未写入。");
                         Directory.CreateDirectory(_directory!);
+                        // Protect using the current policy even when older entries are still queued.
+                        if (!CanWriteToDisk(bytes.Length, Volatile.Read(ref _configuration)))
+                        {
+                            Interlocked.Increment(ref _diskRejected);
+                            Interlocked.Increment(ref _droppedEntries);
+                            continue;
+                        }
                         var path = Path.Combine(_directory!, $"gateway-{entry.Timestamp:yyyyMMdd}.log");
                         if (activePath != path)
                         {
@@ -194,6 +211,7 @@ public sealed class GatewayLog : IConfigurableGatewayLog, IGatewayLogStatus, IAs
                             lastMaintenance = today;
                         }
                         await stream.WriteAsync(bytes).ConfigureAwait(false);
+                        _bytesSinceDiskCheck += bytes.Length;
                         if (++unflushed >= 128)
                         {
                             await stream.FlushAsync().ConfigureAwait(false);

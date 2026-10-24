@@ -266,7 +266,7 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
                 throw new TimeoutException("数据库操作超时；未收到成功确认的标准点表批次将按原 event_id 重试。请检查网络、数据库负载和超时设置。");
             // Provider messages can contain credentials, SQL, payloads or server diagnostics.
             // Return only a stable provider/error code; never attach the original exception as InnerException.
-            throw new InvalidOperationException(SafeError(configuration.Provider, exception));
+            throw new DatabaseWriteException(SafeError(configuration.Provider, exception), IsTransientFailure(exception));
         }
     }
 
@@ -416,5 +416,5 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
         }
         catch (JsonException) { throw new ConnectorConfigurationException("标准点表 raw_value/value_text 包含无效 JSON，无法还原采样类型。"); }
     }
-    private sealed class ConnectorConfigurationException(string message) : InvalidOperationException(message);
+    private sealed class ConnectorConfigurationException(string message) : DatabaseWriteException(message, false);
 }
