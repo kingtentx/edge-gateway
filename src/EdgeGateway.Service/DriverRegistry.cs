@@ -18,11 +18,26 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
     private readonly List<AssemblyLoadContext> _contexts = [];
     private readonly Dictionary<string, DriverPluginInfo> _plugins = new(StringComparer.OrdinalIgnoreCase);
     private readonly IGatewayLog _log;
+    private readonly IDriverPluginStore? _pluginStore;
     private string? _pluginDirectory;
 
-    public DriverRegistry(IEnumerable<IDriverFactory> factories, IGatewayLog log)
+    public DriverRegistry(IEnumerable<IDriverFactory> factories, IGatewayLog log, IDriverPluginStore? pluginStore = null)
     {
         _log = log ?? throw new ArgumentNullException(nameof(log));
+        _pluginStore = pluginStore;
+        if (_pluginStore is not null)
+        {
+            try
+            {
+                foreach (var plugin in _pluginStore.GetDriverPluginsAsync().GetAwaiter().GetResult())
+                    _plugins[plugin.Id] = plugin with { Status = "等待文件校验" };
+            }
+            catch (Exception exception)
+            {
+                _log.Write(GatewayLogLevel.Error, $"读取 SQLite 驱动清单失败：{SafeMessage(exception)}");
+                throw new InvalidOperationException("无法读取 SQLite 中的驱动注册信息，已停止初始化以避免配置与驱动状态不一致。", exception);
+            }
+        }
         foreach (var factory in factories) Register(factory);
     }
 
