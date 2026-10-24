@@ -2,6 +2,7 @@
 
 修改本项目前，先读取 `.agents/skills/develop-edge-gateway/SKILL.md`。
 
+- 分支约定（2026-10-24 用户明确要求）：所有优化、补全、修复及相关文档统一在现有 `main` 分支开发和提交，不再创建其他开发分支。开始前读取最新 `main`，保留已有提交历史；禁止强制推送或覆盖他人提交。只有用户后续明确变更要求时才可创建分支。代码归并不等于验收通过，失败或未完成的测试必须如实记录。
 - 目标平台保持 `.NET 8` 和原生 Windows Forms；核心与驱动项目保持 `net8.0`，仅 UI 使用 `net8.0-windows`。
 - 遵循 `docs/architecture.md` 的单向依赖：WinForms 通过 Application 执行业务，Hosting 负责资源组装，Infrastructure.Mqtt 负责具体传输；Service 保留运行时与纯平台规则，不反向引用传输实现。窗体不得执行协议报文、数据库 SQL 或后台轮询。
 - 修改工程引用、应用契约或资源接线后执行 `python scripts/verify-architecture.py`；Windows CI 在还原与构建前核对层间引用、工程无环、界面/接口隔离及 MQTTnet 归属。静态门禁不替代行为测试或界面验收。
