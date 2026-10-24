@@ -1,8 +1,6 @@
 using EdgeGateway.Abstractions;
 using EdgeGateway.Application;
 using EdgeGateway.DataAccess;
-using EdgeGateway.Driver.Modbus;
-using EdgeGateway.Driver.Simulator;
 using EdgeGateway.Infrastructure.Mqtt;
 using EdgeGateway.IotGateway;
 using EdgeGateway.Service;
@@ -71,11 +69,13 @@ public sealed class GatewayHost : IAsyncDisposable
             await store.InitializeAsync(cancellationToken).ConfigureAwait(false);
             log = new GatewayLog(Path.Combine(directory, "logs"));
             log.ApplyConfiguration(configuration.Logging);
-            IDriverFactory[] builtInDrivers = [new SimulatorDriverFactory(), new ModbusTcpDriverFactory(), new ModbusRtuDriverFactory()];
-            var drivers = new DriverRegistry(builtInDrivers.Concat(IotGatewayDriverCatalog.CreateFactories(log)), log);
-            // Keep trusted plugins shipped beside the application, while user uploads live in the writable data directory.
-            drivers.LoadPlugins(Path.Combine(AppContext.BaseDirectory, "plugins"));
-            drivers.LoadPlugins(pluginDirectory ?? Path.Combine(directory, "plugins"));
+            var driversDirectory = Path.GetFullPath(pluginDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
+            Directory.CreateDirectory(driversDirectory);
+            DriverAssemblyResolver.Configure(driversDirectory);
+            // Every protocol factory is discovered from the unified drivers directory. Existing
+            // legacy driver assemblies are resolved from that directory rather than the app root.
+            var drivers = new DriverRegistry(IotGatewayDriverCatalog.CreateFactories(log), log, configurations);
+            drivers.LoadPlugins(driversDirectory);
             cancellationToken.ThrowIfCancellationRequested();
             publisher = new MqttTelemetryPublisher();
             var databases = new ExternalDatabaseConnector();
