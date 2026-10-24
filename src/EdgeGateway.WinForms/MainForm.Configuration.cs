@@ -95,7 +95,7 @@ public sealed partial class MainForm
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 43));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 110));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 57));
         var filters = BuildDeviceFilters();
         content.Controls.Add(filters, 0, 0); content.Controls.Add(_deviceGrid, 0, 1);
@@ -106,7 +106,7 @@ public sealed partial class MainForm
         _tagSearch.TextChanged += (_, _) => BindTags();
         var tagHeader = new TableLayoutPanel
         {
-            Name = "TagActions", Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Name = "TagActions", Dock = DockStyle.Fill, AutoSize = false,
             ColumnCount = 1, RowCount = 3, Margin = Padding.Empty, Padding = new Padding(0, 10, 0, 0)
         };
         tagHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -121,15 +121,40 @@ public sealed partial class MainForm
             _tagMore, _tagSearch);
         _tagSearch.Margin = new Padding(0, 3, 0, 6);
         tagHeader.Controls.Add(tagToolbar, 0, 2);
-        tagHeader.SizeChanged += (_, _) =>
+        var arrangingTagHeader = false;
+        int MeasureTagHeaderHeight()
         {
-            SetWrappingWidth(_tagHeading, tagHeader.ClientSize.Width);
-            SetWrappingWidth(_tagSummary, tagHeader.ClientSize.Width);
-        };
+            var width = Math.Max(1, content.ClientSize.Width - content.Padding.Horizontal
+                - tagHeader.Margin.Horizontal - tagHeader.Padding.Horizontal);
+            SetWrappingWidth(_tagHeading, width);
+            SetWrappingWidth(_tagSummary, width);
+            int HeightOf(Control child) => child.GetPreferredSize(new Size(
+                Math.Max(1, width - child.Margin.Horizontal), 0)).Height + child.Margin.Vertical;
+            // A nested autosized TableLayoutPanel measures its percent column at
+            // the minimum child width. That turns a one-line toolbar into a tall
+            // preferred height. Measure each child at the actual shared column width.
+            return tagHeader.Padding.Vertical + HeightOf(_tagHeading) + HeightOf(_tagSummary) + HeightOf(tagToolbar);
+        }
+        void ArrangeTagHeader()
+        {
+            if (arrangingTagHeader || !IsDpiLayoutReady) return;
+            arrangingTagHeader = true;
+            try
+            {
+                var height = MeasureTagHeaderHeight();
+                if (content.RowStyles[2].Height != height) content.RowStyles[2].Height = height;
+            }
+            finally { arrangingTagHeader = false; }
+        }
+        tagHeader.Layout += (_, _) => ArrangeTagHeader();
+        content.SizeChanged += (_, _) => ArrangeTagHeader();
+        _tagHeading.TextChanged += (_, _) => ArrangeTagHeader();
+        _tagSummary.TextChanged += (_, _) => ArrangeTagHeader();
+        DpiLayoutCompleted += (_, _) => ArrangeTagHeader();
         content.Controls.Add(tagHeader, 0, 2); content.Controls.Add(_tagGrid, 0, 3);
         var viewport = ScrollableContent(content, "DevicesViewport", () =>
             filters.GetPreferredSize(new Size(Math.Max(1, content.ClientSize.Width), 0)).Height +
-            tagHeader.GetPreferredSize(new Size(Math.Max(1, content.ClientSize.Width), 0)).Height + UiTheme.Scale(content, 300));
+            MeasureTagHeaderHeight() + UiTheme.Scale(content, 300));
         return UiTheme.PageLayout("设备与点位", "选择设备维护点位；每台设备独立启停，双击设备或点击配置进入同一窗口。",
             UiTheme.Toolbar(addDevice, probeDevice, _deviceMore, _channelMenu, _deviceSummary), viewport);
     }

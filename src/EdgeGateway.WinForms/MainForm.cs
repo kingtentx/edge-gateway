@@ -337,6 +337,7 @@ public sealed partial class MainForm : DpiAwareForm
                     AssertHeaderStatusFits();
                     AssertPageToolbarsFit(_pages[key], key);
                     ResetScrollPositions(_pages[key], _navigation["overview"]);
+                    if (key == "devices") VerifyPointRowsForSmoke("baseline devices", verifyInitialViewport: true);
                     using var bitmap = new Bitmap(Math.Max(1, Width), Math.Max(1, Height));
                     DrawToBitmap(bitmap, new Rectangle(0, 0, Width, Height));
                     if (!string.IsNullOrWhiteSpace(_smokeScreenshotPath))

@@ -29,7 +29,7 @@ public sealed partial class MainForm
         try
         {
             var fixture = Clone(original);
-            fixture.AutoStart = false; fixture.Mqtt.Enabled = false;
+            fixture.AutoStart = false; fixture.Mqtt = new MqttConfiguration { Enabled = false, Platform = MqttPlatform.Generic };
             fixture.Devices = new[] { "在线维护 A", "在线维护 B" }.Select(name => new DeviceConfiguration
             {
                 Name = name, DriverId = "simulator", PollIntervalMs = 100,
@@ -40,8 +40,16 @@ public sealed partial class MainForm
             ShowPage("devices");
             await DeviceRowActionAsync(a, DeviceStartColumnName);
             await WaitFor(() => _application.GetLatest().Any(sample => sample.DeviceId == a && sample.Quality == SampleQuality.Good), "A did not collect.");
-            Check(CanEdit() && _configurationCommands.Except(_stoppedConfigurationCommands).All(control => control.Enabled),
-                "one running device still disables device/tag/platform-draft controls.");
+            Check(CanEdit() && SelectedDevice()?.Id == a && SelectedTag() is not null,
+                "the running fixture lost its editable device/point context.");
+            // The new UI intentionally disables fields for other platforms and a
+            // reset action when no draft exists. Every remaining device, point and
+            // platform-draft command must stay usable while A is collecting.
+            var disabled = _stoppedConfigurationCommands.Concat(new Control[]
+                { _cloudFields["typeKey"], _cloudFields["platformGatewayId"], _cloudReset }).ToHashSet();
+            foreach (var control in _configurationCommands)
+                Check(control.Enabled == !disabled.Contains(control),
+                    $"unexpected availability for '{control.Name}' / '{control.Text}' while A is collecting.");
             var stamp = Latest(a);
             var added = await SmokeDeviceConfigurationModalAsync(AddDeviceAsync, editor =>
             {
@@ -103,7 +111,8 @@ public sealed partial class MainForm
 
             ShowPage("cloud");
             ((TextBox)_cloudFields["name"]).Text = _configuration.Name + " 未应用草稿";
-            Check(_dirty, "platform draft was not editable while devices ran.");
+            Check(_dirty && _cloudFields["name"].Enabled && _cloudReset.Enabled && !_cloudApply.Enabled,
+                "running devices blocked draft editing/reset or allowed global application.");
             await DeviceRowActionAsync(b, DeviceStopColumnName);
             await DeviceRowActionAsync(b, DeviceStartColumnName);
             Check(_application.IsDeviceRunning(b) && _dirty, "unapplied platform draft still blocks starting B.");

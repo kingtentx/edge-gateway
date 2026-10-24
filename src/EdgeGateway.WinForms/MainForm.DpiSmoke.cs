@@ -91,7 +91,11 @@ public sealed partial class MainForm
                         AssertHeaderStatusFits();
                         AssertPageToolbarsFit(_pages[key], name + " " + key);
                         if (key == "overview") VerifyOverviewCards(name);
-                        if (key == "devices") VerifyDeviceRowCommandsForSmoke(name);
+                        if (key == "devices")
+                        {
+                            VerifyDeviceRowCommandsForSmoke(name);
+                            VerifyPointRowsForSmoke(name);
+                        }
                         if (key == "cloud")
                             foreach (var field in _cloudFields.Values)
                                 BringIntoViewAndAssert(field, name + " cloud field");
@@ -290,6 +294,97 @@ public sealed partial class MainForm
                 if (cards[i].Bounds.IntersectsWith(cards[j].Bounds)) throw new InvalidOperationException(context + ": overview cards overlap.");
             foreach (var label in cards[i].Controls.OfType<Label>())
                 BringIntoViewAndAssert(label, context + " card text");
+        }
+    }
+
+    private void VerifyPointRowsForSmoke(string context, bool verifyInitialViewport = false)
+    {
+        var grid = _tagGrid;
+        var state = GridViewState.Capture(grid, item => ((TagRow)item).Id);
+        var priorCell = grid.CurrentCell;
+        var selectedRows = grid.SelectedRows.Cast<DataGridViewRow>().ToArray();
+        var priorFocus = Descendants(this).FirstOrDefault(control => control.Focused);
+        var viewports = new List<(ScrollableControl Viewport, Point Position)>();
+        for (var parent = grid.Parent; parent is not null; parent = parent.Parent)
+            if (parent is ScrollableControl { AutoScroll: true } scroll)
+                viewports.Add((scroll, new Point(-scroll.AutoScrollPosition.X, -scroll.AutoScrollPosition.Y)));
+        try
+        {
+            if (grid.Rows.Count == 0 || grid.Columns["Name"] is not { Visible: true } nameColumn)
+                throw new InvalidOperationException(context + ": no visible point-name cell is available to verify.");
+            var first = grid.Rows[0].Cells[nameColumn.Index];
+            // The ordinary baseline has room for both tables. Check its first point
+            // before focusing or scrolling, so the test cannot hide a tall empty header.
+            // A genuinely small/high-DPI workspace still verifies actual reachability below.
+            if (verifyInitialViewport && ClientSize.Width >= UiTheme.Scale(this, 960)
+                && ClientSize.Height >= UiTheme.Scale(this, 680))
+                AssertCellVisible(first, requireFocus: false, "initial viewport without outer scrolling");
+
+            var lastColumn = grid.Columns.Cast<DataGridViewColumn>().Where(column => column.Visible)
+                .MaxBy(column => column.DisplayIndex)!;
+            var last = grid.Rows[grid.Rows.Count - 1].Cells[lastColumn.Index];
+            foreach (var cell in new[] { first, last }.Distinct())
+            {
+                grid.CurrentCell = cell;
+                grid.FirstDisplayedScrollingRowIndex = cell.RowIndex;
+                grid.FirstDisplayedScrollingColumnIndex = cell.ColumnIndex;
+                FocusForSmoke(grid, grid, this, context + " point cell " + cell.OwningColumn?.Name);
+                PerformLayoutRecursively(this);
+                // Scroll the real cell through the grid and every scrollable ancestor.
+                // The entire table need not fit a short workspace, but the cell must.
+                for (var pass = 0; pass < 2; pass++)
+                foreach (var (scroll, _) in viewports)
+                {
+                    var target = grid.RectangleToScreen(grid.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, false));
+                    var viewport = scroll.RectangleToScreen(scroll.ClientRectangle);
+                    var dx = target.Left < viewport.Left ? target.Left - viewport.Left : Math.Max(0, target.Right - viewport.Right);
+                    var dy = target.Top < viewport.Top ? target.Top - viewport.Top : Math.Max(0, target.Bottom - viewport.Bottom);
+                    if (dx == 0 && dy == 0) continue;
+                    scroll.AutoScrollPosition = new Point(Math.Max(0, -scroll.AutoScrollPosition.X + dx),
+                        Math.Max(0, -scroll.AutoScrollPosition.Y + dy));
+                    PerformLayoutRecursively(this);
+                }
+                AssertCellVisible(cell, requireFocus: true, "after real cell scrolling");
+            }
+        }
+        catch
+        {
+            var content = Descendants(_pages["devices"]).OfType<TableLayoutPanel>()
+                .FirstOrDefault(control => control.Name == "DevicesContent");
+            var header = Descendants(_pages["devices"]).FirstOrDefault(control => control.Name == "TagActions");
+            Console.WriteLine($"Point-grid layout diagnostic ({context}): client={ClientSize}, dpi={DeviceDpi}; "
+                + $"DevicesContent={content?.Bounds}, rows=[{string.Join(",", content?.GetRowHeights() ?? [])}]; "
+                + $"TagActions={header?.Bounds}; TagList={grid.Bounds}, visible={grid.Visible}, rowCount={grid.Rows.Count}; "
+                + string.Join("; ", viewports.Select(item => $"{item.Viewport.Name}: client={item.Viewport.ClientRectangle}, scroll={item.Viewport.AutoScrollPosition}")));
+            throw;
+        }
+        finally
+        {
+            // Restore focus before the viewport, because native focus may itself scroll.
+            if (priorFocus is { IsDisposed: false, Visible: true, Enabled: true }) priorFocus.Focus();
+            state.Restore(grid, item => ((TagRow)item).Id);
+            if (priorCell is null) grid.CurrentCell = null;
+            grid.ClearSelection();
+            foreach (var row in selectedRows)
+                if (ReferenceEquals(row.DataGridView, grid)) row.Selected = true;
+            foreach (var (scroll, position) in viewports.AsEnumerable().Reverse())
+                scroll.AutoScrollPosition = position;
+            PerformLayoutRecursively(this);
+        }
+
+        void AssertCellVisible(DataGridViewCell cell, bool requireFocus, string phase)
+        {
+            var bounds = grid.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, false);
+            var clipped = grid.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, true);
+            if (!grid.Visible || cell.OwningRow?.DataBoundItem is not TagRow || bounds.Width <= 0 || bounds.Height <= 0
+                || bounds != clipped || requireFocus && (!grid.ContainsFocus || grid.CurrentCell != cell))
+                throw new InvalidOperationException($"{context}: point cell {cell.OwningColumn?.Name}, row {cell.RowIndex} "
+                    + $"is not fully visible/focusable {phase}: bounds={bounds}, clipped={clipped}, focused={grid.ContainsFocus}.");
+            var screenBounds = grid.RectangleToScreen(bounds);
+            for (Control? parent = grid; parent is not null; parent = parent.Parent)
+                if (!parent.RectangleToScreen(parent.ClientRectangle).Contains(screenBounds))
+                    throw new InvalidOperationException($"{context}: point cell {cell.OwningColumn?.Name}, row {cell.RowIndex} "
+                        + $"is clipped by {parent.Name} {phase}: cell={screenBounds}, viewport={parent.RectangleToScreen(parent.ClientRectangle)}.");
         }
     }
 

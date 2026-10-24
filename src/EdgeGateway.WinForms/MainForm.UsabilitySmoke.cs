@@ -82,8 +82,18 @@ public sealed partial class MainForm
             _cloudTabs.SelectedIndex = 0;
             ((TextBox)_cloudFields["host"]).Text = "usability-broker.invalid";
             CheckUsability(_dirty && _cloudApply.Enabled && _cloudReset.Enabled, "platform draft actions did not activate.");
+            var platform = (ComboBox)_cloudFields["platform"];
+            platform.SelectedItem = MqttPlatform.ThingsCloud;
+            CheckUsability(_cloudFields["typeKey"].Enabled && !_cloudFields["topic"].Enabled
+                && !_cloudFields["platformGatewayId"].Enabled, "ThingsCloud field availability is incorrect.");
+            ((TextBox)_cloudFields["typeKey"]).Text = "retained-platform-draft";
+            platform.SelectedItem = MqttPlatform.Generic;
+            CheckUsability(!_cloudFields["typeKey"].Enabled && _cloudFields["topic"].Enabled
+                && ((TextBox)_cloudFields["typeKey"]).Text == "retained-platform-draft",
+                "switching platforms lost a draft or left another platform's field editable.");
             BringIntoViewAndAssert(_cloudReset, "reset platform draft"); _cloudReset.PerformClick();
-            CheckUsability(!_dirty && ((TextBox)_cloudFields["host"]).Text == fixture.Mqtt.Host && !_cloudApply.Enabled,
+            CheckUsability(!_dirty && ((TextBox)_cloudFields["host"]).Text == fixture.Mqtt.Host && !_cloudApply.Enabled
+                && ((TextBox)_cloudFields["typeKey"]).Text == fixture.Mqtt.ThingsCloudTypeKey,
                 "reset did not restore the saved platform configuration.");
             ResetScrollPositions(_pages["cloud"], _navigation["overview"]);
             SaveEditorScreenshot(this, "usability", "platform");
