@@ -178,15 +178,15 @@ public sealed class RpcRuntimeTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "edge-rpc-journal-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
-        var path = Path.Combine(directory, "gateway.db");
+        var path = Path.Combine(directory, "messaging");
         try
         {
-            await using (var store = new SqliteGatewayStore(path))
+            await using (var store = new FileGatewayStore(path))
             {
                 await store.InitializeAsync();
                 Assert.True((await store.ClaimRpcCommandAsync("pending", "first-fingerprint", 1)).Created);
             }
-            await using (var store = new SqliteGatewayStore(path))
+            await using (var store = new FileGatewayStore(path))
             {
                 await store.InitializeAsync();
                 var claim = await store.ClaimRpcCommandAsync("pending", "different-fingerprint", 1);
@@ -226,7 +226,7 @@ public sealed class RpcRuntimeTests
         public RpcFactory Factory { get; } = new();
         public GatewayLog Log { get; } = new();
         public RpcPublisher Publisher { get; } = new();
-        public SqliteGatewayStore Store { get; }
+        public FileGatewayStore Store { get; }
         public GatewayRuntime Runtime { get; }
         public RpcHarness(bool allowWrites = false, GatewayConfiguration? configuration = null, string? directory = null)
         {
@@ -234,7 +234,7 @@ public sealed class RpcRuntimeTests
             _directory = directory ?? Path.Combine(Path.GetTempPath(), "edge-rpc-test-" + Guid.NewGuid().ToString("N"));
             _ownsDirectory = directory is null;
             Directory.CreateDirectory(_directory);
-            Store = new SqliteGatewayStore(Path.Combine(_directory, "gateway.db"));
+            Store = new FileGatewayStore(Path.Combine(_directory, "messaging"));
             Runtime = new GatewayRuntime(Config, new DriverRegistry([Factory], Log), Store, Publisher, Log);
         }
         public static GatewayConfiguration Configuration(bool allowWrites) => new()

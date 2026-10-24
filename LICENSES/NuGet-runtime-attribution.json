@@ -176,6 +176,20 @@
       }
     },
     {
+      "id": "MySqlConnector",
+      "version": "2.6.2",
+      "authors": "Bradley Grainger",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://mysqlconnector.net/",
+      "copyright": "Copyright 2016–2026 Bradley Grainger",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/mysql-net/MySqlConnector.git",
+        "commit": "775689bb3e1ab55d16171e0795264fa746e364c4"
+      }
+    },
+    {
       "id": "Newtonsoft.Json",
       "version": "13.0.4",
       "authors": "James Newton-King",
@@ -187,6 +201,20 @@
         "type": "git",
         "url": "https://github.com/JamesNK/Newtonsoft.Json",
         "commit": "4e13299d4b0ec96bd4df9954ef646bd2d1b5bf2a"
+      }
+    },
+    {
+      "id": "Npgsql",
+      "version": "10.0.3",
+      "authors": "Shay Rojansky,Nikita Kazmin,Brar Piening,Nino Floris,Yoh Deadfall,Austin Drenski,Emil Lenngren,Francisco Figueiredo Jr.,Kenji Uno",
+      "license": "PostgreSQL",
+      "licenseUrl": "https://licenses.nuget.org/PostgreSQL",
+      "projectUrl": "https://github.com/npgsql/npgsql",
+      "copyright": "Copyright 2025 © The Npgsql Development Team",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/npgsql/npgsql",
+        "commit": "d3768398c17877b3a916c3c4d87e8e11698991fc"
       }
     },
     {
@@ -273,6 +301,15 @@
       "id": "opennetcf-restconnector",
       "version": "1.0.17160.0",
       "authors": "Chris Tacke"
+    },
+    {
+      "id": "Oracle.ManagedDataAccess.Core",
+      "version": "23.26.400",
+      "authors": "Oracle",
+      "license": "LICENSE.txt",
+      "licenseUrl": "https://aka.ms/deprecateLicenseUrl",
+      "projectUrl": "https://www.oracle.com/database/technologies/appdev/dotnet.html",
+      "copyright": "Copyright © 2026, Oracle and/or its affiliates"
     },
     {
       "id": "runtime.linux-arm.runtime.native.System.IO.Ports",
@@ -427,6 +464,20 @@
       }
     },
     {
+      "id": "System.Configuration.ConfigurationManager",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
       "id": "System.Diagnostics.DiagnosticSource",
       "version": "10.0.8",
       "authors": "Microsoft",
@@ -438,6 +489,48 @@
         "type": "git",
         "url": "https://github.com/dotnet/dotnet",
         "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "System.Diagnostics.EventLog",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "System.Diagnostics.PerformanceCounter",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
+    },
+    {
+      "id": "System.DirectoryServices.Protocols",
+      "version": "8.0.2",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "77545d6fd5ca79bc08198fd6d8037c14843f14ad"
       }
     },
     {
@@ -456,7 +549,7 @@
     },
     {
       "id": "System.IO.Pipelines",
-      "version": "10.0.8",
+      "version": "10.0.9",
       "authors": "Microsoft",
       "license": "MIT",
       "licenseUrl": "https://licenses.nuget.org/MIT",
@@ -465,7 +558,7 @@
       "repository": {
         "type": "git",
         "url": "https://github.com/dotnet/dotnet",
-        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+        "commit": "901ca941248413c79832d2fdbd709da0c4386353"
       }
     },
     {
@@ -484,15 +577,49 @@
     },
     {
       "id": "System.Memory",
-      "version": "4.5.3",
+      "version": "4.6.3",
       "authors": "Microsoft",
-      "licenseUrl": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://github.com/dotnet/maintenance-packages",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/maintenance-packages",
+        "commit": "f62ca0009b038cab4725a720f386623a969d73ad"
+      }
+    },
+    {
+      "id": "System.Security.Cryptography.Pkcs",
+      "version": "8.0.1",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
       "projectUrl": "https://dot.net/",
-      "copyright": "© Microsoft Corporation. All rights reserved."
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "81cabf2857a01351e5ab578947c7403a5b128ad1"
+      }
+    },
+    {
+      "id": "System.Security.Cryptography.ProtectedData",
+      "version": "8.0.0",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "projectUrl": "https://dot.net/",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "5535e31a712343a63f5d7d796cd874e563e5ac14"
+      }
     },
     {
       "id": "System.Text.Encodings.Web",
-      "version": "10.0.8",
+      "version": "10.0.9",
       "authors": "Microsoft",
       "license": "MIT",
       "licenseUrl": "https://licenses.nuget.org/MIT",
@@ -501,12 +628,12 @@
       "repository": {
         "type": "git",
         "url": "https://github.com/dotnet/dotnet",
-        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+        "commit": "901ca941248413c79832d2fdbd709da0c4386353"
       }
     },
     {
       "id": "System.Text.Json",
-      "version": "10.0.8",
+      "version": "10.0.9",
       "authors": "Microsoft",
       "license": "MIT",
       "licenseUrl": "https://licenses.nuget.org/MIT",
@@ -515,7 +642,7 @@
       "repository": {
         "type": "git",
         "url": "https://github.com/dotnet/dotnet",
-        "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+        "commit": "901ca941248413c79832d2fdbd709da0c4386353"
       }
     }
   ]

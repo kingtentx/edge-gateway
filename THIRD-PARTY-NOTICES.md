@@ -19,6 +19,9 @@
 | FontAwesome.Sharp | 6.6.0 | Apache-2.0；内嵌 Font Awesome Free 字体按 SIL OFL 1.1，图标及代码许可见资源声明 | [组件许可](LICENSES/FontAwesome.Sharp-LICENSE.txt)、[字体与图标许可](LICENSES/FontAwesome-Free-LICENSE.txt) |
 | Microsoft.Data.Sqlite / Microsoft.Data.Sqlite.Core | 8.0.32 | MIT | [Microsoft.Data.Sqlite-LICENSE.txt](LICENSES/Microsoft.Data.Sqlite-LICENSE.txt) |
 | MQTTnet | 4.3.7.1207 | MIT | [MQTTnet-LICENSE.txt](LICENSES/MQTTnet-LICENSE.txt) |
+| MySqlConnector | 2.6.2 | MIT；Bradley Grainger | [MySqlConnector-LICENSE.txt](LICENSES/MySqlConnector-LICENSE.txt) |
+| Npgsql | 10.0.3 | PostgreSQL License；Npgsql contributors | [Npgsql-LICENSE.txt](LICENSES/Npgsql-LICENSE.txt) |
+| Oracle.ManagedDataAccess.Core | 23.26.400 | Oracle Free Distribution, Hosting, and Use Terms and Conditions | [Oracle.ManagedDataAccess.Core-LICENSE.txt](LICENSES/Oracle.ManagedDataAccess.Core-LICENSE.txt) |
 | System.IO.Ports | 8.0.0 | MIT | [System.IO.Ports-LICENSE.txt](LICENSES/System.IO.Ports-LICENSE.txt)、[System.IO.Ports-THIRD-PARTY-NOTICES.txt](LICENSES/System.IO.Ports-THIRD-PARTY-NOTICES.txt) |
 | SQLitePCLRaw.bundle_e_sqlite3 / core / provider.e_sqlite3 / lib.e_sqlite3 | 2.1.13 | Apache-2.0 | [SQLitePCLRaw-LICENSE.txt](LICENSES/SQLitePCLRaw-LICENSE.txt)、[SQLitePCLRaw-ATTRIBUTION.txt](LICENSES/SQLitePCLRaw-ATTRIBUTION.txt) |
 
@@ -32,12 +35,18 @@
 | OPCFoundation.NetStandard.Opc.Ua.Client / Configuration / Core / Security.Certificates / Types | 1.5.378.182 | OPC Foundation MIT License 1.00 | [OPCFoundation-UA-LICENSE.txt](LICENSES/OPCFoundation-UA-LICENSE.txt) |
 | BitFaster.Caching | 2.6.0 | MIT；Alex Peck | [BitFaster.Caching-LICENSE.txt](LICENSES/BitFaster.Caching-LICENSE.txt) |
 | Microsoft.Extensions.*、System.Text.Json 等 UA 传递依赖 | 10.0.8 | MIT；Microsoft / .NET Foundation | [Microsoft.NET-LICENSE.txt](LICENSES/Microsoft.NET-LICENSE.txt)、[第三方声明](LICENSES/Microsoft.NET-THIRD-PARTY-NOTICES-10.0.8.txt) |
+| System.IO.Pipelines | 10.0.9（数据库依赖统一解析） | MIT；Microsoft / .NET Foundation | [Microsoft.NET-LICENSE.txt](LICENSES/Microsoft.NET-LICENSE.txt)、[10.0.9 第三方声明](LICENSES/Microsoft.NET-THIRD-PARTY-NOTICES-10.0.9.txt) |
+| System.Configuration / Diagnostics / DirectoryServices / Cryptography 等新增数据库传递依赖 | 8.0.x，精确版本见归属清单 | MIT；Microsoft / .NET Foundation | [.NET 8 许可](LICENSES/Microsoft.NET-8-LICENSE.txt)、[附加声明](LICENSES/Microsoft.NET-8-THIRD-PARTY-NOTICES.txt) |
 | Microsoft.Extensions.Logging.Abstractions | 8.0.3 直接引用，最终由 UA 统一解析至 10.0.8 | MIT | [Microsoft.Extensions-8-LICENSE.txt](LICENSES/Microsoft.Extensions-8-LICENSE.txt) 及上述 .NET 许可 |
 | HslCommunication | 12.8.3 | 厂商专有授权；杭州胡工物联科技有限公司 | [HslCommunication-NOTICE.txt](LICENSES/HslCommunication-NOTICE.txt) |
 
-已解析的直接与传递包版本、作者、版权、许可 URL 和源码提交完整记录在 [NuGet-runtime-attribution.json](LICENSES/NuGet-runtime-attribution.json)。`System.Memory` 传递依赖的附加声明保存在 [System.Memory-THIRD-PARTY-NOTICES.txt](LICENSES/System.Memory-THIRD-PARTY-NOTICES.txt)。发布包仅选用对应 Windows x64 的运行资产。
+已解析的直接与传递包版本、作者、版权、许可 URL 和源码提交完整记录在 [NuGet-runtime-attribution.json](LICENSES/NuGet-runtime-attribution.json)。`System.Memory` 当前统一解析为 4.6.3（MIT）；此前版本的附加归属保留在 [System.Memory-THIRD-PARTY-NOTICES.txt](LICENSES/System.Memory-THIRD-PARTY-NOTICES.txt)。发布包仅选用对应 Windows x64 的运行资产。
 
 许可文本来源：
+
+- MySqlConnector：对应包源码提交 [`775689bb3e1ab55d16171e0795264fa746e364c4/LICENSE`](https://github.com/mysql-net/MySqlConnector/blob/775689bb3e1ab55d16171e0795264fa746e364c4/LICENSE)。
+- Npgsql：对应包源码提交 [`d3768398c17877b3a916c3c4d87e8e11698991fc/LICENSE`](https://github.com/npgsql/npgsql/blob/d3768398c17877b3a916c3c4d87e8e11698991fc/LICENSE)。
+- Oracle.ManagedDataAccess.Core：23.26.400 官方 NuGet 包内的 `LICENSE.txt` 原文；其许可独立于本项目 MIT 许可。
 
 - MQTTnet：包内 `.nuspec` 指定的源码提交 [`740d605fd2c25922fad6ea60e78e8370356e95dd`](https://github.com/dotnet/MQTTnet/blob/740d605fd2c25922fad6ea60e78e8370356e95dd/LICENSE)。
 - Microsoft.Data.Sqlite：包内 `.nuspec` 指定的源码提交 [`5e864fab7a450eedb39ddb931ba61759102c4e35`](https://github.com/dotnet/efcore/blob/5e864fab7a450eedb39ddb931ba61759102c4e35/LICENSE.txt)。

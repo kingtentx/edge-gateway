@@ -220,7 +220,7 @@ public sealed class GatewayApplicationTests
     }
 
     [Fact]
-    public async Task ApplicationDiagnosticsReadbackHistoryAndFileExchangeUseTheSameAppliedState()
+    public async Task ApplicationDiagnosticsReadbackAndFileExchangeUseTheSameAppliedStateWithoutLocalHistory()
     {
         await using var h = await Harness.CreateAsync();
         var detached = h.App.GetConfiguration();
@@ -239,10 +239,10 @@ public sealed class GatewayApplicationTests
         Assert.True(write.Submitted);
         Assert.Equal(42.5, h.App.GetLatestSample(h.A.Tags[0].Id)!.NumericValue);
         await h.App.StopAsync();
-        var history = await h.App.QueryHistoryAsync(new(h.A.Id, null, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddMinutes(1)));
-        Assert.NotEmpty(history);
-        Assert.All(history, sample => Assert.Equal(h.A.Id, sample.DeviceId));
-        Assert.True((await h.App.GetStatisticsAsync()).HistoryCount > 0);
+        Assert.Empty(h.App.GetDatabaseStatuses());
+        Assert.False(File.Exists(Path.Combine(h.Directory, "gateway.db")));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.QueryExternalHistoryAsync(Guid.NewGuid(),
+            new(h.A.Id, null, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddMinutes(1))));
         Assert.Contains(h.App.GetCommunicationStatistics(), statistics => statistics.DeviceId == h.A.Id);
         var path = Path.Combine(h.Directory, "export.json");
         await h.App.ExportConfigurationAsync(path);
@@ -266,7 +266,9 @@ public sealed class GatewayApplicationTests
                 var simulator = original.Devices.Single(device => device.DriverId == "simulator");
                 await host.Application.StartDeviceAsync(simulator.Id);
                 await Until(() => host.Application.GetLatest().Count > 0);
-                Assert.True(File.Exists(Path.Combine(directory, "gateway.json")));
+                Assert.True(File.Exists(Path.Combine(directory, "gateway.config.db")));
+                Assert.False(File.Exists(Path.Combine(directory, "gateway.json")));
+                Assert.False(File.Exists(Path.Combine(directory, "gateway.db")));
             }
             finally { await host.DisposeAsync(); }
             await using var reopened = await GatewayHost.CreateAsync(directory);
@@ -283,10 +285,10 @@ public sealed class GatewayApplicationTests
         System.IO.Directory.CreateDirectory(directory);
         try
         {
-            var path = Path.Combine(directory, "gateway.json");
+            var path = Path.Combine(directory, "gateway.config.db");
             const string invalid = "{not-valid-json";
             await File.WriteAllTextAsync(path, invalid);
-            await Assert.ThrowsAsync<InvalidDataException>(() => GatewayHost.CreateAsync(directory));
+            await Assert.ThrowsAsync<Microsoft.Data.Sqlite.SqliteException>(() => GatewayHost.CreateAsync(directory));
             Assert.Equal(invalid, await File.ReadAllTextAsync(path));
             using var lease = new FileStream(Path.Combine(directory, "gateway.lock"), FileMode.Open, FileAccess.ReadWrite, FileShare.None);
         }
@@ -294,6 +296,46 @@ public sealed class GatewayApplicationTests
     }
 
     private static string Json<T>(T value) => JsonSerializer.Serialize(value, GatewayJson.Options);
+
+    [Fact]
+    public async Task LoggingChangesApplyLiveWithoutRestartAndFailedSavePreservesActiveSettings()
+    {
+        await using var h = await Harness.CreateAsync();
+        await h.App.StartAsync();
+        await Until(() => h.App.GetLatest().Count == 2);
+        var creations = h.Factory.Created.ToDictionary(pair => pair.Key, pair => pair.Value);
+        var settings = new GatewayLoggingConfiguration { MinimumLevel = GatewayLogLevel.Error, MaxFileSizeMb = 5, RetainedFileCount = 8 };
+        var result = await h.App.ApplyLoggingSettingsAsync(settings);
+        Assert.Empty(result.Restarted);
+        Assert.Equal(GatewayLogLevel.Error, (await h.App.ReadSavedConfigurationAsync()).Logging.MinimumLevel);
+        Assert.All(creations, pair => Assert.Equal(pair.Value, h.Factory.Created[pair.Key]));
+        settings.MaxFileSizeMb = 100;
+        Assert.Equal(5, h.App.GetConfiguration().Logging.MaxFileSizeMb);
+        h.Configurations.FailSave = true;
+        await Assert.ThrowsAsync<IOException>(() => h.App.ApplyLoggingSettingsAsync(new() { MinimumLevel = GatewayLogLevel.Debug }));
+        Assert.Equal(GatewayLogLevel.Error, h.App.GetConfiguration().Logging.MinimumLevel);
+        var marker = "debug-after-rejected-config-" + Guid.NewGuid();
+        h.App.Log.Write(GatewayLogLevel.Debug, marker);
+        Assert.DoesNotContain(h.App.Log.GetEntries(), entry => entry.Message == marker);
+    }
+
+    [Fact]
+    public async Task DatabaseSettingsRequireStoppedDevicesAndMergeIntoLatestConfiguration()
+    {
+        await using var h = await Harness.CreateAsync();
+        var connection = new DatabaseConnectionConfiguration { Name = "reporting", Enabled = false };
+        var group = new DatabaseWriteGroupConfiguration { Name = "points", ConnectionId = connection.Id };
+        await h.App.StartDeviceAsync(h.A.Id);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.ApplyDatabaseSettingsAsync([connection], [group]));
+        Assert.Empty(h.App.GetConfiguration().Databases);
+        await h.App.StopAsync();
+        var added = Device("added after opening editor");
+        await h.App.AddDeviceAsync(added);
+        await h.App.ApplyDatabaseSettingsAsync([connection], [group]);
+        Assert.Contains(h.App.GetConfiguration().Devices, device => device.Id == added.Id);
+        Assert.Equal(connection.Id, Assert.Single(h.App.GetConfiguration().Databases).Id);
+        Assert.Equal(group.Id, Assert.Single((await h.App.ReadSavedConfigurationAsync()).DatabaseWriteGroups).Id);
+    }
     private static DeviceConfiguration Device(string name) => new()
     {
         Name = name, DriverId = "simulator", PollIntervalMs = 100, TimeoutMs = 1000,
@@ -309,7 +351,7 @@ public sealed class GatewayApplicationTests
     {
         public string Directory { get; } = Path.Combine(Path.GetTempPath(), "edge-app-test-" + Guid.NewGuid().ToString("N"));
         public MemoryConfigurationStore Configurations { get; private set; } = null!;
-        public SqliteGatewayStore Store { get; private set; } = null!;
+        public FileGatewayStore Store { get; private set; } = null!;
         public CountingFactory Factory { get; private set; } = null!;
         public GatewayApplication App { get; private set; } = null!;
         public DeviceConfiguration A { get; private set; } = null!;
@@ -319,7 +361,7 @@ public sealed class GatewayApplicationTests
         {
             var h = new Harness();
             System.IO.Directory.CreateDirectory(h.Directory);
-            h.Store = new SqliteGatewayStore(Path.Combine(h.Directory, "gateway.db"));
+            h.Store = new FileGatewayStore(Path.Combine(h.Directory, "messaging"));
             await h.Store.InitializeAsync();
             h.A = Device("设备 A"); h.B = Device("设备 B");
             var configuration = new GatewayConfiguration { Devices = [h.A, h.B] };

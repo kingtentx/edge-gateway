@@ -603,13 +603,10 @@ public sealed class DeviceOperationTests
     {
         public int Initializations;
         public Task InitializeAsync(CancellationToken cancellationToken = default) { Interlocked.Increment(ref Initializations); return Task.CompletedTask; }
-        public Task AppendSamplesAsync(IReadOnlyList<TelemetrySample> samples, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IReadOnlyList<TelemetrySample>> QueryHistoryAsync(HistoryQuery query, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<TelemetrySample>>([]);
         public Task<bool> EnqueueAsync(string topic, string payload, int maxMessages, CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<IReadOnlyList<OutboxMessage>> ReadOutboxAsync(int limit, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<OutboxMessage>>([]);
         public Task AcknowledgeAsync(long id, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default) => Task.FromResult(new StoreStatistics(0, 0));
-        public Task PruneHistoryAsync(int retentionDays, int maxRows, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default) => Task.FromResult(new StoreStatistics(0));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
     private sealed class OpPublisher : ITelemetryPublisher

@@ -78,23 +78,22 @@ public sealed partial class MainForm
             await CommitConfigurationAsync(disabled, a);
             await DeviceRowActionAsync(b, DeviceStartColumnName);
             Check(!_application.IsRunning, "disabled row started collection.");
-            var path = Path.Combine(_dataDirectory, "gateway.json");
             var before = DeviceImportSmokeJson(_configuration);
-            var diskBefore = await File.ReadAllBytesAsync(path);
+            var diskBefore = DeviceImportSmokeJson(await _application.ReadSavedConfigurationAsync());
             var rejected = false;
             var candidate = Clone(_configuration); candidate.Name += " 保存失败验证";
-            using (var lockedFile = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+            using (RejectConfigurationWritesForSmoke())
             {
                 try { await CommitConfigurationAsync(candidate, a); }
-                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { rejected = true; }
+                catch (Exception error) when (IsConfigurationWriteFailureForSmoke(error)) { rejected = true; }
                 Check(rejected && DeviceImportSmokeJson(_configuration) == before, "failed disk save changed the UI configuration.");
             }
-            Check(diskBefore.SequenceEqual(await File.ReadAllBytesAsync(path)), "failed save changed gateway.json.");
+            Check(diskBefore == DeviceImportSmokeJson(await _application.ReadSavedConfigurationAsync()), "failed save changed the persisted SQLite configuration.");
             candidate = Clone(_configuration); candidate.Devices[0].PollIntervalMs = 0; rejected = false;
             try { await CommitConfigurationAsync(candidate, a); }
             catch (InvalidDataException) { rejected = true; }
             Check(rejected && DeviceImportSmokeJson(_configuration) == before
-                && diskBefore.SequenceEqual(await File.ReadAllBytesAsync(path)), "invalid configuration changed memory or disk.");
+                && diskBefore == DeviceImportSmokeJson(await _application.ReadSavedConfigurationAsync()), "invalid configuration changed memory or disk.");
             await AssertSavedConfigurationForSmokeAsync("rejected configuration saves");
 
             ShowPage("cloud");

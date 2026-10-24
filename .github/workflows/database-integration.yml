@@ -1,0 +1,85 @@
+name: External database integration
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  databases:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: edge_test
+          POSTGRES_USER: edge_test
+          # Disposable service-only credentials; no deployment secret is used.
+          POSTGRES_PASSWORD: edge_ci_database_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U edge_test -d edge_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: edge_test
+          MYSQL_USER: edge_test
+          MYSQL_PASSWORD: edge_ci_database_only
+          MYSQL_ROOT_PASSWORD: edge_ci_root_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      EDGE_DB_TEST_ALLOW_DDL: '1'
+      EDGE_DB_TEST_HOST: 127.0.0.1
+      EDGE_DB_TEST_DATABASE: edge_test
+      EDGE_DB_TEST_USERNAME: edge_test
+      EDGE_DB_TEST_PASSWORD: edge_ci_database_only
+      EDGE_DB_TEST_TLS: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Prepare isolated MySQL authentication and adverse default SQL mode
+        env:
+          MYSQL_CONTAINER: ${{ job.services.mysql.id }}
+          MYSQL_TEST_ROOT_PASSWORD: edge_ci_root_only
+        run: |
+          docker exec -e MYSQL_PWD="$MYSQL_TEST_ROOT_PASSWORD" "$MYSQL_CONTAINER" mysql -u root --execute \
+            "ALTER USER 'edge_test'@'%' IDENTIFIED WITH mysql_native_password BY '$EDGE_DB_TEST_PASSWORD'; SET GLOBAL sql_mode = '';"
+          # The production connector still forbids automatic RSA public-key retrieval.
+          # Its own session must add STRICT_ALL_TABLES and reject oversize data.
+      - name: Build standalone integration executable
+        run: dotnet build tests/EdgeGateway.DatabaseIntegration/EdgeGateway.DatabaseIntegration.csproj -c Release
+      - name: Verify PostgreSQL transactions and data round trips
+        env:
+          EDGE_DB_TEST_PORT: '5432'
+        run: |
+          mkdir -p artifacts/database-integration
+          set -o pipefail
+          dotnet run --project tests/EdgeGateway.DatabaseIntegration -c Release --no-build -- postgres | tee artifacts/database-integration/postgres.json
+      - name: Verify MySQL transactions, conflicts, and strict sessions
+        env:
+          EDGE_DB_TEST_PORT: '3306'
+        run: |
+          set -o pipefail
+          dotnet run --project tests/EdgeGateway.DatabaseIntegration -c Release --no-build -- mysql | tee artifacts/database-integration/mysql.json
+      - name: Upload real database evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-integration
+          path: artifacts/database-integration/
+          if-no-files-found: warn

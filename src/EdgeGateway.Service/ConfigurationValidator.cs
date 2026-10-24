@@ -11,7 +11,7 @@ public static class ConfigurationValidator
     {
         ArgumentNullException.ThrowIfNull(configuration);
         var errors = new List<string>();
-        if (configuration.SchemaVersion != 2) errors.Add("仅支持配置格式版本 2；请通过配置存储加载并迁移版本 1。");
+        if (configuration.SchemaVersion != 3) errors.Add("仅支持配置格式版本 3；请通过配置存储加载并迁移版本 1 或 2。");
         if (string.IsNullOrWhiteSpace(configuration.GatewayId) || !Regex.IsMatch(configuration.GatewayId, "^[A-Za-z0-9._-]{1,100}$"))
             errors.Add("网关标识须为 1–100 位字母、数字、点、下划线或短横线。");
         if (string.IsNullOrWhiteSpace(configuration.Name)) errors.Add("网关名称不能为空。");
@@ -20,8 +20,7 @@ public static class ConfigurationValidator
         if (configuration.HeartbeatIntervalMs is < 100 or > 86_400_000) errors.Add("心跳周期必须为 100–86400000 ms。");
         if (configuration.ReportMode == TelemetryReportMode.OnChangeWithHeartbeat && configuration.HeartbeatIntervalMs < configuration.PublishIntervalMs)
             errors.Add("心跳周期不能小于上报检查周期。");
-        if (configuration.HistoryRetentionDays is < 1 or > 3650) errors.Add("历史保留时间必须为 1–3650 天。");
-        if (configuration.MaxHistoryRows is < 100 or > 10_000_000) errors.Add("历史最大记录数必须为 100–10000000。");
+        errors.AddRange(DataRecordingConfigurationValidator.Validate(configuration));
         if (configuration.MaxOutboxMessages is < 1 or > 1_000_000) errors.Add("补传队列容量必须为 1–1000000。");
         var mqtt = configuration.Mqtt;
         if (mqtt is null) errors.Add("MQTT 配置缺失。");

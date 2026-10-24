@@ -1,10 +1,8 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "gatewayId": "edge-001",
   "name": "边缘采集网关",
   "autoStart": false,
-  "historyRetentionDays": 30,
-  "maxHistoryRows": 1000000,
   "maxOutboxMessages": 50000,
   "publishIntervalMs": 5000,
   "mqtt": {
@@ -229,5 +227,14 @@
       ],
       "properties": {}
     }
-  ]
+  ],
+  "logging": {
+    "minimumLevel": "Information",
+    "logAcquisitionSamples": true,
+    "maxFileSizeMb": 10,
+    "retainedFileCount": 30,
+    "retainedDays": 30
+  },
+  "databases": [],
+  "databaseWriteGroups": []
 }

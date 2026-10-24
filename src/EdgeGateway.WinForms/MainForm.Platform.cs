@@ -95,7 +95,7 @@ public sealed partial class MainForm
         TextField("platformGatewayId", "ThingsPanel 网关编号", x => CloudDraft.Mqtt.PlatformGatewayId = x);
 
         fields = Page("reporting", "上报策略");
-        Section("数据发送策略", "采集与上报分别控制。点位可关闭上传，同时保留本地采集和历史。");
+        Section("数据发送策略", "采集与上报分别控制。点位可关闭上传，同时保留本地采集、采样日志和已配置的数据库写入。");
         ChoiceField<TelemetryReportMode>("reportMode", "上报模式", x => CloudDraft.ReportMode = x,
             x => x switch { TelemetryReportMode.OnChange => "仅变化上报", TelemetryReportMode.OnChangeWithHeartbeat => "变化上报 + 周期心跳", _ => "周期全量上报" });
         NumberField("publishInterval", "上报 / 检查周期 (ms)", 100, 3_600_000, x => CloudDraft.PublishIntervalMs = x);
@@ -114,15 +114,12 @@ public sealed partial class MainForm
         TextField("rpcRequest", "RPC 请求主题", x => CloudDraft.Mqtt.RpcRequestTopic = x);
         TextField("rpcResponse", "RPC 回复主题", x => CloudDraft.Mqtt.RpcResponseTopic = x);
 
-        fields = Page("gateway", "网关存储");
+        fields = Page("gateway", "网关设置");
         Section("网关身份");
         TextField("gatewayId", "网关标识", x => CloudDraft.GatewayId = x);
         TextField("name", "网关名称", x => CloudDraft.Name = x);
         CheckField("autoStart", "程序启动后自动采集", x => CloudDraft.AutoStart = x);
-        Section("本地历史");
-        NumberField("retention", "历史保留天数", 1, 3650, x => CloudDraft.HistoryRetentionDays = x);
-        NumberField("maxHistory", "最大历史记录数", 100, 10_000_000, x => CloudDraft.MaxHistoryRows = x);
-        Section("数据目录", "配置、采样历史、离线消息和日志保存在当前用户的数据目录。");
+        Section("数据目录", "配置、离线消息和日志保存在当前用户的数据目录。采集数据库在“数据库”页单独配置。");
         EditorDialog.Hint(fields, _dataDirectory);
         var open = UiTheme.Button("打开数据目录", (_, _) =>
         {
@@ -154,7 +151,7 @@ public sealed partial class MainForm
         footer.Controls.Add(actions, 0, 1);
         footer.SizeChanged += (_, _) => SetWrappingWidth(_cloudApplyState, footer.ClientSize.Width - footer.Padding.Horizontal);
         content.Controls.Add(_cloudTabs, 0, 0); content.Controls.Add(footer, 0, 1);
-        return UiTheme.PageLayout("平台与系统", "分组维护连接、上报、远程控制和存储；编辑完成后统一应用。", UiTheme.Toolbar(), content);
+        return UiTheme.PageLayout("平台与系统", "分组维护连接、上报、远程控制和网关设置；编辑完成后统一应用。", UiTheme.Toolbar(), content);
     }
 
     private void UpdatePlatformCommands()
@@ -191,8 +188,6 @@ public sealed partial class MainForm
         candidate.GatewayId = _cloudDraft.GatewayId;
         candidate.Name = _cloudDraft.Name;
         candidate.AutoStart = _cloudDraft.AutoStart;
-        candidate.HistoryRetentionDays = _cloudDraft.HistoryRetentionDays;
-        candidate.MaxHistoryRows = _cloudDraft.MaxHistoryRows;
         candidate.MaxOutboxMessages = _cloudDraft.MaxOutboxMessages;
         candidate.PublishIntervalMs = _cloudDraft.PublishIntervalMs;
         candidate.ReportMode = _cloudDraft.ReportMode;
@@ -214,7 +209,7 @@ public sealed partial class MainForm
             void Check(string key, bool value) => ((CheckBox)_cloudFields[key]).Checked = value;
             void Choice(string key, object value) => ((ComboBox)_cloudFields[key]).SelectedItem = value;
             Text("gatewayId", _configuration.GatewayId); Text("name", _configuration.Name); Check("autoStart", _configuration.AutoStart);
-            Number("retention", _configuration.HistoryRetentionDays); Number("maxHistory", _configuration.MaxHistoryRows); Number("maxOutbox", _configuration.MaxOutboxMessages);
+            Number("maxOutbox", _configuration.MaxOutboxMessages);
             Check("mqttEnabled", _configuration.Mqtt.Enabled); Text("host", _configuration.Mqtt.Host); Number("port", _configuration.Mqtt.Port);
             Check("tls", _configuration.Mqtt.UseTls); Text("clientId", _configuration.Mqtt.ClientId); Text("username", _configuration.Mqtt.Username);
             Text("passwordEnv", _configuration.Mqtt.PasswordEnvironmentVariable); Text("topic", _configuration.Mqtt.Topic);

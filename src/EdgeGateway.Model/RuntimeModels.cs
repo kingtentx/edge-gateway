@@ -43,5 +43,5 @@ public sealed record DeviceRuntimeStatus(Guid DeviceId, string DeviceName, Devic
     DateTimeOffset? LastSuccess, int ConsecutiveFailures, string? Error);
 public sealed record GatewayLogEntry(DateTimeOffset Timestamp, GatewayLogLevel Level, string Message);
 public sealed record OutboxMessage(long Id, string Topic, string Payload, DateTimeOffset CreatedAt);
-public sealed record StoreStatistics(long HistoryCount, long OutboxCount, DateTimeOffset? OldestOutboxAt = null);
+public sealed record StoreStatistics(long OutboxCount, DateTimeOffset? OldestOutboxAt = null);
 public sealed record HistoryQuery(Guid? DeviceId, Guid? TagId, DateTimeOffset From, DateTimeOffset To, int Limit = 5000);

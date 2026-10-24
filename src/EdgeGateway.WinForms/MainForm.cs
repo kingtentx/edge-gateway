@@ -39,7 +39,8 @@ public sealed partial class MainForm : DpiAwareForm
     public bool SmokeTestFailed { get; private set; }
 
     public MainForm(IGatewayApplication application, string dataDirectory,
-        bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false)
+        bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
+        Func<IDisposable>? configurationWriteFailureForSmoke = null)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
@@ -47,6 +48,7 @@ public sealed partial class MainForm : DpiAwareForm
         _log = application.Log;
         _dataDirectory = dataDirectory;
         _smokeTest = smokeTest || layoutMatrix;
+        _configurationWriteFailureForSmoke = configurationWriteFailureForSmoke;
         _layoutMatrix = layoutMatrix;
         _smokeScreenshotPath = smokeScreenshotPath;
         Text = "Edge Gateway · 边缘采集网关";
@@ -73,7 +75,7 @@ public sealed partial class MainForm : DpiAwareForm
         var sidebar = new TableLayoutPanel
         {
             Name = "NavigationContent", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = UiTheme.Navy, Padding = new Padding(12, 18, 10, 16), ColumnCount = 1, RowCount = 9, Margin = new Padding(0)
+            BackColor = UiTheme.Navy, Padding = new Padding(12, 18, 10, 16), ColumnCount = 1, RowCount = 10, Margin = new Padding(0)
         };
         sidebar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         sidebar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -86,7 +88,7 @@ public sealed partial class MainForm : DpiAwareForm
         var brandCaption = UiTheme.Label("工业数据 · 本地连接", 10, Color.FromArgb(160, 178, 203));
         brand.Controls.Add(brandTitle); brand.Controls.Add(brandCaption);
         sidebar.Controls.Add(brand, 0, 0);
-        var entries = new[] { ("overview", "运行总览"), ("devices", "设备与点位"), ("realtime", "实时监控"), ("history", "历史与趋势"), ("diagnostics", "通信诊断"), ("cloud", "平台与系统"), ("logs", "运行日志") };
+        var entries = new[] { ("overview", "运行总览"), ("devices", "设备与点位"), ("realtime", "实时监控"), ("history", "历史与趋势"), ("diagnostics", "通信诊断"), ("database", "数据库"), ("cloud", "平台与系统"), ("logs", "运行日志") };
         for (var i = 0; i < entries.Length; i++)
         {
             var entry = entries[i];
@@ -202,6 +204,7 @@ public sealed partial class MainForm : DpiAwareForm
         AddPage("realtime", BuildRealtimePage());
         AddPage("history", BuildHistoryPage());
         AddPage("diagnostics", BuildDiagnosticsPage());
+        AddPage("database", BuildDatabasesPage());
         AddPage("cloud", BuildCloudPage());
         AddPage("logs", BuildLogsPage());
         ShowPage("overview");
@@ -357,6 +360,7 @@ public sealed partial class MainForm : DpiAwareForm
                 await SmokeLiveConfigurationAsync();
                 await SmokeCompletedCapabilitiesAsync();
                 await SmokeUsabilityAsync();
+                await SmokeDataRecordingAsync();
                 if (_layoutMatrix) await RunLayoutMatrixAsync();
             }
             catch (Exception exception)
@@ -591,7 +595,7 @@ public sealed partial class MainForm : DpiAwareForm
         RebindConfigurationViews(selectDevice, selectTag);
         var outcome = applied.Restarted.Count > 0 ? $" 已对 {applied.Restarted.Count} 台变更设备发起重新连接，请查看采集状态。"
             : applied.Stopped.Count > 0 ? $" 已停止 {applied.Stopped.Count} 台被禁用或删除的设备。" : "";
-        var message = (successMessage ?? "配置已自动保存，上一版备份已保留。") + outcome;
+        var message = (successMessage ?? "配置已自动保存并应用。") + outcome;
         SetFooter(message);
         _log.Write(GatewayLogLevel.Information, message);
         UpdateCommands();
@@ -637,6 +641,7 @@ public sealed partial class MainForm : DpiAwareForm
             }
             if (_activePage == "realtime") RefreshRealtime(samples);
             if (_activePage == "logs") RefreshLogs();
+            if (_activePage == "database") BindDatabaseViews();
             var statistics = await _application.GetStatisticsAsync();
             if (!IsDisposed)
             {
@@ -662,11 +667,12 @@ public sealed partial class MainForm : DpiAwareForm
         _runState.Text = _busy ? "正在处理…" : running ? $"● {activeDevices} 台设备采集中" : "● 采集已停止";
         _runState.ForeColor = running ? UiTheme.Green : UiTheme.Muted;
         _savedState.Text = ClientSize.Height < UiTheme.Scale(this, 560) ? _configuration.Name : $"{_configuration.Name}  /  {_configuration.GatewayId}";
-        _automaticSaveState.Text = _dirty ? "平台设置待应用" : "配置自动保存";
-        _automaticSaveState.ForeColor = _dirty ? Color.FromArgb(180, 83, 9) : UiTheme.Muted;
+        _automaticSaveState.Text = _dirty || _loggingDirty ? "设置待应用" : "配置自动保存";
+        _automaticSaveState.ForeColor = _dirty || _loggingDirty ? Color.FromArgb(180, 83, 9) : UiTheme.Muted;
         UpdateDeviceConfigurationCommands();
         UpdateSelectionCommands();
         UpdatePlatformCommands();
+        UpdateLoggingCommands();
         UpdateHistoryQueryState();
         UpdateWriteButton();
     }
@@ -693,6 +699,12 @@ public sealed partial class MainForm : DpiAwareForm
         e.Cancel = true;
         if (_closing) return;
         if (_busy) { SetFooter("正在处理当前操作，请稍后关闭窗口。"); return; }
+        if (_loggingDirty)
+        {
+            var answer = MessageBox.Show(this, "日志设置尚未应用，是否应用后退出？", "尚未应用的日志设置", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            if (answer == DialogResult.Cancel) return;
+            if (answer == DialogResult.Yes) { await RunBusyAsync(ApplyLoggingSettingsAsync); if (_loggingDirty) return; }
+        }
         if (_dirty)
         {
             var answer = MessageBox.Show(this, "平台设置尚未应用，是否应用后退出？" + (_application.IsRunning ? "\n选择“是”将停止全部设备，然后应用并退出。" : ""), "尚未应用的设置", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);

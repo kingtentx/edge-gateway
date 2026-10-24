@@ -311,7 +311,7 @@ internal sealed class TagEditor : EditorDialog
         Field(_basic, "单位", _unit);
         Section(_basic, "采集与权限", "采集、平台上传和写入许可分别控制。");
         Field(_basic, "启用状态", _enabled); Field(_basic, "上传平台", _uploadEnabled); Field(_basic, "写入权限", _writable);
-        Hint(_basic, "关闭上传后仍采集、显示并保存本地历史；已入队消息继续补传。");
+        Hint(_basic, "关闭上传后仍采集、显示，并按日志与数据库配置记录；已入队消息继续补传。");
         if (driver.IsLegacy && driver.SupportsWrite) Field(_basic, "写入方法", _writeMethod);
         _methodHint = EditorLayout.WrappingLabel("", 10, UiTheme.Muted);
         var hintRow = _basic.RowCount++; _basic.Controls.Add(_methodHint, 0, hintRow); _basic.SetColumnSpan(_methodHint, 2);

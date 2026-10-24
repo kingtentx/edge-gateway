@@ -14,9 +14,9 @@ public sealed class PlatformSwitchTests
         try
         {
             var configuration = new GatewayConfiguration();
-            var configurationStore = new JsonConfigurationStore(Path.Combine(directory, "gateway.json"));
+            await using var configurationStore = new SqliteConfigurationStore(Path.Combine(directory, "gateway.config.db"));
             await configurationStore.SaveAsync(configuration);
-            await using var store = new SqliteGatewayStore(Path.Combine(directory, "gateway.db"));
+            await using var store = new FileGatewayStore(Path.Combine(directory, "messaging"));
             await store.InitializeAsync();
             Assert.True(await store.EnqueueAsync("edge/edge-001/telemetry", "{\"messageId\":\"old\"}", 100));
             await using var publisher = new MqttTelemetryPublisher();

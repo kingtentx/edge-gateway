@@ -443,7 +443,7 @@ public sealed partial class RuntimeTests
         public FakeStore Store { get; } = new();
         public FakePublisher Publisher { get; } = new();
         public GatewayRuntime Runtime { get; }
-        public Harness() => Runtime = new GatewayRuntime(Config, new DriverRegistry([Factory], new GatewayLog()), Store, Publisher, new GatewayLog());
+        public Harness() => Runtime = new GatewayRuntime(Config, new DriverRegistry([Factory], new GatewayLog()), Store, Publisher, new GatewayLog(), new RecordingDataSink(Store.Samples));
         public ValueTask DisposeAsync() => Runtime.DisposeAsync();
     }
 
@@ -544,10 +544,6 @@ public sealed partial class RuntimeTests
         public int Initializations;
         public Task InitializeAsync(CancellationToken cancellationToken = default)
         { Interlocked.Increment(ref Initializations); return Task.CompletedTask; }
-        public Task AppendSamplesAsync(IReadOnlyList<TelemetrySample> samples, CancellationToken cancellationToken = default)
-        { foreach (var sample in samples) Samples.Enqueue(sample); return Task.CompletedTask; }
-        public Task<IReadOnlyList<TelemetrySample>> QueryHistoryAsync(HistoryQuery query, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<TelemetrySample>>(Samples.ToArray());
         public Task<bool> EnqueueAsync(string topic, string payload, int maxMessages, CancellationToken cancellationToken = default)
         {
             if (Outbox.Count >= maxMessages) return Task.FromResult(false);
@@ -560,8 +556,7 @@ public sealed partial class RuntimeTests
         public Task AcknowledgeAsync(long id, CancellationToken cancellationToken = default)
         { Outbox.TryRemove(id, out _); Acknowledged.Add(id); return Task.CompletedTask; }
         public Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new StoreStatistics(Samples.Count, Outbox.Count));
-        public Task PruneHistoryAsync(int retentionDays, int maxRows, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            Task.FromResult(new StoreStatistics(Outbox.Count));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

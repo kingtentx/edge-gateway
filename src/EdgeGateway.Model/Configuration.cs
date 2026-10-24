@@ -4,12 +4,10 @@ namespace EdgeGateway.Model;
 
 public sealed class GatewayConfiguration
 {
-    public int SchemaVersion { get; set; } = 2;
+    public int SchemaVersion { get; set; } = 3;
     public string GatewayId { get; set; } = "edge-001";
     public string Name { get; set; } = "边缘采集网关";
     public bool AutoStart { get; set; }
-    public int HistoryRetentionDays { get; set; } = 30;
-    public int MaxHistoryRows { get; set; } = 1_000_000;
     public int MaxOutboxMessages { get; set; } = 50_000;
     public int PublishIntervalMs { get; set; } = 5_000;
     public TelemetryReportMode ReportMode { get; set; } = TelemetryReportMode.Periodic;
@@ -17,6 +15,9 @@ public sealed class GatewayConfiguration
     public MqttConfiguration Mqtt { get; set; } = new();
     public List<ChannelConfiguration> Channels { get; set; } = [];
     public List<DeviceConfiguration> Devices { get; set; } = [];
+    public GatewayLoggingConfiguration Logging { get; set; } = new();
+    public List<DatabaseConnectionConfiguration> Databases { get; set; } = [];
+    public List<DatabaseWriteGroupConfiguration> DatabaseWriteGroups { get; set; } = [];
 }
 
 public sealed class MqttConfiguration
@@ -81,7 +82,7 @@ public sealed class TagConfiguration
     [DisplayName("写入方法")] public string WriteMethod { get; set; } = "";
     [DisplayName("协议字节序")] public ProtocolEndian Endian { get; set; } = ProtocolEndian.FromByteOrder;
     [DisplayName("启用")] public bool Enabled { get; set; } = true;
-    [DisplayName("上传平台"), Description("关闭后仍采集、显示并保存历史，但新生成的 MQTT 消息不包含此点位；已入队消息继续补传。")] public bool UploadEnabled { get; set; } = true;
+    [DisplayName("上传平台"), Description("关闭后仍采集、显示，并按配置输出采样日志及执行已启用的外部数据库写入；新生成的 MQTT 消息不包含此点位，已入队消息继续补传。")] public bool UploadEnabled { get; set; } = true;
     [DisplayName("允许写入")] public bool Writable { get; set; }
     [DisplayName("倍率")] public double Scale { get; set; } = 1;
     [DisplayName("偏移量")] public double Offset { get; set; }

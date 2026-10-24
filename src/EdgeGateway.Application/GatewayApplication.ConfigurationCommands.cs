@@ -109,8 +109,6 @@ public sealed partial class GatewayApplication
             candidate.GatewayId = settings.GatewayId;
             candidate.Name = settings.Name;
             candidate.AutoStart = settings.AutoStart;
-            candidate.HistoryRetentionDays = settings.HistoryRetentionDays;
-            candidate.MaxHistoryRows = settings.MaxHistoryRows;
             candidate.MaxOutboxMessages = settings.MaxOutboxMessages;
             candidate.PublishIntervalMs = settings.PublishIntervalMs;
             candidate.ReportMode = settings.ReportMode;

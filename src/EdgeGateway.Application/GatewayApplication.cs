@@ -16,6 +16,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
     private readonly IConfigurationStore _configurationStore;
     private readonly IGatewayStore _store;
     private readonly IConfigurationFiles _files;
+    private readonly IExternalDatabaseConnector? _externalDatabases;
     private readonly SemaphoreSlim _commands = new(1, 1);
     private readonly Dictionary<Guid, ConfirmationGrant> _confirmations = [];
     private volatile GatewayConfiguration _configuration;
@@ -25,7 +26,8 @@ public sealed partial class GatewayApplication : IGatewayApplication
 
     public GatewayApplication(GatewayConfiguration configuration, IDriverRegistry drivers,
         IConfigurationStore configurationStore, IGatewayStore store, ITelemetryPublisher publisher,
-        IGatewayLog log, IConfigurationFiles files, bool configurationPersisted = true)
+        IGatewayLog log, IConfigurationFiles files, bool configurationPersisted = true,
+        IExternalDatabaseConnector? externalDatabases = null, IAcquisitionDataSink? dataSink = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(drivers);
@@ -41,9 +43,10 @@ public sealed partial class GatewayApplication : IGatewayApplication
         _configurationStore = configurationStore;
         _store = store;
         _files = files;
+        _externalDatabases = externalDatabases;
         Log = log;
         _configurationPersisted = configurationPersisted;
-        _runtime = new GatewayRuntime(_configuration, drivers, store, publisher, log);
+        _runtime = new GatewayRuntime(_configuration, drivers, store, publisher, log, dataSink ?? new AcquisitionDataService(externalDatabases, log));
     }
 
     public IDriverCatalog Drivers { get; }
@@ -66,7 +69,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
             var previous = _configuration.Mqtt;
             var changed = MqttDestinationChanged(previous, next.Mqtt);
             var statistics = changed || previous.Platform != next.Mqtt.Platform
-                ? await _store.GetStatisticsAsync(cancellationToken).ConfigureAwait(false) : new StoreStatistics(0, 0);
+                ? await _store.GetStatisticsAsync(cancellationToken).ConfigureAwait(false) : new StoreStatistics(0);
             if (previous.Platform != next.Mqtt.Platform && statistics.OutboxCount > 0)
                 throw new InvalidOperationException($"仍有 {statistics.OutboxCount} 条原平台报文待补传。请先使用原平台设置补传完成，再切换接入平台。");
             Guid? token = null;
@@ -182,8 +185,6 @@ public sealed partial class GatewayApplication : IGatewayApplication
     public Task<WriteCommandResult> WriteVerifiedAsync(Guid deviceId, Guid tagId, string engineeringValue,
         WriteVerificationOptions? options = null, CancellationToken cancellationToken = default) =>
         _runtime.WriteVerifiedAsync(deviceId, tagId, engineeringValue, options, cancellationToken);
-    public Task<IReadOnlyList<TelemetrySample>> QueryHistoryAsync(HistoryQuery query, CancellationToken cancellationToken = default)
-    { ThrowIfDisposed(); return _store.QueryHistoryAsync(query, cancellationToken); }
     public Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
     { ThrowIfDisposed(); return _store.GetStatisticsAsync(cancellationToken); }
     public Task<GatewayConfiguration> ReadSavedConfigurationAsync(CancellationToken cancellationToken = default)

@@ -33,6 +33,10 @@ assert not packages["EdgeGateway.Service"], "The collection runtime must depend 
 assert {name for name, names in packages.items() if "MQTTnet" in names} == {"EdgeGateway.Infrastructure.Mqtt"}, \
     "MQTTnet belongs only to its infrastructure project."
 
+for provider in ("MySqlConnector", "Npgsql", "Oracle.ManagedDataAccess.Core"):
+    assert {name for name, names in packages.items() if provider in names} == {"EdgeGateway.DataAccess"}, \
+        "Database provider packages belong only to DataAccess: " + provider
+
 visited = set()
 def visit(name, stack):
     assert name not in stack, "Project dependency cycle: " + " -> ".join([*stack, name])
@@ -47,7 +51,7 @@ for name in edges:
 
 for path in (ROOT / "src/EdgeGateway.WinForms").glob("*.cs"):
     text = path.read_text(encoding="utf-8-sig")
-    assert not re.search(r"\b(?:GatewayRuntime|JsonConfigurationStore|SqliteGatewayStore|MqttTelemetryPublisher|IDriverFactory)\b", text), \
+    assert not re.search(r"\b(?:GatewayRuntime|JsonConfigurationStore|SqliteGatewayStore|SqliteConfigurationStore|FileGatewayStore|ExternalDatabaseConnector|MqttTelemetryPublisher|IDriverFactory)\b", text), \
         "Presentation leaked an implementation or protocol factory: " + str(path.relative_to(ROOT))
     assert not re.search(r"using\s+EdgeGateway\.(?:Service|DataAccess|Infrastructure|IotGateway)\b", text), \
         "Presentation imports an infrastructure/runtime namespace: " + str(path.relative_to(ROOT))
