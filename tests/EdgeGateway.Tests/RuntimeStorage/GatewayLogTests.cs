@@ -18,7 +18,7 @@ public sealed class GatewayLogTests : IDisposable
         log.Write(GatewayLogLevel.Information, "不应写入");
         log.Write(GatewayLogLevel.Warning, "警告\n单行记录");
         await log.FlushAsync();
-        var line = Assert.Single(await File.ReadAllLinesAsync(Assert.Single(Directory.GetFiles(_directory, "*.log"))));
+        var line = Assert.Single(await ReadOpenLogLinesAsync(Assert.Single(Directory.GetFiles(_directory, "*.log"))));
         using var json = JsonDocument.Parse(line);
         Assert.Equal("Warning", json.RootElement.GetProperty("level").GetString());
         Assert.Equal("警告 单行记录", json.RootElement.GetProperty("message").GetString());
@@ -70,7 +70,7 @@ public sealed class GatewayLogTests : IDisposable
         log.Write(GatewayLogLevel.Information, "正常记录");
         await log.FlushAsync();
         Assert.False(File.Exists(expired));
-        var lines = await File.ReadAllLinesAsync(Assert.Single(Directory.GetFiles(_directory, "*.log")));
+        var lines = await ReadOpenLogLinesAsync(Assert.Single(Directory.GetFiles(_directory, "*.log")));
         Assert.Single(lines);
         Assert.DoesNotContain("\"kind\":\"sample\"", lines[0]);
     }
@@ -115,7 +115,7 @@ public sealed class GatewayLogTests : IDisposable
         Assert.DoesNotContain(log.GetEntries(), entry => entry.Message.Contains(huge, StringComparison.Ordinal));
         log.Write(GatewayLogLevel.Information, "后续正常记录");
         await log.FlushAsync();
-        var line = Assert.Single(await File.ReadAllLinesAsync(Assert.Single(Directory.GetFiles(_directory, "*.log"))));
+        var line = Assert.Single(await ReadOpenLogLinesAsync(Assert.Single(Directory.GetFiles(_directory, "*.log"))));
         Assert.Contains("后续正常记录", line);
         Assert.Equal(1, log.DroppedEntries);
     }
@@ -133,6 +133,17 @@ public sealed class GatewayLogTests : IDisposable
         Assert.Contains("结构复杂度", log.FileError);
         await log.FlushAsync();
         Assert.False(Directory.Exists(_directory));
+    }
+
+    private static async Task<string[]> ReadOpenLogLinesAsync(string path)
+    {
+        // Windows requires readers to share write access with the logger's existing write handle.
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
+            bufferSize: 4096, FileOptions.Asynchronous);
+        using var reader = new StreamReader(stream);
+        var lines = new List<string>();
+        while (await reader.ReadLineAsync() is { } line) lines.Add(line);
+        return lines.ToArray();
     }
 
     public void Dispose()
