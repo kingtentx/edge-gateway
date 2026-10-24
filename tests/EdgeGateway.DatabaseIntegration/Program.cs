@@ -100,14 +100,37 @@ try
         await using var transaction = await lockConnection.BeginTransactionAsync();
         await using var held = lockConnection.CreateCommand();
         held.Transaction = transaction;
-        held.CommandText = $"UPDATE {Table(customTable)} SET {Q("note")} = 'locked' WHERE {Q("event_key")} = 'custom-0'";
+        // An UPDATE of an already committed row does not reliably block Oracle's
+        // duplicate INSERT check. Hold a NEW unique key uncommitted instead, so
+        // the second session must wait for this transaction on every provider.
+        held.CommandText = $"INSERT INTO {Table(customTable)} ({Q("event_key")}, {Q("温度")}, {Q("at_utc")}, {Q("flag")}, {Q("note")})"
+            + $" SELECT 'custom-5000', {Q("温度")}, {Q("at_utc")}, {Q("flag")}, {Q("note")} FROM {Table(customTable)} WHERE {Q("event_key")} = 'custom-0'";
         await held.ExecuteNonQueryAsync();
         using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
-        try { await connector.WriteRowsAsync(configuration, customGroup, [CustomRow(2000, timestamp), CustomRow(0, timestamp)], cancel.Token); throw new InvalidOperationException("Blocked write ignored cancellation"); }
-        catch (OperationCanceledException) { checks.Add("blocked write cancellation"); }
+        try { await connector.WriteRowsAsync(configuration, customGroup, [CustomRow(2000, timestamp), CustomRow(5000, timestamp)], cancel.Token); throw new InvalidOperationException("Blocked write ignored cancellation"); }
+        catch (OperationCanceledException) { Check(cancel.IsCancellationRequested, "blocked write cancellation"); }
         await transaction.RollbackAsync();
     }
     Check(await Count(customTable) == customRows.Length, "cancelled transaction leaves no new row");
+
+    if (provider == ExternalDatabaseProvider.Oracle)
+    {
+        var fresh = PointRow(4001, timestamp, device, Guid.NewGuid());
+        await connector.WriteRowsAsync(configuration, pointGroup, [rows[0], fresh]);
+        await connector.WriteRowsAsync(configuration, pointGroup, [rows[0], fresh]);
+        Check(await Count(pointTable) == rows.Length + 1, "mixed replay retains new rows exactly once");
+        await connector.EnsurePointTableAsync(configuration, conflictTable);
+        created.Add(conflictTable);
+        var conflictGroup = new DatabaseWriteGroupConfiguration { Schema = schema, Table = conflictTable.Name };
+        await connector.WriteRowsAsync(configuration, conflictGroup, [rows[0]]);
+        await Execute($"ALTER TABLE {Table(conflictTable)} ADD CONSTRAINT {Q(prefix + "_ut")} UNIQUE ({Q("TAG_ID")})");
+        await ExpectFailure(() => connector.WriteRowsAsync(configuration, conflictGroup, [fresh, rows[1]]));
+        Check(await Count(conflictTable) == 1, "Oracle array replay never hides another business-key conflict or commits a partial chunk");
+        var invalid = PointRow(4002, timestamp, device, Guid.NewGuid());
+        var invalidValues = new Dictionary<string, object?>(invalid.Values) { ["sample_time"] = null };
+        await ExpectFailure(() => connector.WriteRowsAsync(configuration, pointGroup, [PointRow(4003, timestamp, device, Guid.NewGuid()), invalid with { Values = invalidValues }]));
+        Check(await Count(pointTable) == rows.Length + 1, "Oracle non-duplicate array failure rolls back all new rows");
+    }
 
     if (provider == ExternalDatabaseProvider.MySql)
     {
@@ -135,7 +158,7 @@ finally
 }
 
 void Check(bool value, string description)
-{ if (!value) throw new InvalidOperationException("FAIL: " + description); checks.Add(description); }
+{ if (!value) throw new InvalidOperationException("FAIL: " + description); checks.Add(description); Console.Error.WriteLine("PASS: " + description); }
 string Q(string identifier) => provider == ExternalDatabaseProvider.MySql ? "`" + identifier + "`" : "\"" + identifier + "\"";
 string Table(DatabaseTableInfo table) => Q(table.Schema) + "." + Q(table.Name);
 async Task Execute(string sql) { await using var command = raw.CreateCommand(); command.CommandText = sql; await command.ExecuteNonQueryAsync(); }
