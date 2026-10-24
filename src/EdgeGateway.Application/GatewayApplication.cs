@@ -17,6 +17,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
     private readonly IGatewayStore _store;
     private readonly IConfigurationFiles _files;
     private readonly IExternalDatabaseConnector? _externalDatabases;
+    private readonly IDriverPluginManager? _driverPluginManager;
     private readonly SemaphoreSlim _commands = new(1, 1);
     private readonly Dictionary<Guid, ConfirmationGrant> _confirmations = [];
     private volatile GatewayConfiguration _configuration;
@@ -44,6 +45,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
         _store = store;
         _files = files;
         _externalDatabases = externalDatabases;
+        _driverPluginManager = drivers as IDriverPluginManager;
         Log = log;
         _configurationPersisted = configurationPersisted;
         _runtime = new GatewayRuntime(_configuration, drivers, store, publisher, log, dataSink ?? new AcquisitionDataService(externalDatabases, log));
