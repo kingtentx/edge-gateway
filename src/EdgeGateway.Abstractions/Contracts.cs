@@ -23,6 +23,15 @@ public interface IDriverRegistry
     IDriverFactory GetFactory(string driverId);
 }
 
+/// <summary>Installs and registers trusted driver assemblies without restarting the gateway.</summary>
+public interface IDriverPluginManager
+{
+    string InstallPlugin(string sourcePath);
+    IReadOnlyList<DriverPluginInfo> GetInstalledPlugins();
+}
+
+public sealed record DriverPluginInfo(string Id, string Name, string Version, string AssemblyName, string Sha256, string Status);
+
 public interface IGatewayLog
 {
     void Write(GatewayLogLevel level, string message);
