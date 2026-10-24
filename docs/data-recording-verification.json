@@ -1,0 +1,153 @@
+{
+  "verifiedOn": "2026-10-24",
+  "scope": "External database connector integration; excludes Windows UI and physical device acceptance.",
+  "codeCommit": "22113dafcc51e22f6e82d2cb953c3728b5cb1816",
+  "testedPullRequestMergeCommit": "5befabdcaca4ddb69ea97bec8b6a54fb1198ba8a",
+  "baseCommit": "efd0985217aecf9500a674f83a2ae797a00022cf",
+  "workflowRunId": 40073723150,
+  "workflowUrl": "https://github.com/kingtentx/edge-gateway/actions/runs/40073723150",
+  "workflowName": "External database integration",
+  "jobId": 120812494291,
+  "jobUrl": "https://github.com/kingtentx/edge-gateway/actions/runs/40073723150/job/120812494291",
+  "conclusion": "success",
+  "runnerImage": "ubuntu-24.04",
+  "build": {
+    "project": "tests/EdgeGateway.DatabaseIntegration/EdgeGateway.DatabaseIntegration.csproj",
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "artifact": {
+    "id": 12551698647,
+    "name": "database-integration",
+    "url": "https://github.com/kingtentx/edge-gateway/actions/runs/40073723150/artifacts/12551698647",
+    "bytes": 1427,
+    "sha256": "091a797f8916c68b6fd507edb447aa1a3691bb2a78af7dc4d9820a27fdcfea35",
+    "digestMatchesGitHubMetadata": true,
+    "zipCrcPassed": true,
+    "jsonMatchesRawJobLog": true,
+    "files": [
+      {
+        "name": "mysql.json",
+        "sha256": "65a3abcdd5f8bc5a3ad13057225fd79ef95f5b3dad23b2c775211f02c79ec63e",
+        "checkCount": 24
+      },
+      {
+        "name": "postgres.json",
+        "sha256": "6235fb83c41b50aba7a2c58fdcdeddd2076497139c759aea2150faa55aba0850",
+        "checkCount": 22
+      }
+    ]
+  },
+  "databases": [
+    {
+      "provider": "PostgreSql",
+      "serverVersion": "16.15 (Debian 16.15-1.pgdg13+2)",
+      "passed": 22,
+      "checks": [
+        "connect",
+        "ordinary write never creates a missing table",
+        "table discovery",
+        "standard column discovery",
+        "stable event_id replay is idempotent",
+        "filtered standard history",
+        "UTC and microsecond timestamp round trip",
+        "64-bit raw value round trip",
+        "structured JSON and Unicode round trip",
+        "tag filter",
+        "history limit",
+        "generated column metadata",
+        "later chunk constraint error rolls back earlier chunks",
+        "custom mapped multi-row transaction",
+        "custom row read",
+        "decimal precision",
+        "custom timestamp UTC clock",
+        "boolean binding",
+        "SQL text remains a parameter value",
+        "unsigned 64-bit precision",
+        "blocked write cancellation",
+        "cancelled transaction leaves no new row"
+      ],
+      "measuredRows": 3800,
+      "batchSize": 200,
+      "elapsedMilliseconds": 290.3727,
+      "rowsPerSecond": 13086.6,
+      "note": "Local-loopback functional smoke measurement; not an endurance or capacity guarantee."
+    },
+    {
+      "provider": "MySql",
+      "serverVersion": "8.0.46",
+      "passed": 24,
+      "checks": [
+        "connect",
+        "ordinary write never creates a missing table",
+        "table discovery",
+        "standard column discovery",
+        "stable event_id replay is idempotent",
+        "filtered standard history",
+        "UTC and microsecond timestamp round trip",
+        "64-bit raw value round trip",
+        "structured JSON and Unicode round trip",
+        "tag filter",
+        "history limit",
+        "generated column metadata",
+        "later chunk constraint error rolls back earlier chunks",
+        "custom mapped multi-row transaction",
+        "custom row read",
+        "decimal precision",
+        "custom timestamp UTC clock",
+        "boolean binding",
+        "SQL text remains a parameter value",
+        "unsigned 64-bit precision",
+        "blocked write cancellation",
+        "cancelled transaction leaves no new row",
+        "cached MySQL metadata cannot hide a new business-key conflict",
+        "strict session rejects oversized text instead of truncating"
+      ],
+      "measuredRows": 3800,
+      "batchSize": 200,
+      "elapsedMilliseconds": 400.9349,
+      "rowsPerSecond": 9477.8,
+      "note": "Local-loopback functional smoke measurement; not an endurance or capacity guarantee."
+    }
+  ],
+  "mysqlAdverseBaseline": {
+    "serverDefaultSqlMode": "",
+    "testAccountAuthentication": "mysql_native_password",
+    "tlsEnabled": false,
+    "productionConnectorPublicKeyRetrievalEnabled": false,
+    "oversizedVarcharRejectedAndTransactionRolledBack": true
+  },
+  "oracle": {
+    "realDatabaseTested": false,
+    "verifiedScope": "SQL, managed-provider parameter/array binding, NULL handling and error-index classification unit tests only.",
+    "requiredBeforeDeployment": "Run integration acceptance against the target Oracle version, schema, network, TLS and account permissions."
+  },
+  "measurementBoundary": {
+    "timedRowsPerProvider": 3800,
+    "batchSize": 200,
+    "scope": "Connector batch writes against disposable containers on the same CI runner.",
+    "excludedFromTimer": [
+      "first 200 warm-up rows",
+      "row construction",
+      "device acquisition",
+      "runtime queueing",
+      "default acquisition logging",
+      "schema creation",
+      "history queries and result assertions"
+    ],
+    "fieldNetworkTested": false,
+    "multiGatewayConcurrencyTested": false,
+    "productionCapacityEstablished": false,
+    "longDurationEnduranceTested": false,
+    "note": "The recorded rowsPerSecond is one short local-container smoke observation; do not infer field throughput, capacity, latency percentiles, or endurance."
+  },
+  "previousVerifiedRun": {
+    "workflowRunId": 40073470816,
+    "workflowUrl": "https://github.com/kingtentx/edge-gateway/actions/runs/40073470816",
+    "codeCommit": "fff093b852f65179cab17c71c61c995b5c793860",
+    "conclusion": "success",
+    "postgresqlPassedChecks": 22,
+    "mysqlPassedChecks": 24
+  }
+}

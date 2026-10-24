@@ -148,6 +148,21 @@ MySQL / PostgreSQL 使用真正的多行 INSERT，Oracle 同类型列使用 Arra
 
 自动测试覆盖默认日志输出、精确整数与 UTC、完整/新鲜快照、停止与重启的旧值隔离、数据库故障隔离、队列容量、重试事件 ID、失败计数、参数绑定、配置事务及文件状态恢复。数据库连接器的单元测试不等同于真实数据库或现场长期验收。
 
-独立的 [真实数据库验证程序](../tests/EdgeGateway.DatabaseIntegration/README.md) 与 [数据库 CI](../.github/workflows/database-integration.yml) 使用专用 PostgreSQL / MySQL 测试库；无环境直接失败，不以跳过或假通过代替连接。开发时已在 PostgreSQL 16.15 与 MySQL 8.0.46 完成事务、精度、UTC、参数、去重与故障验证。Oracle 已实现并完成参数/数组绑定/SQL/错误分支单元测试，尚未连接真实 Oracle 验证；部署前应使用目标版本与实际字段定义验收。
+独立的 [真实数据库验证程序](../tests/EdgeGateway.DatabaseIntegration/README.md) 与 [数据库 CI](../.github/workflows/database-integration.yml) 使用专用 PostgreSQL / MySQL 测试库；无环境直接失败，不以跳过或假通过代替连接。
+
+**2026-10-24 实际数据库 CI 已通过。** [运行 40073723150](https://github.com/kingtentx/edge-gateway/actions/runs/40073723150) 对应功能提交 [`22113dafcc51e22f6e82d2cb953c3728b5cb1816`](https://github.com/kingtentx/edge-gateway/commit/22113dafcc51e22f6e82d2cb953c3728b5cb1816)，在 Ubuntu 24.04 runner 上运行官方 PostgreSQL / MySQL 服务容器。原始 checkout 日志记录实际构建的 PR 合并提交为 `5befabdcaca4ddb69ea97bec8b6a54fb1198ba8a`，基线为 `efd0985217aecf9500a674f83a2ae797a00022cf`。独立验证工程 Release 构建为 0 警告、0 错误；数据库作业全部步骤成功。
+
+| 实际服务端 | 版本 | 集成检查 |
+|---|---|---:|
+| PostgreSQL | `16.15 (Debian 16.15-1.pgdg13+2)` | 22 项通过 |
+| MySQL | `8.0.46` | 24 项通过 |
+
+检查包含显式建表、普通写入不建表、元数据读取、稳定事件重放幂等、中文与 JSON 类型还原、UTC 微秒时间、64 位整数与匹配目标列的 decimal 精度、跨写入块的事务回滚、锁等待取消，以及历史过滤和数量上限。MySQL 额外验证元数据缓存期间新增业务唯一键不会吞掉新行，并在服务器默认 `sql_mode=''` 的故障基线下，确认连接器仍拒绝向 `varchar(120)` 写入 300 字符、整批回滚。宽松模式只设置在一次性 CI 容器；生产连接器保留严格会话设置。
+
+结果依据为[原始作业日志](https://github.com/kingtentx/edge-gateway/actions/runs/40073723150/job/120812494291)及[数据库结果 artifact 12551698647](https://github.com/kingtentx/edge-gateway/actions/runs/40073723150/artifacts/12551698647)。已下载 artifact、通过 ZIP CRC 核对，并确认 SHA-256 与 GitHub 元数据一致；其中 `postgres.json` / `mysql.json` 与作业日志输出逐项相符。提交身份、完整检查列表、原始计时、文件哈希和验收边界保存于 [数据库验证 JSON](data-recording-verification.json)。Actions artifact 有保留期限，仓库 JSON 保留本轮结果与来源。
+
+本次短时烟测每批 200 行，预热 200 行后计时写入 3,800 行：PostgreSQL 为 290.3727 ms，MySQL 为 400.9349 ms。计时仅覆盖同一 runner 上连接器向容器数据库的批量写入，不包含设备采集、运行时排队、默认日志输出、建表、历史查询和断言。**该本机回环结果不能推断现场吞吐、延迟分位数、生产容量或长期稳定性**；现场网络、多网关并发和长稳负载仍需按实际部署验证。
+
+**Oracle 尚未连接真实实例验证。** 当前证据限于托管驱动参数、数组绑定、SQL 和错误分支单元测试；本次数据库 CI 没有运行 Oracle。部署前应针对目标 Oracle 版本、实际字段 precision / scale、权限、网络与 TLS 配置完成集成验收。
 
 WinForms 门禁覆盖 8 个主页面、7 类弹窗、20 个等效工作区和 149 张截图；实际通过状态应查看对应提交的 Windows Actions 运行记录。本地 Linux 能交叉编译 WinForms，不能替代 Windows 原生交互检查。生产容量取决于点位数量、实际采样频率、字段长度、目标库版本、索引与网络延迟，不能仅根据配置上限推定可靠吞吐。

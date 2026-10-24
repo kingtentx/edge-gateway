@@ -18,7 +18,7 @@ public sealed partial class MainForm
         var settingsTab = new TabPage("日志设置") { BackColor = Color.White };
         var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = Padding.Empty };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); content.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var viewport = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(12) };
+        var viewport = new Panel { Name = "LoggingFieldsViewport", Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(12), Margin = Padding.Empty };
         var fields = EditorLayout.Fields(); viewport.Controls.Add(fields);
         void Add(string key, string label, Control control)
         { control.Name = "Logging_" + key; EditorDialog.Field(fields, label, control); _loggingFields.Add(key, control); _configurationCommands.Add(control); }
@@ -42,9 +42,14 @@ public sealed partial class MainForm
         openLogs.Name = "OpenLogDirectory"; DatabaseConnectionDialog.Span(fields, openLogs);
         _loggingApply = UiTheme.Button("应用日志设置", async (_, _) => await RunBusyAsync(ApplyLoggingSettingsAsync), true); _loggingApply.Name = "ApplyLoggingSettings";
         _loggingReset = UiTheme.Button("重置日志设置", (_, _) => { _loggingDirty = false; BindLoggingFields(); UpdateCommands(); }); _loggingReset.Name = "ResetLoggingSettings";
-        var footer = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, AutoSize = true, Padding = new Padding(12, 8, 8, 4) };
+        // A GrowOnly AutoSize footer retains its default 100-pixel height and can
+        // squeeze the field viewport below one full button on short work areas.
+        var footer = new TableLayoutPanel { Name = "LoggingApplyBar", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(12, 8, 8, 4), Margin = Padding.Empty };
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); footer.RowStyles.Add(new RowStyle(SizeType.AutoSize)); footer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _loggingState.Name = "LoggingDraftState"; _loggingState.Dock = DockStyle.Fill; footer.Controls.Add(_loggingState, 0, 0); footer.Controls.Add(UiTheme.Toolbar(_loggingApply, _loggingReset), 0, 1);
+        _loggingState.Name = "LoggingDraftState"; _loggingState.Dock = DockStyle.Fill; footer.Controls.Add(_loggingState, 0, 0);
+        var actions = UiTheme.Toolbar(_loggingApply, _loggingReset); actions.Padding = Padding.Empty;
+        footer.Controls.Add(actions, 0, 1);
         footer.SizeChanged += (_, _) => SetWrappingWidth(_loggingState, footer.ClientSize.Width - footer.Padding.Horizontal);
         content.Controls.Add(viewport, 0, 0); content.Controls.Add(footer, 0, 1); settingsTab.Controls.Add(content);
         _logTabs.TabPages.Add(eventsTab); _logTabs.TabPages.Add(settingsTab);
