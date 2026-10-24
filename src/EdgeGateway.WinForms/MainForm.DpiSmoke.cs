@@ -325,25 +325,32 @@ public sealed partial class MainForm
             var last = grid.Rows[grid.Rows.Count - 1].Cells[lastColumn.Index];
             foreach (var cell in new[] { first, last }.Distinct())
             {
-                grid.CurrentCell = cell;
-                grid.FirstDisplayedScrollingRowIndex = cell.RowIndex;
-                grid.FirstDisplayedScrollingColumnIndex = cell.ColumnIndex;
                 FocusForSmoke(grid, grid, this, context + " point cell " + cell.OwningColumn?.Name);
                 PerformLayoutRecursively(this);
-                // Scroll the real cell through the grid and every scrollable ancestor.
-                // The entire table need not fit a short workspace, but the cell must.
+                // Native fill layout estimates rows before reserving the horizontal
+                // scrollbar and can backfill an extra row. Complete that layout before
+                // CurrentCell uses ScrollIntoView with the final data viewport height.
                 for (var pass = 0; pass < 2; pass++)
-                foreach (var (scroll, _) in viewports)
                 {
-                    var target = grid.RectangleToScreen(grid.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, false));
-                    var viewport = scroll.RectangleToScreen(scroll.ClientRectangle);
-                    var dx = target.Left < viewport.Left ? target.Left - viewport.Left : Math.Max(0, target.Right - viewport.Right);
-                    var dy = target.Top < viewport.Top ? target.Top - viewport.Top : Math.Max(0, target.Bottom - viewport.Bottom);
-                    if (dx == 0 && dy == 0) continue;
-                    scroll.AutoScrollPosition = new Point(Math.Max(0, -scroll.AutoScrollPosition.X + dx),
-                        Math.Max(0, -scroll.AutoScrollPosition.Y + dy));
-                    PerformLayoutRecursively(this);
+                    grid.CurrentCell = null;
+                    grid.CurrentCell = cell;
+                    foreach (var (scroll, _) in viewports)
+                    {
+                        var target = grid.RectangleToScreen(grid.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, false));
+                        var viewport = scroll.RectangleToScreen(scroll.ClientRectangle);
+                        var dx = target.Left < viewport.Left ? target.Left - viewport.Left : Math.Max(0, target.Right - viewport.Right);
+                        var dy = target.Top < viewport.Top ? target.Top - viewport.Top : Math.Max(0, target.Bottom - viewport.Bottom);
+                        if (dx == 0 && dy == 0) continue;
+                        scroll.AutoScrollPosition = new Point(Math.Max(0, -scroll.AutoScrollPosition.X + dx),
+                            Math.Max(0, -scroll.AutoScrollPosition.Y + dy));
+                        PerformLayoutRecursively(this);
+                    }
                 }
+                // The final ancestor adjustment may itself have invoked native fill
+                // layout. Select once more without relayout, then check the real cell
+                // against both its own viewport and every ancestor below.
+                grid.CurrentCell = null;
+                grid.CurrentCell = cell;
                 AssertCellVisible(cell, requireFocus: true, "after real cell scrolling");
             }
         }
@@ -355,6 +362,7 @@ public sealed partial class MainForm
             Console.WriteLine($"Point-grid layout diagnostic ({context}): client={ClientSize}, dpi={DeviceDpi}; "
                 + $"DevicesContent={content?.Bounds}, rows=[{string.Join(",", content?.GetRowHeights() ?? [])}]; "
                 + $"TagActions={header?.Bounds}; TagList={grid.Bounds}, visible={grid.Visible}, rowCount={grid.Rows.Count}; "
+                + $"gridFirstRow={grid.FirstDisplayedScrollingRowIndex}, gridOffsets={grid.HorizontalScrollingOffset}/{grid.VerticalScrollingOffset}; "
                 + string.Join("; ", viewports.Select(item => $"{item.Viewport.Name}: client={item.Viewport.ClientRectangle}, scroll={item.Viewport.AutoScrollPosition}")));
             throw;
         }
