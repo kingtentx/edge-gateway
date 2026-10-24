@@ -1,0 +1,64 @@
+name: Long-duration acquisition soak
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration_seconds:
+        description: "Synthetic acquisition soak duration (seconds)"
+        required: true
+        type: choice
+        default: "3600"
+        options:
+          - "3600"
+          - "14400"
+          - "18000"
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    name: Synthetic isolation and backpressure soak
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build endurance harness
+        run: dotnet build tests/EdgeGateway.Endurance -c Release
+      - name: Run selected soak duration
+        env:
+          SOAK_SECONDS: ${{ inputs.duration_seconds }}
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          dotnet run --project tests/EdgeGateway.Endurance -c Release --no-build -- --seconds "$SOAK_SECONDS" --output "artifacts/endurance-$SOAK_SECONDS" | tee artifacts/soak-console.json
+      - name: Validate evidence and final accounting
+        env:
+          SOAK_SECONDS: ${{ inputs.duration_seconds }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          seconds = int(os.environ["SOAK_SECONDS"])
+          report = json.loads(Path(f"artifacts/endurance-{seconds}/verification.json").read_text(encoding="utf-8"))
+          assert report["passed"] is True
+          assert report["elapsedSeconds"] >= seconds
+          assert report["final"]
+          assert all(x["QueuedRows"] == 0 and x["QueuedBytes"] == 0 and x["InFlightBatches"] == 0 for x in report["final"])
+          assert any(x["RetriedBatches"] > 0 and x["DroppedRows"] > 0 for x in report["final"])
+          assert any(x["WrittenRows"] > 0 and x["DroppedRows"] == 0 for x in report["final"])
+          print(json.dumps({"durationSeconds": seconds, "elapsedSeconds": report["elapsedSeconds"], "passed": True,
+                            "source": report["source"], "final": report["final"], "logging": report["logging"]}, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: long-soak-evidence-${{ inputs.duration_seconds }}s
+          path: |
+            artifacts/endurance-*/
+            artifacts/soak-console.json
+          if-no-files-found: error
+          retention-days: 14
