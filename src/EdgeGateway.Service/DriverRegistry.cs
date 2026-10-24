@@ -161,6 +161,10 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
             if (types.Count == 0) throw new InvalidDataException("DLL 未公开实现 IDriverFactory 的驱动工厂。");
             var loaded = types.Select(CreateFactory).ToArray();
             foreach (var factory in loaded) ValidateDescriptor(factory.Descriptor);
+            if (manifest is not null && (loaded.Length != 1
+                || !string.Equals(loaded[0].Descriptor.Id, manifest.DriverId, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(loaded[0].Descriptor.Name, manifest.DriverName, StringComparison.Ordinal)))
+                throw new InvalidDataException("驱动清单与程序集内的驱动标识/名称不一致。");
             lock (_sync)
             {
                 var duplicate = loaded.FirstOrDefault(factory => _factories.ContainsKey(factory.Descriptor.Id));
@@ -213,20 +217,27 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
 
     private sealed record PluginManifest(string AssemblyFile, string Sha256, string DriverId, string DriverName, string Version);
 
-    private sealed class DriverLoadContext(string path) : AssemblyLoadContext(isCollectible: true)
+    private sealed class DriverLoadContext : AssemblyLoadContext
     {
-        private readonly AssemblyDependencyResolver _resolver = new(path);
+        private readonly AssemblyDependencyResolver? _resolver;
+        public DriverLoadContext(string path) : base(isCollectible: true)
+        {
+            // A genuinely single-file plugin has no .deps.json. In that case framework and
+            // host contract references resolve from the default context; private dependencies
+            // must be deployed with a deps manifest and are not silently bundled by upload.
+            if (File.Exists(Path.ChangeExtension(path, ".deps.json"))) _resolver = new AssemblyDependencyResolver(path);
+        }
         protected override Assembly? Load(AssemblyName assemblyName)
         {
             // The host owns contract/model type identity. A plugin-local copy must never fork these types.
             if (assemblyName.Name == typeof(IDriverFactory).Assembly.GetName().Name) return typeof(IDriverFactory).Assembly;
             if (assemblyName.Name == typeof(DeviceConfiguration).Assembly.GetName().Name) return typeof(DeviceConfiguration).Assembly;
-            var dependency = _resolver.ResolveAssemblyToPath(assemblyName);
+            var dependency = _resolver?.ResolveAssemblyToPath(assemblyName);
             return dependency is null ? null : LoadFromAssemblyPath(dependency);
         }
         protected override nint LoadUnmanagedDll(string unmanagedDllName)
         {
-            var dependency = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+            var dependency = _resolver?.ResolveUnmanagedDllToPath(unmanagedDllName);
             return dependency is null ? 0 : LoadUnmanagedDllFromPath(dependency);
         }
     }
