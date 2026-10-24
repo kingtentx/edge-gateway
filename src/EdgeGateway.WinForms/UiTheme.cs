@@ -117,6 +117,29 @@ internal static class UiTheme
         input.Margin = Padding.Empty;
         input.AccessibleName = caption;
         group.Controls.Add(label, 0, 0); group.Controls.Add(input, 0, 1);
+        var measuring = false;
+        void MeasureInputRow()
+        {
+            if (measuring || group.IsDisposed || input.IsDisposed
+                || group.FindForm() is DpiAwareForm { IsDpiLayoutReady: false }) return;
+            measuring = true;
+            try
+            {
+                // Native fixed-height inputs can report a smaller specified height
+                // than their MinimumSize-clamped bounds. Reserve their full current
+                // pixel height; the form owns DPI scaling, so do not scale it again.
+                var height = Math.Max(input.Height, Math.Max(input.MinimumSize.Height,
+                    input.GetPreferredSize(new Size(input.Width, 0)).Height)) + input.Margin.Vertical;
+                var row = group.RowStyles[1];
+                if (row.SizeType != SizeType.Absolute) row.SizeType = SizeType.Absolute;
+                if (row.Height != height) row.Height = height;
+            }
+            finally { measuring = false; }
+        }
+        group.Layout += (_, _) => MeasureInputRow();
+        input.SizeChanged += (_, _) => MeasureInputRow();
+        input.FontChanged += (_, _) => MeasureInputRow();
+        MeasureInputRow();
         return group;
     }
 
