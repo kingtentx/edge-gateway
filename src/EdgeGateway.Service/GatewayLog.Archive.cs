@@ -6,6 +6,7 @@ namespace EdgeGateway.Service;
 
 public sealed partial class GatewayLog
 {
+    private static readonly UTF8Encoding ArchiveEncoding = new(false, true);
     private const int MaxQueryResultBytes = 4 * 1024 * 1024;
     private const int MaxReadWindowBytes = 64 * 1024 * 1024;
 
@@ -73,8 +74,9 @@ public sealed partial class GatewayLog
                         if (size > SamplePayloadBudget.MaximumSampleBytes) { invalid++; partial = true; }
                         else
                         {
-                            var line = Encoding.UTF8.GetString(buffer, start, size);
-                            var entry = ParseArchiveLine(line, file.Name, query, ref invalid);
+                            GatewayLogFileEntry? entry;
+                            try { entry = ParseArchiveLine(ArchiveEncoding.GetString(buffer, start, size), file.Name, query, ref invalid); }
+                            catch (DecoderFallbackException) { invalid++; partial = true; entry = null; }
                             if (entry is not null)
                             {
                                 if (entries.Count >= query.Limit || resultBytes + size > MaxQueryResultBytes)

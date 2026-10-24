@@ -75,6 +75,10 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
             MinimumFreeDiskSpaceMb = configuration.MinimumFreeDiskSpaceMb,
             DiskResumeMarginMb = configuration.DiskResumeMarginMb
         });
+        // Wake the existing writer without doing filesystem I/O on the caller/UI thread.
+        // If the queue is full, the next accepted entry/flush uses the current policy anyway.
+        if (Volatile.Read(ref _disposed) == 0)
+            _writes?.Writer.TryWrite(new LogWork(null, null, Volatile.Read(ref _configuration), null, 0, RefreshPolicy: true));
     }
 
     public void Write(GatewayLogLevel level, string message)
@@ -148,12 +152,34 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         GatewayLoggingConfiguration? appliedPolicy = null;
         var lastMaintenance = DateOnly.MinValue;
         var unflushed = 0;
+        void MaintainCurrentPolicy(GatewayLoggingConfiguration policy, string path, bool force = false)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            if (!force && ReferenceEquals(appliedPolicy, policy) && today == lastMaintenance) return;
+            Directory.CreateDirectory(_directory!);
+            MaintainFiles(path, policy);
+            appliedPolicy = policy; lastMaintenance = today;
+            _diskPolicy = null; // Re-probe after deleting retained files; do not use stale free space.
+        }
+        string CurrentPath() => activePath ?? Path.Combine(_directory!, $"gateway-{DateTimeOffset.UtcNow:yyyyMMdd}.log");
         try
         {
             while (await _writes!.Reader.WaitToReadAsync().ConfigureAwait(false))
             {
                 while (_writes.Reader.TryRead(out var work))
                 {
+                    if (work.RefreshPolicy)
+                    {
+                        try
+                        {
+                            var current = Volatile.Read(ref _configuration);
+                            MaintainCurrentPolicy(current, CurrentPath());
+                            CanWriteToDisk(0, current);
+                        }
+                        catch (Exception exception) when (IsLoggingFailure(exception))
+                        { SetFileError($"日志保留策略应用失败：{exception.Message}"); }
+                        continue;
+                    }
                     if (work.Barrier is not null)
                     {
                         try
@@ -175,23 +201,25 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                         if (work.Sample is not null && !SamplePayloadBudget.TryEstimate(work.Sample, out _))
                             throw new InvalidDataException("排队期间采样载荷变化，超出 1 MiB 或结构复杂度限制。");
                         var bytes = SerializeLine(entry, work.Sample);
-                        var limit = (long)work.Configuration.MaxFileSizeMb * 1024 * 1024;
+                        var policy = Volatile.Read(ref _configuration);
+                        var limit = (long)policy.MaxFileSizeMb * 1024 * 1024;
                         if (bytes.LongLength > limit)
-                            throw new InvalidDataException($"单条日志超过单文件 {work.Configuration.MaxFileSizeMb} MB 上限，本条未写入。");
-                        Directory.CreateDirectory(_directory!);
-                        // Protect using the current policy even when older entries are still queued.
-                        if (!CanWriteToDisk(bytes.Length, Volatile.Read(ref _configuration)))
-                        {
-                            Interlocked.Increment(ref _diskRejected);
-                            Interlocked.Increment(ref _droppedEntries);
-                            continue;
-                        }
+                            throw new InvalidDataException($"单条日志超过单文件 {policy.MaxFileSizeMb} MB 上限，本条未写入。");
                         var path = Path.Combine(_directory!, $"gateway-{entry.Timestamp:yyyyMMdd}.log");
                         if (activePath != path)
                         {
                             if (stream is not null) await stream.DisposeAsync().ConfigureAwait(false);
                             stream = null;
                             activePath = path;
+                        }
+                        // Retention must run BEFORE disk protection, otherwise expired logs can
+                        // keep the writer permanently paused even though it could reclaim space.
+                        MaintainCurrentPolicy(policy, path);
+                        if (!CanWriteToDisk(bytes.Length, policy))
+                        {
+                            Interlocked.Increment(ref _diskRejected);
+                            Interlocked.Increment(ref _droppedEntries);
+                            continue;
                         }
                         stream ??= OpenLogFile(path);
                         if (stream.Length + bytes.LongLength > limit)
@@ -201,14 +229,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                             var rotated = Path.Combine(_directory!, $"gateway-{entry.Timestamp:yyyyMMdd}-{DateTimeOffset.UtcNow:HHmmssfff}-{Guid.NewGuid():N}.log");
                             File.Move(path, rotated);
                             stream = OpenLogFile(path);
-                            appliedPolicy = null;
-                        }
-                        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-                        if (!ReferenceEquals(appliedPolicy, work.Configuration) || today != lastMaintenance)
-                        {
-                            MaintainFiles(path, work.Configuration);
-                            appliedPolicy = work.Configuration;
-                            lastMaintenance = today;
+                            MaintainCurrentPolicy(policy, path, force: true);
                         }
                         await stream.WriteAsync(bytes).ConfigureAwait(false);
                         _bytesSinceDiskCheck += bytes.Length;
@@ -273,7 +294,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         var cutoff = DateTime.UtcNow.AddDays(-configuration.RetainedDays);
         var files = Directory.EnumerateFiles(_directory!, "gateway-*.log").Select(path => new FileInfo(path)).ToArray();
         foreach (var file in files.Where(file => file.FullName != activePath && file.LastWriteTimeUtc < cutoff)) file.Delete();
-        var retained = files.Where(file => file.FullName != activePath && file.Exists)
+        var retained = files.Where(file => file.FullName != activePath && File.Exists(file.FullName))
             .OrderByDescending(file => file.LastWriteTimeUtc).ThenByDescending(file => file.Name, StringComparer.Ordinal).ToArray();
         foreach (var file in retained.Skip(configuration.RetainedFileCount - 1)) file.Delete();
     }
@@ -305,5 +326,5 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         if (_writerTask is not null) await _writerTask.ConfigureAwait(false);
     }
     private sealed record LogWork(GatewayLogEntry? Entry, TelemetrySample? Sample,
-        GatewayLoggingConfiguration Configuration, TaskCompletionSource? Barrier, long EstimatedBytes);
+        GatewayLoggingConfiguration Configuration, TaskCompletionSource? Barrier, long EstimatedBytes, bool RefreshPolicy = false);
 }

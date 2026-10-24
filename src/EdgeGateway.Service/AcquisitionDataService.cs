@@ -271,12 +271,14 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
         }
         public void AttemptStarted(bool retry) { lock (_gate) { _inFlight++; if (retry) _retries++; } }
         public void AttemptFinished(long started) { lock (_gate) { _inFlight--; _lastWriteMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds; } }
-        public void Stalled(Guid groupId)
+        public void TimedOut(Guid groupId, bool unresponsive)
         {
             lock (_gate)
             {
                 _timeouts++; _lastFailure = DateTimeOffset.UtcNow; _connected = false;
-                _errors[groupId] = "数据库调用未响应截止或取消；正在隔离并等待原调用退出，不会并发重试。";
+                _errors[groupId] = unresponsive
+                    ? "数据库调用未响应截止；正在隔离并等待原调用退出，不会并发重试。"
+                    : "数据库调用超过时间限制，已退出本次调用。";
                 Warn(_errors[groupId]);
             }
         }
@@ -298,6 +300,7 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
         private readonly CancellationToken _token;
         private readonly Channel<QueuedRow> _queue;
         private readonly HashSet<Guid> _selected;
+        private long _nextBatchTicks;
         public DatabaseWriteGroupConfiguration Group { get; }
         public ConnectionState State { get; }
         public Guid[] RequiredTags { get; }
@@ -331,6 +334,10 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
             {
                 while (await _queue.Reader.WaitToReadAsync(_token).ConfigureAwait(false))
                 {
+                    // A permanently invalid table/credential must not hammer the database
+                    // once per newly arriving batch. Keep only this group's worker in cooldown.
+                    var cooldown = TimeSpan.FromSeconds((_nextBatchTicks - Stopwatch.GetTimestamp()) / (double)Stopwatch.Frequency);
+                    if (cooldown > TimeSpan.Zero) await System.Threading.Tasks.Task.Delay(cooldown, _token).ConfigureAwait(false);
                     batch.Clear();
                     if (!_queue.Reader.TryRead(out var first)) continue;
                     batch.Add(first);
@@ -355,6 +362,9 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
             catch (Exception exception) { State.Failure(Group.Id, $"写入组 [{Group.Name}] 工作任务异常：{SafeError(exception)}"); }
             finally
             {
+                // Unexpected worker failure must also stop future producers from reserving
+                // rows in a channel that no longer has a reader.
+                _queue.Writer.TryComplete();
                 if (batch.Count > 0) { State.Release(batch.Count, batch.Sum(row => row.Bytes)); State.Drop(Group.Id, batch.Count, "停止宽限期内未完成的批次已丢弃；采集数据队列不落本地 SQLite。"); }
                 long dropped = 0;
                 while (_queue.Reader.TryRead(out var row)) { State.Release(1, row.Bytes); dropped++; }
@@ -371,6 +381,7 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_token);
                 timeout.CancelAfter(TimeSpan.FromSeconds(State.Configuration.ConnectionTimeoutSeconds + State.Configuration.CommandTimeoutSeconds + 2));
                 var started = Stopwatch.GetTimestamp();
+                var timeoutCounted = false;
                 State.AttemptStarted(attempt > 1);
                 try
                 {
@@ -381,14 +392,21 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
                     {
                         // Cancellation is not proof that a provider/native call stopped. Retain the
                         // worker and its reservation until the actual operation ends; never overlap retries.
-                        State.Stalled(Group.Id);
+                        if (!_token.IsCancellationRequested)
+                        {
+                            State.TimedOut(Group.Id, unresponsive: true);
+                            timeoutCounted = true;
+                        }
                         await operation.ConfigureAwait(false);
                     }
+                    _nextBatchTicks = 0;
                     State.Success(Group.Id, rows.Length); return;
                 }
                 catch (OperationCanceledException) when (_token.IsCancellationRequested) { throw; }
                 catch (Exception exception)
                 {
+                    if (!timeoutCounted && (timeout.IsCancellationRequested || exception is TimeoutException or OperationCanceledException))
+                        State.TimedOut(Group.Id, unresponsive: false);
                     State.Failure(Group.Id, $"写入组 [{Group.Name}] 第 {attempt}/{State.Configuration.MaxRetryAttempts} 次写入失败：{SafeError(exception)}");
                     if (exception is DatabaseWriteException { IsTransient: false } or ArgumentException or InvalidDataException or NotSupportedException)
                     { terminalReason = "不可重试的配置、权限或数据错误：" + SafeError(exception); break; }
@@ -399,6 +417,7 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
                 var delay = Math.Min(30000, 250 * Math.Pow(2, attempt - 1));
                 await System.Threading.Tasks.Task.Delay(TimeSpan.FromMilliseconds(delay * (0.8 + 0.2 * Random.Shared.NextDouble())), _token).ConfigureAwait(false);
             }
+            _nextBatchTicks = Stopwatch.GetTimestamp() + (terminalReason is null ? 1 : 5) * Stopwatch.Frequency;
             State.Drop(Group.Id, rows.Length, $"写入组 [{Group.Name}] {terminalReason ?? "已达最大尝试次数"}，本批 {rows.Length} 行未获入库确认。");
         }
         private string SafeError(Exception exception)
