@@ -28,3 +28,77 @@ jobs:
             artifacts/SOURCE_COMMIT.txt
           if-no-files-found: error
           retention-days: 7
+
+  oracle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      oracle:
+        image: gvenzl/oracle-free:23-slim-faststart
+        env:
+          ORACLE_RANDOM_PASSWORD: 'true'
+          APP_USER: EDGE_TEST
+          # Disposable test service only; never a production credential.
+          APP_USER_PASSWORD: edge_ci_oracle_only
+        ports:
+          - 1521:1521
+        options: >-
+          --shm-size 1g
+          --health-cmd healthcheck.sh
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 40
+    env:
+      EDGE_DB_TEST_ALLOW_DDL: '1'
+      EDGE_DB_TEST_HOST: 127.0.0.1
+      EDGE_DB_TEST_PORT: '1521'
+      EDGE_DB_TEST_DATABASE: FREEPDB1
+      EDGE_DB_TEST_USERNAME: EDGE_TEST
+      EDGE_DB_TEST_PASSWORD: edge_ci_oracle_only
+      EDGE_DB_TEST_TLS: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build real Oracle acceptance executable
+        run: dotnet build tests/EdgeGateway.DatabaseIntegration -c Release
+      - name: Verify Oracle round trips, array transactions, replay and cancellation
+        run: |
+          mkdir -p artifacts/oracle
+          set -o pipefail
+          dotnet run --project tests/EdgeGateway.DatabaseIntegration -c Release --no-build -- oracle | tee artifacts/oracle/verification.json
+      - name: Collect Oracle startup diagnostics on failure
+        if: failure()
+        env:
+          ORACLE_CONTAINER: ${{ job.services.oracle.id }}
+        run: |
+          mkdir -p artifacts/oracle
+          docker inspect --format '{{json .State.Health}}' "$ORACLE_CONTAINER" > artifacts/oracle/health.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-integration
+          path: artifacts/oracle/
+          if-no-files-found: warn
+
+  reliability:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Core regression
+        run: dotnet test tests/EdgeGateway.Tests -c Release --logger "trx;LogFileName=phase2.trx" --results-directory artifacts/core-tests
+      - name: Synthetic isolation and backpressure endurance smoke
+        run: dotnet run --project tests/EdgeGateway.Endurance -c Release -- --seconds 45 --output artifacts/endurance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase2-reliability
+          path: |
+            artifacts/core-tests/
+            artifacts/endurance/verification.json
+          if-no-files-found: warn
