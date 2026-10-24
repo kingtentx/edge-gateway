@@ -15,12 +15,11 @@ internal static class Program
         var smokeTest = layoutMatrix || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
         var screenshotIndex = Array.FindIndex(args, x => x.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
         var screenshotPath = screenshotIndex >= 0 && screenshotIndex + 1 < args.Length ? args[screenshotIndex + 1] : null;
-        var dataDirectory = smokeTest
-            ? Path.Combine(Path.GetTempPath(), "EdgeGateway.Smoke", Guid.NewGuid().ToString("N"), "AppData")
-            : Path.Combine(AppContext.BaseDirectory, "AppData");
-        var driverDirectory = smokeTest
-            ? Path.Combine(Path.GetTempPath(), "EdgeGateway.Smoke", Guid.NewGuid().ToString("N"), "drivers")
-            : Path.Combine(AppContext.BaseDirectory, "drivers");
+        var runtimeRoot = smokeTest
+            ? Path.Combine(Path.GetTempPath(), "EdgeGateway.Smoke", Guid.NewGuid().ToString("N"))
+            : AppContext.BaseDirectory;
+        var dataDirectory = Path.Combine(runtimeRoot, "AppData");
+        var driverDirectory = Path.Combine(runtimeRoot, "drivers");
         var mutexKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(dataDirectory)))[..24];
         using var instanceLock = new Mutex(true, "Local\\EdgeGateway." + mutexKey, out var ownsLock);
         if (!ownsLock)
