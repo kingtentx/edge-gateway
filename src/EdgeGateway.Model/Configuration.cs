@@ -82,7 +82,7 @@ public sealed class TagConfiguration
     [DisplayName("写入方法")] public string WriteMethod { get; set; } = "";
     [DisplayName("协议字节序")] public ProtocolEndian Endian { get; set; } = ProtocolEndian.FromByteOrder;
     [DisplayName("启用")] public bool Enabled { get; set; } = true;
-    [DisplayName("上传平台"), Description("关闭后仍采集、显示并保存历史，但新生成的 MQTT 消息不包含此点位；已入队消息继续补传。")] public bool UploadEnabled { get; set; } = true;
+    [DisplayName("上传平台"), Description("关闭后仍采集、显示，并按配置输出采样日志及执行已启用的外部数据库写入；新生成的 MQTT 消息不包含此点位，已入队消息继续补传。")] public bool UploadEnabled { get; set; } = true;
     [DisplayName("允许写入")] public bool Writable { get; set; }
     [DisplayName("倍率")] public double Scale { get; set; } = 1;
     [DisplayName("偏移量")] public double Offset { get; set; }

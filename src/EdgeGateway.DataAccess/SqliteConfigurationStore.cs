@@ -129,10 +129,8 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
     {
         try
         {
-            var configuration = JsonSerializer.Deserialize<GatewayConfiguration>(payload, GatewayJson.Options)
-                ?? throw new InvalidDataException("配置数据库中的配置内容为空。");
-            if (configuration.SchemaVersion != 3) throw new InvalidDataException($"配置版本 {configuration.SchemaVersion} 不受支持；仅支持版本 3。");
-            return configuration;
+            using var document = JsonDocument.Parse(payload);
+            return ConfigurationJson.Deserialize(document.RootElement);
         }
         catch (JsonException exception) { throw new InvalidDataException("配置数据库中的 JSON 已损坏；当前及上一版本未修改。", exception); }
     }

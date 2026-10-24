@@ -14,10 +14,8 @@ public sealed class JsonConfigurationFiles : IConfigurationFiles
         try
         {
             await using var stream = File.OpenRead(path);
-            var configuration = await JsonSerializer.DeserializeAsync<GatewayConfiguration>(stream, GatewayJson.Options, cancellationToken)
-                .ConfigureAwait(false) ?? throw new InvalidDataException("配置文件内容为空。");
-            if (configuration.SchemaVersion != 3) throw new InvalidDataException($"配置版本 {configuration.SchemaVersion} 不受支持；仅支持版本 3。");
-            return configuration;
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return ConfigurationJson.Deserialize(document.RootElement);
         }
         catch (JsonException exception) { throw new InvalidDataException("配置文件格式错误，原文件未修改。", exception); }
     }

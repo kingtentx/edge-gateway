@@ -119,7 +119,7 @@ UI smoke 的外部表元数据和历史展示样本有明确 fixture 标识；�
 | 证据项 | 本轮记录 |
 |---|---|
 | 程序源码提交 / tree | [PR #1](https://github.com/kingtentx/edge-gateway/pull/1) 的功能提交；每份产物另外记录实际 checkout 的 PR 合并预览提交，不与功能 head 混淆 |
-| 本地 Release 构建及核心测试 | Linux 交叉编译 WinForms Release 与 382 项核心测试通过，0 失败、0 跳过。该结果不代表原生 Windows 界面通过 |
+| 本地 Release 构建及核心测试 | Linux 交叉编译 WinForms Release 与 388 项核心测试通过，0 失败、0 跳过。该结果不代表原生 Windows 界面通过 |
 | Windows Server 2022 / 2025 | [PR 检查页](https://github.com/kingtentx/edge-gateway/pull/1/checks) 的 Windows build and verification；两个矩阵作业分别保存完整原始证据 |
 | 布局与交互 | 每个 verification-windows-* artifact 中的 ui-smoke-verification.json、layout-matrix.json、PNG 与 stdout；以实际完成数为准 |
 | 实际显示环境 | layout-matrix.json 的 actualDeviceDpi、nativeWindowDpi、显示器、工作区及 viewportSimulation；等效空间不作为真实高 DPI 通过证据 |

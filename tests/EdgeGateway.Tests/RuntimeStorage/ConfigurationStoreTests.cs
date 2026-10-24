@@ -91,6 +91,72 @@ public sealed class ConfigurationStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task MissingJsonSchemaIsRejectedWithoutChangingTheFileOrCreatingRuntimeStorage()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "missing-schema.json");
+        const string original = "{\"name\":\"未声明版本的配置\",\"devices\":[]}";
+        await File.WriteAllTextAsync(path, original);
+
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new JsonConfigurationFiles().ReadAsync(path));
+
+        Assert.Contains("缺少 schemaVersion", error.Message);
+        Assert.Equal(original, await File.ReadAllTextAsync(path));
+        Assert.False(File.Exists(DatabasePath));
+    }
+
+    [Theory]
+    [InlineData("current")]
+    [InlineData("previous")]
+    public async Task MissingPersistedSchemaIsRejectedWithoutDefaultingOrChangingEitherVersion(string slot)
+    {
+        await using (var store = new SqliteConfigurationStore(DatabasePath))
+        {
+            await store.SaveAsync(new GatewayConfiguration { Name = "有效上一份配置" });
+            await store.SaveAsync(new GatewayConfiguration { Name = "有效当前配置" });
+        }
+        ReplaceSavedPayload(slot, "{\"name\":\"未声明版本的配置\"}");
+        var before = ReadSavedPayloads();
+        var factoryCalled = false;
+        await using var reopened = new SqliteConfigurationStore(DatabasePath,
+            () => { factoryCalled = true; return DemoConfiguration.Create(); });
+
+        var error = slot == "current"
+            ? await Assert.ThrowsAsync<InvalidDataException>(() => reopened.LoadAsync())
+            : await Assert.ThrowsAsync<InvalidDataException>(() => reopened.LoadPreviousAsync());
+
+        Assert.Contains("缺少 schemaVersion", error.Message);
+        Assert.False(factoryCalled);
+        if (slot == "current") Assert.Equal("有效上一份配置", (await reopened.LoadPreviousAsync())!.Name);
+        else Assert.Equal("有效当前配置", (await reopened.LoadAsync()).Name);
+        var after = ReadSavedPayloads();
+        Assert.Equal(before["current"], after["current"]);
+        Assert.Equal(before["previous"], after["previous"]);
+    }
+
+    [Theory]
+    [InlineData("schemaVersion")]
+    [InlineData("SchemaVersion")]
+    [InlineData("SCHEMAVERSION")]
+    public async Task ExplicitSchemaUsesSharedCaseInsensitiveNamesForFilesAndStoredPayloads(string propertyName)
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "explicit-schema.json");
+        var payload = "{\"" + propertyName + "\":3,\"name\":\"明确的新版本配置\"}";
+        await File.WriteAllTextAsync(path, payload);
+        var imported = await new JsonConfigurationFiles().ReadAsync(path);
+        Assert.Equal(3, imported.SchemaVersion);
+        Assert.Equal("明确的新版本配置", imported.Name);
+
+        await using (var store = new SqliteConfigurationStore(DatabasePath)) await store.SaveAsync(imported);
+        ReplaceSavedPayload("current", payload);
+        await using var reopened = new SqliteConfigurationStore(DatabasePath);
+        var restored = await reopened.LoadAsync();
+        Assert.Equal(3, restored.SchemaVersion);
+        Assert.Equal(imported.Name, restored.Name);
+    }
+
+    [Fact]
     public async Task JsonExchangeUsesCurrentSchemaWithoutBecomingRuntimeStorage()
     {
         Directory.CreateDirectory(_directory);
@@ -122,6 +188,30 @@ public sealed class ConfigurationStoreTests : IDisposable
         await using var reopened = new SqliteConfigurationStore(DatabasePath, () => { factoryCalled = true; return DemoConfiguration.Create(); });
         await Assert.ThrowsAsync<InvalidDataException>(() => reopened.LoadAsync());
         Assert.False(factoryCalled);
+    }
+
+    private void ReplaceSavedPayload(string slot, string payload)
+    {
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = DatabasePath, Pooling = false }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE configuration_versions SET payload=$payload WHERE slot=$slot";
+        command.Parameters.AddWithValue("$payload", payload);
+        command.Parameters.AddWithValue("$slot", slot);
+        Assert.Equal(1, command.ExecuteNonQuery());
+    }
+
+    private Dictionary<string, string> ReadSavedPayloads()
+    {
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            { DataSource = DatabasePath, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT slot,payload FROM configuration_versions";
+        using var reader = command.ExecuteReader();
+        var result = new Dictionary<string, string>();
+        while (reader.Read()) result.Add(reader.GetString(0), reader.GetString(1));
+        return result;
     }
 
     public void Dispose()
