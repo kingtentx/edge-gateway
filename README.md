@@ -4,6 +4,8 @@
 
 新版数据存储：[SQLite 仅配置、采集日志与外部数据库](docs/data-recording.md)。默认采集只写滚动日志；按需启用 MySQL / PostgreSQL / Oracle，支持每点一行和自定义字段映射。仅支持 schema 3，不保留旧历史或提供迁移。
 
+**2026-10-25 配置保存修复：** 修正启动刷新驱动清单时提前释放共用 SQLite 连接的问题，恢复刷新后的配置保存与插件登记。[连接生命周期说明](docs/runtime-directory-layout.md#sqlite-的职责) · [本次验证记录](docs/data-recording.md#sqlite-连接生命周期修复2026-10-25)。
+
 开发规范入口：[项目架构与依赖](docs/architecture.md) · [开发 SKILL](.agents/skills/develop-edge-gateway/SKILL.md) · [全部驱动迁移清单](docs/driver-migration.md) · [上游结构参考](.agents/skills/develop-edge-gateway/references/architecture.md) · [驱动扩展](.agents/skills/develop-edge-gateway/references/driver-development.md) · [历史验证记录](docs/verification.md)
 
 功能闭环说明：[运行中配置、点表交换与通信诊断](docs/live-configuration.md) · [Kepware 核心能力实现](docs/kepware-core-capabilities.md) · [平台接入与 RPC](docs/platform-protocols.md) · [源项目与主流网关能力对照](docs/gateway-capability-review.md)

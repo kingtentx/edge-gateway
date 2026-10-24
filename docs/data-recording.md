@@ -6,7 +6,7 @@
 
 | 内容 | 当前存放位置 | 说明 |
 |---|---|---|
-| 网关、通道、设备、点位、MQTT、日志、数据库及字段映射配置 | `gateway.config.db` | SQLite 只有 `configuration_versions` 配置表；当前与上一份同版本配置在一个事务内更新 |
+| 网关、通道、设备、点位、MQTT、日志、数据库及字段映射配置，以及驱动元数据 | `AppData/gateway.config.db` | `configuration_versions` 保存当前与上一份同版本配置，`driver_plugins` / `driver_catalog` 保存插件登记和可用驱动清单；配置版本在一个事务内更新 |
 | 采集数据的默认输出 | `logs/gateway-*.log` | JSON Lines 滚动日志，默认开启；不创建 SQLite 采样表 |
 | 启用后的业务采集记录 | 用户配置的 MySQL / PostgreSQL / Oracle | 支持标准点表与自定义字段映射；默认没有启用的外部连接或写入组 |
 | 未确认 MQTT 消息 | `messaging/outbox/*.json` | 独立原子文件；正常重启后继续补传 |
@@ -166,3 +166,21 @@ MySQL / PostgreSQL 使用真正的多行 INSERT，Oracle 同类型列使用 Arra
 **Oracle 尚未连接真实实例验证。** 当前证据限于托管驱动参数、数组绑定、SQL 和错误分支单元测试；本次数据库 CI 没有运行 Oracle。部署前应针对目标 Oracle 版本、实际字段 precision / scale、权限、网络与 TLS 配置完成集成验收。
 
 WinForms 门禁覆盖 8 个主页面、7 类弹窗、20 个等效工作区和 149 张截图；实际通过状态应查看对应提交的 Windows Actions 运行记录。本地 Linux 能交叉编译 WinForms，不能替代 Windows 原生交互检查。生产容量取决于点位数量、实际采样频率、字段长度、目标库版本、索引与网络延迟，不能仅根据配置上限推定可靠吞吐。
+
+## SQLite 连接生命周期修复（2026-10-25）
+
+基线为 `main` 的 `221986b`，开始前与 `origin/main` 一致。启动会先持久化默认配置并刷新驱动目录；此前 `ReplaceDriverInventoryAsync` 用 `using` 释放了 `OpenCore()` 返回的共用连接，存储仍缓存该已关闭实例，随后的 `SaveAsync → SaveCore → BeginTransaction` 因而抛出 `BeginTransaction can only be called when the connection is open`。本次去掉刷新方法对连接的局部释放，保留事务和命令的局部释放、存储级串行锁及宿主退出时的统一释放。
+
+新增真实 SQLite 回归覆盖未保存/已保存配置的驱动刷新、刷新后保存与插件登记、再次清空目录并保存、重开数据库后的当前/上一版本，以及重复驱动主键触发事务回滚后继续保存。宿主测试也核对启动刷新后的设备编辑与重启持久化，并按新的运行目录约定隔离锁、日志和消息文件、提供实际内置驱动 DLL。原插件登记测试调用同步为当前的 `SaveDriverPluginAsync` 接口。
+
+| 验证 | 本次结果 |
+|---|---|
+| 修复前复现 | 配置存储测试 4 失败 / 15 通过；其中两个新增保存场景均出现与用户相同的 `SaveCore` / `BeginTransaction` 堆栈；`artifacts/sqlite-connection-20261025/before-fix.trx` 保留这两个场景 |
+| 配置存储专项 | 19 / 19 通过，0 跳过；`configuration-tests.trx` |
+| 完整 Release 构建 | 成功，最终增量构建 0 警告、0 错误；驱动清单和架构门禁通过 |
+| 完整核心测试 | 最终 423 / 423 通过，0 失败、0 跳过；`after-fix-all-tests.trx`。首次完整回归的两个宿主失败来自旧运行目录/驱动部署测试夹具，已修正并保留原结果 `all-tests.trx` |
+| Windows 原生烟测 | **未通过**。程序进入主窗体，新增隐藏页签导航回归通过；随后最小宽度检查中，标题栏“采集已停止”标签被宽度仅 1 px 的 `HeaderStatus` 容器裁剪。失败位于 `AssertHeaderStatusFits`，不再是 SQLite 事务异常；完整布局矩阵尚未进入，不记为 20 / 20 通过 |
+| 证据位置 | 上述 TRX 位于 `artifacts/sqlite-connection-20261025/`；UI 失败截图及 stdout/stderr 位于该目录的 `ui/` 子目录 |
+| 验收边界 | 本次未执行双 Windows Server CI、真实多 DPI/跨屏、外部数据库现场连接或发布打包；现有运行配置未重置 |
+
+首次修复测试过程中的 Windows DLL 映射也会阻止删除临时驱动文件；宿主夹具现在将 DLL 放在测试输出目录，只将可写运行数据放入独立临时目录。保持实际文件、事务与身份断言，未通过吞掉连接异常或重置数据库取得通过结果。

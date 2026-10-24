@@ -26,6 +26,8 @@ gateway.config.db 保存网关配置快照（设备、点位、通信参数、�
 
 drivers/ 中的 DLL 是可执行代码文件；SQLite 保存驱动 ID、名称、版本、程序集名、SHA-256、来源及状态。上传安装插件时先把 DLL 安装到版本化目录，校验通过后才登记。启动时重新校验文件哈希，并刷新 SQLite 中的可用驱动目录。driver-plugin.json 只用于将文件与其哈希/驱动身份关联，不取代 SQLite 目录索引。
 
+配置、插件登记和目录刷新由同一配置存储串行使用 SQLite 连接。刷新只提交或回滚本次事务，连接保留到宿主退出时释放。2026-10-25 修正了目录刷新提前释放连接、导致后续保存报 `BeginTransaction can only be called when the connection is open` 的问题；当前/上一版配置与清单回滚继续通过真实 SQLite 测试核对。
+
 ## 初始化与权限
 
 - 首次启动创建 AppData、drivers、logs、messaging/outbox、messaging/rpc，并将默认配置立即保存到 SQLite。

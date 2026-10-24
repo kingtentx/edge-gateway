@@ -183,7 +183,9 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
             ObjectDisposedException.ThrowIf(_disposed, this);
             await Task.Run(() =>
             {
-                using var connection = OpenCore();
+                // The store owns this shared connection; only the transaction is scoped
+                // to the inventory refresh. DisposeAsync releases the connection.
+                var connection = OpenCore();
                 using var transaction = connection.BeginTransaction();
                 using (var delete = connection.CreateCommand())
                 {

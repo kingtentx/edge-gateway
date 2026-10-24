@@ -1,4 +1,5 @@
 using System.Text.Json;
+using EdgeGateway.Abstractions;
 using EdgeGateway.DataAccess;
 using EdgeGateway.Model;
 using EdgeGateway.Service;
@@ -65,7 +66,7 @@ public sealed class ConfigurationStoreTests : IDisposable
         await using (var store = new SqliteConfigurationStore(DatabasePath, DemoConfiguration.Create))
         {
             _ = await store.LoadAsync();
-            await store.SaveAsync(new DriverPluginInfo("custom-plc", "自定义 PLC", "1.2.3.0",
+            await store.SaveDriverPluginAsync(new DriverPluginInfo("custom-plc", "自定义 PLC", "1.2.3.0",
                 "Custom.Plc.Driver", new string('A', 64), "已加载"));
         }
 
@@ -97,6 +98,73 @@ public sealed class ConfigurationStoreTests : IDisposable
         ]);
         var current = Assert.Single(await store.GetDriverInventoryAsync());
         Assert.Equal("modbus-tcp", current.Id);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InventoryRefreshKeepsConfigurationAndPluginStorageUsable(bool initiallySaved)
+    {
+        var configuration = DemoConfiguration.Create();
+        var originalName = configuration.Name;
+        var driver = new DriverInventoryRecord("modbus-tcp", "Modbus TCP", "TCP driver", true, false,
+            "EdgeGateway.Driver.Modbus", "1.0.0.0", new string('A', 64), "bundled");
+        var plugin = new DriverPluginInfo("custom-plc", "自定义 PLC", "1.2.3.0",
+            "Custom.Plc.Driver", new string('B', 64), "已加载");
+
+        await using (var store = new SqliteConfigurationStore(DatabasePath))
+        {
+            if (initiallySaved) await store.SaveAsync(configuration);
+            await store.ReplaceDriverInventoryAsync([driver]);
+            Assert.Equal(initiallySaved, store.HasSavedConfiguration);
+
+            configuration.Name = "驱动清单刷新后保存";
+            await store.SaveAsync(configuration);
+            Assert.True(store.HasSavedConfiguration);
+            Assert.Equal(configuration.Name, (await store.LoadAsync()).Name);
+            var previous = await store.LoadPreviousAsync();
+            if (initiallySaved) Assert.Equal(originalName, previous!.Name);
+            else Assert.Null(previous);
+
+            await store.SaveDriverPluginAsync(plugin);
+            Assert.Equal(plugin, Assert.Single(await store.GetDriverPluginsAsync()));
+            Assert.Equal(driver, Assert.Single(await store.GetDriverInventoryAsync()));
+
+            await store.ReplaceDriverInventoryAsync([]);
+            configuration.Name = "再次刷新后保存";
+            await store.SaveAsync(configuration);
+            Assert.Empty(await store.GetDriverInventoryAsync());
+        }
+
+        await using var reopened = new SqliteConfigurationStore(DatabasePath);
+        Assert.Equal("再次刷新后保存", (await reopened.LoadAsync()).Name);
+        Assert.Equal("驱动清单刷新后保存", (await reopened.LoadPreviousAsync())!.Name);
+        Assert.Equal(plugin, Assert.Single(await reopened.GetDriverPluginsAsync()));
+        Assert.Empty(await reopened.GetDriverInventoryAsync());
+    }
+
+    [Fact]
+    public async Task FailedInventoryRefreshRollsBackAndAllowsSubsequentConfigurationSave()
+    {
+        await using var store = new SqliteConfigurationStore(DatabasePath);
+        var configuration = DemoConfiguration.Create();
+        await store.SaveAsync(configuration);
+        var driver = new DriverInventoryRecord("modbus-tcp", "Modbus TCP", "TCP driver", true, false,
+            "EdgeGateway.Driver.Modbus", "1.0.0.0", new string('A', 64), "bundled");
+        await store.ReplaceDriverInventoryAsync([driver]);
+
+        // The duplicate primary key fails after DELETE/INSERT inside the transaction.
+        var duplicate = driver with { Id = "duplicate" };
+        await Assert.ThrowsAsync<SqliteException>(() => store.ReplaceDriverInventoryAsync([duplicate, duplicate]));
+        Assert.Equal(driver, Assert.Single(await store.GetDriverInventoryAsync()));
+        Assert.Equal(configuration.Name, (await store.LoadAsync()).Name);
+        Assert.Null(await store.LoadPreviousAsync());
+
+        var originalName = configuration.Name;
+        configuration.Name = "清单事务回滚后保存";
+        await store.SaveAsync(configuration);
+        Assert.Equal(configuration.Name, (await store.LoadAsync()).Name);
+        Assert.Equal(originalName, (await store.LoadPreviousAsync())!.Name);
     }
 
     [Fact]

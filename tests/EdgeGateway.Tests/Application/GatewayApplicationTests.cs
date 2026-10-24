@@ -255,15 +255,29 @@ public sealed class GatewayApplicationTests
         var directory = Path.Combine(Path.GetTempPath(), "edge-host-test-" + Guid.NewGuid().ToString("N"));
         try
         {
-            var host = await GatewayHost.CreateAsync(directory);
+            // Loaded protocol DLLs remain mapped on Windows. Stage them with the
+            // test binaries, while each host's writable runtime stays isolated.
+            var drivers = Path.Combine(AppContext.BaseDirectory, "drivers");
+            Directory.CreateDirectory(drivers);
+            foreach (var assembly in new[] { typeof(SimulatorDriverFactory).Assembly,
+                         typeof(EdgeGateway.Driver.Modbus.ModbusTcpDriverFactory).Assembly })
+            {
+                var destination = Path.Combine(drivers, Path.GetFileName(assembly.Location));
+                if (!File.Exists(destination)) File.Copy(assembly.Location, destination);
+            }
+            var host = await GatewayHost.CreateAsync(directory, pluginDirectory: drivers, runtimeDirectory: directory);
             var original = host.Application.GetConfiguration();
             try
             {
                 Assert.False(host.Application.IsRunning);
                 Assert.False(File.Exists(Path.Combine(directory, "gateway.json")));
                 Assert.Contains(host.Application.Drivers.Drivers, descriptor => descriptor.Id == "OPC.UaClient");
-                await Assert.ThrowsAsync<InvalidOperationException>(() => GatewayHost.CreateAsync(directory));
+                await Assert.ThrowsAsync<InvalidOperationException>(() => GatewayHost.CreateAsync(directory,
+                    pluginDirectory: drivers, runtimeDirectory: directory));
                 var simulator = original.Devices.Single(device => device.DriverId == "simulator");
+                simulator.Name = "驱动清单刷新后保存的设备";
+                await host.Application.UpdateDeviceAsync(simulator);
+                Assert.Equal(simulator.Name, (await host.Application.ReadSavedConfigurationAsync()).Devices.Single(device => device.Id == simulator.Id).Name);
                 await host.Application.StartDeviceAsync(simulator.Id);
                 await Until(() => host.Application.GetLatest().Count > 0);
                 Assert.True(File.Exists(Path.Combine(directory, "gateway.config.db")));
@@ -271,9 +285,10 @@ public sealed class GatewayApplicationTests
                 Assert.False(File.Exists(Path.Combine(directory, "gateway.db")));
             }
             finally { await host.DisposeAsync(); }
-            await using var reopened = await GatewayHost.CreateAsync(directory);
+            await using var reopened = await GatewayHost.CreateAsync(directory, pluginDirectory: drivers, runtimeDirectory: directory);
             Assert.False(reopened.Application.IsRunning);
             Assert.Equal(original.Devices.Select(device => device.Id), reopened.Application.GetConfiguration().Devices.Select(device => device.Id));
+            Assert.Equal("驱动清单刷新后保存的设备", reopened.Application.GetConfiguration().Devices.Single(device => device.DriverId == "simulator").Name);
         }
         finally { if (System.IO.Directory.Exists(directory)) System.IO.Directory.Delete(directory, true); }
     }
@@ -288,7 +303,7 @@ public sealed class GatewayApplicationTests
             var path = Path.Combine(directory, "gateway.config.db");
             const string invalid = "{not-valid-json";
             await File.WriteAllTextAsync(path, invalid);
-            await Assert.ThrowsAsync<Microsoft.Data.Sqlite.SqliteException>(() => GatewayHost.CreateAsync(directory));
+            await Assert.ThrowsAsync<Microsoft.Data.Sqlite.SqliteException>(() => GatewayHost.CreateAsync(directory, runtimeDirectory: directory));
             Assert.Equal(invalid, await File.ReadAllTextAsync(path));
             using var lease = new FileStream(Path.Combine(directory, "gateway.lock"), FileMode.Open, FileAccess.ReadWrite, FileShare.None);
         }
