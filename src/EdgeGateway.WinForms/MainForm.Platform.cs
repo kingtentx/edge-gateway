@@ -124,7 +124,7 @@ public sealed partial class MainForm
         Section("驱动插件", "可上传实现网关驱动工厂契约的 .NET 8 驱动 DLL。安装成功后立即注册，新建设备时可直接选择；插件必须来自可信来源。");
         var manageDrivers = UiTheme.Button("驱动 DLL 管理 / 上传", (_, _) =>
         {
-            using var dialog = new DriverPluginDialog(_application, _dataDirectory);
+            using var dialog = new DriverPluginDialog(_application, _driverDirectory);
             dialog.ShowDialog(this);
             RebindConfigurationViews();
         }, true);
