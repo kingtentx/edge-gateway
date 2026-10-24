@@ -118,9 +118,23 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
             if (!string.Equals(existingHash, sha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException($"驱动 {simpleName} {version} 已安装但内容不同。请使用递增的程序集版本号发布新 DLL。");
         }
-        else File.Copy(source, destination, overwrite: false);
+        else
+        {
+            // Stage beside the final DLL and atomically rename only after the copied bytes match.
+            var temporaryAssembly = destination + "." + Guid.NewGuid().ToString("N") + ".upload";
+            try
+            {
+                File.Copy(source, temporaryAssembly, overwrite: false);
+                var copiedHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(temporaryAssembly)));
+                if (!string.Equals(copiedHash, sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new IOException("上传期间 DLL 内容发生变化，安装已取消。");
+                File.Move(temporaryAssembly, destination, overwrite: false);
+            }
+            finally { try { if (File.Exists(temporaryAssembly)) File.Delete(temporaryAssembly); } catch { } }
+        }
 
         PluginManifest? manifest = null;
+        var registered = false;
         try
         {
             var context = CreateContext(destination);
@@ -144,6 +158,7 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                     _factories.Add(factory.Descriptor.Id, factory);
                     _contexts.Add(context);
                     _plugins[factory.Descriptor.Id] = new(factory.Descriptor.Id, factory.Descriptor.Name, version, simpleName, sha256, "已加载");
+                    registered = true;
                 }
                 catch
                 {
@@ -156,8 +171,10 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
         }
         catch
         {
-            // The directory is intentionally retained if the assembly may already have been loaded;
-            // an invalid upload is never silently deleted while the loader might still reference it.
+            // A failed validation must not permanently poison this assembly-version slot.
+            // If the runtime has already registered it, keep its on-disk files intact.
+            if (!registered && !File.Exists(Path.Combine(installedRoot, "driver-plugin.json")))
+                try { File.Delete(destination); } catch { /* A loaded assembly may still hold the file on Windows. */ }
             throw;
         }
     }
