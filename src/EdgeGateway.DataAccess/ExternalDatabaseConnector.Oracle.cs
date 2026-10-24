@@ -34,19 +34,60 @@ public sealed partial class ExternalDatabaseConnector
                         metadata[pointRows ? PointColumn(ExternalDatabaseProvider.Oracle, column) : column].DataType);
                 }
             }
+            // A provider can return only ORA-24381 without per-row ORA-00001
+            // details. Preserve this chunk's boundary before an array may partially execute.
+            if (pointRows && command.ArrayBindCount > 0)
+            {
+                await using var save = Command(database, connection, "SAVEPOINT EG_POINT_CHUNK", transaction);
+                await save.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+            }
             try { await command.ExecuteNonQueryAsync(token).ConfigureAwait(false); }
             catch (OracleException exception) when (pointRows)
             {
-                // Array binding may execute successful elements before reporting failures. The
-                // enclosing transaction is committed only if every reported failure is a proven
-                // replay. Any other error causes the entire batch (including earlier chunks) to roll back.
                 var failures = exception.Errors.Cast<OracleError>().Select(error => (error.Number, error.ArrayBindIndex)).ToArray();
                 var indices = ReplayIndices(failures, count);
-                if (indices is null) throw;
-                foreach (var index in indices)
-                    if (!await EventExistsAsync(database, transaction, connection, Table(group), rows[offset + index].EventId, token).ConfigureAwait(false)) throw;
+                if (indices is not null)
+                {
+                    // Detailed duplicate rows still need proof that THIS event exists;
+                    // a conflict on a different business key must roll back the entire batch.
+                    foreach (var index in indices)
+                        if (!await EventExistsAsync(database, transaction, connection, Table(group), rows[offset + index].EventId, token).ConfigureAwait(false)) throw;
+                }
+                else if (command.ArrayBindCount > 0 && exception.Number is 1 or 24381)
+                {
+                    // Never swallow the aggregate error or infer that all elements succeeded.
+                    // Undo partial array writes and replay scalars inside the SAME transaction.
+                    // A non-duplicate scalar error propagates to the enclosing full rollback.
+                    await using (var rollback = Command(database, connection, "ROLLBACK TO SAVEPOINT EG_POINT_CHUNK", transaction))
+                        await rollback.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+                    await WriteOracleReplayScalarsAsync(database, transaction, connection, group, columns, rows, offset, count, metadata, sql, token).ConfigureAwait(false);
+                }
+                else throw;
             }
             offset += count;
+        }
+    }
+
+    private static async Task WriteOracleReplayScalarsAsync(DbConnection database, DbTransaction transaction,
+        DatabaseConnectionConfiguration connection, DatabaseWriteGroupConfiguration group, IReadOnlyList<string> columns,
+        IReadOnlyList<DatabaseWriteRow> rows, int offset, int count, IReadOnlyDictionary<string, DatabaseColumnInfo> metadata,
+        string sql, CancellationToken token)
+    {
+        for (var index = offset; index < offset + count; index++)
+        {
+            token.ThrowIfCancellationRequested();
+            await using var scalar = Command(database, connection, sql, transaction);
+            for (var columnIndex = 0; columnIndex < columns.Count; columnIndex++)
+            {
+                var column = columns[columnIndex];
+                AddValueParameter(scalar, ExternalDatabaseProvider.Oracle, $"p0_{columnIndex}", rows[index].Values[column],
+                    PointFieldType(column), metadata[PointColumn(ExternalDatabaseProvider.Oracle, column)].DataType);
+            }
+            try { await scalar.ExecuteNonQueryAsync(token).ConfigureAwait(false); }
+            catch (OracleException duplicate) when (duplicate.Number == 1)
+            {
+                if (!await EventExistsAsync(database, transaction, connection, Table(group), rows[index].EventId, token).ConfigureAwait(false)) throw;
+            }
         }
     }
 
