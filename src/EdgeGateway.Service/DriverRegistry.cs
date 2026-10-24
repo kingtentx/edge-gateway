@@ -173,9 +173,11 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 {
                     File.WriteAllText(temporaryManifest, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
                     File.Move(temporaryManifest, manifestPath, overwrite: true);
+                    var pluginInfo = new DriverPluginInfo(factory.Descriptor.Id, factory.Descriptor.Name, version, simpleName, sha256, "已加载");
+                    _pluginStore?.SaveDriverPluginAsync(pluginInfo).GetAwaiter().GetResult();
                     _factories.Add(factory.Descriptor.Id, factory);
                     _contexts.Add(context);
-                    _plugins[factory.Descriptor.Id] = new(factory.Descriptor.Id, factory.Descriptor.Name, version, simpleName, sha256, "已加载");
+                    _plugins[factory.Descriptor.Id] = pluginInfo;
                     registered = true;
                 }
                 catch
@@ -217,11 +219,15 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 if (duplicate is not null) throw new InvalidOperationException($"驱动标识重复：{duplicate.Descriptor.Id}");
                 foreach (var factory in loaded)
                 {
+                    if (manifest is not null)
+                    {
+                        var pluginInfo = new DriverPluginInfo(factory.Descriptor.Id, factory.Descriptor.Name,
+                            manifest.Version, Path.GetFileNameWithoutExtension(path), manifest.Sha256, "已加载");
+                        _pluginStore?.SaveDriverPluginAsync(pluginInfo).GetAwaiter().GetResult();
+                        _plugins[factory.Descriptor.Id] = pluginInfo;
+                    }
                     _factories.Add(factory.Descriptor.Id, factory);
                     _log.Write(GatewayLogLevel.Information, $"加载扩展驱动：{factory.Descriptor.Name} ({factory.Descriptor.Id})");
-                    if (manifest is not null)
-                        _plugins[factory.Descriptor.Id] = new(factory.Descriptor.Id, factory.Descriptor.Name,
-                            manifest.Version, Path.GetFileNameWithoutExtension(path), manifest.Sha256, "已加载");
                 }
                 _contexts.Add(context);
             }
