@@ -8,7 +8,15 @@ public sealed partial class MainForm
     private readonly TabControl _logTabs = new EditorLayout.EditorTabs { Name = "LoggingTabs", Dock = DockStyle.Fill, Multiline = true };
     private readonly Dictionary<string, Control> _loggingFields = [];
     private readonly Label _loggingState = UiTheme.Label("日志设置已保存。", 10, UiTheme.Muted);
-    private readonly Label _loggingFileState = EditorLayout.WrappingLabel("", color: UiTheme.Muted);
+    // Keep the status scrollable instead of an unbounded wrapping label: at the
+    // smallest supported work area the settings viewport is only 58 logical pixels high.
+    private readonly TextBox _loggingFileState = new()
+    {
+        Multiline = true, ReadOnly = true, AutoSize = false, Height = 48,
+        ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Top,
+        BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White, ForeColor = UiTheme.Muted,
+        AccessibleName = "日志文件状态，可滚动查看并复制完整内容"
+    };
     private Button _loggingApply = null!, _loggingReset = null!;
     private bool _loggingDirty, _bindingLogging;
 

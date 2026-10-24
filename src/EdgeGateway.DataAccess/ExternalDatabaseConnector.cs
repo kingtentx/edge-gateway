@@ -298,19 +298,19 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
         QualifiedTable(configuration.Provider, table);
         var schemaExpression = configuration.Provider switch
         {
-            ExternalDatabaseProvider.MySql => "COALESCE(NULLIF(@schema, ''), DATABASE())",
-            ExternalDatabaseProvider.PostgreSql => "COALESCE(NULLIF(@schema, ''), current_schema())",
-            _ => "NVL(:schema, SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA'))"
+            ExternalDatabaseProvider.MySql => "COALESCE(NULLIF(@eg_schema, ''), DATABASE())",
+            ExternalDatabaseProvider.PostgreSql => "COALESCE(NULLIF(@eg_schema, ''), current_schema())",
+            _ => "NVL(:eg_schema, SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA'))"
         };
         var sql = configuration.Provider switch
         {
-            ExternalDatabaseProvider.MySql => $"SELECT column_name, data_type, is_nullable, CASE WHEN column_default IS NULL THEN 'N' ELSE 'Y' END, extra, generation_expression FROM information_schema.columns WHERE table_schema = {schemaExpression} AND table_name = @table ORDER BY ordinal_position",
-            ExternalDatabaseProvider.PostgreSql => $"SELECT column_name, data_type, is_nullable, CASE WHEN column_default IS NULL THEN 'N' ELSE 'Y' END, is_identity, is_generated FROM information_schema.columns WHERE table_schema = {schemaExpression} AND table_name = @table ORDER BY ordinal_position",
-            _ => $"SELECT column_name, data_type, nullable, CASE WHEN default_length > 0 THEN 'Y' ELSE 'N' END, identity_column, virtual_column FROM all_tab_cols WHERE owner = {schemaExpression} AND table_name = :table AND hidden_column = 'NO' ORDER BY column_id"
+            ExternalDatabaseProvider.MySql => $"SELECT column_name, data_type, is_nullable, CASE WHEN column_default IS NULL THEN 'N' ELSE 'Y' END, extra, generation_expression FROM information_schema.columns WHERE table_schema = {schemaExpression} AND table_name = @eg_table_name ORDER BY ordinal_position",
+            ExternalDatabaseProvider.PostgreSql => $"SELECT column_name, data_type, is_nullable, CASE WHEN column_default IS NULL THEN 'N' ELSE 'Y' END, is_identity, is_generated FROM information_schema.columns WHERE table_schema = {schemaExpression} AND table_name = @eg_table_name ORDER BY ordinal_position",
+            _ => $"SELECT column_name, data_type, nullable, CASE WHEN default_length > 0 THEN 'Y' ELSE 'N' END, identity_column, virtual_column FROM all_tab_cols WHERE owner = {schemaExpression} AND table_name = :eg_table_name AND hidden_column = 'NO' ORDER BY column_id"
         };
         await using var command = Command(database, configuration, sql);
-        AddValueParameter(command, configuration.Provider, "schema", string.IsNullOrEmpty(table.Schema) ? null : table.Schema, DatabaseFieldType.Text);
-        AddValueParameter(command, configuration.Provider, "table", table.Name);
+        AddValueParameter(command, configuration.Provider, "eg_schema", string.IsNullOrEmpty(table.Schema) ? null : table.Schema, DatabaseFieldType.Text);
+        AddValueParameter(command, configuration.Provider, "eg_table_name", table.Name);
         var columns = new List<DatabaseColumnInfo>();
         await using var reader = await command.ExecuteReaderAsync(token).ConfigureAwait(false);
         while (await reader.ReadAsync(token).ConfigureAwait(false))
@@ -346,19 +346,19 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
         ValidateMappedColumns(expected, metadata);
         var schema = configuration.Provider switch
         {
-            ExternalDatabaseProvider.MySql => "COALESCE(NULLIF(@schema, ''), DATABASE())",
-            ExternalDatabaseProvider.PostgreSql => "COALESCE(NULLIF(@schema, ''), current_schema())",
-            _ => "NVL(:schema, SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA'))"
+            ExternalDatabaseProvider.MySql => "COALESCE(NULLIF(@eg_schema, ''), DATABASE())",
+            ExternalDatabaseProvider.PostgreSql => "COALESCE(NULLIF(@eg_schema, ''), current_schema())",
+            _ => "NVL(:eg_schema, SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA'))"
         };
         var sql = configuration.Provider switch
         {
-            ExternalDatabaseProvider.MySql => $"SELECT index_name, column_name FROM information_schema.statistics WHERE table_schema = {schema} AND table_name = @table AND non_unique = 0 ORDER BY index_name, seq_in_index",
-            ExternalDatabaseProvider.PostgreSql => $"SELECT tc.constraint_name, kcu.column_name FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage kcu ON tc.constraint_catalog = kcu.constraint_catalog AND tc.constraint_schema = kcu.constraint_schema AND tc.constraint_name = kcu.constraint_name AND tc.table_name = kcu.table_name WHERE tc.table_schema = {schema} AND tc.table_name = @table AND tc.constraint_type IN ('PRIMARY KEY', 'UNIQUE') ORDER BY tc.constraint_name, kcu.ordinal_position",
-            _ => $"SELECT c.constraint_name, k.column_name FROM all_constraints c JOIN all_cons_columns k ON c.owner = k.owner AND c.constraint_name = k.constraint_name AND c.table_name = k.table_name WHERE c.owner = {schema} AND c.table_name = :table AND c.constraint_type IN ('P', 'U') AND c.status = 'ENABLED' ORDER BY c.constraint_name, k.position"
+            ExternalDatabaseProvider.MySql => $"SELECT index_name, column_name FROM information_schema.statistics WHERE table_schema = {schema} AND table_name = @eg_table_name AND non_unique = 0 ORDER BY index_name, seq_in_index",
+            ExternalDatabaseProvider.PostgreSql => $"SELECT tc.constraint_name, kcu.column_name FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage kcu ON tc.constraint_catalog = kcu.constraint_catalog AND tc.constraint_schema = kcu.constraint_schema AND tc.constraint_name = kcu.constraint_name AND tc.table_name = kcu.table_name WHERE tc.table_schema = {schema} AND tc.table_name = @eg_table_name AND tc.constraint_type IN ('PRIMARY KEY', 'UNIQUE') ORDER BY tc.constraint_name, kcu.ordinal_position",
+            _ => $"SELECT c.constraint_name, k.column_name FROM all_constraints c JOIN all_cons_columns k ON c.owner = k.owner AND c.constraint_name = k.constraint_name AND c.table_name = k.table_name WHERE c.owner = {schema} AND c.table_name = :eg_table_name AND c.constraint_type IN ('P', 'U') AND c.status = 'ENABLED' ORDER BY c.constraint_name, k.position"
         };
         await using var command = Command(database, configuration, sql);
-        AddValueParameter(command, configuration.Provider, "schema", table.Schema.Length == 0 ? null : table.Schema, DatabaseFieldType.Text);
-        AddValueParameter(command, configuration.Provider, "table", table.Name);
+        AddValueParameter(command, configuration.Provider, "eg_schema", table.Schema.Length == 0 ? null : table.Schema, DatabaseFieldType.Text);
+        AddValueParameter(command, configuration.Provider, "eg_table_name", table.Name);
         var keys = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         await using (var reader = await command.ExecuteReaderAsync(token).ConfigureAwait(false))
         {
@@ -385,9 +385,9 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
 
     private static async Task RequireTransactionalMySqlTableAsync(DbConnection database, DatabaseConnectionConfiguration configuration, DatabaseTableInfo table, CancellationToken token)
     {
-        await using var command = Command(database, configuration, "SELECT engine FROM information_schema.tables WHERE table_schema = COALESCE(NULLIF(@schema, ''), DATABASE()) AND table_name = @table");
-        AddValueParameter(command, configuration.Provider, "schema", table.Schema.Length == 0 ? null : table.Schema, DatabaseFieldType.Text);
-        AddValueParameter(command, configuration.Provider, "table", table.Name);
+        await using var command = Command(database, configuration, "SELECT engine FROM information_schema.tables WHERE table_schema = COALESCE(NULLIF(@eg_schema, ''), DATABASE()) AND table_name = @eg_table_name");
+        AddValueParameter(command, configuration.Provider, "eg_schema", table.Schema.Length == 0 ? null : table.Schema, DatabaseFieldType.Text);
+        AddValueParameter(command, configuration.Provider, "eg_table_name", table.Name);
         var engine = Convert.ToString(await command.ExecuteScalarAsync(token).ConfigureAwait(false), CultureInfo.InvariantCulture);
         if (!string.Equals(engine, "InnoDB", StringComparison.OrdinalIgnoreCase))
             throw new ConnectorConfigurationException("MySQL 采集写入要求目标表使用 InnoDB，以保证整批提交和失败回滚。");
