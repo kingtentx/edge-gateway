@@ -11,10 +11,10 @@ internal sealed class DriverPluginDialog : DpiAwareForm
     private readonly Label _status = UiTheme.Label("仅安装可信来源的驱动 DLL。驱动代码将在网关进程内执行。", 10, UiTheme.Muted);
     private readonly string _pluginDirectory;
 
-    public DriverPluginDialog(IGatewayApplication application, string dataDirectory)
+    public DriverPluginDialog(IGatewayApplication application, string driverDirectory)
     {
         _application = application;
-        _pluginDirectory = Path.Combine(Path.GetFullPath(dataDirectory), "plugins");
+        _pluginDirectory = Path.GetFullPath(driverDirectory);
         Text = "驱动插件管理";
         Font = new Font("Microsoft YaHei UI", 10F);
         BackColor = Color.White;
