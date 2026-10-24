@@ -1,6 +1,8 @@
 name: Phase 2 acceptance evidence
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
