@@ -41,11 +41,12 @@ public sealed class GatewayHost : IAsyncDisposable
     public IGatewayApplication Application { get; }
 
     public static async Task<GatewayHost> CreateAsync(string dataDirectory, string? pluginDirectory = null,
-        CancellationToken cancellationToken = default, bool enableVerificationFaults = false)
+        CancellationToken cancellationToken = default, bool enableVerificationFaults = false, string? runtimeDirectory = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dataDirectory);
         cancellationToken.ThrowIfCancellationRequested();
         var directory = Path.GetFullPath(dataDirectory);
+        var runtimeRoot = Path.GetFullPath(runtimeDirectory ?? AppContext.BaseDirectory);
         FileStream? directoryLock = null;
         FileGatewayStore? store = null;
         SqliteConfigurationStore? configurations = null;
@@ -57,7 +58,7 @@ public sealed class GatewayHost : IAsyncDisposable
             Directory.CreateDirectory(directory);
             try
             {
-                directoryLock = new FileStream(Path.Combine(directory, "gateway.lock"), FileMode.OpenOrCreate,
+                directoryLock = new FileStream(Path.Combine(runtimeRoot, "gateway.lock"), FileMode.OpenOrCreate,
                     FileAccess.ReadWrite, FileShare.None);
             }
             catch (IOException exception)
@@ -73,9 +74,9 @@ public sealed class GatewayHost : IAsyncDisposable
                 // so a restart never depends on transient in-memory defaults.
                 await configurations.SaveAsync(configuration, cancellationToken).ConfigureAwait(false);
             }
-            store = new FileGatewayStore(Path.Combine(directory, "messaging"));
+            store = new FileGatewayStore(Path.Combine(runtimeRoot, "messaging"));
             await store.InitializeAsync(cancellationToken).ConfigureAwait(false);
-            log = new GatewayLog(Path.Combine(directory, "logs"));
+            log = new GatewayLog(Path.Combine(runtimeRoot, "logs"));
             log.ApplyConfiguration(configuration.Logging);
             var packagedDriversDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "drivers"));
             var driversDirectory = Path.GetFullPath(pluginDirectory ?? packagedDriversDirectory);
