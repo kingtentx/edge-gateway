@@ -1,6 +1,5 @@
-using EdgeGateway.DataAccess;
+using EdgeGateway.Application;
 using EdgeGateway.Model;
-using EdgeGateway.Service;
 using System.Text.Json;
 
 namespace EdgeGateway.WinForms;
@@ -9,24 +8,25 @@ public sealed partial class MainForm
 {
     private async Task SmokeDeviceImportAsync()
     {
-        if (!_smokeTest || _runtime.IsRunning)
+        if (!_smokeTest || _application.IsRunning)
             throw new InvalidOperationException("Device import verification requires an isolated, stopped smoke-test session.");
         var original = _configuration;
         var originalDirty = _dirty;
         var originalSelection = SelectedDevice()?.Id;
         var originalPage = _activePage;
-        var originalFooter = _footer.Text;
+        var originalFooter = _lastFeedback;
         try
         {
             var incoming = Clone(new GatewayConfiguration { Devices = [DemoConfiguration.CreateModbusRtuExample()] });
             var source = incoming.Devices.Single();
             // Represent an existing installation with its own settings and devices.
-            _configuration = Clone(original);
-            _configuration.Devices.RemoveAll(x => x.Id == source.Id);
-            _configuration.GatewayId = "device-import-smoke";
-            _configuration.Name = "保留当前网关";
-            _configuration.HistoryRetentionDays = 17;
-            _configuration.Mqtt.Host = "existing-broker.invalid";
+            var fixture = Clone(original);
+            fixture.Devices.RemoveAll(x => x.Id == source.Id);
+            fixture.GatewayId = "device-import-smoke";
+            fixture.Name = "保留当前网关";
+            fixture.HistoryRetentionDays = 17;
+            fixture.Mqtt.Host = "existing-broker.invalid";
+            await CommitConfigurationAsync(fixture, replaceCloudDraft: true);
             var before = DeviceImportSmokeJson(_configuration);
             await AppendImportedDevicesAsync(incoming);
 
@@ -63,19 +63,19 @@ public sealed partial class MainForm
             if (_tagGrid.Rows.Count != added.Tags.Count)
                 throw new InvalidOperationException("Imported RTU points are missing from the selected device grid.");
             SaveEditorScreenshot(this, "preset", "modbus-rtu-com11");
-            var factory = _drivers.GetFactory(added.DriverId);
+            var descriptor = _drivers.GetDescriptor(added.DriverId);
             using var editor = new DeviceConfigurationDialog(added, _drivers);
             editor.Show(this);
             try
             {
-                VerifyConfigurationSmokeFields(editor, factory.Descriptor, added);
+                VerifyConfigurationSmokeFields(editor, descriptor, added);
                 VerifyEditorLayout(editor, "imported RTU COM11 preset");
                 SaveEditorScreenshot(editor, "preset-configuration", "modbus-rtu-com11");
             }
             catch { SaveEditorScreenshot(editor, "preset-configuration-failed", "modbus-rtu-com11"); throw; }
             finally { editor.Close(); }
 
-            if (_runtime.IsRunning) throw new InvalidOperationException("Device import smoke unexpectedly started collection.");
+            if (_application.IsRunning) throw new InvalidOperationException("Device import smoke unexpectedly started collection.");
             Console.WriteLine("Device import smoke passed: append preserves existing gateway/platform/devices, deep-copy isolation, "
                 + "duplicate identities and enabled serial conflicts rejected without mutation, imported RTU points and COM11 configuration displayed; collection remained stopped.");
         }
@@ -102,5 +102,5 @@ public sealed partial class MainForm
     }
 
     private static string DeviceImportSmokeJson(GatewayConfiguration configuration) =>
-        JsonSerializer.Serialize(configuration, JsonConfigurationStore.SerializerOptions);
+        JsonSerializer.Serialize(configuration, GatewayJson.Options);
 }

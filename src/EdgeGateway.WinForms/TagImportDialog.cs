@@ -1,5 +1,5 @@
 using EdgeGateway.Model;
-using EdgeGateway.Service;
+using EdgeGateway.Application;
 using System.Text.Json;
 
 namespace EdgeGateway.WinForms;
@@ -19,16 +19,23 @@ internal sealed class TagImportDialog : EditorDialog
 
     public TagImportDialog(string deviceName, byte[] content, IReadOnlyList<TagConfiguration> existing,
         Func<IReadOnlyList<TagConfiguration>, IReadOnlyList<string>> validate)
-        : base("导入设备点位", "先预览点表与校验结果，再确认保存。追加会生成新点位标识；按名称更新会保留原标识和历史关联。任意错误都会拒绝整批导入。")
+        : base("导入设备点位", "选择导入方式，核对变更与校验结果后一次保存。")
     {
         Text = "导入点位 · " + deviceName;
         _content = content; _existing = existing; _validate = validate;
+        SetConfirmText("确认导入");
         var fields = AddTab("导入预览");
+        Section(fields, "导入方式", "按名称更新可保留原标识与历史关联；任意错误都会拒绝整批导入。");
         _mode = SelectInput(new object[] { "追加点位（重名将拒绝）", "按名称更新并追加（保留原标识）" }, "追加点位（重名将拒绝）");
         _mode.Name = "TagImportMode";
         Field(fields, "导入方式", _mode);
         _summary = EditorLayout.WrappingLabel("", 10, UiTheme.Ink, true);
-        Field(fields, "变更摘要", _summary);
+        _summary.Name = "TagImportSummary";
+        _summary.Padding = new Padding(12, 10, 12, 10);
+        _summary.Margin = new Padding(0, 8, 0, 8);
+        var summaryRow = fields.RowCount++; fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        fields.Controls.Add(_summary, 0, summaryRow); fields.SetColumnSpan(_summary, 2);
+        Section(fields, "点位预览", "优先显示新增与更新点位，最多 500 行。");
         UiTheme.AddColumn(_preview, "Change", "变更", 70, 70);
         UiTheme.AddColumn(_preview, "Name", "点位名称", 160, 160);
         UiTheme.AddColumn(_preview, "Address", "地址", 120);
@@ -50,8 +57,12 @@ internal sealed class TagImportDialog : EditorDialog
             Name = "TagImportErrors", Multiline = true, ReadOnly = true, Height = 100,
             ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle
         };
-        Field(fields, "校验结果", _errors);
-        Hint(fields, "预览优先展示新增和变化点位，最多 500 行；保存使用完整点表。文件中未出现的原点位保留。协议地址、方法和类型须符合当前驱动。");
+        Section(fields, "校验结果");
+        UiTheme.StyleInput(_errors);
+        _errors.AccessibleName = "点表校验结果";
+        row = fields.RowCount++; fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        fields.Controls.Add(_errors, 0, row); fields.SetColumnSpan(_errors, 2);
+        Hint(fields, "保存使用完整点表；文件中未出现的原点位保留。协议地址、方法和类型须符合当前驱动。");
         _mode.SelectedIndexChanged += (_, _) => RefreshPreview();
         RefreshPreview();
     }
@@ -61,9 +72,11 @@ internal sealed class TagImportDialog : EditorDialog
         Result = TagCsvExchange.Import(_content, _existing,
             _mode.SelectedIndex == 1 ? TagCsvImportMode.UpdateByName : TagCsvImportMode.Append);
         _validationErrors = Result.IsValid ? _validate(Result.Tags) : Result.Errors.Select(x => x.ToString()).ToArray();
-        _summary.Text = Result.IsValid
+        _summary.Text = Result.IsValid && _validationErrors.Count == 0
             ? $"新增 {Result.Added} 个，更新 {Result.Updated} 个；保存后共 {Result.TotalCount} 个点位。"
-            : "文件包含错误，本次不会导入任何点位。";
+            : "发现校验问题，本次尚未导入任何点位。";
+        _summary.BackColor = _validationErrors.Count == 0 ? Color.FromArgb(236, 248, 243) : Color.FromArgb(255, 245, 245);
+        _summary.ForeColor = _validationErrors.Count == 0 ? UiTheme.Green : UiTheme.Red;
         _errors.Text = _validationErrors.Count == 0 ? "校验通过，可以确认导入。" : string.Join(Environment.NewLine, _validationErrors);
         _errors.ForeColor = _validationErrors.Count == 0 ? UiTheme.Green : UiTheme.Red;
         var existing = _existing.ToDictionary(tag => tag.Id);
@@ -88,6 +101,9 @@ internal sealed class TagImportDialog : EditorDialog
         if (!Result.IsValid || _validationErrors.Count > 0)
             throw new InvalidDataException("点位未导入：\n" + string.Join("\n", _validationErrors.Take(30)));
     }
+
+    protected override Control? ResolveValidationField(Exception exception) =>
+        exception is InvalidDataException && _validationErrors.Count > 0 ? _errors : base.ResolveValidationField(exception);
 
     internal void SelectUpdateModeForSmoke() => _mode.SelectedIndex = 1;
 }

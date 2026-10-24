@@ -1,9 +1,4 @@
-using EdgeGateway.Abstractions;
-using EdgeGateway.DataAccess;
-using EdgeGateway.Driver.Modbus;
-using EdgeGateway.Driver.Simulator;
-using EdgeGateway.IotGateway;
-using EdgeGateway.Service;
+using EdgeGateway.Hosting;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -15,7 +10,7 @@ internal static class Program
     private static int Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
-        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
+        System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
         var layoutMatrix = args.Contains("--layout-matrix", StringComparer.OrdinalIgnoreCase);
         var smokeTest = layoutMatrix || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
         var screenshotIndex = Array.FindIndex(args, x => x.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
@@ -31,38 +26,12 @@ internal static class Program
             return 0;
         }
 
-        SqliteGatewayStore? store = null;
-        GatewayRuntime? runtime = null;
-        MqttTelemetryPublisher? publisher = null;
-        FileStream? dataLock = null;
+        GatewayHost? host = null;
         try
         {
-            Directory.CreateDirectory(dataDirectory);
-            try
-            {
-                dataLock = new FileStream(Path.Combine(dataDirectory, "gateway.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-            }
-            catch (IOException exception)
-            {
-                throw new InvalidOperationException("数据目录已被其他采集网关进程使用，请关闭对应进程后重试。", exception);
-            }
-            var configurationStore = new JsonConfigurationStore(Path.Combine(dataDirectory, "gateway.json"), DemoConfiguration.Create);
-            var configuration = configurationStore.LoadAsync().GetAwaiter().GetResult();
-            store = new SqliteGatewayStore(Path.Combine(dataDirectory, "gateway.db"));
-            store.InitializeAsync().GetAwaiter().GetResult();
-            var log = new GatewayLog(Path.Combine(dataDirectory, "logs"));
-            var builtInDrivers = new IDriverFactory[]
-            {
-                new SimulatorDriverFactory(), new ModbusTcpDriverFactory(), new ModbusRtuDriverFactory()
-            };
-            var drivers = new DriverRegistry(builtInDrivers.Concat(IotGatewayDriverCatalog.CreateFactories(log)), log);
-            drivers.LoadPlugins(Path.Combine(AppContext.BaseDirectory, "plugins"));
-            var errors = ConfigurationValidator.Validate(configuration, drivers);
-            if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors));
-            publisher = new MqttTelemetryPublisher();
-            runtime = new GatewayRuntime(configuration, drivers, store, publisher, log);
-            using var window = new MainForm(configuration, configurationStore, store, drivers, runtime, log, dataDirectory, smokeTest, screenshotPath, layoutMatrix);
-            Application.Run(window);
+            host = GatewayHost.CreateAsync(dataDirectory).GetAwaiter().GetResult();
+            using var window = new MainForm(host.Application, host.DataDirectory, smokeTest, screenshotPath, layoutMatrix);
+            System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }
         catch (Exception exception)
@@ -76,10 +45,7 @@ internal static class Program
         }
         finally
         {
-            try { runtime?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { /* Preserve original startup error. */ }
-            try { publisher?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { }
-            try { store?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { }
-            dataLock?.Dispose();
+            try { host?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { /* Preserve original startup error. */ }
             if (smokeTest)
             {
                 try { Directory.Delete(dataDirectory, true); } catch { }

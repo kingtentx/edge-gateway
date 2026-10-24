@@ -1,5 +1,17 @@
 # 结构参考与工程约束
 
+## 目录
+
+- [参考基准](#参考基准)
+- [当前分层与资源所有权](#当前分层与资源所有权)
+- [架构门禁](#架构门禁)
+- [运行流程](#运行流程)
+- [配置事务与会话边界](#配置事务与会话边界)
+- [采集、诊断与写入](#采集诊断与写入)
+- [上报与平台 RPC](#上报与平台-rpc)
+- [源码定位](#源码定位)
+- [迁移边界](#迁移边界)
+
 ## 参考基准
 
 上游：[iioter/iotgateway](https://github.com/iioter/iotgateway)。结构与源码迁移固定在提交 [`8de442a7dec52d2993d1e9667d799846936d681b`](https://github.com/iioter/iotgateway/commit/8de442a7dec52d2993d1e9667d799846936d681b)，该版本已升级到 .NET 10，采用 ASP.NET / WTM 的 B/S 界面。本项目主体按其模块职责独立实现，同时将全部 12 个原驱动工程与 PluginInterface 重新编译为 .NET 8，以适配层接入 WinForms；不提供与上游数据库或 .NET 10 驱动 DLL 的二进制兼容承诺。
@@ -12,14 +24,29 @@
 | Plugins/Drivers | Plugins/Drivers 下相同的 12 个原目录 | 保留方法与参数，逐工程迁移 .NET 8，每设备独立实例 |
 | DriverService | Service/DriverRegistry | 工厂注册、插件依赖解析与契约共享 |
 | DeviceService / DeviceThread | Service/GatewayRuntime、DeviceScanPlanner | 生命周期锁内局部重启；设备/通道互斥、点位扫描、降速、质量、真实诊断与写后读回 |
-| MessageService / PlatformHandler | Service/PlatformMqttAdapter、MqttTelemetryPublisher、GatewayRuntime.Rpc | Generic、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp 的主题/载荷/响应；持久补传与受控读写 RPC |
-| IoTGateway / ViewModel / WalkingTec.Mvvm | EdgeGateway.WinForms | 替换控制器、Web 视图和 WTM 依赖；七页及独立平台草稿 |
+| MessageService / PlatformHandler | Service/PlatformMqttAdapter、GatewayRuntime.Rpc 与 Infrastructure.Mqtt/MqttTelemetryPublisher | 核心保留五平台主题/载荷/响应规则与 RPC；具体 MQTTnet 传输独立，持久补传语义不变 |
+| IoTGateway / ViewModel / WalkingTec.Mvvm | WinForms + Application + Hosting | WinForms 交互、Application 用例、Hosting 资源组装；替换 Web/WTM，保留七页和平台独立草稿 |
+
+## 当前分层与资源所有权
+
+按 [项目架构](../../../../docs/architecture.md) 的依赖方向安排代码。WinForms 直接引用 Application/Hosting；页面和弹窗调用 `IGatewayApplication`，启动入口通过 `GatewayHost` 取得应用对象。应用层依赖 Service，负责最新配置上的命令、预览确认和查询，不持有控件。`IDriverCatalog` 只暴露驱动元数据和校验，不向编辑器提供工厂或协议连接。
+
+Hosting 创建数据目录占用、配置存储、SQLite、日志、原生与迁移驱动注册、MQTT 发布器、运行时及应用入口；创建本身不自动采集，窗口显示后的 AutoStart 继续决定是否启动。运行时持有并释放设备会话和驱动实例；宿主依次释放应用/运行时、发布器、存储与目录占用，初始化失败时清理已创建资源。首次默认配置开始采集前，由应用层先保存身份。
+
+Infrastructure.Mqtt 承担 MQTTnet/TLS/订阅/QoS 1 传输，复用 Service 的纯 `PlatformMqttAdapter`。Service 不反向引用基础设施或 MQTTnet，DataAccess 通过存储契约接入。不要仅移动文件却保留窗体自行创建存储、直接落盘、读取驱动工厂或调用具体 MQTT 实现的旧路径。应用层命令串行入口不替代运行时生命周期锁或设备/通道锁。
+
+## 架构门禁
+
+修改项目引用、应用契约或组合根后，在仓库根目录执行 `python scripts/verify-architecture.py`。脚本检查八个主层的精确直接引用、`src`/`Plugins` 下当前 24 个工程无环及引用有效、WinForms 和应用接口的具体实现隔离、Model/Service 包边界与 MQTTnet 唯一归属。详细检查范围与局限见 [架构边界自动门禁](../../../../docs/architecture.md#架构边界自动门禁)。
+
+Windows CI 的两个系统作业在 Restore/Build/Test 之前执行同一脚本。新增工程或获授权的依赖调整须同步检查规则和文档；不得只为通过检查而放宽边界。门禁成功仅说明所检查的静态规则满足，配置事务、并发、取消、资源清理和实际界面仍按 [验收规范](acceptance.md) 验证。
 
 ## 运行流程
 
 ```mermaid
 flowchart TD
-    UI["WinForms 配置与监控"] --> Config["生命周期锁内校验与原子保存"]
+    UI["WinForms 配置与监控"] --> App["Application 用例与配置命令"]
+    App --> Config["生命周期锁内校验与原子保存"]
     Config --> Runtime["采集与设备操作运行时"]
     Runtime --> Drivers["设备锁、通道租约与驱动实例"]
     Drivers --> Samples["原始值、工程值、质量与源时间戳"]
@@ -28,18 +55,18 @@ flowchart TD
     Samples --> Report["周期、变化或心跳选择"]
     Report --> Adapter["五平台主题与载荷"]
     Adapter --> Outbox["SQLite 待发送队列"]
-    Outbox --> MQTT["MQTT QoS 1"]
+    Outbox --> MQTT["MQTT 基础设施与 QoS 1"]
     MQTT --> Ack["PUBACK；ThingsCloud 另需属性成功"]
     Ack -->|"按确认 ID 删除"| Outbox
     MQTT --> RPC["有界 RPC 与持久写占位"]
     RPC -->|"真实读写"| Runtime
 ```
 
-配置编辑对象不得直接交给运行中的采集任务。驱动实例由运行时持有；存储和发布器由程序组合根持有和释放。普通采集与真实写入读回发布共享最新样本，历史仍由采集扫描链路保存。原生 UI 限 Windows；OPC DA 和 FOCAS 的实际调用还有 Windows、COM 或厂商原生库要求，不能将核心跨平台编译能力等同于这些驱动可在任意系统运行。
+配置编辑对象不得直接交给运行中的采集任务。驱动实例由运行时持有；存储和发布器由 Hosting 组合根持有和释放。普通采集与真实写入读回发布共享最新样本，历史仍由采集扫描链路保存。原生 UI 限 Windows；OPC DA 和 FOCAS 的实际调用还有 Windows、COM 或厂商原生库要求，不能将核心跨平台编译能力等同于这些驱动可在任意系统运行。
 
 ## 配置事务与会话边界
 
-`GatewayRuntime.ApplyConfigurationAsync` 接收完整候选及 `IConfigurationStore`，与设备启停共用生命周期锁。先深拷贝并校验所有设备和点位，再原子保存；提交前失败或取消不动现有会话。保存提交后完成同步，不再因调用方取消留下磁盘和运行时不同步的状态。
+桌面通过 `IGatewayApplication` 提交，应用层基于最新配置构建完整候选，再调用 `GatewayRuntime.ApplyConfigurationAsync`。运行时接收候选及 `IConfigurationStore`，与设备启停共用生命周期锁。先深拷贝并校验所有设备和点位，再原子保存；提交前失败或取消不动现有会话。保存提交后完成同步，不再因调用方取消留下磁盘和运行时不同步的状态。
 
 按稳定 ID 计算新增、变更和删除：新建与原本停止的设备保持停止；配置发生实质变化且原本运行的设备取消并等待旧会话与写入，再用新配置建立会话；禁用或删除只停止对应目标。其他设备的连接、状态、最新样本和共享历史/MQTT 工作任务保持不变。仅重启唯一运行设备时仍复用共享任务；禁用或删除最后一个运行目标时才排空历史并关闭共享 MQTT/RPC。旧 `Configure` 保留给全停初始化，不用于 UI 先保存后配置的流程。
 
@@ -65,7 +92,7 @@ flowchart TD
 
 `PlatformMqttAdapter` 生成 Generic、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp 的真实主题与 JSON，`MqttTelemetryPublisher` 负责 QoS 1、订阅确认、子设备通知与相应平台响应。四种非 ThingsCloud 模式收到 PUBACK 后才能删除 outbox；ThingsCloud 当前运行目标还须先完成匹配地址的注册应用确认，属性发送须同时取得 PUBACK 和 `gateway/attributes/response result=1`。拒绝、超时或响应丢失保留消息。停止或已删除目标的旧载荷仍补传，必要的临时历史路由不改变本地运行状态、质量或时间。上述确认不证明所有下游规则或业务入库，传输仍为至少一次；分设备消息按设备标识与消息 ID 联合去重。
 
-平台类型改变时，outbox 非空则在保存前拒绝；同平台连接目标变化也不会改写积压主题或载荷，应按界面确认和部署流程处理。平台详细字段、主题、应用响应及历史投递边界统一见 [平台接入与 RPC](../../../../docs/platform-protocols.md) 和 [遥测语义](../../../../docs/telemetry.md)。
+平台类型改变时，outbox 非空则在保存前拒绝；同平台连接目标变化也不会改写积压主题或载荷。应用层预览返回确认凭据、原目标、新目标及积压数量，UI 展示并确认，提交时再次核对当前配置、候选和队列；过期确认不能继续应用。平台详细字段、主题、应用响应及历史投递边界统一见 [平台接入与 RPC](../../../../docs/platform-protocols.md) 和 [遥测语义](../../../../docs/telemetry.md)。
 
 RPC 默认关闭，远程写许可另行关闭；仅开放 `read`/`write`，不暴露任意驱动方法、脚本、配置或启停命令。MQTT 回调进入有界队列，独立任务执行真实单点读取或统一写后读回，拒绝 retained、超限与过期请求，写入在设备锁内再核权限。SQLite `rpc_commands` 在写前持久占位、完成后保存回复；相同去重域内重复同 ID 重放，内容或方法冲突拒绝，未完成占位返回 Indeterminate 而不重写。去重域含平台/连接/网关/配置账号身份及设备，令牌使用环境变量名称而非可轮换内容；读响应只用有界进程缓存。写审计满时保留证据并拒绝新远程写，不宣称端到端恰好一次或无限期无容量限制。
 
@@ -82,4 +109,4 @@ RPC 默认关闭，远程写许可另行关闭；仅开放 `read`/`write`，不�
 
 全部 12 个驱动的目录、文件、原方法和参数有显式迁移清单与自动检查。完整信息见 [驱动迁移说明](../../../../docs/driver-migration.md)。保留 3 个本项目原生驱动入口，共 15 个工厂。驱动迁入和程序集加载不等于每个型号都经过现场验证；新增依赖核对许可证、目标框架和包版本，不直接复制上游 .NET 10 的包清单。
 
-上述结构只说明本项目已实现的核心采集与平台链路，不扩大为 Kepware 全部功能对等声明。OPC UA 对外服务端已彻底移除，南向 `OPC.UaClient` 继续保留。Windows Service、共享串口多从站、跨点计算、多用户 RBAC 及现场逐型号认证不在当前完成范围。本次变更与实际验证见 [服务端移除记录](../../../../docs/opc-ua-service-removal.md)；保留旧版本证据，构建、协议回环、Windows 等效工作区、真实系统 DPI/跨屏和现场联调分别记录，不将未通过或未执行的 CI 写成已完成。
+上述结构不扩大为 Kepware 全部功能对等声明。OPC UA 对外服务端已彻底移除，南向 `OPC.UaClient` 继续保留。Windows Service、共享串口多从站、跨点计算、多用户 RBAC 及现场逐型号认证不在当前完成范围。本轮分层与界面验证见 [界面操作与验收](../../../../docs/ui-usability.md)，删除服务端的上一版证据保留在 [移除记录](../../../../docs/opc-ua-service-removal.md)。构建、协议回环、Windows 等效工作区、真实系统 DPI/跨屏和现场联调分别记录，不将未通过或未执行的 CI 写成已完成。

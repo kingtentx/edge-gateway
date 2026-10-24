@@ -1,4 +1,4 @@
 interface:
   display_name: ".NET 8 WinForms 采集网关开发"
-  short_description: "维护 .NET 8 WinForms 采集网关、全部源驱动、MQTT/RPC 与 DPI 界面"
-  default_prompt: "使用 $develop-edge-gateway 开发 .NET 8 WinForms 采集网关，维护全部 12 个南向源驱动及其参数、方法和界面集成，验证采集、持久化、MQTT/RPC、DPI 与发布完整性。"
+  short_description: "维护采集网关分层架构、全部源驱动、MQTT/RPC、WinForms 操作与 DPI"
+  default_prompt: "使用 $develop-edge-gateway 维护 .NET 8 WinForms 采集网关的应用、宿主与 MQTT 分层，保留全部 12 个南向源驱动及采集语义，改进操作与 DPI 界面并记录实际验证。"

@@ -24,6 +24,8 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Verify all upstream drivers were migrated
         run: python scripts/verify-driver-migration.py
+      - name: Verify architecture boundaries
+        run: python scripts/verify-architecture.py
       - name: Restore
         run: dotnet restore EdgeGateway.sln
       - name: Build

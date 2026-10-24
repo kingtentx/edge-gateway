@@ -1,4 +1,5 @@
 using System.Globalization;
+using EdgeGateway.Model;
 
 namespace EdgeGateway.Service;
 
@@ -331,5 +332,3 @@ public static class NumericExpression
         private InvalidDataException Error(string message) => new($"计算表达式第 {_position + 1} 列：{message}。");
     }
 }
-
-public sealed record ExpressionPreview(bool Success, decimal? Value, string? Error);

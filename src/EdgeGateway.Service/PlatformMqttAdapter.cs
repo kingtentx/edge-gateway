@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using EdgeGateway.Model;
+using EdgeGateway.Abstractions;
 
 namespace EdgeGateway.Service;
 
@@ -125,7 +126,7 @@ public static class PlatformMqttAdapter
 
     public static PlatformRpcRequest? ParseRpc(GatewayConfiguration configuration, MqttInboundMessage message)
     {
-        if (message.Retained || Encoding.UTF8.GetByteCount(message.Payload) > MqttTelemetryPublisher.MaximumRpcPayloadBytes)
+        if (message.Retained || Encoding.UTF8.GetByteCount(message.Payload) > MqttTransportLimits.MaximumRpcPayloadBytes)
             throw new InvalidDataException("保留命令或超过 64 KiB 的 RPC 载荷被拒绝。");
         using var document = JsonDocument.Parse(message.Payload, new JsonDocumentOptions { MaxDepth = 16, CommentHandling = JsonCommentHandling.Disallow });
         var root = document.RootElement;

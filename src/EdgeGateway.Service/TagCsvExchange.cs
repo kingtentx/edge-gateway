@@ -4,21 +4,6 @@ using EdgeGateway.Model;
 
 namespace EdgeGateway.Service;
 
-public enum TagCsvImportMode { Append, UpdateByName }
-
-public sealed record TagCsvError(int LineNumber, string Column, string Message)
-{
-    public string Formatted => LineNumber > 0 ? $"第 {LineNumber} 行 [{Column}]：{Message}" : $"[{Column}]：{Message}";
-    public override string ToString() => Formatted;
-}
-
-public sealed record TagCsvImportResult(
-    IReadOnlyList<TagConfiguration> Tags, int Added, int Updated, IReadOnlyList<TagCsvError> Errors)
-{
-    public bool IsValid => Errors.Count == 0;
-    public int TotalCount => Tags.Count;
-}
-
 /// <summary>
 /// Pure, all-or-nothing tag exchange. Import returns a detached complete candidate and never saves or applies it.
 /// The caller must validate that candidate against the selected driver and the complete gateway before saving.

@@ -3,7 +3,118 @@ namespace EdgeGateway.WinForms;
 /// <summary>Layout rules shared by the editor forms and newly created driver fields.</summary>
 internal static class EditorLayout
 {
-    public static TableLayoutPanel Fields(int labelWidth = 155) => new FieldTable(labelWidth);
+    public static TableLayoutPanel Fields(int labelWidth = 168) => new FieldTable(labelWidth);
+
+    public static void Section(TableLayoutPanel table, string title, string? description = null)
+    {
+        var section = new TableLayoutPanel
+        {
+            Name = "EditorSection_" + table.RowCount, Dock = DockStyle.Fill,
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1, RowCount = string.IsNullOrWhiteSpace(description) ? 1 : 2,
+            BackColor = UiTheme.Background, Padding = new Padding(12, 8, 12, 8),
+            Margin = new Padding(0, table.RowCount == 0 ? 0 : 14, 0, 10)
+        };
+        section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var heading = WrappingLabel(title, 11, UiTheme.Ink, true);
+        heading.Margin = Padding.Empty;
+        section.Controls.Add(heading, 0, 0);
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            var detail = WrappingLabel(description, 10, UiTheme.Muted);
+            detail.Margin = new Padding(0, 3, 0, 0);
+            section.Controls.Add(detail, 0, 1);
+        }
+        section.SizeChanged += (_, _) =>
+        {
+            foreach (var label in section.Controls.OfType<Label>())
+                label.MaximumSize = new Size(Math.Max(1, section.ClientSize.Width - section.Padding.Horizontal - label.Margin.Horizontal), 0);
+        };
+        var row = table.RowCount++;
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table.Controls.Add(section, 0, row);
+        table.SetColumnSpan(section, 2);
+    }
+
+    public static void FieldNote(TableLayoutPanel table, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        var note = WrappingLabel(text, 10, UiTheme.Muted);
+        note.Margin = new Padding(0, 0, 0, 10);
+        var row = table.RowCount++;
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table.Controls.Add(note, 1, row);
+    }
+
+    /// <summary>Retain native tab selection and keyboard navigation, with a clear selected state.</summary>
+    internal sealed class EditorTabs : TabControl
+    {
+        private DpiAwareForm? _dpiHost;
+
+        public EditorTabs()
+        {
+            DrawMode = TabDrawMode.OwnerDrawFixed;
+            Padding = new Point(18, 9);
+        }
+
+        protected override void OnDrawItem(DrawItemEventArgs e)
+        {
+            if (e.Index < 0 || e.Index >= TabPages.Count) return;
+            var selected = e.Index == SelectedIndex;
+            var bounds = GetTabRect(e.Index);
+            using var background = new SolidBrush(selected ? Color.White : UiTheme.Background);
+            e.Graphics.FillRectangle(background, bounds);
+            using var selectedFont = new Font(Font, selected ? FontStyle.Bold : FontStyle.Regular);
+            var textBounds = Rectangle.Inflate(bounds, -UiTheme.Scale(this, 10), -UiTheme.Scale(this, 3));
+            TextRenderer.DrawText(e.Graphics, TabPages[e.Index].Text, selectedFont, textBounds,
+                selected ? UiTheme.Blue : UiTheme.Muted,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            if (selected)
+            {
+                using var accent = new SolidBrush(UiTheme.Blue);
+                var height = UiTheme.Scale(this, 3);
+                e.Graphics.FillRectangle(accent, bounds.Left + UiTheme.Scale(this, 8), bounds.Bottom - height,
+                    Math.Max(1, bounds.Width - UiTheme.Scale(this, 16)), height);
+                if (Focused && ShowFocusCues)
+                    ControlPaint.DrawFocusRectangle(e.Graphics, Rectangle.Inflate(bounds, -UiTheme.Scale(this, 4), -UiTheme.Scale(this, 5)));
+            }
+        }
+
+        protected override void OnSelectedIndexChanged(EventArgs e) { base.OnSelectedIndexChanged(e); Invalidate(); }
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            var host = FindForm() as DpiAwareForm;
+            if (!ReferenceEquals(host, _dpiHost))
+            {
+                if (_dpiHost is not null) _dpiHost.DpiLayoutCompleted -= OnHostDpiLayoutCompleted;
+                _dpiHost = host;
+                if (_dpiHost is not null) _dpiHost.DpiLayoutCompleted += OnHostDpiLayoutCompleted;
+            }
+            UpdatePadding();
+        }
+
+        protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); UpdatePadding(); }
+        private void OnHostDpiLayoutCompleted(object? sender, EventArgs e) => UpdatePadding();
+        private void UpdatePadding()
+        {
+            if (!IsHandleCreated || IsDisposed || _dpiHost is { IsDpiLayoutReady: false }) return;
+            // TabControl.Padding is a Point; the framework does not own this metric.
+            var padding = new Point(UiTheme.Scale(this, 18), UiTheme.Scale(this, 9));
+            if (Padding != padding) Padding = padding;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && _dpiHost is not null) _dpiHost.DpiLayoutCompleted -= OnHostDpiLayoutCompleted;
+            base.Dispose(disposing);
+        }
+    }
 
     internal sealed class FieldViewport : UserControl
     {
@@ -11,7 +122,7 @@ internal static class EditorLayout
         private bool _arranging;
         public TableLayoutPanel Table { get; }
 
-        public FieldViewport(int labelWidth = 155)
+        public FieldViewport(int labelWidth = 168)
         {
             SuspendLayout();
             AutoScaleMode = AutoScaleMode.Dpi;
@@ -42,7 +153,8 @@ internal static class EditorLayout
         protected override void OnLayout(LayoutEventArgs levent)
         {
             base.OnLayout(levent);
-            if (_initializing || _arranging || !IsHandleCreated || Table is null) return;
+            if (_initializing || _arranging || !IsHandleCreated || Table is null
+                || FindForm() is DpiAwareForm { IsDpiLayoutReady: false }) return;
             _arranging = true;
             try
             {
@@ -115,7 +227,8 @@ internal static class EditorLayout
                     {
                         var available = GetColumnSpan(label) > 1
                             ? ClientSize.Width - Padding.Horizontal
-                            : (int)ColumnStyles[0].Width;
+                            : GetColumn(label) == 0 ? (int)ColumnStyles[0].Width
+                                : ClientSize.Width - Padding.Horizontal - (int)ColumnStyles[0].Width;
                         var maximum = new Size(Math.Max(1, available - label.Margin.Horizontal), 0);
                         if (label.MaximumSize != maximum) label.MaximumSize = maximum;
                     }

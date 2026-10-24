@@ -4,7 +4,7 @@ using System.Drawing.Drawing2D;
 namespace EdgeGateway.WinForms;
 
 /// <summary>Native button semantics (keyboard/default/cancel/accessibility), with a shared visual treatment.</summary>
-internal sealed class ModernButton : Button
+internal class ModernButton : Button
 {
     private Bitmap? _glyphImage;
     private int _glyphSize;
@@ -159,11 +159,11 @@ internal sealed class DpiDataGridView : DataGridView
                 ColumnHeadersDefaultCellStyle.Font = _headerFont;
                 previous?.Dispose();
             }
-            DefaultCellStyle.Padding = UiTheme.Scale(this, new Padding(10, 6, 10, 6));
+            DefaultCellStyle.Padding = UiTheme.Scale(this, new Padding(10, 5, 10, 5));
             ColumnHeadersDefaultCellStyle.Padding = UiTheme.Scale(this, new Padding(10, 0, 10, 0));
             var textHeight = TextRenderer.MeasureText("采集 Ag", DefaultCellStyle.Font ?? Font).Height;
-            var rowHeight = Math.Max(UiTheme.Scale(this, 40), textHeight + DefaultCellStyle.Padding.Vertical + UiTheme.Scale(this, 2));
-            ColumnHeadersHeight = Math.Max(UiTheme.Scale(this, 44), TextRenderer.MeasureText("设备 Ag", ColumnHeadersDefaultCellStyle.Font ?? Font).Height + UiTheme.Scale(this, 14));
+            var rowHeight = Math.Max(UiTheme.Scale(this, 38), textHeight + DefaultCellStyle.Padding.Vertical + UiTheme.Scale(this, 2));
+            ColumnHeadersHeight = Math.Max(UiTheme.Scale(this, 40), TextRenderer.MeasureText("设备 Ag", ColumnHeadersDefaultCellStyle.Font ?? Font).Height + UiTheme.Scale(this, 12));
             RowTemplate.Height = rowHeight;
             foreach (DataGridViewRow row in Rows) if (row.Height != rowHeight) row.Height = rowHeight;
             foreach (var pair in _logicalColumnWidths)

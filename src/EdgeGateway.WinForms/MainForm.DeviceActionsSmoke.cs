@@ -1,4 +1,4 @@
-using EdgeGateway.DataAccess;
+using EdgeGateway.Application;
 using EdgeGateway.Model;
 using System.Diagnostics;
 using System.Text.Json;
@@ -9,13 +9,13 @@ public sealed partial class MainForm
 {
     private async Task SmokeDeviceActionsAndAutosaveAsync()
     {
-        if (!_smokeTest || _runtime.IsRunning)
+        if (!_smokeTest || _application.IsRunning)
             throw new InvalidOperationException("Device-action verification requires an isolated, stopped smoke-test session.");
         var original = Clone(_configuration);
         var originalDirty = _dirty;
         var originalSelection = SelectedDevice()?.Id;
         var originalPage = _activePage;
-        var originalFooter = _footer.Text;
+        var originalFooter = _lastFeedback;
         var originalFilter = (_realtimeDevice.SelectedItem as Choice)?.Id;
         var originalSearch = _realtimeSearch.Text;
         static void Check(bool condition, string message)
@@ -44,32 +44,32 @@ public sealed partial class MainForm
             await AssertSavedConfigurationForSmokeAsync("simulator fixture");
             ShowPage("devices");
             await DeviceRowActionAsync(b, DeviceStartColumnName);
-            await WaitFor(() => _runtime.GetLatest().Any(x => x.DeviceId == b && x.Quality == SampleQuality.Good), "B did not collect.");
-            Check(SelectedDevice()?.Id == a && !_runtime.IsDeviceRunning(a) && _runtime.IsDeviceRunning(b)
-                && _runtime.GetLatest().All(x => x.DeviceId == b), "starting row B redirected to selected A or started another device.");
+            await WaitFor(() => _application.GetLatest().Any(x => x.DeviceId == b && x.Quality == SampleQuality.Good), "B did not collect.");
+            Check(SelectedDevice()?.Id == a && !_application.IsDeviceRunning(a) && _application.IsDeviceRunning(b)
+                && _application.GetLatest().All(x => x.DeviceId == b), "starting row B redirected to selected A or started another device.");
             await DeviceRowActionAsync(a, DeviceStartColumnName);
             await DeviceRowActionAsync(a, DeviceStartColumnName);
-            await WaitFor(() => _runtime.GetLatest().Count(x => x.Quality == SampleQuality.Good) == 2, "both devices did not collect.");
-            Check(_runtime.IsDeviceRunning(a) && _runtime.IsDeviceRunning(b), "both sessions must be active.");
+            await WaitFor(() => _application.GetLatest().Count(x => x.Quality == SampleQuality.Good) == 2, "both devices did not collect.");
+            Check(_application.IsDeviceRunning(a) && _application.IsDeviceRunning(b), "both sessions must be active.");
             UpdateCommands();
             VerifyDeviceRowCommandsForSmoke("two running devices");
             SaveEditorScreenshot(this, "devices", "running");
 
             await DeviceRowActionAsync(b, DeviceStopColumnName);
-            var lastA = _runtime.GetLatest().Single(x => x.DeviceId == a).Timestamp;
-            await WaitFor(() => _runtime.GetLatest().Any(x => x.DeviceId == a && x.Timestamp > lastA && x.Quality == SampleQuality.Good), "A stopped sampling when B stopped.");
-            Check(_runtime.IsRunning && _runtime.IsDeviceRunning(a) && !_runtime.IsDeviceRunning(b)
-                && _runtime.GetLatest().Single(x => x.DeviceId == b).Quality == SampleQuality.Uncertain, "B's stopped snapshot or A's running state is incorrect.");
+            var lastA = _application.GetLatest().Single(x => x.DeviceId == a).Timestamp;
+            await WaitFor(() => _application.GetLatest().Any(x => x.DeviceId == a && x.Timestamp > lastA && x.Quality == SampleQuality.Good), "A stopped sampling when B stopped.");
+            Check(_application.IsRunning && _application.IsDeviceRunning(a) && !_application.IsDeviceRunning(b)
+                && _application.GetLatest().Single(x => x.DeviceId == b).Quality == SampleQuality.Uncertain, "B's stopped snapshot or A's running state is incorrect.");
             ShowPage("realtime");
             SelectChoice(_realtimeDevice, b); _realtimeSearch.Text = "";
-            RefreshRealtime(_runtime.GetLatest());
+            RefreshRealtime(_application.GetLatest());
             Check(_realtimeGrid.Rows.Count == 1, "stopped B must retain its visible last sample.");
             _realtimeGrid.CurrentCell = _realtimeGrid.Rows[0].Cells[0]; UpdateWriteButton();
             Check(!_writeButton.Enabled, "stopped B still allows point writes while A runs.");
-            SelectChoice(_realtimeDevice, a); RefreshRealtime(_runtime.GetLatest());
+            SelectChoice(_realtimeDevice, a); RefreshRealtime(_application.GetLatest());
             Check(_writeButton.Enabled, "running A lost point-write availability when B stopped.");
             await DeviceRowActionAsync(a, DeviceStopColumnName);
-            Check(!_runtime.IsRunning, "last device did not finish stopping shared services.");
+            Check(!_application.IsRunning, "last device did not finish stopping shared services.");
             ShowPage("devices"); UpdateCommands();
             VerifyDeviceRowCommandsForSmoke("all devices stopped");
             SaveEditorScreenshot(this, "devices", "stopped");
@@ -77,7 +77,7 @@ public sealed partial class MainForm
             var disabled = Clone(_configuration); disabled.Devices[1].Enabled = false;
             await CommitConfigurationAsync(disabled, a);
             await DeviceRowActionAsync(b, DeviceStartColumnName);
-            Check(!_runtime.IsRunning, "disabled row started collection.");
+            Check(!_application.IsRunning, "disabled row started collection.");
             var path = Path.Combine(_dataDirectory, "gateway.json");
             var before = DeviceImportSmokeJson(_configuration);
             var diskBefore = await File.ReadAllBytesAsync(path);
@@ -115,7 +115,7 @@ public sealed partial class MainForm
         }
         finally
         {
-            await _runtime.StopAsync();
+            await _application.StopAsync();
             await RestoreConfigurationForSmokeAsync(original);
             _dirty = originalDirty;
             RebindConfigurationViews(originalSelection);
@@ -169,7 +169,7 @@ public sealed partial class MainForm
         {
             if (item.DataBoundItem is not DeviceRow data) continue;
             var device = _configuration.Devices.Single(x => x.Id == data.Id);
-            var running = _runtime.IsDeviceRunning(device.Id);
+            var running = _application.IsDeviceRunning(device.Id);
             if (((DeviceActionButtonCell)item.Cells[DeviceStartColumnName]).ActionEnabled != (!_busy && !_closing && device.Enabled && !running)
                 || ((DeviceActionButtonCell)item.Cells[DeviceStopColumnName]).ActionEnabled != (!_busy && !_closing && running))
                 throw new InvalidOperationException(context + ": row command availability disagrees with its device session.");
@@ -178,19 +178,17 @@ public sealed partial class MainForm
 
     private async Task AssertSavedConfigurationForSmokeAsync(string context)
     {
-        var saved = await _configurationStore.LoadAsync();
-        if (JsonSerializer.Serialize(saved, JsonConfigurationStore.SerializerOptions)
-            != JsonSerializer.Serialize(_configuration, JsonConfigurationStore.SerializerOptions))
+        var saved = await _application.ReadSavedConfigurationAsync();
+        if (JsonSerializer.Serialize(saved, GatewayJson.Options)
+            != JsonSerializer.Serialize(_configuration, GatewayJson.Options))
             throw new InvalidOperationException(context + ": saved configuration differs from the applied UI configuration.");
     }
 
     private async Task RestoreConfigurationForSmokeAsync(GatewayConfiguration original)
     {
-        if (_runtime.IsRunning) throw new InvalidOperationException("Stop smoke collection before restoring configuration.");
-        await _configurationStore.SaveAsync(original);
-        _runtime.Configure(original);
-        _configuration = Clone(original);
-        _appliedMqtt = Clone(original.Mqtt);
+        if (_application.IsRunning) throw new InvalidOperationException("Stop smoke collection before restoring configuration.");
+        await _application.ReplaceConfigurationAsync(original);
+        _configuration = _application.GetConfiguration();
         ResetCloudDraft();
     }
 }

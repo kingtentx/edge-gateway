@@ -11,6 +11,11 @@ public sealed partial class MainForm
         UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Item", "诊断项目", 180, 180);
         UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Value", "当前值 / 最近事件", 260, 260);
         UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Meaning", "说明", 350, 350);
+        _telemetryDiagnosticsGrid.CellDoubleClick += (_, e) =>
+        {
+            if (e.RowIndex >= 0 && _telemetryDiagnosticsGrid.Rows[e.RowIndex].DataBoundItem is DiagnosticRow row)
+                MessageBox.Show(this, row.Value + "\n\n" + row.Meaning, row.Item, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        };
         return UiTheme.PageLayout("通信诊断", "检查采集与上报链路。发送确认按平台协议判断，最终业务入库仍需在平台核对。",
             UiTheme.Toolbar(UiTheme.Button("刷新状态", async (_, _) => await RefreshSnapshotsAsync()),
                 UiTheme.Button("导出诊断", async (_, _) => await RunBusyAsync(ExportDiagnosticsAsync))), _telemetryDiagnosticsGrid);
@@ -18,14 +23,14 @@ public sealed partial class MainForm
 
     private void RefreshTelemetryDiagnostics(StoreStatistics statistics)
     {
-        var status = _runtime.GetTelemetryStatus();
+        var status = _application.GetTelemetryStatus();
         static string Time(DateTimeOffset? value) => value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "尚无记录";
         var phase = !status.Enabled ? "上报未启用" : !status.Running ? "已停止" : status.Sending ? "正在发送"
             : status.SendError is not null ? "等待重试" : "等待待发送消息";
         var rows = new List<DiagnosticRow>
         {
             new("上报任务", phase, "使用已保存的设置；平台草稿不会影响当前任务。"),
-            new("MQTT 连接", _runtime.IsMqttConnected ? "已连接" : "未连接", "保持连接并按配置订阅 RPC；以最近确认判断实际发送结果。"),
+            new("MQTT 连接", _application.IsMqttConnected ? "已连接" : "未连接", "保持连接并按配置订阅 RPC；以最近确认判断实际发送结果。"),
             new("接入平台 / 上报策略", _configuration.Mqtt.Platform + " / " + _configuration.ReportMode, "变化上报基于最终工程值；失败入队不会前移比较基准。"),
             new("最近发送确认", Time(status.LastBrokerAcknowledgedAt), _configuration.Mqtt.Platform == MqttPlatform.ThingsCloud
                 ? "ThingsCloud 须同时收到 MQTT PUBACK 与 attributes/response 成功；不代表最终业务入库。"
@@ -43,7 +48,7 @@ public sealed partial class MainForm
             new("最近发送失败", Time(status.LastSendFailureAt), "最近失败事件时间，恢复后仍保留用于排查。"),
             new("本地历史记录", statistics.HistoryCount.ToString("N0"), "上传开关不影响本地采集和历史保存。")
         };
-        var rpc = _runtime.GetRpcStatus();
+        var rpc = _application.GetRpcStatus();
         rows.AddRange([
             new("RPC 订阅", !rpc.Enabled ? "未启用" : rpc.Subscribed ? "已订阅" : "等待连接 / 订阅", "仅接受 read/write 单点命令，保留消息不执行。"),
             new("远程写入权限", rpc.AllowRemoteWrite ? "已开启" : "关闭", "还需目标设备运行、点位启用并具有写权限。"),
@@ -53,14 +58,14 @@ public sealed partial class MainForm
             new("RPC 错误", rpc.Error ?? "无", "订阅失败、权限拒绝、无效参数和执行错误在此显示。")
         ]);
         var devices = _configuration.Devices.ToDictionary(d => d.Id);
-        foreach (var device in _runtime.GetCommunicationStatistics())
+        foreach (var device in _application.GetCommunicationStatistics())
         {
             var name = devices[device.DeviceId].Name;
             rows.Add(new(name + " · 通信批次", $"读 {device.ReadRequests} / 写 {device.WriteRequests} / 失败 {device.FailedRequests}", "读取按驱动调用批次计数；不是底层协议帧或字节计数。"));
             rows.Add(new(name + " · 最近耗时", device.LastDurationMs.ToString("F1") + " ms", Time(device.LastRequestAt) + "；不含通道排队等待。"));
             rows.Add(new(name + " · 故障降速", device.DemotedUntil is null ? "未降速" : "下一次重试 " + Time(device.DemotedUntil), device.LastError ?? "当前无通信错误"));
         }
-        _telemetryDiagnosticsGrid.DataSource = rows;
+        GridViewState.Rebind(_telemetryDiagnosticsGrid, rows, row => row.Item);
         foreach (DataGridViewRow row in _telemetryDiagnosticsGrid.Rows)
             if (row.DataBoundItem is DiagnosticRow data) row.Cells["Value"].ToolTipText = data.Value;
     }
@@ -72,11 +77,11 @@ public sealed partial class MainForm
         var snapshot = new
         {
             capturedAt = DateTimeOffset.UtcNow, gatewayId = _configuration.GatewayId,
-            telemetry = _runtime.GetTelemetryStatus(), rpc = _runtime.GetRpcStatus(),
-            devices = _runtime.GetDeviceStatuses(), communication = _runtime.GetCommunicationStatistics()
+            telemetry = _application.GetTelemetryStatus(), rpc = _application.GetRpcStatus(),
+            devices = _application.GetDeviceStatuses(), communication = _application.GetCommunicationStatistics()
         };
         await File.WriteAllTextAsync(dialog.FileName, System.Text.Json.JsonSerializer.Serialize(snapshot,
-            EdgeGateway.DataAccess.JsonConfigurationStore.SerializerOptions));
+            GatewayJson.Options));
         SetFooter("通信与 RPC 诊断快照已导出。");
     }
 

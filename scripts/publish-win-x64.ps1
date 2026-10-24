@@ -13,7 +13,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed: $LASTEXITCODE" }
     # Fail publication if any original upstream driver was left out of the application.
     $migration = Get-Content 'docs/driver-migration-manifest.json' -Raw | ConvertFrom-Json
-    $requiredAssemblies = @('EdgeGateway.IotGateway', 'PluginInterface', 'Interop.OPCAutomation', 'FontAwesome.Sharp',
+    $requiredAssemblies = @('EdgeGateway.Model', 'EdgeGateway.Abstractions', 'EdgeGateway.Application', 'EdgeGateway.Hosting',
+        'EdgeGateway.Service', 'EdgeGateway.DataAccess', 'EdgeGateway.Infrastructure.Mqtt', 'EdgeGateway.Driver.Simulator', 'EdgeGateway.Driver.Modbus',
+        'EdgeGateway.IotGateway', 'PluginInterface', 'Interop.OPCAutomation', 'FontAwesome.Sharp',
         'Opc.Ua.Client', 'Opc.Ua.Configuration', 'Opc.Ua.Core', 'Opc.Ua.Types', 'Opc.Ua.Security.Certificates') + @($migration.drivers | ForEach-Object { $_.assembly })
     foreach ($assembly in $requiredAssemblies) {
         if (-not (Test-Path (Join-Path $publishDirectory ($assembly + '.dll')))) {
@@ -50,7 +52,7 @@ try {
             throw 'Publication requires all 20 equivalent work-area cases and an explicit viewport-simulation boundary.'
         }
         if ($smoke.sourceCommit -ne $env:GITHUB_SHA -or $smoke.workflowRunId -ne $env:GITHUB_RUN_ID -or
-            $smoke.capabilitiesSmokePassed -ne $true -or $smoke.screenshotCount -ne 122 -or
+            $smoke.capabilitiesSmokePassed -ne $true -or $smoke.usabilitySmokePassed -ne $true -or $smoke.screenshotCount -ne 124 -or
             @($smoke.checkedPages).Count -ne 7 -or @($smoke.checkedDialogs).Count -ne 5) {
             throw 'Publication requires complete capability smoke evidence from this CI source and run.'
         }
@@ -68,6 +70,7 @@ try {
             checkedPageCount = @($smoke.checkedPages).Count
             checkedDialogTypeCount = @($smoke.checkedDialogs).Count
             capabilitiesSmokePassed = $smoke.capabilitiesSmokePassed
+            usabilitySmokePassed = $smoke.usabilitySmokePassed
             channelInputMetricsPerCase = $smoke.controlMetricCounts.channelInputMetrics
             writeVerificationMetricsPerCase = $smoke.controlMetricCounts.writeVerificationMetrics
         }

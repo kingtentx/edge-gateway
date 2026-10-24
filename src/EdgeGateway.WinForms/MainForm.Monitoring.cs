@@ -21,17 +21,23 @@ public sealed partial class MainForm
     private readonly TrendChart _trend = new() { Dock = DockStyle.Fill };
     private readonly Label _historySummary = UiTheme.Label("选择时间范围并查询，最多返回 10,000 条。", 9, UiTheme.Muted);
     private IReadOnlyList<TelemetrySample> _queriedHistory = [];
-    private Button _writeButton = null!;
+    private Button _writeButton = null!, _historyExport = null!;
+    private HistoryQuery? _executedHistoryQuery;
+    private string _executedHistorySummary = "";
+    private bool _historyConditionsChanged;
 
     private Control BuildRealtimePage()
     {
         ConfigureSampleColumns(_realtimeGrid, includeRaw: true);
         _realtimeGrid.CellFormatting += SampleCellFormatting;
         _realtimeGrid.SelectionChanged += (_, _) => UpdateWriteButton();
-        _realtimeDevice.SelectedIndexChanged += (_, _) => RefreshRealtime(_runtime.GetLatest());
-        _realtimeSearch.TextChanged += (_, _) => RefreshRealtime(_runtime.GetLatest());
+        _realtimeDevice.SelectedIndexChanged += (_, _) => RefreshRealtime(_application.GetLatest());
+        _realtimeSearch.TextChanged += (_, _) => RefreshRealtime(_application.GetLatest());
         _writeButton = UiTheme.Button("写入选中点位", async (_, _) => await RunBusyAsync(WritePointAsync));
-        var toolbar = UiTheme.Toolbar(UiTheme.Label("设备", 10, UiTheme.Muted), _realtimeDevice, _realtimeSearch, _writeButton);
+        _realtimeGrid.Name = "RealtimeValues";
+        _writeButton.Margin = new Padding(0, 23, 0, 6);
+        var toolbar = UiTheme.Toolbar(UiTheme.FilterField("采集设备", _realtimeDevice),
+            UiTheme.FilterField("查找点位", _realtimeSearch), _writeButton);
         return UiTheme.PageLayout("实时监控", "显示最新工程值、原始值和采样质量；只有配置为可写的点位才能手动写入。", toolbar, _realtimeGrid);
     }
 
@@ -41,22 +47,29 @@ public sealed partial class MainForm
         _historyGrid.CellFormatting += SampleCellFormatting;
         _historyDevice.SelectedIndexChanged += (_, _) => BindHistoryTags();
         var query = UiTheme.Button("查询", async (_, _) => await RunBusyAsync(QueryHistoryAsync), true);
-        var export = UiTheme.Button("导出本次查询", async (_, _) => await RunBusyAsync(ExportHistoryAsync));
+        _historyExport = UiTheme.Button("导出查询结果", async (_, _) => await RunBusyAsync(ExportHistoryAsync));
         var recent = UiTheme.Button("最近一小时", (_, _) => { _historyTo.Value = DateTime.Now; _historyFrom.Value = DateTime.Now.AddHours(-1); });
-        var toolbar = UiTheme.Toolbar(_historyDevice, _historyTag, _historyFrom, UiTheme.Label("至", 10, UiTheme.Muted), _historyTo,
-            UiTheme.Label("条数", 10, UiTheme.Muted), _historyLimit, query, recent, export);
+        foreach (var button in new[] { query, recent, _historyExport }) button.Margin = new Padding(0, 23, 8, 6);
+        var toolbar = UiTheme.Toolbar(UiTheme.FilterField("设备", _historyDevice), UiTheme.FilterField("点位", _historyTag),
+            UiTheme.FilterField("开始时间", _historyFrom), UiTheme.FilterField("结束时间", _historyTo),
+            UiTheme.FilterField("最多条数", _historyLimit), query, recent, _historyExport);
+        _historyDevice.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
+        _historyTag.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
+        _historyFrom.ValueChanged += (_, _) => UpdateHistoryQueryState();
+        _historyTo.ValueChanged += (_, _) => UpdateHistoryQueryState();
+        _historyLimit.ValueChanged += (_, _) => UpdateHistoryQueryState();
         var content = new TableLayoutPanel { Name = "HistoryContent", ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 205));
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        _trend.Name = "HistoryTrend"; _historySummary.Dock = DockStyle.Fill;
+        _trend.Name = "HistoryTrend"; _trend.Visible = false; _historySummary.Dock = DockStyle.Fill;
         content.Controls.Add(_trend, 0, 0); content.Controls.Add(_historySummary, 0, 1); content.Controls.Add(_historyGrid, 0, 2);
         void ArrangeSummary() { if (IsDpiLayoutReady) SetWrappingWidth(_historySummary, content.ClientSize.Width); }
         content.SizeChanged += (_, _) => ArrangeSummary();
         DpiLayoutCompleted += (_, _) => ArrangeSummary();
-        var viewport = ScrollableContent(content, "HistoryViewport", () => UiTheme.Scale(content, 405) + _historySummary.PreferredHeight);
-        return UiTheme.PageLayout("历史与趋势", "按本地时间查询 SQLite 采样历史，选择单个点位查看趋势；CSV 导出当前查询结果。", toolbar, viewport);
+        var viewport = ScrollableContent(content, "HistoryViewport", () => UiTheme.Scale(content, _trend.Visible ? 385 : 190) + _historySummary.PreferredHeight);
+        return UiTheme.PageLayout("历史与趋势", "选择设备、点位和时间范围查询；选中单个点位时同时显示趋势。", toolbar, viewport);
     }
 
     private Control BuildLogsPage()
@@ -64,7 +77,9 @@ public sealed partial class MainForm
         UiTheme.AddColumn(_logGrid, "Time", "时间", 165, 90);
         UiTheme.AddColumn(_logGrid, "Level", "级别", 80, 45);
         UiTheme.AddColumn(_logGrid, "Message", "日志内容", 300, 400);
-        _logLevel.Items.AddRange(new object[] { "全部级别", "Information", "Warning", "Error", "Debug" });
+        _logLevel.Items.AddRange(new object[] { new LogLevelChoice(null, "全部级别"),
+            new LogLevelChoice(GatewayLogLevel.Information, "信息"), new LogLevelChoice(GatewayLogLevel.Warning, "警告"),
+            new LogLevelChoice(GatewayLogLevel.Error, "错误"), new LogLevelChoice(GatewayLogLevel.Debug, "调试") });
         _logLevel.SelectedIndex = 0;
         _logLevel.SelectedIndexChanged += (_, _) => RefreshLogs();
         _logSearch.TextChanged += (_, _) => RefreshLogs();
@@ -74,7 +89,14 @@ public sealed partial class MainForm
                 e.CellStyle!.ForeColor = row.Level == "错误" ? UiTheme.Red : row.Level == "警告" ? Color.FromArgb(180, 83, 9) : UiTheme.Ink;
         };
         var export = UiTheme.Button("导出日志", async (_, _) => await RunBusyAsync(ExportLogsAsync));
-        return UiTheme.PageLayout("运行日志", "查看最近 500 条运行事件、连接异常、报警变化和手动写入记录。", UiTheme.Toolbar(_logLevel, _logSearch, export), _logGrid);
+        export.Margin = new Padding(0, 23, 0, 6);
+        _logGrid.CellDoubleClick += (_, e) =>
+        {
+            if (e.RowIndex >= 0 && _logGrid.Rows[e.RowIndex].DataBoundItem is LogRow row)
+                MessageBox.Show(this, row.Time + "  " + row.Level + "\n\n" + row.Message, "日志详情", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        };
+        return UiTheme.PageLayout("运行日志", "最近 500 条运行事件；双击记录查看完整详情。",
+            UiTheme.Toolbar(UiTheme.FilterField("日志级别", _logLevel), UiTheme.FilterField("查找内容", _logSearch), export), _logGrid);
     }
 
     private static ComboBox ChoiceBox(int width)
@@ -131,15 +153,13 @@ public sealed partial class MainForm
     private void RefreshRealtime(IReadOnlyList<TelemetrySample> samples)
     {
         if (_writeButton is null) return;
-        var selectedId = (_realtimeGrid.CurrentRow?.DataBoundItem as SampleRow)?.Sample.TagId;
         var deviceId = (_realtimeDevice.SelectedItem as Choice)?.Id;
         var search = _realtimeSearch.Text.Trim();
-        _realtimeGrid.DataSource = samples.Where(s => (!deviceId.HasValue || s.DeviceId == deviceId)
-            && (search.Length == 0 || s.TagName.Contains(search, StringComparison.OrdinalIgnoreCase) || s.Address.Contains(search, StringComparison.OrdinalIgnoreCase)))
-            .OrderBy(s => s.DeviceName).ThenBy(s => s.TagName).Select(ToRow).ToList();
-        if (selectedId.HasValue)
-            foreach (DataGridViewRow row in _realtimeGrid.Rows)
-                if (row.DataBoundItem is SampleRow sample && sample.Sample.TagId == selectedId.Value) { _realtimeGrid.CurrentCell = row.Cells[0]; break; }
+        var rows = samples.Where(sample => (!deviceId.HasValue || sample.DeviceId == deviceId)
+            && (search.Length == 0 || sample.TagName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || sample.Address.Contains(search, StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(sample => sample.DeviceName).ThenBy(sample => sample.TagName).Select(ToRow).ToList();
+        GridViewState.Rebind(_realtimeGrid, rows, row => (row.Sample.DeviceId, row.Sample.TagId));
         UpdateWriteButton();
     }
 
@@ -149,7 +169,7 @@ public sealed partial class MainForm
         var sample = (_realtimeGrid.CurrentRow?.DataBoundItem as SampleRow)?.Sample;
         var device = _configuration.Devices.FirstOrDefault(x => x.Id == sample?.DeviceId);
         var tag = device?.Tags.FirstOrDefault(x => x.Id == sample?.TagId);
-        _writeButton.Enabled = !_busy && !_closing && device is not null && _runtime.IsDeviceRunning(device.Id) && device.Enabled && tag?.Enabled == true && tag.Writable;
+        _writeButton.Enabled = !_busy && !_closing && device is not null && _application.IsDeviceRunning(device.Id) && device.Enabled && tag?.Enabled == true && tag.Writable;
     }
 
     private async Task WritePointAsync()
@@ -157,7 +177,7 @@ public sealed partial class MainForm
         var sample = (_realtimeGrid.CurrentRow?.DataBoundItem as SampleRow)?.Sample;
         if (sample is null) return;
         var tag = _configuration.Devices.First(d => d.Id == sample.DeviceId).Tags.First(t => t.Id == sample.TagId);
-        if (!tag.Enabled || !tag.Writable || !_runtime.IsDeviceRunning(sample.DeviceId)) throw new InvalidOperationException("该点位未启用写入，或采集尚未启动。");
+        if (!tag.Enabled || !tag.Writable || !_application.IsDeviceRunning(sample.DeviceId)) throw new InvalidOperationException("该点位未启用写入，或采集尚未启动。");
         var current = sample.Value switch
         {
             null => "", double number => number.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
@@ -166,7 +186,7 @@ public sealed partial class MainForm
         using var dialog = new WriteValueDialog(sample.DeviceName, sample.TagName, sample.Unit, current, tag.DataType);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         if (MessageBox.Show(this, $"确认向设备“{sample.DeviceName}”的点位“{sample.TagName}”写入工程值 {dialog.Value} {sample.Unit}？\n\n此操作会发送实际设备写入命令。", "确认设备写入", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK) return;
-        var result = await _runtime.WriteVerifiedAsync(sample.DeviceId, sample.TagId, dialog.Value, dialog.VerificationOptions);
+        var result = await _application.WriteVerifiedAsync(sample.DeviceId, sample.TagId, dialog.Value, dialog.VerificationOptions);
         var state = result.State switch
         {
             WriteCommandState.Matched => "写入后读回一致", WriteCommandState.Submitted => "已提交写入（未执行读回）",
@@ -186,13 +206,33 @@ public sealed partial class MainForm
         if (_historyFrom.Value >= _historyTo.Value) throw new InvalidOperationException("开始时间必须早于结束时间。");
         var deviceId = (_historyDevice.SelectedItem as Choice)?.Id;
         var tagId = (_historyTag.SelectedItem as Choice)?.Id;
+        var queriedDeviceName = _historyDevice.Text;
+        var queriedTagName = _historyTag.Text;
         var query = new HistoryQuery(deviceId, tagId, new DateTimeOffset(_historyFrom.Value), new DateTimeOffset(_historyTo.Value), (int)_historyLimit.Value);
-        _queriedHistory = await _store.QueryHistoryAsync(query);
+        _queriedHistory = await _application.QueryHistoryAsync(query);
         _historyGrid.DataSource = _queriedHistory.Select(ToRow).ToList();
-        _trend.SetSamples(tagId.HasValue ? _queriedHistory : [], tagId.HasValue ? _historyTag.Text : "选择单个点位后查询，查看数值趋势");
-        var limited = _queriedHistory.Count == query.Limit ? "；已达到条数上限，请缩小时间范围查看更完整数据" : "";
-        _historySummary.Text = $"共 {_queriedHistory.Count:N0} 条，按时间从新到旧排列{limited}。";
+        _executedHistoryQuery = query;
+        _trend.Visible = tagId.HasValue;
+        if (_trend.Parent is TableLayoutPanel historyLayout)
+            historyLayout.RowStyles[0].Height = tagId.HasValue ? UiTheme.Scale(_trend, 205) : 0;
+        _trend.SetSamples(tagId.HasValue ? _queriedHistory : [], tagId.HasValue ? queriedTagName : "");
+        var limited = _queriedHistory.Count == query.Limit ? "；已达到条数上限，可缩小时间范围" : "";
+        _executedHistorySummary = $"{queriedDeviceName} / {queriedTagName}  ·  {query.From:MM-dd HH:mm} — {query.To:MM-dd HH:mm}  ·  {_queriedHistory.Count:N0} 条{limited}。";
+        UpdateHistoryQueryState();
         SetFooter("历史查询完成。");
+    }
+
+    private void UpdateHistoryQueryState()
+    {
+        if (_historyExport is null) return;
+        var current = new HistoryQuery((_historyDevice.SelectedItem as Choice)?.Id, (_historyTag.SelectedItem as Choice)?.Id,
+            new DateTimeOffset(_historyFrom.Value), new DateTimeOffset(_historyTo.Value), (int)_historyLimit.Value);
+        _historyConditionsChanged = _executedHistoryQuery is not null && current != _executedHistoryQuery;
+        _historySummary.Text = _executedHistoryQuery is null ? "选择查询条件后点击“查询”。可按单个点位查看趋势。"
+            : (_historyConditionsChanged ? "查询条件已修改，请重新查询。下方仍为上次结果：\n" : "查询结果：") + _executedHistorySummary;
+        _historySummary.ForeColor = _historyConditionsChanged ? UiTheme.Warning : UiTheme.Muted;
+        _historyExport.Text = _historyConditionsChanged ? "导出上次结果" : "导出查询结果";
+        _historyExport.Enabled = !_busy && !_closing && _queriedHistory.Count > 0;
     }
 
     private async Task ExportHistoryAsync()
@@ -211,11 +251,12 @@ public sealed partial class MainForm
 
     private void RefreshLogs()
     {
-        var level = _logLevel.SelectedIndex > 0 ? _logLevel.SelectedItem?.ToString() : null;
+        var level = (_logLevel.SelectedItem as LogLevelChoice)?.Level;
         var search = _logSearch.Text.Trim();
-        _logGrid.DataSource = _log.GetEntries(500).Where(x => (level is null || x.Level.ToString() == level)
+        var rows = _log.GetEntries(500).Where(x => (!level.HasValue || x.Level == level)
             && (search.Length == 0 || x.Message.Contains(search, StringComparison.OrdinalIgnoreCase)))
             .OrderByDescending(x => x.Timestamp).Select(x => new LogRow(x.Timestamp.ToLocalTime().ToString("MM-dd HH:mm:ss.fff"), LogLevelText(x.Level), x.Message)).ToList();
+        GridViewState.Rebind(_logGrid, rows, row => (row.Time, row.Level, row.Message));
     }
 
     private async Task ExportLogsAsync()
@@ -241,5 +282,6 @@ public sealed partial class MainForm
             e.CellStyle!.ForeColor = row.Sample.Quality == SampleQuality.Good ? UiTheme.Green : row.Sample.Quality == SampleQuality.Bad ? UiTheme.Red : Color.FromArgb(180, 83, 9);
     }
     private sealed record SampleRow(TelemetrySample Sample, string Device, string Tag, string Address, string Value, string RawValue, string Unit, string Quality, string Time, string Error);
+    private sealed record LogLevelChoice(GatewayLogLevel? Level, string Name) { public override string ToString() => Name; }
     private sealed record LogRow(string Time, string Level, string Message);
 }

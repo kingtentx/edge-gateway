@@ -15,11 +15,17 @@
     <ProjectReference Include="../../src/EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />
     <ProjectReference Include="../../src/EdgeGateway.DataAccess/EdgeGateway.DataAccess.csproj" />
     <ProjectReference Include="../../src/EdgeGateway.Service/EdgeGateway.Service.csproj" />
+    <ProjectReference Include="../../src/EdgeGateway.Application/EdgeGateway.Application.csproj" />
+    <ProjectReference Include="../../src/EdgeGateway.Hosting/EdgeGateway.Hosting.csproj" />
+    <ProjectReference Include="../../src/EdgeGateway.Infrastructure.Mqtt/EdgeGateway.Infrastructure.Mqtt.csproj" />
     <ProjectReference Include="../../src/EdgeGateway.IotGateway/EdgeGateway.IotGateway.csproj" />
     <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Simulator/EdgeGateway.Driver.Simulator.csproj" />
     <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Modbus/EdgeGateway.Driver.Modbus.csproj" />
   </ItemGroup>
-  <ItemGroup><Using Include="Xunit" /></ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="EdgeGateway.Infrastructure.Mqtt" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/EdgeGateway.WinForms/DpiLayoutMath.cs" Link="DpiLayoutMath.cs" />
   </ItemGroup>

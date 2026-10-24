@@ -20,12 +20,7 @@
     <PackageReference Include="FontAwesome.Sharp" Version="6.6.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../EdgeGateway.Model/EdgeGateway.Model.csproj" />
-    <ProjectReference Include="../EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />
-    <ProjectReference Include="../EdgeGateway.DataAccess/EdgeGateway.DataAccess.csproj" />
-    <ProjectReference Include="../EdgeGateway.Service/EdgeGateway.Service.csproj" />
-    <ProjectReference Include="../EdgeGateway.IotGateway/EdgeGateway.IotGateway.csproj" />
-    <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Simulator/EdgeGateway.Driver.Simulator.csproj" />
-    <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Modbus/EdgeGateway.Driver.Modbus.csproj" />
+    <ProjectReference Include="../EdgeGateway.Application/EdgeGateway.Application.csproj" />
+    <ProjectReference Include="../EdgeGateway.Hosting/EdgeGateway.Hosting.csproj" />
   </ItemGroup>
 </Project>

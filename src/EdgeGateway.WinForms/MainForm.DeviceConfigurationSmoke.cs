@@ -1,5 +1,5 @@
 using EdgeGateway.Abstractions;
-using EdgeGateway.DataAccess;
+using EdgeGateway.Application;
 using EdgeGateway.Model;
 using System.Diagnostics;
 using System.Globalization;
@@ -11,17 +11,16 @@ public sealed partial class MainForm
 {
     private async Task SmokeDeviceConfigurationsAsync()
     {
-        if (!_smokeTest || _runtime.IsRunning)
+        if (!_smokeTest || _application.IsRunning)
             throw new InvalidOperationException("Device configuration verification requires an isolated, stopped smoke-test session.");
         var roundTrips = new HashSet<string>(StringComparer.Ordinal) { "PLC.SiemensS7", "PLC.ModBusMaster", "modbus-tcp" };
         foreach (var descriptor in _drivers.Drivers)
         {
-            var factory = _drivers.GetFactory(descriptor.Id);
             // Serialize the fixture through the application's real configuration format.
             // Every field starts with a recognizable saved value instead of an empty draft.
             var original = Clone(CreateConfigurationSmokeDevice(descriptor));
             var originalJson = ConfigurationSmokeJson(original);
-            AssertConfigurationSmokeFixture(factory, original);
+            AssertConfigurationSmokeFixture(_drivers, original);
             DeviceConfiguration? committed = null;
             using (var editor = new DeviceConfigurationDialog(original, _drivers))
             {
@@ -80,7 +79,7 @@ public sealed partial class MainForm
         SmokeInvalidDeviceConfiguration();
         await SmokeExistingDeviceDriverChangeAsync();
         await SmokeDeviceConfigurationRowActionsAsync();
-        if (_runtime.IsRunning) throw new InvalidOperationException("Configuration smoke unexpectedly started collection.");
+        if (_application.IsRunning) throw new InvalidOperationException("Configuration smoke unexpectedly started collection.");
         Console.WriteLine($"Device configuration smoke passed: {_drivers.Drivers.Count} dedicated driver windows with saved values/layouts, "
             + "3 representative edit/reopen flows preserving identity/tags, cancel isolation, read-only view, "
             + "factory-rejected invalid station, and a non-selected-row modal apply; collection remained stopped.");
@@ -228,7 +227,7 @@ public sealed partial class MainForm
     }
 
     private static string ConfigurationSmokeJson(DeviceConfiguration configuration) =>
-        JsonSerializer.Serialize(configuration, JsonConfigurationStore.SerializerOptions);
+        JsonSerializer.Serialize(configuration, GatewayJson.Options);
 
     private static void AssertConfigurationSmokeEqual(DeviceConfiguration expected, DeviceConfiguration actual, string context) =>
         AssertConfigurationSmokeUnchanged(ConfigurationSmokeJson(expected), actual, context);
@@ -239,22 +238,22 @@ public sealed partial class MainForm
             throw new InvalidOperationException(context + ": device identity, tags, or configuration values changed unexpectedly.");
     }
 
-    private static void AssertConfigurationSmokeFixture(IDriverFactory factory, DeviceConfiguration device)
+    private static void AssertConfigurationSmokeFixture(IDriverCatalog catalog, DeviceConfiguration device)
     {
-        var errors = factory.Validate(device);
-        if (errors.Count > 0) throw new InvalidOperationException(factory.Descriptor.Id + " configuration smoke fixture is invalid: " + string.Join("; ", errors));
+        var errors = catalog.Validate(device);
+        if (errors.Count > 0) throw new InvalidOperationException(catalog.GetDescriptor(device.DriverId).Id + " configuration smoke fixture is invalid: " + string.Join("; ", errors));
     }
 
     private void SmokeReadOnlyDeviceConfiguration()
     {
-        var factory = _drivers.GetFactory("PLC.ModBusMaster");
-        var device = CreateConfigurationSmokeDevice(factory.Descriptor);
+        var descriptor = _drivers.GetDescriptor("PLC.ModBusMaster");
+        var device = CreateConfigurationSmokeDevice(descriptor);
         var before = ConfigurationSmokeJson(device);
         using var editor = new DeviceConfigurationDialog(device, _drivers, readOnly: true);
         editor.Show(this);
         try
         {
-            VerifyConfigurationSmokeFields(editor, factory.Descriptor, device);
+            VerifyConfigurationSmokeFields(editor, descriptor, device);
             VerifyEditorLayout(editor, "read-only dedicated configuration");
             if (editor.SmokeCommands.Count != 1 || editor.SmokeCommands[0].Text != "关闭")
                 throw new InvalidOperationException("Read-only configuration exposes an apply command.");
@@ -270,8 +269,8 @@ public sealed partial class MainForm
 
     private void SmokeInvalidDeviceConfiguration()
     {
-        var factory = _drivers.GetFactory("PLC.ModBusMaster");
-        var original = CreateConfigurationSmokeDevice(factory.Descriptor);
+        var descriptor = _drivers.GetDescriptor("PLC.ModBusMaster");
+        var original = CreateConfigurationSmokeDevice(descriptor);
         var before = ConfigurationSmokeJson(original);
         var invalid = Clone(original);
         invalid.Properties["SlaveAddress"] = "0";
@@ -282,23 +281,23 @@ public sealed partial class MainForm
             // Zero fits the reflected byte input, but the actual protocol factory
             // must reject a broadcast station rather than accepting an unsafe draft.
             editor.SetFieldForSmoke("Properties.SlaveAddress", "0");
-            AssertConfigurationFactoryRejection(editor, factory, invalid);
+            AssertConfigurationFactoryRejection(editor, _drivers, invalid);
             AssertConfigurationSmokeUnchanged(before, original, "rejected station edit");
         }
         catch { TrySaveSmokeFailure(editor, "configuration-invalid-station-failed"); throw; }
         finally { editor.Close(); }
     }
 
-    private static void AssertConfigurationFactoryRejection(DeviceConfigurationDialog editor, IDriverFactory factory, DeviceConfiguration invalid)
+    private static void AssertConfigurationFactoryRejection(DeviceConfigurationDialog editor, IDriverCatalog catalog, DeviceConfiguration invalid)
     {
         var candidate = Clone(invalid); candidate.Tags = [];
-        var expectedErrors = factory.Validate(candidate);
-        if (expectedErrors.Count == 0) throw new InvalidOperationException(factory.Descriptor.Id + ": invalid fixture was accepted by its driver factory.");
+        var expectedErrors = catalog.Validate(candidate);
+        if (expectedErrors.Count == 0) throw new InvalidOperationException(invalid.DriverId + ": invalid fixture was accepted by its driver factory.");
         Exception? rejection = null;
         try { editor.CommitForSmoke(); }
         catch (InvalidOperationException exception) { rejection = exception; }
         if (rejection is null || editor.Value is not null || expectedErrors.Any(error => !rejection.Message.Contains(error, StringComparison.Ordinal)))
-            throw new InvalidOperationException(factory.Descriptor.Id + ": configuration dialog did not preserve the actual factory rejection: " + string.Join("; ", expectedErrors), rejection);
+            throw new InvalidOperationException(invalid.DriverId + ": configuration dialog did not preserve the actual factory rejection: " + string.Join("; ", expectedErrors), rejection);
     }
 
     private async Task SmokeExistingDeviceDriverChangeAsync()
@@ -308,7 +307,7 @@ public sealed partial class MainForm
         var originalSelection = SelectedDevice()?.Id;
         try
         {
-            var device = CreateConfigurationSmokeDevice(_drivers.GetFactory("simulator").Descriptor);
+            var device = CreateConfigurationSmokeDevice(_drivers.GetDescriptor("simulator"));
             device.Tags[0].Address = "ramp";
             var fixture = Clone(_configuration); fixture.Devices = [device];
             await CommitConfigurationAsync(fixture, device.Id);
@@ -323,8 +322,8 @@ public sealed partial class MainForm
                 editor.SetFieldForSmoke("Host", "192.0.2.44");
                 var changed = editor.CommitForSmoke();
                 if (changed.Id != source.Id || changed.DriverId != "modbus-tcp"
-                    || JsonSerializer.Serialize(changed.Tags, JsonConfigurationStore.SerializerOptions)
-                        != JsonSerializer.Serialize(source.Tags, JsonConfigurationStore.SerializerOptions))
+                    || JsonSerializer.Serialize(changed.Tags, GatewayJson.Options)
+                        != JsonSerializer.Serialize(source.Tags, GatewayJson.Options))
                     throw new InvalidOperationException("Changing an existing device driver replaced its identity or points.");
                 var candidate = Clone(_configuration); candidate.Devices[0] = changed;
                 var rejected = false;
@@ -352,23 +351,25 @@ public sealed partial class MainForm
         var originalDirty = _dirty;
         var originalPage = _activePage;
         var originalSelection = SelectedDevice()?.Id;
-        var originalFooter = _footer.Text;
-        var descriptor = _drivers.GetFactory("modbus-tcp").Descriptor;
+        var originalFooter = _lastFeedback;
+        var descriptor = _drivers.GetDescriptor("modbus-tcp");
         var selected = CreateConfigurationSmokeDevice(descriptor); selected.Name = "选中设备 A"; selected.Host = "192.0.2.31";
         var target = CreateConfigurationSmokeDevice(descriptor); target.Name = "点击配置设备 B"; target.Host = "192.0.2.32";
         var selectedJson = ConfigurationSmokeJson(selected);
         var targetJson = ConfigurationSmokeJson(target);
         try
         {
-            _configuration = Clone(originalConfiguration);
-            // Deliberately place B before A: neither CurrentRow nor a remembered list
-            // index may redirect a row action intended for B to the selected device A.
-            _configuration.Devices = [target, selected];
-            _dirty = false; RebindConfigurationViews(selected.Id); UpdateCommands(); ShowPage("devices");
+            var fixture = Clone(originalConfiguration);
+            // Build fixtures through the same application transaction as production.
+            // B precedes A so current selection cannot redirect B's row operation.
+            fixture.Devices = [target, selected];
+            await CommitConfigurationAsync(fixture, selected.Id, replaceCloudDraft: true);
+            ShowPage("devices");
             var column = _deviceGrid.Columns[DeviceConfigurationColumnName];
             if (column is not DataGridViewLinkColumn { HeaderText: "配置", Text: "配置" }
-                || column.DisplayIndex != _deviceGrid.Columns.Count - 1)
-                throw new InvalidOperationException("Device configuration action is missing from the rightmost device column or has lost its Chinese caption.");
+                || column.DisplayIndex != 3 || _deviceGrid.Columns[DeviceStartColumnName].DisplayIndex != 1
+                || _deviceGrid.Columns[DeviceStopColumnName].DisplayIndex != 2)
+                throw new InvalidOperationException("Device row commands must immediately follow the device name and retain their Chinese captions.");
             await SmokeDeviceConfigurationRowActionAsync(target, enabled: true);
             var expected = Clone(target); expected.Port = 15029; expected.Enabled = true;
             AssertConfigurationSmokeEqual(expected, _configuration.Devices.Single(x => x.Id == target.Id), "applied non-selected device row");
@@ -427,7 +428,7 @@ public sealed partial class MainForm
         var row = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == deviceId);
         if (row.DataBoundItem is not DeviceRow data || data.Enabled != (enabled ? "是" : "否")
             || ((DeviceActionButtonCell)row.Cells[DeviceStartColumnName]).ActionEnabled != enabled
-            || _runtime.IsRunning)
+            || _application.IsRunning)
             throw new InvalidOperationException("Saved Enabled state did not update the device row/start command, or unexpectedly started collection.");
     }
 
@@ -441,7 +442,7 @@ public sealed partial class MainForm
             toolbarEdit ? EditDeviceAsync : () => DeviceGridActionAsync(new DataGridViewCellEventArgs(column.Index, row.Index), doubleClick),
             dialog =>
             {
-                VerifyConfigurationSmokeFields(dialog, _drivers.GetFactory(target.DriverId).Descriptor, target);
+                VerifyConfigurationSmokeFields(dialog, _drivers.GetDescriptor(target.DriverId), target);
                 if (enabled.HasValue) dialog.SetFieldForSmoke("Enabled", enabled.Value ? "true" : "false");
                 dialog.SetFieldForSmoke("Port", port.ToString(CultureInfo.InvariantCulture));
             }, toolbarEdit ? "edit device toolbar" : "non-selected device row");
@@ -456,13 +457,13 @@ public sealed partial class MainForm
         using var timer = new System.Windows.Forms.Timer { Interval = 20 };
         timer.Tick += async (_, _) =>
         {
-            var dialog = Application.OpenForms.OfType<DeviceConfigurationDialog>().SingleOrDefault(x => x.Visible && x.Modal);
+            var dialog = System.Windows.Forms.Application.OpenForms.OfType<DeviceConfigurationDialog>().SingleOrDefault(x => x.Visible && x.Modal);
             if (dialog is null)
             {
                 if (elapsed.Elapsed < TimeSpan.FromSeconds(5)) return;
                 failure = new InvalidOperationException(context + ": unified device configuration did not open within 5 seconds.");
                 timer.Stop();
-                foreach (var modal in Application.OpenForms.Cast<Form>().Where(x => x.Modal).ToArray()) modal.Close();
+                foreach (var modal in System.Windows.Forms.Application.OpenForms.Cast<Form>().Where(x => x.Modal).ToArray()) modal.Close();
                 return;
             }
             timer.Stop(); observed = true;
@@ -491,14 +492,14 @@ public sealed partial class MainForm
 
     private void VerifyMinimumConfigurationDialog(Rectangle area, string directory, LayoutCaseResult result)
     {
-        var factory = _drivers.GetFactory("PLC.ModBusMaster");
-        var device = CreateConfigurationSmokeDevice(factory.Descriptor);
+        var descriptor = _drivers.GetDescriptor("PLC.ModBusMaster");
+        var device = CreateConfigurationSmokeDevice(descriptor);
         using var editor = new DeviceConfigurationDialog(device, _drivers);
         editor.Show(this);
         try
         {
             FitSmokeDialog(editor, area);
-            VerifyConfigurationSmokeFields(editor, factory.Descriptor, device);
+            VerifyConfigurationSmokeFields(editor, descriptor, device);
             VerifyEditorLayout(editor, result.Name + " dedicated configuration");
             foreach (var command in editor.SmokeCommands) BringIntoViewAndAssert(command, result.Name + " configuration action");
             result.ConfigurationParameterMetrics = editor.SmokeParameterInputs.Select(ControlMetric.From).ToList();

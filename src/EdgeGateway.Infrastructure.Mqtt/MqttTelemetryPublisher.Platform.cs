@@ -1,9 +1,10 @@
 using System.Text.Json;
 using EdgeGateway.Model;
+using EdgeGateway.Service;
 using MQTTnet;
 using MQTTnet.Protocol;
 
-namespace EdgeGateway.Service;
+namespace EdgeGateway.Infrastructure.Mqtt;
 
 public sealed partial class MqttTelemetryPublisher
 {

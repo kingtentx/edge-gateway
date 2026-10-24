@@ -1,5 +1,5 @@
 using EdgeGateway.Model;
-using EdgeGateway.Service;
+using EdgeGateway.Application;
 using System.Diagnostics;
 
 namespace EdgeGateway.WinForms;
@@ -8,7 +8,7 @@ public sealed partial class MainForm
 {
     private async Task SmokeLiveConfigurationAsync()
     {
-        if (!_smokeTest || _runtime.IsRunning) throw new InvalidOperationException("Live-configuration smoke requires stopped, isolated fixtures.");
+        if (!_smokeTest || _application.IsRunning) throw new InvalidOperationException("Live-configuration smoke requires stopped, isolated fixtures.");
         var original = Clone(_configuration);
         var originalPage = _activePage;
         var originalSelection = SelectedDevice()?.Id;
@@ -23,9 +23,9 @@ public sealed partial class MainForm
             Check(predicate(), message);
         }
         async Task AssertContinues(Guid id, DateTimeOffset before, string context) =>
-            await WaitFor(() => _runtime.IsDeviceRunning(id) && _runtime.GetLatest().Any(sample =>
+            await WaitFor(() => _application.IsDeviceRunning(id) && _application.GetLatest().Any(sample =>
                 sample.DeviceId == id && sample.Quality == SampleQuality.Good && sample.Timestamp > before), context);
-        DateTimeOffset Latest(Guid id) => _runtime.GetLatest().First(sample => sample.DeviceId == id).Timestamp;
+        DateTimeOffset Latest(Guid id) => _application.GetLatest().First(sample => sample.DeviceId == id).Timestamp;
         try
         {
             var fixture = Clone(original);
@@ -39,7 +39,7 @@ public sealed partial class MainForm
             await CommitConfigurationAsync(fixture, a, replaceCloudDraft: true);
             ShowPage("devices");
             await DeviceRowActionAsync(a, DeviceStartColumnName);
-            await WaitFor(() => _runtime.GetLatest().Any(sample => sample.DeviceId == a && sample.Quality == SampleQuality.Good), "A did not collect.");
+            await WaitFor(() => _application.GetLatest().Any(sample => sample.DeviceId == a && sample.Quality == SampleQuality.Good), "A did not collect.");
             Check(CanEdit() && _configurationCommands.Except(_stoppedConfigurationCommands).All(control => control.Enabled),
                 "one running device still disables device/tag/platform-draft controls.");
             var stamp = Latest(a);
@@ -48,7 +48,7 @@ public sealed partial class MainForm
                 editor.SetFieldForSmoke("Name", "运行期间新增 C");
                 editor.SetFieldForSmoke("PollIntervalMs", "100");
             }, "add C while A runs");
-            Check(_configuration.Devices.Count == 3 && !_runtime.IsDeviceRunning(added.Id), "new device unexpectedly started.");
+            Check(_configuration.Devices.Count == 3 && !_application.IsDeviceRunning(added.Id), "new device unexpectedly started.");
             await AssertContinues(a, stamp, "adding C interrupted A.");
 
             RebindConfigurationViews(a);
@@ -60,10 +60,10 @@ public sealed partial class MainForm
                 editor.SetFieldForSmoke("Name", "在线维护 B 已修改");
                 editor.SetFieldForSmoke("PollIntervalMs", "150");
             }, "edit stopped B through double-click while A runs");
-            Check(_configuration.Devices.Single(device => device.Id == b).PollIntervalMs == 150 && !_runtime.IsDeviceRunning(b), "stopped B edit did not stay stopped.");
+            Check(_configuration.Devices.Single(device => device.Id == b).PollIntervalMs == 150 && !_application.IsDeviceRunning(b), "stopped B edit did not stay stopped.");
             await AssertContinues(a, stamp, "editing B interrupted A.");
             await DeviceRowActionAsync(b, DeviceStartColumnName);
-            await WaitFor(() => _runtime.GetLatest().Any(sample => sample.DeviceId == b && sample.Quality == SampleQuality.Good), "B did not start using saved settings.");
+            await WaitFor(() => _application.GetLatest().Any(sample => sample.DeviceId == b && sample.Quality == SampleQuality.Good), "B did not start using saved settings.");
 
             stamp = Latest(a);
             await SmokeDeviceConfigurationModalAsync(() => ConfigureDeviceAsync(b), editor =>
@@ -71,7 +71,7 @@ public sealed partial class MainForm
                 Check(editor.SmokeCommands.OfType<Button>().Any(button => button.Text == "保存并应用"), "running target did not explain apply behavior.");
                 editor.SetFieldForSmoke("Name", "在线维护 B 已重连");
             }, "apply running B only");
-            await WaitFor(() => _runtime.GetLatest().Any(sample => sample.DeviceId == b && sample.DeviceName == "在线维护 B 已重连" && sample.Quality == SampleQuality.Good), "B did not use its applied configuration.");
+            await WaitFor(() => _application.GetLatest().Any(sample => sample.DeviceId == b && sample.DeviceName == "在线维护 B 已重连" && sample.Quality == SampleQuality.Good), "B did not use its applied configuration.");
             await AssertContinues(a, stamp, "reconfiguring B interrupted A.");
             await SmokeRetainedDeviceInputAsync(b);
 
@@ -86,7 +86,7 @@ public sealed partial class MainForm
                 SaveEditorScreenshot(import, "tag-import", "preview");
                 await import.ApplyAndAcceptForSmokeAsync();
             }
-            await WaitFor(() => _runtime.GetLatest().Any(sample => sample.DeviceId == b && sample.TagName == "仅本地采集" && sample.Quality == SampleQuality.Good), "imported point did not collect after target restart.");
+            await WaitFor(() => _application.GetLatest().Any(sample => sample.DeviceId == b && sample.TagName == "仅本地采集" && sample.Quality == SampleQuality.Good), "imported point did not collect after target restart.");
             Check(!_configuration.Devices.Single(device => device.Id == b).Tags.Single(tag => tag.Name == "仅本地采集").UploadEnabled, "point upload selection was lost.");
             await AssertContinues(a, stamp, "point import into B interrupted A.");
             await AssertSavedConfigurationForSmokeAsync("live point import");
@@ -98,7 +98,7 @@ public sealed partial class MainForm
             }];
             stamp = Latest(a);
             await AppendImportedDevicesAsync(imported);
-            Check(!_runtime.IsDeviceRunning(imported.Devices[0].Id), "import unexpectedly started a new device.");
+            Check(!_application.IsDeviceRunning(imported.Devices[0].Id), "import unexpectedly started a new device.");
             await AssertContinues(a, stamp, "device import interrupted A.");
 
             ShowPage("cloud");
@@ -106,21 +106,21 @@ public sealed partial class MainForm
             Check(_dirty, "platform draft was not editable while devices ran.");
             await DeviceRowActionAsync(b, DeviceStopColumnName);
             await DeviceRowActionAsync(b, DeviceStartColumnName);
-            Check(_runtime.IsDeviceRunning(b) && _dirty, "unapplied platform draft still blocks starting B.");
+            Check(_application.IsDeviceRunning(b) && _dirty, "unapplied platform draft still blocks starting B.");
             var rejected = false;
             try { await ApplyCloudSettingsAsync(); }
             catch (InvalidOperationException) { rejected = true; }
-            Check(rejected && _runtime.IsDeviceRunning(a) && _runtime.IsDeviceRunning(b), "global settings were applied while devices ran.");
+            Check(rejected && _application.IsDeviceRunning(a) && _application.IsDeviceRunning(b), "global settings were applied while devices ran.");
             ResetCloudDraft(); BindCloudFields();
 
             stamp = Latest(a);
             await SmokeDeviceConfigurationModalAsync(() => ConfigureDeviceAsync(b), editor => editor.SetFieldForSmoke("Enabled", "false"), "disable running B");
-            Check(!_runtime.IsDeviceRunning(b) && !_configuration.Devices.Single(device => device.Id == b).Enabled,
+            Check(!_application.IsDeviceRunning(b) && !_configuration.Devices.Single(device => device.Id == b).Enabled,
                 "disabling B did not stop only B.");
             await AssertContinues(a, stamp, "disabling B interrupted A.");
             var removal = Clone(_configuration); removal.Devices.RemoveAll(device => device.Id == b);
             await CommitConfigurationAsync(removal, a);
-            Check(_runtime.GetDeviceStatuses().All(status => status.DeviceId != b) && _runtime.GetLatest().All(sample => sample.DeviceId != b), "removed device left live rows behind.");
+            Check(_application.GetDeviceStatuses().All(status => status.DeviceId != b) && _application.GetLatest().All(sample => sample.DeviceId != b), "removed device left live rows behind.");
             await AssertSavedConfigurationForSmokeAsync("device removal while A runs");
             ShowPage("devices"); await RefreshSnapshotsAsync(); SaveEditorScreenshot(this, "live-configuration", "devices");
             ShowPage("diagnostics"); await RefreshSnapshotsAsync();
@@ -130,7 +130,7 @@ public sealed partial class MainForm
         }
         finally
         {
-            await _runtime.StopAsync();
+            await _application.StopAsync();
             await RestoreConfigurationForSmokeAsync(original);
             RebindConfigurationViews(originalSelection); ShowPage(originalPage); UpdateCommands();
         }
@@ -149,7 +149,7 @@ public sealed partial class MainForm
         var elapsed = Stopwatch.StartNew();
         timer.Tick += async (_, _) =>
         {
-            var editor = Application.OpenForms.OfType<DeviceConfigurationDialog>().SingleOrDefault(form => form.Visible && form.Modal);
+            var editor = System.Windows.Forms.Application.OpenForms.OfType<DeviceConfigurationDialog>().SingleOrDefault(form => form.Visible && form.Modal);
             if (editor is null)
             {
                 if (elapsed.Elapsed < TimeSpan.FromSeconds(8)) return;
@@ -164,7 +164,7 @@ public sealed partial class MainForm
                 try { await editor.ApplyAndAcceptForSmokeAsync(); }
                 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { rejected = true; }
                 var input = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DeviceConfiguration_Name");
-                if (!rejected || !editor.Visible || input.Text != draftName || !_runtime.IsDeviceRunning(id)
+                if (!rejected || !editor.Visible || input.Text != draftName || !_application.IsDeviceRunning(id)
                     || DeviceImportSmokeJson(_configuration) != DeviceImportSmokeJson(original))
                     throw new InvalidOperationException("Failed save closed the editor, lost draft inputs, or changed a live device.");
                 lockedFile.Dispose(); lockedFile = null;

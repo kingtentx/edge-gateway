@@ -4,12 +4,15 @@ namespace EdgeGateway.WinForms;
 
 internal static class UiTheme
 {
-    public static readonly Color Navy = Color.FromArgb(15, 27, 47);
-    public static readonly Color Blue = Color.FromArgb(39, 102, 232);
-    public static readonly Color Background = Color.FromArgb(243, 246, 251);
-    public static readonly Color Ink = Color.FromArgb(24, 38, 62);
+    public static readonly Color Navy = Color.FromArgb(18, 31, 51);
+    public static readonly Color Blue = Color.FromArgb(37, 99, 235);
+    public static readonly Color Background = Color.FromArgb(244, 247, 251);
+    public static readonly Color Ink = Color.FromArgb(28, 43, 63);
     public static readonly Color Muted = Color.FromArgb(102, 118, 139);
-    public static readonly Color Border = Color.FromArgb(223, 230, 240);
+    public static readonly Color Border = Color.FromArgb(221, 228, 237);
+    public static readonly Color InputBackground = Color.FromArgb(249, 251, 254);
+    public static readonly Color BlueSoft = Color.FromArgb(235, 242, 255);
+    public static readonly Color Warning = Color.FromArgb(164, 93, 16);
     public static readonly Color Green = Color.FromArgb(13, 155, 124);
     public static readonly Color Red = Color.FromArgb(216, 62, 75);
     public static int Scale(Control control, int logical)
@@ -27,9 +30,10 @@ internal static class UiTheme
     {
         var button = new ModernButton
         {
-            Text = text, AutoSize = true, MinimumSize = new Size(108, 42), Height = 42,
-            Padding = new Padding(12, 7, 12, 7), BackColor = primary ? Blue : Color.White,
-            ForeColor = primary ? Color.White : Ink, Margin = new Padding(0, 0, 8, 0),
+            Text = text, AutoSize = true, MinimumSize = new Size(100, 38), Height = 38,
+            Padding = new Padding(13, 6, 13, 6), BackColor = primary ? Blue : Color.White,
+            ForeColor = primary ? Color.White : text.Contains("删除") ? Red : Ink,
+            Margin = new Padding(0, 0, 8, 6), AccessibleName = text,
             Cursor = Cursors.Hand, Glyph = ActionIcon(text), Primary = primary
         };
         if (action != null) button.Click += action;
@@ -45,16 +49,21 @@ internal static class UiTheme
         {
             "overview" => IconChar.TachometerAlt, "devices" => IconChar.NetworkWired,
             "realtime" => IconChar.WaveSquare, "history" => IconChar.ChartLine,
-            "cloud" => IconChar.Cloud, "logs" => IconChar.ListAlt, _ => IconChar.Circle
+            "cloud" => IconChar.Cloud, "logs" => IconChar.ListAlt, "diagnostics" => IconChar.Plug, _ => IconChar.Circle
         }, Cursor = Cursors.Hand
     };
 
     public static TableLayoutPanel Card(Color? accent = null) => new SurfaceCard { Accent = accent ?? Blue, BackColor = Color.White };
 
-    private static IconChar ActionIcon(string text) => text switch
+    internal static IconChar ActionIcon(string text) => text switch
     {
         "重置修改" => IconChar.SyncAlt,
-        "确定" => IconChar.Check, "取消" => IconChar.Times,
+        "确定" or "保存配置" or "保存并应用" or "确认导入" => IconChar.Check, "取消" => IconChar.Times,
+        "清除筛选" => IconChar.Filter,
+        "通道管理" => IconChar.NetworkWired,
+        "连接诊断" or "单点读取" => IconChar.Plug,
+        _ when text.Contains("更多") => IconChar.EllipsisH,
+        _ when text.Contains("复制") => IconChar.Copy,
         _ when text.Contains("添加") || text.Contains("新增") => IconChar.Plus,
         _ when text.Contains("编辑") || text.Contains("修改") => IconChar.Pen,
         _ when text.Contains("删除") => IconChar.TrashAlt,
@@ -66,6 +75,50 @@ internal static class UiTheme
         _ when text.Contains("应用") => IconChar.Check,
         _ => IconChar.None
     };
+
+    /// <summary>Styles native inputs in place, preserving their keyboard and DPI behavior.</summary>
+    public static void StyleInput(Control input)
+    {
+        input.ForeColor = Ink;
+        if (input is TextBoxBase text)
+        {
+            text.BorderStyle = BorderStyle.FixedSingle;
+            text.BackColor = text.ReadOnly ? Color.FromArgb(242, 245, 249) : InputBackground;
+            if (!text.Multiline) text.MinimumSize = new Size(text.MinimumSize.Width, 30);
+        }
+        else if (input is ComboBox combo)
+        {
+            combo.BackColor = InputBackground;
+            combo.FlatStyle = FlatStyle.Flat;
+        }
+        else if (input is NumericUpDown number)
+        {
+            number.BorderStyle = BorderStyle.FixedSingle;
+            number.BackColor = InputBackground;
+            number.MinimumSize = new Size(number.MinimumSize.Width, 30);
+        }
+        else if (input is DateTimePicker picker) picker.CalendarForeColor = Ink;
+        else if (input is CheckBox check) check.MinimumSize = new Size(check.MinimumSize.Width, 32);
+    }
+
+    public static Control FilterField(string caption, Control input)
+    {
+        StyleInput(input);
+        var group = new TableLayoutPanel
+        {
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 1, RowCount = 2,
+            Margin = new Padding(0, 0, 12, 6), Padding = Padding.Empty
+        };
+        group.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        group.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        group.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var label = Label(caption, 10, Muted);
+        label.Margin = new Padding(0, 0, 0, 5);
+        input.Margin = Padding.Empty;
+        input.AccessibleName = caption;
+        group.Controls.Add(label, 0, 0); group.Controls.Add(input, 0, 1);
+        return group;
+    }
 
     public static Label Label(string text, float size = 10, Color? color = null, bool bold = false) => new()
     {
@@ -118,9 +171,10 @@ internal static class UiTheme
         {
             Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
             WrapContents = true, FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(0, 10, 0, 12), Margin = new Padding(0)
+            Padding = new Padding(0, 8, 0, 4), Margin = new Padding(0)
         };
         panel.Controls.AddRange(controls);
+        if (controls.Length == 0) panel.Padding = Padding.Empty;
         return panel;
     }
 
@@ -128,7 +182,7 @@ internal static class UiTheme
     {
         var panel = new TableLayoutPanel
         {
-            ColumnCount = 1, RowCount = 4, Padding = new Padding(24), BackColor = Background,
+            ColumnCount = 1, RowCount = 4, Padding = new Padding(20), BackColor = Background,
             Margin = new Padding(0)
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -139,13 +193,38 @@ internal static class UiTheme
         var heading = Label(title, 21, Ink, true);
         var subtitle = Label(description, 10, Muted);
         heading.Dock = subtitle.Dock = DockStyle.Fill;
-        panel.Controls.Add(heading, 0, 0); panel.Controls.Add(subtitle, 0, 1);
-        panel.Controls.Add(toolbar, 0, 2); panel.Controls.Add(content, 0, 3);
-        panel.SizeChanged += (_, _) =>
+        var titleRow = new TableLayoutPanel
         {
-            var width = Math.Max(1, panel.ClientSize.Width - panel.Padding.Horizontal);
-            heading.MaximumSize = new Size(width, 0); subtitle.MaximumSize = new Size(width, 0);
+            Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2, RowCount = 1, Margin = Padding.Empty
         };
+        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var help = new LinkLabel
+        {
+            Text = "说明", AutoSize = true, Visible = false, Anchor = AnchorStyles.Right,
+            LinkColor = Blue, ActiveLinkColor = Blue, Margin = new Padding(10, 5, 0, 0),
+            AccessibleName = title + "页面说明"
+        };
+        help.LinkClicked += (_, _) => MessageBox.Show(panel.FindForm(), description, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        titleRow.Controls.Add(heading, 0, 0); titleRow.Controls.Add(help, 1, 0);
+        panel.Controls.Add(titleRow, 0, 0); panel.Controls.Add(subtitle, 0, 1);
+        panel.Controls.Add(toolbar, 0, 2); panel.Controls.Add(content, 0, 3);
+        void ArrangePage()
+        {
+            if (panel.FindForm() is DpiAwareForm { IsDpiLayoutReady: false }) return;
+            var compact = panel.FindForm()?.ClientSize.Height < Scale(panel, 620);
+            var shortViewport = panel.FindForm()?.ClientSize.Height < Scale(panel, 480);
+            panel.Padding = Scale(panel, compact ? new Padding(14, 8, 14, 12) : new Padding(22, 16, 22, 18));
+            var width = Math.Max(1, panel.ClientSize.Width - panel.Padding.Horizontal);
+            subtitle.Visible = !shortViewport; help.Visible = shortViewport;
+            heading.MaximumSize = new Size(Math.Max(1, width - (help.Visible ? help.PreferredWidth + help.Margin.Horizontal : 0)), 0);
+            subtitle.MaximumSize = new Size(width, 0);
+            heading.Margin = Scale(panel, new Padding(0, 0, 0, compact ? 2 : 4));
+            subtitle.Margin = Scale(panel, new Padding(0, 0, 0, compact ? 2 : 6));
+        }
+        panel.SizeChanged += (_, _) => ArrangePage();
+        panel.DpiChangedAfterParent += (_, _) => ArrangePage();
         return new PageViewport(panel) { Name = "PageViewport_" + title };
     }
 }

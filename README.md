@@ -2,13 +2,15 @@
 
 参考 [iioter/iotgateway](https://github.com/iioter/iotgateway) 的分层与驱动扩展思路，使用 **.NET 8 + 原生 Windows Forms** 实现的桌面工业数据采集网关。网关主体独立实现，并将源项目 **`Plugins/Drivers` 下全部 12 个驱动工程**及其驱动接口迁入本仓库，接入统一采集、配置与监控界面。围绕 Kepware 的采集侧工作流程完善通道、设备、点位管理、诊断与读写核对，并提供实时监控、历史趋势、多平台 MQTT 与持久化补传。
 
-开发规范入口：[开发 SKILL](.agents/skills/develop-edge-gateway/SKILL.md) · [全部驱动迁移清单](docs/driver-migration.md) · [结构参考](.agents/skills/develop-edge-gateway/references/architecture.md) · [驱动扩展](.agents/skills/develop-edge-gateway/references/driver-development.md) · [验证记录](docs/verification.md)
+开发规范入口：[项目架构与依赖](docs/architecture.md) · [开发 SKILL](.agents/skills/develop-edge-gateway/SKILL.md) · [全部驱动迁移清单](docs/driver-migration.md) · [上游结构参考](.agents/skills/develop-edge-gateway/references/architecture.md) · [驱动扩展](.agents/skills/develop-edge-gateway/references/driver-development.md) · [历史验证记录](docs/verification.md)
 
 功能闭环说明：[运行中配置、点表交换与通信诊断](docs/live-configuration.md) · [Kepware 核心能力实现](docs/kepware-core-capabilities.md) · [平台接入与 RPC](docs/platform-protocols.md) · [源项目与主流网关能力对照](docs/gateway-capability-review.md)
 
-界面与显示适配：[DPI 与界面升级说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
+界面与显示适配：[本轮操作改造与验收](docs/ui-usability.md) · [DPI 规范与历史说明](docs/ui-dpi.md) · [Windows 构建与运行包](https://github.com/kingtentx/edge-gateway/actions/workflows/build.yml) · [源码 ZIP](https://github.com/kingtentx/edge-gateway/archive/refs/heads/main.zip)。采用统一现代工业界面、FontAwesome 图标和 PerMonitorV2；区分真实 Windows DPI 运行检查与 20 种等效工作区布局验证。
 
-**当前范围更新：已按用户要求完整移除 OPC UA 对外服务端及其配置字段、页面、专用依赖和验收入口，不保留兼容层。** 全部 12 个迁移驱动（含南向 `OPC.UaClient`）、核心采集和 MQTT/RPC 功能继续保留。程序提交 `e3c5466` 已通过 [Windows Server 2022 / 2025 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638)：两个作业各 319 项测试通过，并分别完成 7 页、5 类弹窗、20 个等效工作区及 122 张截图检查。实际 DPI 为 96，不代表真实高 DPI 跨屏实测。[新 Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638/artifacts/12513230047)已核对来源和服务端删除结果，详情见 [服务端移除与验证记录](docs/opc-ua-service-removal.md)。
+**本轮改造：** 按 Application、Hosting 和 MQTT 基础设施分离桌面用例、资源组装与传输，调整设备/点位操作层级、平台分组、选择保持、查询条件和保存反馈。本轮构建、回归、Windows 界面及发布包结果待实际执行，统一记录在 [操作改造与验收](docs/ui-usability.md)，不使用旧版通过结果代替。
+
+**已验证的上一版：** OPC UA 对外服务端及其配置字段、页面、专用依赖和验收入口已完整移除，不保留兼容层；本轮继续保持这一范围。全部 12 个迁移驱动（含南向 `OPC.UaClient`）、核心采集和 MQTT/RPC 保留。程序提交 `e3c5466` 通过 [Windows Server 2022 / 2025 CI](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638)：当时两个作业各 319 项测试通过，分别完成 7 页、5 类弹窗、20 个等效工作区及 122 张截图检查，实际 DPI 为 96。[该版 Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39977938638/artifacts/12513230047)及完整证据见 [服务端移除与验证记录](docs/opc-ua-service-removal.md)，不代表本轮改造或真实高 DPI 跨屏已验证。
 
 **历史发布基线：** 程序源码 [`f1d398b`](https://github.com/kingtentx/edge-gateway/commit/f1d398ba27728e919c3fd56f60cbf510312267d8)、[Windows x64 运行包](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261/artifacts/12487349660)、[CI 39923092261](https://github.com/kingtentx/edge-gateway/actions/runs/39923092261) 对应上一轮运行中配置功能。Windows Server 2022 / 2025 当时各通过 **163 / 163 项测试、20 / 20 个等效工作区布局**，覆盖七个主页面及四类矩阵编辑器，各保存 102 张实际 PNG。Server 2025 在 attempt 1 通过；Server 2022 首次焦点异常后，在同一提交、未改代码或断言的情况下仅重跑失败作业，于 attempt 2 通过。详情保留在 [历史验证记录](docs/live-configuration-verification.md) 和 [机器可读证据](docs/live-configuration-verification.json)。
 
@@ -76,7 +78,7 @@ dotnet run --project src/EdgeGateway.WinForms -c Release --no-build
 
 也可以直接打开 `EdgeGateway.sln`，把 `EdgeGateway.WinForms` 设为启动项目。
 
-首次启动且尚无已保存配置时，包含一台启用的“演示机组”、一台**未启用**的 Modbus TCP 示例，以及一台**未启用**的“Modbus RTU 从站 1（COM11）”，后者预置从站 1、9600 / 8N1、保持寄存器地址 0–9。进入“设备与点位”，点击“演示机组”所在行的“启动”，即可看到该设备的温度、频率、运行状态和目标温度；该行“停止”只停止演示机组。默认自动启动与 MQTT 均关闭。已有配置继续原样加载，可通过“导入设备”追加 [RTU 示例](docs/modbus-rtu-com11.md)。
+首次启动且尚无已保存配置时，包含一台启用的“演示机组”、一台**未启用**的 Modbus TCP 示例，以及一台**未启用**的“Modbus RTU 从站 1（COM11）”，后者预置从站 1、9600 / 8N1、保持寄存器地址 0–9。进入“设备与点位”，点击“演示机组”所在行的“启动”，即可看到该设备的温度、频率、运行状态和目标温度；该行“停止”只停止演示机组。默认自动启动与 MQTT 均关闭。已有配置继续原样加载，可通过“更多操作 → 追加导入设备…”追加 [RTU 示例](docs/modbus-rtu-com11.md)。
 
 ### 发布可直接运行的 Windows 包
 
@@ -92,13 +94,13 @@ GitHub Actions 工作流会在提交后构建、测试、启动窗体并生成�
 
 ## 连接现场设备
 
-在“设备与点位”点击工具栏 **添加设备**、**编辑设备**，或点击设备行 **配置**、双击普通数据列，均使用同一个配置窗和相同的字段布局。弹框默认显示“采集设置”，首行 **启用设备** 复选框下依次提供设备名称、分组、驱动下拉框、采集周期和通信超时。切换到连接或驱动参数页后，内置 Modbus TCP 显示网络字段，RTU 显示串口字段；迁移驱动按源项目的参数、类型与枚举生成编辑器。在同一弹框中来回切换驱动会保留各驱动的参数草稿。
+在“设备与点位”点击 **添加设备**，或使用设备行 **配置**、双击普通数据列，均使用同一个配置窗和相同的字段布局。弹框默认显示“采集设置”，首行 **启用设备** 复选框下依次提供设备名称、分组、驱动下拉框、采集周期和通信超时。切换到连接或驱动参数页后，内置 Modbus TCP 显示网络字段，RTU 显示串口字段；迁移驱动按源项目的参数、类型与枚举生成编辑器。在同一弹框中来回切换驱动会保留各驱动的参数草稿。
 
-点击“确定”后，弹窗等待完整候选配置校验、原子保存和运行时应用全部成功才关闭；失败时显示原因并保留输入，原配置与运行会话不因校验或保存失败而变化。新建设备生成所选驱动的默认点位，保存后保持停止；编辑已有设备保留设备 ID 和已有点位，换驱动不会自动转换或清空点位，不兼容的点位会使完整校验失败。
+点击保存按钮（停止设备时为“保存配置”，运行设备时为“保存并应用”）后，弹窗等待完整候选配置校验、原子保存和运行时应用全部成功才关闭；失败时显示原因并保留输入，原配置与运行会话不因校验或保存失败而变化。新建设备生成所选驱动的默认点位，保存后保持停止；编辑已有设备保留设备 ID 和已有点位，换驱动不会自动转换或清空点位，不兼容的点位会使完整校验失败。
 
 设备 A 运行时，可以新增、编辑、删除或追加导入设备 B，也可以维护 B 的点位。若 B 原本停止，保存后仍停止；若 B 正在运行，保存变更后只重启 B，禁用或删除 B 则只停止 B。A 的连接、最新值与共享历史/MQTT 任务保持运行。连接失败会显示错误并进入原有重连流程，已经保存的参数不会自动回滚。完整流程见 [运行中配置与数据闭环](docs/live-configuration.md)、[参数说明](docs/device-configuration.md) 与 [单设备启停及自动保存](docs/device-control-autosave.md)。
 
-按 Modbus Slave 截图连接 COM10 / COM11 虚拟串口对，参见 [Modbus RTU 从站 1（COM11）配置与导入步骤](docs/modbus-rtu-com11.md)；已有配置可用“导入设备”追加 [单设备示例 JSON](examples/modbus-rtu-com11.json)，保留当前网关、MQTT 和已有设备配置。
+按 Modbus Slave 截图连接 COM10 / COM11 虚拟串口对，参见 [Modbus RTU 从站 1（COM11）配置与导入步骤](docs/modbus-rtu-com11.md)；已有配置可用“更多操作 → 追加导入设备…”追加 [单设备示例 JSON](examples/modbus-rtu-com11.json)，保留当前网关、MQTT 和已有设备配置。
 
 迁移驱动：在“设备与点位”选择上述原目录名对应驱动，填写驱动专用参数；添加点位时选择具体读取方法。OPC 默认选择 `ReadNode`，源 Modbus 默认选择 `HoldingRegisters` / `InputRegisters` / `Coil` / `Input` 等方法；原有演示 `Read` 入口已改为真实读取的兼容别名。Fanuc 依具体采集项选择相应方法。参数与方法说明见 [驱动清单](docs/driver-migration.md)，可导入 [12 个驱动的未启用示例](examples/migrated-drivers.json) 查看配置。
 
@@ -106,7 +108,7 @@ GitHub Actions 工作流会在提交后构建、测试、启动窗体并生成�
 
 1. 在“设备与点位”点击“添加设备”，其他设备可以继续采集。在默认打开的“采集设置”页填写名称、分组，选择 `modbus-tcp` 或 `modbus-rtu`，勾选“启用设备”并配置周期、超时。
 2. TCP 填写 IP/域名、端口、站号；RTU 填写 COM 端口、波特率、数据位、校验位、停止位与站号。
-3. 点击“确定”，生成所选驱动的默认点位，经完整配置校验和自动保存后添加设备；新增设备保持停止。
+3. 点击“保存配置”，生成所选驱动的默认点位，经完整配置校验和自动保存后添加设备；新增设备保持停止。
 4. 在下方点位表按实际点表修改默认点位或添加点位，填写**从 0 开始的地址**、寄存区、数据类型、字节序和工程量换算。每次确认后自动校验并保存。
 5. 确认设备已启用，再点击该设备行的“启动”。在“实时监控”核对原始值、工程值、质量和时间，在“历史与趋势”查询采样。每行“停止”仅停止对应设备。
 
@@ -128,9 +130,9 @@ GitHub Actions 工作流会在提交后构建、测试、启动窗体并生成�
 
 ### 批量维护点位
 
-选中设备后使用“点位模板”“导出点位”和“导入点位”维护 CSV 点表；仓库提供 [空白模板](examples/tag-template.csv)。模板包含 20 个业务字段，不含 `Id`；新增 `Expression`、`ScanIntervalMs`、`Deadband`。旧 17 列文件仍可导入，按名称更新时缺失的扩展列保留现有值；显式空 `Expression` 清除表达式，显式数值扩展列不能留空。导出为 UTF-8 BOM；导入可选“追加”或“按名称更新”，后者保留匹配点位 ID 和文件中未出现的点位。文件最多 8 MiB，单次最多 2000 条数据，合并后每台设备最多 2000 点；预览最多 500 条，校验和保存覆盖完整点表。任意校验失败时整批不保存。运行设备导入后仅重启该设备，详见 [CSV 字段与操作说明](docs/live-configuration.md#点位-csv-导入导出)。
+选中设备后打开 **点位操作**，使用“下载点位模板…”“导出当前设备点位…”和“导入当前设备点位…”维护 CSV 点表；仓库提供 [空白模板](examples/tag-template.csv)。模板包含 20 个业务字段，不含 `Id`；新增 `Expression`、`ScanIntervalMs`、`Deadband`。旧 17 列文件仍可导入，按名称更新时缺失的扩展列保留现有值；显式空 `Expression` 清除表达式，显式数值扩展列不能留空。导出为 UTF-8 BOM；导入可选“追加”或“按名称更新”，后者保留匹配点位 ID 和文件中未出现的点位。文件最多 8 MiB，单次最多 2000 条数据，合并后每台设备最多 2000 点；预览最多 500 条，校验和保存覆盖完整点表。任意校验失败时整批不保存。运行设备导入后仅重启该设备，详见 [CSV 字段与操作说明](docs/live-configuration.md#点位-csv-导入导出)。
 
-设备页还可按通道、分组及设备/点位关键字筛选，使用“复制设备”创建独立副本。副本的设备和点位均分配新 ID，默认停用，确认前可调整连接参数。通道将采集、诊断、写入纳入同一串行调度；它不共享驱动连接，也不放开同一串口只能有一个启用设备的限制。扫描模式、故障降速和表达式示例见 [Kepware 核心能力实现](docs/kepware-core-capabilities.md)。
+设备页可按通道、分组及设备/点位关键字筛选，通过“更多操作 → 复制所选设备”创建独立副本。“通道管理”维护通信调度域；“更多操作 → 替换整份配置…”要求全停并确认，不能当作追加导入。副本的设备和点位均分配新 ID，默认停用，确认前可调整连接参数。通道将采集、诊断、写入纳入同一串行调度；它不共享驱动连接，也不放开同一串口只能有一个启用设备的限制。扫描模式、故障降速和表达式示例见 [Kepware 核心能力实现](docs/kepware-core-capabilities.md)。
 
 ## MQTT 上报
 
@@ -160,7 +162,7 @@ RPC 与“允许远程写入”分别默认关闭。启用后真实订阅对应�
 | `gateway.db-wal` / `gateway.db-shm` | SQLite 运行时文件，运行中不要单独删除或拷贝数据库 |
 | `logs/` | 按 UTC 日期记录并轮转的运行日志 |
 
-设备、点位与导入配置通过同一个运行时事务入口提交：在生命周期锁内校验完整候选、原子保存，再同步受影响设备；顶部不再提供“保存配置”。保存失败不停止原会话，弹窗保留输入。保存提交后完成运行时同步，调用方随后取消不撤回已保存配置；物理连接结果由设备状态和日志反映。平台输入通过“应用设置”单独提交。正常修改会保留上一版 `.bak`。配置损坏会报错并保留原文件，不会静默重置。恢复前停止程序并备份数据目录，再用确认无误的 `.bak` 恢复。备份数据库时先正常关闭程序后复制整个数据目录。
+设备、点位与导入配置通过应用层提交，内部复用同一个运行时事务：在生命周期锁内校验完整候选、原子保存，再同步受影响设备；顶部不再提供“保存配置”。保存失败不停止原会话，弹窗保留输入。保存提交后完成运行时同步，调用方随后取消不撤回已保存配置；物理连接结果由设备状态和日志反映。平台输入通过“应用设置”单独提交。正常修改会保留上一版 `.bak`。配置损坏会报错并保留原文件，不会静默重置。恢复前停止程序并备份数据目录，再用确认无误的 `.bak` 恢复。备份数据库时先正常关闭程序后复制整个数据目录。
 
 JSON 配置仍为 schema 2；旧版本 1 在加载时内存迁移，保存前不改写原文件，设备和点位 ID 保持不变。新增字段均提供兼容缺省：上传开启、通道为空、设备周期扫描、降速关闭、空表达式、点位周期/死区为 0、周期上报、Generic、RPC/远程写关闭。SQLite 自身独立升级到数据库 schema 2，仅新增 RPC 审计表，保留历史和 outbox。未知版本拒绝，破坏兼容的变更仍须显式迁移，见 [配置兼容规则](docs/live-configuration.md#配置兼容规则)。
 
@@ -175,16 +177,21 @@ JSON 配置仍为 schema 2；旧版本 1 在加载时内存迁移，保存前不
 | `src/EdgeGateway.Model` | 配置和运行数据模型 |
 | `src/EdgeGateway.Abstractions` | 驱动、存储、日志、发布器接口 |
 | `src/EdgeGateway.DataAccess` | JSON 配置与 SQLite |
-| `src/EdgeGateway.Service` | 采集运行时、插件、校验、MQTT、日志 |
+| `src/EdgeGateway.Service` | 采集运行时、插件、校验、纯平台报文规则、RPC 与日志 |
+| `src/EdgeGateway.Application` | 桌面用例入口、配置命令和预览确认、查询、快照与编辑器元数据 |
+| `src/EdgeGateway.Hosting` | 数据目录占用、配置/存储/驱动/MQTT 组装与资源释放 |
+| `src/EdgeGateway.Infrastructure.Mqtt` | MQTTnet、TLS、连接、订阅与 QoS 1 传输确认 |
 | `src/EdgeGateway.IotGateway` | 全部源驱动的工厂、参数/方法元数据、线程与接口适配 |
-| `src/EdgeGateway.WinForms` | Windows 桌面界面与组合根 |
+| `src/EdgeGateway.WinForms` | Windows 桌面交互、独立草稿、选择与展示；通过应用层执行业务 |
 | `Plugins/PluginInterface` | 迁移后的原驱动接口、属性与数据契约 |
 | `Plugins/Drivers` | 12 个原驱动工程及本项目模拟 / Modbus 工程 |
-| `tests/EdgeGateway.Tests` | 驱动、存储、运行时与 MQTT 回环测试 |
+| `tests/EdgeGateway.Tests` | 驱动、存储、运行时、应用/宿主边界与 MQTT 回环测试 |
 | `.agents/skills/develop-edge-gateway` | 可复用开发 skill 及架构、驱动、验收参考 |
 | `examples/` | 不含凭据的示例配置 |
 | `scripts/` | Windows x64 构建和打包 |
 | `.github/workflows/` | Windows 构建、测试、启动与发布 |
+
+依赖方向、资源所有权及新增功能的放置位置见 [项目架构](docs/architecture.md)。Hosting 是桌面进程的组合边界，不表示已提供 Windows Service。
 
 ## 验证和边界
 
@@ -194,7 +201,7 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release
 ./scripts/smoke-test-winforms.ps1
 ```
 
-核心自动测试包含实际 TCP 回环与 TLS 握手，覆盖采集策略、表达式、读写核对、五平台 JSON、MQTT 订阅/回复、ThingsCloud 应用响应和持久请求去重。删除后的 Windows 门禁目标为 7 个主页面、5 类矩阵弹窗、20 个等效工作区、122 张 PNG 和 12 个完成标记，保留真实焦点与 DPI 边界断言；实际结果以 [本轮记录](docs/opc-ua-service-removal.md) 为准。**真实 PLC、串口、南向 OPC UA 目标服务器和用户现场平台租户仍需对应环境验收，自动测试不等于现场验收。** 现场还需核对点表、字节序、串口硬件、证书信任与 24–72 小时长稳运行。
+核心自动测试包含实际 TCP 回环与 TLS 握手，覆盖采集策略、表达式、读写核对、五平台 JSON、MQTT 订阅/回复、ThingsCloud 应用响应和持久请求去重。本轮计划门禁为 7 个主页面、5 类矩阵弹窗、20 个等效工作区、124 张 PNG 和 13 个完成标记，加入真实菜单/页签、选择保持、查询条件与反馈检查，保留真实焦点与 DPI 边界断言。**这些是待执行目标；** 实际数量和结果以 [本轮验收](docs/ui-usability.md) 对应源码及原始产物为准。真实 PLC、串口、南向 OPC UA 目标服务器和用户现场平台租户仍需对应环境验收，自动测试不等于现场验收；现场还需核对点表、字节序、串口硬件、证书信任与 24–72 小时长稳运行。
 
 历史交付另行保留：[驱动迁移基线](docs/verification.md)、[单设备启停](docs/device-control-autosave.md#此前版本验证与运行包)、[配置窗合并版本](docs/device-configuration-unification.md#实际执行结果)。这些文档中的运行包、截图和通过数量对应各自源码提交。
 

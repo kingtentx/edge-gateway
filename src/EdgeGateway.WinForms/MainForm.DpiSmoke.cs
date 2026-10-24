@@ -1,5 +1,5 @@
 using EdgeGateway.Model;
-using EdgeGateway.Service;
+using EdgeGateway.Application;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -19,7 +19,7 @@ public sealed partial class MainForm
 
     private async Task RunLayoutMatrixAsync()
     {
-        if (_runtime.IsRunning) throw new InvalidOperationException("Layout verification must never run device collection.");
+        if (_application.IsRunning) throw new InvalidOperationException("Layout verification must never run device collection.");
         var directory = SmokeOutputDirectory("layout-matrix");
         Directory.CreateDirectory(directory);
         var results = new List<LayoutCaseResult>();
@@ -295,6 +295,13 @@ public sealed partial class MainForm
 
     private static void BringIntoViewAndAssert(Control control, string context)
     {
+        // A real operator selects the containing tab before focusing its input.
+        // Select every ancestor tab from outermost to innermost; all existing focus
+        // and ancestor clipping assertions still apply to the now visible field.
+        var tabs = new List<(TabControl Owner, TabPage Page)>();
+        for (var parent = control.Parent; parent is not null; parent = parent.Parent)
+            if (parent is TabPage page && page.Parent is TabControl owner) tabs.Add((owner, page));
+        foreach (var (owner, page) in tabs.AsEnumerable().Reverse()) owner.SelectedTab = page;
         var form = control.FindForm() ?? throw new InvalidOperationException(context + ": control has no window.");
         Control? stableFocus = form switch
         {
@@ -331,7 +338,7 @@ public sealed partial class MainForm
             if (window.IsDisposed || target.IsDisposed || !window.Visible || !target.Visible || !target.Enabled) break;
             attempts = attempt;
             window.Activate();
-            Application.DoEvents();
+            System.Windows.Forms.Application.DoEvents();
             if (window.IsDisposed || target.IsDisposed) break;
             PerformLayoutRecursively(window);
             if (target.Focus() && target.ContainsFocus)
@@ -412,7 +419,7 @@ public sealed partial class MainForm
             ActualMonitorBounds = Screen.FromControl(this).Bounds,
             ActualMonitorWorkingArea = Screen.FromControl(this).WorkingArea,
             ExpectedCases = 20, ExecutedCases = results.Count, PassedCases = results.Count(x => x.Passed),
-            CollectionRunning = _runtime.IsRunning,
+            CollectionRunning = _application.IsRunning,
             FocusRecoveryCount = SmokeFocusRecoveries.Count,
             FocusRecoveries = SmokeFocusRecoveries,
             Cases = results

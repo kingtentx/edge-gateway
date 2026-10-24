@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../EdgeGateway.Application/EdgeGateway.Application.csproj" />
+    <ProjectReference Include="../EdgeGateway.DataAccess/EdgeGateway.DataAccess.csproj" />
+    <ProjectReference Include="../EdgeGateway.Infrastructure.Mqtt/EdgeGateway.Infrastructure.Mqtt.csproj" />
+    <ProjectReference Include="../EdgeGateway.IotGateway/EdgeGateway.IotGateway.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Simulator/EdgeGateway.Driver.Simulator.csproj" />
+    <ProjectReference Include="../../Plugins/Drivers/EdgeGateway.Driver.Modbus/EdgeGateway.Driver.Modbus.csproj" />
+  </ItemGroup>
+</Project>

@@ -76,7 +76,7 @@ public sealed partial class MainForm
                     Target = Label(target), Requested = Label(requested), Window = Label(window),
                     Thread = ReadThread(mainState.ThreadId),
                     Controls = controls.Take(32).Select(SnapshotControl).ToArray(),
-                    OpenForms = Application.OpenForms.Cast<Form>().Take(16).Select(form => new
+                    OpenForms = System.Windows.Forms.Application.OpenForms.Cast<Form>().Take(16).Select(form => new
                     {
                         Control = SnapshotControl(form), form.Modal, form.TopLevel, WindowState = form.WindowState.ToString(),
                         Owner = Label(form.Owner), OwnerHandle = Hex(ExistingHandle(form.Owner)),

@@ -1,0 +1,70 @@
+using EdgeGateway.Abstractions;
+using EdgeGateway.Model;
+
+namespace EdgeGateway.Application;
+
+/// <summary>Driver metadata and validation for editors; never exposes a protocol factory or connection.</summary>
+public interface IDriverCatalog
+{
+    IReadOnlyList<DriverDescriptor> Drivers { get; }
+    DriverDescriptor GetDescriptor(string driverId);
+    IReadOnlyList<string> Validate(DeviceConfiguration configuration);
+    IReadOnlyList<string> ValidateConfiguration(GatewayConfiguration configuration);
+}
+
+public sealed record ConfigurationApplyOptions
+{
+    public Guid? MqttDestinationConfirmation { get; init; }
+}
+
+public sealed record ConfigurationChangePreview(
+    bool RequiresMqttDestinationConfirmation, Guid? ConfirmationToken, long PendingOutboxMessages,
+    MqttConfiguration PreviousMqtt, MqttConfiguration ProposedMqtt);
+
+/// <summary>
+/// The desktop application boundary. Configuration commands validate and persist before
+/// publishing a new snapshot; callers must await success before closing an editor.
+/// </summary>
+public interface IGatewayApplication : IAsyncDisposable
+{
+    IDriverCatalog Drivers { get; }
+    IGatewayLog Log { get; }
+    bool IsRunning { get; }
+    bool IsMqttConnected { get; }
+    bool IsDeviceRunning(Guid deviceId);
+    GatewayConfiguration GetConfiguration();
+    IReadOnlyList<string> ValidateConfiguration(GatewayConfiguration candidate);
+    Task<ConfigurationChangePreview> PreviewConfigurationAsync(GatewayConfiguration candidate, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> ApplyConfigurationAsync(GatewayConfiguration candidate, ConfigurationApplyOptions? options = null, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> ReplaceConfigurationAsync(GatewayConfiguration candidate, ConfigurationApplyOptions? options = null, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> AddDeviceAsync(DeviceConfiguration device, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> UpdateDeviceAsync(DeviceConfiguration device, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> DeleteDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> AppendDevicesAsync(IReadOnlyList<DeviceConfiguration> devices, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> AddTagAsync(Guid deviceId, TagConfiguration tag, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> UpdateTagAsync(Guid deviceId, TagConfiguration tag, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> DeleteTagAsync(Guid deviceId, Guid tagId, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> ReplaceDeviceTagsAsync(Guid deviceId, IReadOnlyList<TagConfiguration> tags, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> UpsertChannelAsync(ChannelConfiguration channel, bool isNew, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> DeleteChannelAsync(Guid channelId, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> ApplyGlobalSettingsAsync(GatewayConfiguration draft, ConfigurationApplyOptions? options = null, CancellationToken cancellationToken = default);
+    Task<GatewayConfiguration> ReadSavedConfigurationAsync(CancellationToken cancellationToken = default);
+    Task<GatewayConfiguration> ReadConfigurationFileAsync(string path, CancellationToken cancellationToken = default);
+    Task ExportConfigurationAsync(string path, CancellationToken cancellationToken = default);
+    Task StartAsync(CancellationToken cancellationToken = default);
+    Task StartDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default);
+    Task StopDeviceAsync(Guid deviceId);
+    Task StopAsync();
+    IReadOnlyList<TelemetrySample> GetLatest();
+    TelemetrySample? GetLatestSample(Guid tagId);
+    IReadOnlyList<DeviceRuntimeStatus> GetDeviceStatuses();
+    IReadOnlyList<DeviceCommunicationStatistics> GetCommunicationStatistics();
+    TelemetryPipelineStatus GetTelemetryStatus();
+    RpcRuntimeStatus GetRpcStatus();
+    Task<DeviceProbeResult> ProbeDeviceAsync(Guid deviceId, Guid? tagId = null, CancellationToken cancellationToken = default);
+    Task<DeviceProbeResult> ProbeDeviceAsync(Guid deviceId, Guid? tagId, DeviceProbeOptions options, CancellationToken cancellationToken = default);
+    Task<WriteCommandResult> WriteVerifiedAsync(Guid deviceId, Guid tagId, string engineeringValue,
+        WriteVerificationOptions? options = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TelemetrySample>> QueryHistoryAsync(HistoryQuery query, CancellationToken cancellationToken = default);
+    Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
+}

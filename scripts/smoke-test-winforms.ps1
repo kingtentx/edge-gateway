@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = 'artifacts',
-    [ValidateRange(1, 3600)][int]$TimeoutSeconds = 600,
+    [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900,
     [switch]$VerifyOnly
 )
 
@@ -73,6 +73,7 @@ markers = [
     'Device-action/autosave smoke passed:',
     'Live configuration smoke passed: A kept collecting',
     'Completed capabilities smoke passed at actual',
+    'Usability smoke passed at actual',
     'Layout matrix passed: 20 equivalent viewport cases',
 ]
 for marker in markers:
@@ -151,7 +152,8 @@ for driver in drivers:
     expected_images.update(f'ui-smoke-{kind}-{identifier}.png' for kind in ('device', 'tag', 'configuration'))
 expected_images.update('ui-smoke-' + name + '.png' for name in (
     'devices-running', 'devices-stopped', 'preset-modbus-rtu-com11', 'preset-configuration-modbus-rtu-com11',
-    'tag-import-preview', 'live-configuration-devices', 'live-configuration-diagnostics', 'live-configuration-retained-draft'))
+    'tag-import-preview', 'live-configuration-devices', 'live-configuration-diagnostics', 'live-configuration-retained-draft',
+    'usability-menu', 'usability-platform'))
 for name in case_specs:
     expected_images.update(f'ui-smoke-layout-matrix/{name}-{kind}.png'
                           for kind in ('overview', 'modbus-device', 'channel'))
@@ -162,8 +164,8 @@ for directory in output.glob('ui-smoke-*'):
     if directory.is_dir():
         images.extend(directory.rglob('*.png'))
 actual_images = {image.relative_to(output).as_posix() for image in images}
-require(len(expected_images) == 122, 'The expected screenshot manifest is internally inconsistent.')
-require(actual_images == expected_images and len(images) == 122,
+require(len(expected_images) == 124, 'The expected screenshot manifest is internally inconsistent.')
+require(actual_images == expected_images and len(images) == 124,
         f'Screenshot manifest mismatch: missing={sorted(expected_images - actual_images)}; unexpected={sorted(actual_images - expected_images)}.')
 png_sizes = {}
 for image in images:
@@ -193,11 +195,11 @@ if os.environ.get('GITHUB_ACTIONS') == 'true':
 summary = dict(sourceCommit=os.environ.get('GITHUB_SHA'), workflowRunId=os.environ.get('GITHUB_RUN_ID'),
     actualDeviceDpi=actual_dpi, nativeWindowDpi=report['nativeWindowDpi'], viewportSimulation=True,
     layoutCasesPassed=20, layoutCasesExpected=20, checkedPages=sorted(pages), checkedDialogs=sorted(dialogs),
-    screenshotCount=122, capabilitiesSmokePassed=True,
+    screenshotCount=124, capabilitiesSmokePassed=True, usabilitySmokePassed=True,
     controlMetricCounts=metric_counts, markersPassed=markers, testResultsSummary=test_results_summary,
     reportSha256=hashlib.sha256(report_path.read_bytes()).hexdigest())
 (output / 'ui-smoke-verification.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-print(f'Validated WinForms evidence: 7 pages, 5 dialog types, 20 equivalent work areas, 122 PNGs; actual {actual_dpi} DPI. Completed-capability smoke markers are present.')
+print(f'Validated WinForms evidence: 7 pages, 5 dialog types, 20 equivalent work areas, 124 PNGs; actual {actual_dpi} DPI. Capability and usability smoke markers are present.')
 '@
     $checker | & python - $repositoryRoot $outputRoot
     if ($LASTEXITCODE -ne 0) { throw 'WinForms evidence verification failed.' }

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using EdgeGateway.Abstractions;
 using EdgeGateway.Model;
 
@@ -10,13 +9,7 @@ public sealed class JsonConfigurationStore(string path, Func<GatewayConfiguratio
 {
     private readonly string _path = Path.GetFullPath(path);
     private readonly SemaphoreSlim _gate = new(1, 1);
-    public static JsonSerializerOptions SerializerOptions { get; } = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    public static JsonSerializerOptions SerializerOptions => GatewayJson.Options;
 
     public async Task<GatewayConfiguration> LoadAsync(CancellationToken cancellationToken = default)
     {

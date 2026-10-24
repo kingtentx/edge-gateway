@@ -8,12 +8,12 @@ using MQTTnet.Client;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
 
-namespace EdgeGateway.Service;
+namespace EdgeGateway.Infrastructure.Mqtt;
 
 /// <summary>QoS 1 completion means broker acknowledgement. Duplicates remain possible and consumers must deduplicate messageId.</summary>
 public sealed partial class MqttTelemetryPublisher : ITelemetryPublisher, IMqttRpcTransport, IMqttPlatformTransport
 {
-    public const int MaximumRpcPayloadBytes = 65536;
+    public const int MaximumRpcPayloadBytes = MqttTransportLimits.MaximumRpcPayloadBytes;
     private readonly IMqttClient _client = new MqttFactory().CreateMqttClient();
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly Channel<MqttInboundMessage> _incoming = Channel.CreateBounded<MqttInboundMessage>(new BoundedChannelOptions(64)

@@ -29,14 +29,21 @@ internal sealed class DriverParameterPanel : UserControl
         // inherit previously applied size/margin scaling from an existing table.
         // Give each replacement subtree its own 96-DPI baseline so WinForms scales
         // it once when attached to the current monitor; never re-scale its old host.
-        _page = new EditorLayout.FieldViewport(185);
+        _page = new EditorLayout.FieldViewport();
         var table = _page.Table;
         table.SuspendLayout();
         _original = new Dictionary<string, string>(properties, StringComparer.Ordinal);
-        EditorDialog.Hint(table, $"按驱动参数逐项配置。枚举与数值范围来自原驱动；设备标识自动绑定，超时和最小通讯周期与“{basicTabName}”保持一致。");
-        foreach (var parameter in descriptor.Parameters)
+        bool? previousBoundGroup = null;
+        foreach (var parameter in descriptor.Parameters.OrderBy(parameter => parameter.BoundProperty is not null || parameter.IsReadOnly))
         {
             var bound = BoundValue(parameter, device);
+            var boundGroup = parameter.BoundProperty is not null || parameter.IsReadOnly;
+            if (previousBoundGroup != boundGroup)
+            {
+                EditorDialog.Section(table, boundGroup ? "自动关联参数" : "连接与驱动参数",
+                    boundGroup ? $"下列参数只读；周期和超时请在“{basicTabName}”中修改。" : "按现场设备填写，参数选项与范围由驱动提供。");
+                previousBoundGroup = boundGroup;
+            }
             var value = bound ?? (properties.TryGetValue(parameter.Key, out var saved) ? saved : parameter.DefaultValue);
             var input = CreateInput(parameter, value);
             input.Name = "DriverParameter_" + parameter.Key;
@@ -58,6 +65,8 @@ internal sealed class DriverParameterPanel : UserControl
             // complete description available on the enabled caption in read-only views.
             if (table.GetControlFromPosition(0, table.RowCount - 1) is Control caption)
                 _tips.SetToolTip(caption, help);
+            if (!string.IsNullOrWhiteSpace(bindingHint)) EditorLayout.FieldNote(table, bindingHint);
+            else if (!string.IsNullOrWhiteSpace(parameter.Description)) EditorLayout.FieldNote(table, parameter.Description);
             _fields.Add(parameter.Key, (parameter, input));
         }
         if (descriptor.Parameters.Count == 0) EditorDialog.Hint(table, "此驱动没有额外参数。");
@@ -100,6 +109,16 @@ internal sealed class DriverParameterPanel : UserControl
             result[field.Metadata.Key] = ReadInput(field.Input);
         }
         return result;
+    }
+
+    internal Control? FindValidationInput(string message)
+    {
+        foreach (var field in _fields.Values)
+            if (message.Contains("参数 " + field.Metadata.Key, StringComparison.OrdinalIgnoreCase)
+                || !string.IsNullOrWhiteSpace(field.Metadata.Name) && message.Contains(field.Metadata.Name, StringComparison.OrdinalIgnoreCase)
+                || field.Metadata.Key == "Uri" && message.Contains("URI", StringComparison.OrdinalIgnoreCase))
+                return field.Input;
+        return null;
     }
 
     public void VerifyBindingsForSmoke(DriverDescriptor descriptor, DeviceConfiguration device, bool verifyInitialSelection = true)

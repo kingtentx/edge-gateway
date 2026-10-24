@@ -7,7 +7,7 @@ public sealed partial class MainForm
 {
     private async Task SmokeCompletedCapabilitiesAsync()
     {
-        if (!_smokeTest || _runtime.IsRunning || _dirty)
+        if (!_smokeTest || _application.IsRunning || _dirty)
             throw new InvalidOperationException("Capabilities smoke requires stopped, saved, isolated fixtures.");
         var original = Clone(_configuration);
         var originalPage = _activePage;
@@ -71,7 +71,7 @@ public sealed partial class MainForm
             using (var reopened = new DeviceConfigurationDialog(Clone(edited), _drivers, channels: _configuration.Channels))
             {
                 reopened.Show(this);
-                try { VerifyConfigurationSmokeFields(reopened, _drivers.GetFactory("simulator").Descriptor, edited); }
+                try { VerifyConfigurationSmokeFields(reopened, _drivers.GetDescriptor("simulator"), edited); }
                 finally { reopened.Close(); }
             }
             await AssertSavedConfigurationForSmokeAsync("capabilities device scheduling save");
@@ -110,7 +110,7 @@ public sealed partial class MainForm
             var previousIds = _configuration.Devices.Select(device => device.Id).ToHashSet();
             var previousTagIds = _configuration.Devices.SelectMany(device => device.Tags).Select(tag => tag.Id).ToHashSet();
             RebindConfigurationViews(a.Id);
-            var copy = await SmokeDeviceConfigurationModalAsync(CopyDeviceAsync, editor =>
+            var copy = await SmokeDeviceConfigurationModalAsync(() => CopyDeviceAsync(), editor =>
             {
                 CheckCapability(!CapabilityControl<CheckBox>(editor, "DeviceConfiguration_Enabled").Checked,
                     "copy draft is enabled before an operator reviews its connection.");
@@ -118,7 +118,7 @@ public sealed partial class MainForm
             }, "copy complete device");
             CheckCapability(copy.Id != Guid.Empty && !previousIds.Contains(copy.Id) && !copy.Enabled
                 && copy.Tags.Count == source.Tags.Count && copy.Tags.Select(tag => tag.Id).Distinct().Count() == copy.Tags.Count
-                && copy.Tags.All(tag => tag.Id != Guid.Empty && !previousTagIds.Contains(tag.Id)) && !_runtime.IsRunning,
+                && copy.Tags.All(tag => tag.Id != Guid.Empty && !previousTagIds.Contains(tag.Id)) && !_application.IsRunning,
                 "copy reused identities, lost points, became enabled or started collection.");
             var expectedCopy = Clone(source);
             expectedCopy.Id = copy.Id; expectedCopy.Name = copy.Name; expectedCopy.Enabled = false;
@@ -131,30 +131,30 @@ public sealed partial class MainForm
             await AssertSavedConfigurationForSmokeAsync("capabilities copied device save");
 
             await SmokeCapabilityCloudSettingsAsync();
-            var probe = await _runtime.ProbeDeviceAsync(a.Id, raw.Id,
+            var probe = await _application.ProbeDeviceAsync(a.Id, raw.Id,
                 new DeviceProbeOptions { TimeoutMs = 3000, Source = "windows-capabilities-smoke" });
             CheckCapability(probe.State == DeviceProbeState.Succeeded && probe.Connected && !probe.UsedRunningSession
                 && probe.Sample is { Quality: SampleQuality.Good, NumericValue: 1 } && probe.Sample.TagId == raw.Id
                 && probe.Sample.DeviceId == a.Id && probe.Sample.Timestamp >= probe.StartedAt
-                && probe.Sample.Timestamp <= probe.CompletedAt && !_runtime.IsRunning,
+                && probe.Sample.Timestamp <= probe.CompletedAt && !_application.IsRunning,
                 "stopped-device probe did not return a fresh simulator read and release its temporary session: " + probe.Error);
 
             RebindConfigurationViews(a.Id); ShowPage("devices");
             await DeviceRowActionAsync(a.Id, DeviceStartColumnName);
             var deadline = Stopwatch.StartNew();
-            while (!_runtime.GetLatest().Any(sample => sample.DeviceId == a.Id && sample.TagId == calculated.Id
+            while (!_application.GetLatest().Any(sample => sample.DeviceId == a.Id && sample.TagId == calculated.Id
                        && sample.Quality == SampleQuality.Good && sample.NumericValue == 7) && deadline.Elapsed < TimeSpan.FromSeconds(8))
                 await Task.Delay(25);
-            CheckCapability(_runtime.IsDeviceRunning(a.Id) && _runtime.GetLatest().Any(sample => sample.TagId == calculated.Id
+            CheckCapability(_application.IsDeviceRunning(a.Id) && _application.GetLatest().Any(sample => sample.TagId == calculated.Id
                 && sample.Quality == SampleQuality.Good && sample.NumericValue == 7), "saved expression did not execute during real simulator acquisition.");
             var verification = SmokeCapabilityWriteOptions();
-            var written = await _runtime.WriteVerifiedAsync(a.Id, raw.Id, "42.5", verification with { Source = "windows-capabilities-smoke" });
+            var written = await _application.WriteVerifiedAsync(a.Id, raw.Id, "42.5", verification with { Source = "windows-capabilities-smoke" });
             CheckCapability(written.State == WriteCommandState.Matched && written.WriteAttempted && written.Submitted
                 && written.VerificationRequested && written.ReadBackAttempts >= 1
                 && written.ReadBack is { Quality: SampleQuality.Good, NumericValue: 42.5 }
                 && written.ReadBack.TagId == raw.Id && written.ReadBack.DeviceId == a.Id
                 && written.ReadBack.Timestamp >= written.StartedAt && written.ReadBack.Timestamp <= written.CompletedAt
-                && !_configuration.Mqtt.Enabled && !_runtime.IsDeviceRunning(copy.Id),
+                && !_configuration.Mqtt.Enabled && !_application.IsDeviceRunning(copy.Id),
                 "write/readback did not confirm a fresh simulator response or affected another session: " + written.Error);
             await AssertSavedConfigurationForSmokeAsync("capabilities operations preserve saved configuration");
             Console.WriteLine($"Completed capabilities smoke passed at actual {DeviceDpi} DPI: channel/device policy save and reopen; group/channel/name/address filters; disabled full copy with new IDs; expression failure/success preview, saved scan/deadband and acquisition; all platform/RPC fields saved; fresh stopped probe and matched write/readback. Only simulators ran; MQTT remained disabled.");
@@ -162,7 +162,7 @@ public sealed partial class MainForm
         catch { TrySaveSmokeFailure(this, "completed-capabilities-failed"); throw; }
         finally
         {
-            await _runtime.StopAsync();
+            await _application.StopAsync();
             await RestoreConfigurationForSmokeAsync(original);
             RebindConfigurationViews(originalSelection);
             _bindingDeviceFilters = true;
@@ -317,12 +317,12 @@ public sealed partial class MainForm
         using var timer = new System.Windows.Forms.Timer { Interval = 20 };
         timer.Tick += async (_, _) =>
         {
-            var editor = Application.OpenForms.OfType<T>().SingleOrDefault(window => window.Visible && window.Modal);
+            var editor = System.Windows.Forms.Application.OpenForms.OfType<T>().SingleOrDefault(window => window.Visible && window.Modal);
             if (editor is null)
             {
                 if (elapsed.Elapsed < TimeSpan.FromSeconds(8)) return;
                 timer.Stop(); failure = new InvalidOperationException(context + ": expected editor did not open.");
-                foreach (var modal in Application.OpenForms.Cast<Form>().Where(window => window.Modal).ToArray()) modal.Close();
+                foreach (var modal in System.Windows.Forms.Application.OpenForms.Cast<Form>().Where(window => window.Modal).ToArray()) modal.Close();
                 return;
             }
             timer.Stop(); observed = true;

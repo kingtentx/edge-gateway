@@ -1,14 +1,14 @@
 using EdgeGateway.Model;
-using EdgeGateway.Service;
+using EdgeGateway.Application;
 
 namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private async Task ImportTagsAsync()
+    private async Task ImportTagsAsync(Guid? deviceId = null)
     {
         if (!CanEdit()) return;
-        var device = SelectedDevice();
+        var device = deviceId.HasValue ? _configuration.Devices.FirstOrDefault(d => d.Id == deviceId) : SelectedDevice();
         if (device is null) { SetFooter("请先选择要导入点位的设备。"); return; }
         try
         {
@@ -46,15 +46,16 @@ public sealed partial class MainForm
         {
             var result = editor.Result;
             if (!result.IsValid) throw new InvalidDataException("请先修正点位文件中的错误。");
-            await CommitConfigurationAsync(Candidate(result.Tags), device.Id,
+            var applied = await _application.ReplaceDeviceTagsAsync(device.Id, result.Tags);
+            CompleteConfigurationCommit(applied, device.Id,
                 $"点位已导入并自动保存：新增 {result.Added} 个，更新 {result.Updated} 个，共 {result.TotalCount} 个。");
         });
         return editor;
     }
 
-    private async Task ExportTagsAsync(bool template = false)
+    private async Task ExportTagsAsync(bool template = false, Guid? deviceId = null)
     {
-        var device = SelectedDevice();
+        var device = deviceId.HasValue ? _configuration.Devices.FirstOrDefault(d => d.Id == deviceId) : SelectedDevice();
         if (!template && device is null) { SetFooter("请先选择要导出点位的设备。"); return; }
         using var file = new SaveFileDialog
         {

@@ -1,8 +1,6 @@
-using EdgeGateway.Abstractions;
-using EdgeGateway.DataAccess;
+using EdgeGateway.Application;
 using EdgeGateway.Model;
 using System.Globalization;
-using System.Text.Json;
 
 namespace EdgeGateway.WinForms;
 
@@ -10,7 +8,7 @@ namespace EdgeGateway.WinForms;
 internal sealed class DeviceConfigurationDialog : EditorDialog
 {
     private readonly DeviceConfiguration _original;
-    private readonly IDriverRegistry _drivers;
+    private readonly IDriverCatalog _drivers;
     private readonly bool _readOnly, _isNew;
     private readonly Dictionary<string, Control> _fields = new(StringComparer.Ordinal);
     private readonly List<Control> _connectionInputs = [];
@@ -30,11 +28,11 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     internal IReadOnlyCollection<Control> SmokeParameterInputs => _parameters?.Inputs ?? _connectionInputs;
     internal Guid? SmokeChannelId => (_channel.SelectedItem as ChannelOption)?.Id;
 
-    public DeviceConfigurationDialog(DeviceConfiguration device, IDriverRegistry drivers, bool readOnly = false, bool isNew = false,
+    public DeviceConfigurationDialog(DeviceConfiguration device, IDriverCatalog drivers, bool readOnly = false, bool isNew = false,
         IReadOnlyList<ChannelConfiguration>? channels = null)
         : base(readOnly ? "查看设备配置" : isNew ? "添加采集设备" : "设备配置", readOnly
-            ? "查看设备的启用状态、名称、分组、驱动与连接参数。当前窗口为只读视图。"
-            : "配置设备的启用状态、名称、分组、驱动与连接参数。更换协议不会自动转换已有点位；点击“确定”校验并自动保存，取消不修改原配置。")
+            ? "浏览设备与连接参数。当前为只读视图，不会更改配置。"
+            : "选择驱动并填写连接参数，保存后生效。设备可在列表中单独启动。")
     {
         ArgumentNullException.ThrowIfNull(device);
         ArgumentNullException.ThrowIfNull(drivers);
@@ -47,6 +45,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
 
         var acquisition = AddTab("采集设置");
         TabOf(acquisition).Name = "AcquisitionSettings";
+        Section(acquisition, "设备信息");
         _enabled = Register("Enabled", new CheckBox
         {
             Text = "启用设备", Checked = _original.Enabled, AutoSize = true,
@@ -74,16 +73,18 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         Field(acquisition, "启用状态", _enabled);
         Field(acquisition, "设备名称", _name);
         Field(acquisition, "设备分组", _group);
-        Field(acquisition, "通信通道", _channel);
+        Section(acquisition, "通信与采集", "选择驱动后，在对应连接页配置设备地址。");
         Field(acquisition, "采集驱动", _driver);
+        Field(acquisition, "通信通道", _channel);
         Field(acquisition, "采集周期 (ms)", _cycle);
         Field(acquisition, "通信超时 (ms)", _timeout);
-        Hint(acquisition, "启用后可在设备行点击“启动”；取消勾选后禁止启动该设备。采集周期为 100–3600000 ms，通信超时为 100–120000 ms。");
+        Hint(acquisition, "启用设备后可在列表中启动采集；取消勾选后禁止启动。更换驱动不会自动转换已有点位，请核对点位地址与方法。");
         _driverDetails = EditorLayout.WrappingLabel("", 10, UiTheme.Muted);
         var detailsRow = acquisition.RowCount++;
         acquisition.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         acquisition.Controls.Add(_driverDetails, 0, detailsRow); acquisition.SetColumnSpan(_driverDetails, 2);
         var scanning = AddTab("扫描与恢复");
+        Section(scanning, "扫描策略", "按设备统一扫描，或按各点位的周期扫描。");
         _scanMode = Register("ScanMode", SelectInput(Enum.GetValues<DeviceScanMode>().Cast<object>().ToArray(), _original.ScanMode));
         _scanMode.Format += (_, e) => e.Value = e.ListItem is DeviceScanMode.TagRate ? "按点位周期扫描" : "按设备周期扫描";
         _scanMode.FormattingEnabled = true;
@@ -91,6 +92,8 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         _demotionCount = Register("DemotionFailureCount", Number(_original.DemotionFailureCount, 1, 30));
         _demotionInterval = Register("DemotionIntervalMs", Number(_original.DemotionIntervalMs, 100, 3_600_000));
         Field(scanning, "扫描模式", _scanMode);
+        EditorLayout.FieldNote(scanning, "点位周期设为 0 时继承设备周期。");
+        Section(scanning, "故障恢复", "仅在启用故障降速后，按以下阈值降低重试频率。");
         Field(scanning, "故障降速", _autoDemotion);
         Field(scanning, "连续失败次数", _demotionCount);
         Field(scanning, "降速重试间隔 (ms)", _demotionInterval);
@@ -100,6 +103,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         _timeout.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
         UpdateProtocolFields();
         Tabs.SelectedTab = TabOf(acquisition);
+        if (isNew && !readOnly) SetConfirmText("添加设备");
         if (readOnly) SetReadOnlyView();
     }
 
@@ -114,6 +118,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
             return;
         }
         if (_descriptor is not null) CaptureDriverDraft();
+        ClearValidationFeedback();
         Tabs.SuspendLayout();
         try
         {
@@ -163,6 +168,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         var connection = viewport.Table;
         var rtu = driverId == "modbus-rtu";
         _protocolPage = new TabPage(rtu ? "串口连接" : "网络连接") { Name = "NativeConnection", BackColor = Color.White };
+        Section(connection, rtu ? "串口连接参数" : "网络连接参数", rtu ? "与设备端的串口设置保持一致。" : "填写设备实际使用的主机地址、端口与站号。");
         if (rtu)
         {
             AddConnection(connection, "SerialPortName", "串口名称", TextInput(draft.SerialPortName));
@@ -247,9 +253,27 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         // unknown keys that the factory may reject. Never remove keys to evade validation.
         var validation = Clone(candidate);
         validation.Tags = [];
-        errors.AddRange(_drivers.GetFactory(descriptor.Id).Validate(validation));
-        if (errors.Count > 0) throw new InvalidOperationException(string.Join(Environment.NewLine, errors.Distinct(StringComparer.Ordinal)));
+        errors.AddRange(_drivers.Validate(validation));
+        if (errors.Count > 0)
+        {
+            var message = string.Join(Environment.NewLine, errors.Distinct(StringComparer.Ordinal));
+            var target = ValidationField(errors[0]);
+            if (target is not null) throw new EditorValidationException(message, target);
+            throw new InvalidOperationException(message);
+        }
         Value = candidate;
+    }
+
+    private Control? ValidationField(string error)
+    {
+        if (error.Contains("采集周期", StringComparison.Ordinal) || error.Contains("MinPeriod", StringComparison.Ordinal)) return _cycle;
+        if (error.Contains("超时", StringComparison.Ordinal) || error.Contains("Timeout", StringComparison.Ordinal)) return _timeout;
+        var parameter = _parameters?.FindValidationInput(error);
+        if (parameter is not null) return parameter;
+        foreach (var (key, caption) in new[] { ("Host", "主机"), ("Port", "端口"), ("UnitId", "站号"),
+                     ("SerialPortName", "串口名称"), ("BaudRate", "波特率"), ("DataBits", "数据位"), ("Parity", "校验位"), ("StopBits", "停止位") })
+            if (error.Contains(caption, StringComparison.Ordinal) && _fields.TryGetValue(key, out var field)) return field;
+        return null;
     }
 
     internal void VerifyBindingsForSmoke()
@@ -357,7 +381,5 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
 
     private static TabPage TabOf(TableLayoutPanel table) => (TabPage)table.Parent!.Parent!;
     private sealed record ChannelOption(Guid? Id, string Name) { public override string ToString() => Name; }
-    private static DeviceConfiguration Clone(DeviceConfiguration value) =>
-        JsonSerializer.Deserialize<DeviceConfiguration>(JsonSerializer.Serialize(value, JsonConfigurationStore.SerializerOptions),
-            JsonConfigurationStore.SerializerOptions)!;
+    private static DeviceConfiguration Clone(DeviceConfiguration value) => GatewayJson.Clone(value);
 }

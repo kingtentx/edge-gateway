@@ -1,14 +1,14 @@
 using EdgeGateway.Model;
-using EdgeGateway.Service;
+using EdgeGateway.Application;
 
 namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private readonly ComboBox _deviceGroupFilter = new() { Name = "DeviceGroupFilter", DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
-    private readonly ComboBox _deviceChannelFilter = new() { Name = "DeviceChannelFilter", DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
-    private readonly TextBox _deviceSearch = new() { Name = "DeviceSearch", Width = 205, PlaceholderText = "设备 / 驱动 / 点位 / 地址" };
-    private bool _bindingDeviceFilters;
+    private readonly ComboBox _deviceGroupFilter = new() { Name = "DeviceGroupFilter", DropDownStyle = ComboBoxStyle.DropDownList, Width = 125 };
+    private readonly ComboBox _deviceChannelFilter = new() { Name = "DeviceChannelFilter", DropDownStyle = ComboBoxStyle.DropDownList, Width = 145 };
+    private readonly TextBox _deviceSearch = new() { Name = "DeviceSearch", Width = 200, PlaceholderText = "设备 / 驱动 / 点位 / 地址" };
+    private bool _bindingDeviceFilters, _rebindingDevices;
 
     private FlowLayoutPanel BuildDeviceFilters()
     {
@@ -17,21 +17,21 @@ public sealed partial class MainForm
         _deviceChannelFilter.SelectedIndexChanged += (_, _) => { if (!_bindingDeviceFilters) BindDeviceRows(); };
         _deviceGroupFilter.SelectedIndexChanged += (_, _) => { if (!_bindingDeviceFilters) BindDeviceRows(); };
         _deviceSearch.TextChanged += (_, _) => { if (!_bindingDeviceFilters) BindDeviceRows(); };
-        var add = ConfigurationButton("添加通道", async (_, _) => await EditChannelAsync(true));
-        var edit = ConfigurationButton("编辑通道", async (_, _) => await EditChannelAsync(false));
-        var delete = ConfigurationButton("删除通道", async (_, _) => await DeleteChannelAsync());
-        _stoppedConfigurationCommands.AddRange([add, edit, delete]);
-        var toolbar = UiTheme.Toolbar(_deviceChannelFilter, _deviceGroupFilter, _deviceSearch,
-            UiTheme.Button("清除筛选", (_, _) =>
-            {
-                _bindingDeviceFilters = true;
-                _deviceChannelFilter.SelectedIndex = _deviceGroupFilter.SelectedIndex = 0;
-                _deviceSearch.Clear();
-                _bindingDeviceFilters = false;
-                BindDeviceRows();
-            }), add, edit, delete);
+        var clear = UiTheme.Button("清除筛选", (_, _) =>
+        {
+            _bindingDeviceFilters = true;
+            _deviceChannelFilter.SelectedIndex = _deviceGroupFilter.SelectedIndex = 0;
+            _deviceSearch.Clear();
+            _bindingDeviceFilters = false;
+            BindDeviceRows();
+        });
+        clear.Margin = new Padding(0, 23, 0, 6);
+        var toolbar = UiTheme.Toolbar(
+            UiTheme.FilterField("通信通道", _deviceChannelFilter),
+            UiTheme.FilterField("设备分组", _deviceGroupFilter),
+            UiTheme.FilterField("查找设备", _deviceSearch), clear);
         toolbar.Name = "DeviceFilters";
-        toolbar.Padding = new Padding(0, 0, 0, 12);
+        toolbar.Padding = new Padding(0, 0, 0, 6);
         return toolbar;
     }
 
@@ -72,21 +72,24 @@ public sealed partial class MainForm
             _bindingDeviceFilters = false;
             devices = _configuration.Devices;
         }
-        _deviceGrid.DataSource = devices.Select(d => new DeviceRow(d.Id, d.Name,
-            _configuration.Channels.FirstOrDefault(c => c.Id == d.ChannelId)?.Name ?? "独立通信",
-            d.Group, d.DriverId, d.Enabled ? "是" : "否", "已停止", d.Tags.Count, d.PollIntervalMs)).ToList();
-        if (selected.HasValue)
-            foreach (DataGridViewRow row in _deviceGrid.Rows)
-                if (row.DataBoundItem is DeviceRow data && data.Id == selected)
-                { row.Selected = true; _deviceGrid.CurrentCell = row.Cells[0]; break; }
+        _rebindingDevices = true;
+        try
+        {
+            var rows = devices.Select(d => new DeviceRow(d.Id, d.Name,
+                _configuration.Channels.FirstOrDefault(c => c.Id == d.ChannelId)?.Name ?? "独立通信",
+                d.Group, d.DriverId, d.Enabled ? "是" : "否", "已停止", d.Tags.Count, d.PollIntervalMs)).ToList();
+            GridViewState.Rebind(_deviceGrid, rows, row => row.Id, selected);
+            _deviceSummary.Text = $"{rows.Count} / {_configuration.Devices.Count} 台设备";
+        }
+        finally { _rebindingDevices = false; }
         BindTags();
         UpdateDeviceConfigurationCommands();
     }
 
-    private Task CopyDeviceAsync()
+    private Task CopyDeviceAsync(Guid? deviceId = null)
     {
         if (!CanEdit()) return Task.CompletedTask;
-        var original = SelectedDevice();
+        var original = deviceId.HasValue ? _configuration.Devices.FirstOrDefault(d => d.Id == deviceId) : SelectedDevice();
         if (original is null) { SetFooter("请先选择需要复制的设备。"); return Task.CompletedTask; }
         var draft = DeviceConfigurationOperations.Copy(original, _configuration.Devices.Select(d => d.Name));
         using var editor = new DeviceConfigurationDialog(draft, _drivers, channels: _configuration.Channels);
@@ -94,47 +97,43 @@ public sealed partial class MainForm
         BindEditorApply(editor, null, async () =>
         {
             var copy = editor.Value ?? throw new InvalidOperationException("设备副本尚未通过检查。");
-            var candidate = Clone(_configuration);
-            candidate.Devices.Add(Clone(copy));
-            await CommitConfigurationAsync(candidate, copy.Id, "设备和点位已复制并自动保存；副本尚未启动，请核对连接参数。");
+            var applied = await _application.AddDeviceAsync(copy);
+            CompleteConfigurationCommit(applied, copy.Id, "设备和点位已复制并自动保存；副本尚未启动，请核对连接参数。");
         });
         editor.ShowDialog(this);
         return Task.CompletedTask;
     }
 
-    private Task EditChannelAsync(bool add)
+    private Task EditChannelAsync(bool add, Guid? selectedChannelId = null)
     {
         if (!CanEdit()) return Task.CompletedTask;
-        if (_runtime.IsRunning) { SetFooter("请停止全部设备后维护通信通道；设备与点位仍可独立编辑。"); return Task.CompletedTask; }
-        var channelId = (_deviceChannelFilter.SelectedItem as ChannelChoice)?.Id;
+        if (_application.IsRunning) { SetFooter("请停止全部设备后维护通信通道；设备与点位仍可独立编辑。"); return Task.CompletedTask; }
+        var channelId = selectedChannelId ?? (_deviceChannelFilter.SelectedItem as ChannelChoice)?.Id;
         var channel = add ? new ChannelConfiguration { Name = "通道 " + (_configuration.Channels.Count + 1) }
             : _configuration.Channels.FirstOrDefault(c => c.Id == channelId);
         if (channel is null) { SetFooter("请在通道筛选中选择要编辑的具体通道。"); return Task.CompletedTask; }
         using var editor = new ChannelEditor(Clone(channel));
         BindEditorApply(editor, null, async () =>
         {
-            var candidate = Clone(_configuration);
-            if (add) candidate.Channels.Add(Clone(editor.Value));
-            else candidate.Channels[candidate.Channels.FindIndex(c => c.Id == channel.Id)] = Clone(editor.Value);
-            await CommitConfigurationAsync(candidate, successMessage: "通信通道已自动保存。");
+            var applied = await _application.UpsertChannelAsync(editor.Value, add);
+            CompleteConfigurationCommit(applied, successMessage: "通信通道已自动保存。");
             _deviceChannelFilter.SelectedItem = _deviceChannelFilter.Items.Cast<ChannelChoice>().First(c => c.Id == channel.Id);
         });
         editor.ShowDialog(this);
         return Task.CompletedTask;
     }
 
-    private async Task DeleteChannelAsync()
+    private async Task DeleteChannelAsync(Guid? selectedChannelId = null)
     {
         if (!CanEdit()) return;
-        if (_runtime.IsRunning) { SetFooter("请停止全部设备后删除通道。"); return; }
-        var id = (_deviceChannelFilter.SelectedItem as ChannelChoice)?.Id;
+        if (_application.IsRunning) { SetFooter("请停止全部设备后删除通道。"); return; }
+        var id = selectedChannelId ?? (_deviceChannelFilter.SelectedItem as ChannelChoice)?.Id;
         var channel = _configuration.Channels.FirstOrDefault(c => c.Id == id);
         if (channel is null) { SetFooter("请先选择具体通道。"); return; }
         if (_configuration.Devices.Any(d => d.ChannelId == id)) { SetFooter("该通道仍有设备，请先在设备配置中迁移到其他通道或独立通信。"); return; }
         if (MessageBox.Show(this, $"删除通信通道“{channel.Name}”？", "删除通道", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
-        var candidate = Clone(_configuration);
-        candidate.Channels.RemoveAll(c => c.Id == id);
-        await RunBusyAsync(() => CommitConfigurationAsync(candidate, successMessage: "通信通道已删除并自动保存。"));
+        await RunBusyAsync(async () => CompleteConfigurationCommit(await _application.DeleteChannelAsync(channel.Id),
+            successMessage: "通信通道已删除并自动保存。"));
     }
 
     private async Task ProbeSelectionAsync(bool selectedPoint)
@@ -143,7 +142,7 @@ public sealed partial class MainForm
         if (device is null) { SetFooter("请先选择设备。"); return; }
         var tag = selectedPoint ? SelectedTag() : null;
         if (selectedPoint && tag is null) { SetFooter("请先选择需要读取的点位。"); return; }
-        var result = await _runtime.ProbeDeviceAsync(device.Id, tag?.Id);
+        var result = await _application.ProbeDeviceAsync(device.Id, tag?.Id);
         var state = result.State switch
         {
             DeviceProbeState.Succeeded => "单次读取成功", DeviceProbeState.ConnectedOnly => "仅连接成功（未读点）",
@@ -172,6 +171,7 @@ internal sealed class ChannelEditor : EditorDialog
     {
         Value = value;
         var fields = AddTab("通道设置");
+        Section(fields, "通道信息", "设置名称与通信间隔。");
         _name = TextInput(value.Name); _name.Name = "ChannelName";
         _delay = NumberInput(value.InterRequestDelayMs, 0, 60000); _delay.Name = "ChannelDelay";
         _description = TextInput(value.Description); _description.Name = "ChannelDescription";
