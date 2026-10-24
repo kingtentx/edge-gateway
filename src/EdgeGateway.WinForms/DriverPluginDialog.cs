@@ -31,7 +31,7 @@ internal sealed class DriverPluginDialog : DpiAwareForm
         _grid.ReadOnly = true;
         _grid.AutoGenerateColumns = false;
 
-        var upload = UiTheme.Button("上传并加载 DLL", (_, _) => Install(), true);
+        var upload = UiTheme.Button("上传并加载 DLL", async (_, _) => await InstallAsync(), true);
         upload.Name = "UploadDriverDll";
         var open = UiTheme.Button("打开插件目录", (_, _) =>
         {
@@ -58,7 +58,7 @@ internal sealed class DriverPluginDialog : DpiAwareForm
         Shown += (_, _) => RefreshGrid();
     }
 
-    private void Install()
+    private async Task InstallAsync()
     {
         using var picker = new OpenFileDialog
         {
@@ -76,7 +76,9 @@ internal sealed class DriverPluginDialog : DpiAwareForm
         try
         {
             UseWaitCursor = true;
-            var message = _application.InstallDriverPlugin(picker.FileName);
+            _status.Text = "正在校验、复制并加载驱动 DLL，请稍候……";
+            var sourcePath = picker.FileName;
+            var message = await Task.Run(() => _application.InstallDriverPlugin(sourcePath));
             _status.Text = message + Environment.NewLine + "插件已注册；后续打开设备配置即可选择新驱动。";
             RefreshGrid();
             MessageBox.Show(this, message, "驱动安装完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
