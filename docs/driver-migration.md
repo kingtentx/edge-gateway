@@ -62,7 +62,7 @@ CI 另外编译全部项目、运行适配与协议测试、实例化 WinForms �
 | 驱动 | 现场必须准备的条件 |
 |---|---|
 | `CNC.Fanuc` | 有效授权下取得的 FANUC FOCAS **x64** 原生运行库及其依赖。源实现使用 `FWLIB64.dll`；仓库仅包含源项目原有的 C# 绑定，不包含厂商原生运行库。缺失时应明确报错 |
-| `CNC.Fanuc.H` | HslCommunication 按其许可要求提供有效授权；授权码经环境变量注入，不写入 JSON 配置或源码 |
+| `CNC.Fanuc.H` | HslCommunication 按其许可要求提供有效授权；授权码通过设备参数直接填写并随配置保存，不提交真实授权码到源码 |
 | `OPC.DaClient` | Windows，匹配 x64 宿主的已注册 OPC Automation / OPC DA Server，正确的 COM/DCOM 身份和连接配置。仓库保留原 `Interop.OPCAutomation.dll`，它不能替代实际 COM 服务的安装注册 |
 | `OPC.UaClient` | 可访问的 OPC UA 端点、正确的安全模式与证书信任配置；不默认忽略任意证书错误 |
 | 串口模式 | 实际串口驱动、正确的 COM 参数和接线；同一串口按设备独占，未新增共享多站总线调度 |
@@ -70,7 +70,7 @@ CI 另外编译全部项目、运行适配与协议测试、实例化 WinForms �
 
 这些运行条件不影响源码迁移清单的完整性，但会影响现场连接是否成功。缺少依赖、授权或现场设备时，保持明确错误与坏质量，不切换为模拟数据。
 
-`CNC.Fanuc.H` 的 `AuthorizationCodeEnvironmentVariable` 参数默认是 `EDGE_HSL_AUTHORIZATION_CODE`；填写环境变量名称，在启动程序的用户环境中设置其值。`OPC.UaClient` 增加 `UseSecurity`（默认启用）和 `CertificateStorePath`，证书库根目录留空时使用当前用户目录；设备服务器与客户端应用证书需要按实际 PKI 配置信任。
+`CNC.Fanuc.H` 的 `AuthorizationCode` 参数默认留空；直接填写有效授权码并保存，输入框使用掩码。`OPC.UaClient` 增加 `UseSecurity`（默认启用）和 `CertificateStorePath`，证书库根目录留空时使用当前用户目录；设备服务器与客户端应用证书需要按实际 PKI 配置信任。
 
 ## 配置升级
 

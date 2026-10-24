@@ -116,7 +116,7 @@ Task<ConfigurationApplyResult> ApplyConfigurationAsync(
 
 切换 MQTT `Platform` 时若 outbox 未清空，运行时在保存前直接拒绝；需要先使用原平台完成补传。仅改变 Broker 或其他连接字段不会自动拒绝已有积压：旧记录仍保留原主题、原网关标识和原载荷，并由新连接继续发送。因此修改目标前应先排空旧队列，不存在自动改写报文或统一的迁移确认流程。
 
-平台页现提供周期全量、仅变化、变化加心跳三种策略，以及 Generic、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp 五种协议。变化比较使用成功入队后的工程值基线、点位绝对死区、质量和错误；心跳不改变原采样时间。RPC 与远程写分别默认关闭，启用后使用白名单点位读写、权限复查、持久写请求去重和读回核对。完整字段、主题、令牌环境变量与请求样例见 [平台接入与 RPC](platform-protocols.md)。
+平台页现提供周期全量、仅变化、变化加心跳三种策略，以及 Generic、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp 五种协议。变化比较使用成功入队后的工程值基线、点位绝对死区、质量和错误；心跳不改变原采样时间。RPC 与远程写分别默认关闭，启用后使用白名单点位读写、权限复查、持久写请求去重和读回核对。完整字段、主题、令牌输入与请求样例见 [平台接入与 RPC](platform-protocols.md)。
 
 
 ## 点位 CSV 导入导出

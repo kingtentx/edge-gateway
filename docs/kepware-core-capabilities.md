@@ -76,7 +76,7 @@ CSV 导出增加 `Expression`、`ScanIntervalMs`、`Deadband`，共 20 列，保
 
 ## 6. 平台与 RPC
 
-五种模式为 Generic MQTT、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp。每种具有具体主题、遥测和请求/响应报文，详细认证、子设备状态、协议样例与已核实限制见 [平台接入与 RPC](platform-protocols.md)。密码和 Token 使用环境变量名，配置不保存密文或明文凭据；TLS 仍检查系统信任链。
+五种模式为 Generic MQTT、ThingsBoard、ThingsCloud、ThingsPanel、IoTSharp。每种具有具体主题、遥测和请求/响应报文，详细认证、子设备状态、协议样例与已核实限制见 [平台接入与 RPC](platform-protocols.md)。密码和 Token 直接保存为配置字符串，界面掩码显示，日志与诊断脱敏；TLS 仍检查系统信任链。
 
 RPC 默认关闭，远程写入再单独关闭。启用后仅允许已运行、已启用的设备及点位，方法白名单为 `read` 和 `write`；写入还需点位 Writable。拒绝 retained 指令，限制载荷、嵌套层数、队列、处理速率和超时。通过 GUID 或唯一名称定位，不按当前 UI 选中行执行。
 

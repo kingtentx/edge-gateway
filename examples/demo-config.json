@@ -12,7 +12,7 @@
     "useTls": false,
     "clientId": "edge-001",
     "username": "",
-    "passwordEnvironmentVariable": "EDGE_MQTT_PASSWORD",
+    "password": "",
     "topic": "edge/{gatewayId}/telemetry",
     "timeoutMs": 10000
   },

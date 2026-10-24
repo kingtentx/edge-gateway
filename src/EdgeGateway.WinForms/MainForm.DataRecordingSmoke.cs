@@ -13,7 +13,7 @@ public sealed partial class MainForm
     {
         Name = "采集数据库验证", Enabled = false, Provider = ExternalDatabaseProvider.PostgreSql,
         Host = "localhost", Port = 5432, Database = "edge_gateway", Username = "edge_app",
-        PasswordEnvironmentVariable = "EDGE_DATABASE_PASSWORD", UseTls = true,
+        Password = "  ui-test-password;with spaces!  ", UseTls = true,
         QueueCapacityRows = 2000, QueueCapacityMb = 32, MaxRetryAttempts = 3
     };
 
@@ -70,12 +70,12 @@ public sealed partial class MainForm
                     VerifyEditorLayout(editor, "database connection");
                     foreach (var input in editor.SmokeInputs) BringIntoViewAndAssert(input, "database connection " + input.Name);
                     Check(editor.SmokeInputs.Count() == 16, "connection dialog is missing queue or retry settings.");
-                    var password = (TextBox)editor.SmokeInputs.Single(control => control.Name == "DatabasePasswordEnvironment");
-                    password.Text = "password;not-an-environment-name";
+                    var password = (TextBox)editor.SmokeInputs.Single(control => control.Name == "DatabasePassword");
+                    Check(password.UseSystemPasswordChar, "password input is not masked.");
+                    password.Text = "  literal-password;with spaces!  ";
+                    Check(editor.CommitForSmoke().Password == password.Text, "password input did not preserve the literal value.");
                     var rejected = false;
-                    try { editor.CommitForSmoke(); } catch (EditorValidationException) { rejected = true; }
-                    Check(rejected, "password input accepted a literal/connection-string fragment.");
-                    password.Text = connection.PasswordEnvironmentVariable;
+                    password.Text = connection.Password;
                     var providerInput = (ComboBox)editor.SmokeInputs.Single(control => control.Name == "DatabaseProvider");
                     foreach (var provider in Enum.GetValues<ExternalDatabaseProvider>())
                     {
@@ -92,11 +92,11 @@ public sealed partial class MainForm
                         rejected = false;
                         try { await editor.ApplyAndAcceptForSmokeAsync(); }
                         catch (Exception exception) when (IsConfigurationWriteFailureForSmoke(exception)) { rejected = true; }
-                        Check(rejected && editor.Visible && password.Text == connection.PasswordEnvironmentVariable
+                        Check(rejected && editor.Visible && password.Text == connection.Password
                             && DeviceImportSmokeJson(_configuration) == before, "failed connection save lost draft inputs or changed applied configuration.");
                         await AssertSavedConfigurationForSmokeAsync("rejected database connection save");
                     }
-                    BringIntoViewAndAssert(password, "retained database password variable");
+                    BringIntoViewAndAssert(password, "retained database password");
                     SaveEditorScreenshot(editor, "recording", "connection");
                     await editor.ApplyAndAcceptForSmokeAsync();
                     Check(!_application.IsRunning && _configuration.Databases.Single().Id == connection.Id, "database save started collection or lost connection identity.");

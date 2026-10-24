@@ -96,8 +96,7 @@ public static partial class DataRecordingConfigurationValidator
         if (connection.Provider == ExternalDatabaseProvider.Oracle && !OracleServiceName().IsMatch(connection.Database ?? ""))
             errors.Add($"{label} Oracle 服务名只接受字母、数字、点、下划线或短横线。");
         if (string.IsNullOrWhiteSpace(connection.Username) || connection.Username.Length > 128 || connection.Username.Any(char.IsControl)) errors.Add($"{label} 用户名不能为空、超过 128 字符或包含控制字符。");
-        if (string.IsNullOrWhiteSpace(connection.PasswordEnvironmentVariable) || !EnvironmentName().IsMatch(connection.PasswordEnvironmentVariable))
-            errors.Add($"{label} 密码须填写环境变量名称，不能填写密码。");
+        if (connection.Password is null) errors.Add($"{label} 密码不能为 null；无密码时请留空。");
         if (connection.ConnectionTimeoutSeconds is < 1 or > 120) errors.Add($"{label} 连接超时须为 1–120 秒。");
         if (connection.CommandTimeoutSeconds is < 1 or > 300) errors.Add($"{label} 写入超时须为 1–300 秒。");
         if (connection.BatchSize is < 1 or > 5000) errors.Add($"{label} 批次大小须为 1–5000 行。");
@@ -112,7 +111,6 @@ public static partial class DataRecordingConfigurationValidator
     public static bool IsIdentifier(string? value) => value is not null && System.Text.Encoding.UTF8.GetByteCount(value) <= 63 && Identifier().IsMatch(value);
     private static bool ValidName(string? value) => !string.IsNullOrWhiteSpace(value) && value.Trim().Length <= 100 && !value.Any(char.IsControl);
     [GeneratedRegex("^[\\p{L}_][\\p{L}\\p{N}_]*$", RegexOptions.CultureInvariant)] private static partial Regex Identifier();
-    [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]{0,127}$", RegexOptions.CultureInvariant)] private static partial Regex EnvironmentName();
     [GeneratedRegex("^[A-Za-z0-9_.-]{1,128}$", RegexOptions.CultureInvariant)] private static partial Regex OracleServiceName();
     [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9.-]*$", RegexOptions.CultureInvariant)] private static partial Regex DatabaseHost();
 }

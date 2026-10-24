@@ -17,7 +17,7 @@ public static class IotGatewayDriverCatalog
         new("OPC.DaClient", "OPC.DaClient.DeviceDaClient", "OPC DA 客户端", "ReadNode", "仅 Windows；需注册匹配位数的 OPC Automation、实际 OPC DA Server，并配置 DCOM 权限。", true),
         new("OPC.UaClient", "OPC.UaClient.DeviceUaClient", "OPC UA 客户端", "ReadNode", "需实际 OPC UA Endpoint、有效 NodeId；证书信任及安全配置遵循原驱动实现。"),
         new("CNC.Fanuc", "CNC.Fanuc.DeviceFanuc", "FANUC FOCAS", "ReadDeviceType", "仅 Windows x64；需要 FANUC 官方 FWLIB64.dll 及其配套依赖、设备以太网 FOCAS 功能。"),
-        new("CNC.Fanuc.H", "CNC.Fanuc.H.DeviceFanuc", "FANUC HslCommunication", "ReadSysStatusInfo", "需要有效 HslCommunication 授权环境变量及受支持 FANUC 设备。"),
+        new("CNC.Fanuc.H", "CNC.Fanuc.H.DeviceFanuc", "FANUC HslCommunication", "ReadSysStatusInfo", "需要配置有效 HslCommunication 授权码及受支持 FANUC 设备。"),
         new("CNC.MTConnect", "CNC.MTConnect.DeviceMTClient", "MTConnect 客户端", "ReadById", "需要实际 MTConnect HTTP Agent URI 和 dataItemId。"),
         new("Mock.TcpClient", "Mock.TcpClient.DeviceTcpClient", "原始 TCP 示例协议", "Read", "真实 TCP 收发原示例协议；请求 01 02 03 04，响应 8 字节且首字节 08，不生成本地模拟数值。"),
         new("Other.Toledo", "Other.Toledo.DeviceToledo", "托利多称重 TCP", "Read", "原驱动通过 TCP 读取称重帧；DataBits 为期望帧长度，串口外观参数不代表已实现串口通讯。")

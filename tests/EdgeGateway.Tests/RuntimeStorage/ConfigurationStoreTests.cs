@@ -13,6 +13,34 @@ public sealed class ConfigurationStoreTests : IDisposable
     private string DatabasePath => Path.Combine(_directory, "gateway.config.db");
 
     [Fact]
+    public async Task LiteralCredentialsSurviveSqliteRestartAndConfigurationExchange()
+    {
+        var configuration = DemoConfiguration.Create();
+        configuration.Mqtt.Password = "  test-mqtt-password;\"!  ";
+        configuration.Mqtt.AccessToken = "  test-platform-token/+=  ";
+        configuration.Databases.Add(new DatabaseConnectionConfiguration { Password = "  test-db-password;\"!  " });
+        configuration.Devices[0].Properties["AuthorizationCode"] = "test-license-value";
+        await using (var store = new SqliteConfigurationStore(DatabasePath)) await store.SaveAsync(configuration);
+
+        await using var reopened = new SqliteConfigurationStore(DatabasePath);
+        var saved = await reopened.LoadAsync();
+        var exchange = Path.Combine(_directory, "credentials.json");
+        var files = new JsonConfigurationFiles();
+        await files.ExportAsync(exchange, saved);
+        var imported = await files.ReadAsync(exchange);
+        Assert.Equal(configuration.Mqtt.Password, imported.Mqtt.Password);
+        Assert.Equal(configuration.Mqtt.AccessToken, imported.Mqtt.AccessToken);
+        Assert.Equal(configuration.Databases[0].Password, Assert.Single(imported.Databases).Password);
+        Assert.Equal("test-license-value", imported.Devices[0].Properties["AuthorizationCode"]);
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(exchange));
+        var mqtt = document.RootElement.GetProperty("mqtt");
+        Assert.Equal(configuration.Mqtt.Password, mqtt.GetProperty("password").GetString());
+        Assert.DoesNotContain(mqtt.EnumerateObject(), field => field.Name.EndsWith("EnvironmentVariable", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(document.RootElement.GetProperty("databases")[0].EnumerateObject(),
+            field => field.Name.EndsWith("EnvironmentVariable", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task FreshDatabaseDoesNotClaimDefaultsAreSaved()
     {
         await using var store = new SqliteConfigurationStore(DatabasePath, DemoConfiguration.Create);

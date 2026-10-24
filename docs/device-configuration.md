@@ -52,7 +52,7 @@ Siemens S7 读取迁移驱动元数据，展示 PLC 类型、IP、端口、Rack�
 | `PLC.OmronFins` / `PLC.AllenBradley` | IP、端口 |
 | `OPC.UaClient` | URI、迁移版已有的安全策略与 PKI 目录 |
 | `OPC.DaClient` | 服务器 IP、OPC Server 名称 |
-| `CNC.Fanuc` / `CNC.Fanuc.H` | IP、端口；Hsl 版本保留授权码环境变量名 |
+| `CNC.Fanuc` / `CNC.Fanuc.H` | IP、端口；Hsl 版本直接输入并保存授权码 |
 | `CNC.MTConnect` | MTConnect URI |
 | `Other.Toledo` | IP、端口、帧长度及源驱动元数据字段；其 DataBits 表示 TCP 帧长度 |
 | `Mock.TcpClient` | IP、端口、连接类型 |

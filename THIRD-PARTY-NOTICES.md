@@ -69,7 +69,7 @@
 
 ## 原厂组件与部署条件
 
-`CNC.Fanuc.H` 调用 HslCommunication 的实际通信 API。其生产使用和再分发遵循[厂商授权条款](https://www.hsltechnology.cn/Home/Licence?area=HslCommunication)，本项目不提供授权码。`AuthorizationCodeEnvironmentVariable` 指定存放合法授权码的环境变量名，默认 `EDGE_HSL_AUTHORIZATION_CODE`；驱动调用厂商的授权验证 API，不将授权值写入设备配置或日志。
+`CNC.Fanuc.H` 调用 HslCommunication 的实际通信 API。其生产使用和再分发遵循[厂商授权条款](https://www.hsltechnology.cn/Home/Licence?area=HslCommunication)，本项目不提供授权码。`AuthorizationCode` 直接保存用户填写的合法授权码，默认留空；驱动仍调用厂商授权验证 API，输入框使用掩码，不向日志输出授权码，也不在源码中提供真实授权码。
 
 `CNC.Fanuc/fwlib64.cs` 原有 `Copyright (C) 2002-2014 by FANUC CORPORATION All rights reserved.` 保持原样，见 [FANUC-FOCAS-NOTICE.txt](LICENSES/FANUC-FOCAS-NOTICE.txt)。原生 `FWLIB64.dll` 和其官方依赖未随代码或运行包提供，须从厂商合法取得；当前实际 Focas1 调用针对 Windows x64。保留 `fwlib32.cs` 是源目录完整迁移的一部分，不代表发布包支持 x86。
 

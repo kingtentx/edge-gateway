@@ -117,7 +117,7 @@
 
 这些实现继续以 [Kepware 核心能力说明](kepware-core-capabilities.md) 中的通道、扫描与诊断规则为主。OPC UA 对外服务端已按用户要求删除，南向 `OPC.UaClient` 继续保留。Windows Service、桌面多角色、跨点位计算、共享串口多从站、全驱动逐帧追踪及商业插件仍不属于完成声明。
 
-现场依赖也不能通过界面功能代替：Fanuc 仍需合法取得的 FWLIB64 及官方依赖；采用 Hsl 的驱动可能需要配置许可环境变量；OPC DA 依赖匹配位数的 COM/Automation、服务器注册及 DCOM；南向 OPC UA 采集依赖目标服务器与正确的证书信任。当前串口限制是一条串口只配置一个启用设备；共享串口多从站需要专门的总线调度，不能只删除冲突校验。具体说明见[驱动依赖](driver-migration.md)与[第三方声明](../THIRD-PARTY-NOTICES.md)。
+现场依赖也不能通过界面功能代替：Fanuc 仍需合法取得的 FWLIB64 及官方依赖；采用 Hsl 的驱动可能需要在设备参数中配置有效授权码；OPC DA 依赖匹配位数的 COM/Automation、服务器注册及 DCOM；南向 OPC UA 采集依赖目标服务器与正确的证书信任。当前串口限制是一条串口只配置一个启用设备；共享串口多从站需要专门的总线调度，不能只删除冲突校验。具体说明见[驱动依赖](driver-migration.md)与[第三方声明](../THIRD-PARTY-NOTICES.md)。
 
 ## 7. 本轮验证范围与历史证据
 

@@ -12,7 +12,7 @@
     "useTls": false,
     "clientId": "edge-001",
     "username": "",
-    "passwordEnvironmentVariable": "EDGE_MQTT_PASSWORD",
+    "password": "",
     "topic": "edge/{gatewayId}/telemetry",
     "timeoutMs": 10000
   },
@@ -275,7 +275,7 @@
       "properties": {
         "IpAddress": "127.0.0.1",
         "Port": "8193",
-        "AuthorizationCodeEnvironmentVariable": "EDGE_HSL_AUTHORIZATION_CODE"
+        "AuthorizationCode": ""
       },
       "tags": [
         {

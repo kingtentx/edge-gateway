@@ -529,7 +529,7 @@ public sealed partial class MainForm
         using var dialog = new SaveFileDialog { Filter = "网关配置 (*.json)|*.json", FileName = "edge-gateway-config.json", Title = "导出当前配置", OverwritePrompt = true };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         await _application.ExportConfigurationAsync(dialog.FileName);
-        SetFooter("配置已导出；文件只包含密码环境变量名称，不包含密码。");
+        SetFooter("配置已导出，文件包含已保存的密码和 Token。");
     }
 
     private static string AreaText(ModbusArea area) => area switch { ModbusArea.Coil => "线圈 (01)", ModbusArea.DiscreteInput => "离散输入 (02)", ModbusArea.InputRegister => "输入寄存器 (04)", _ => "保持寄存器 (03)" };

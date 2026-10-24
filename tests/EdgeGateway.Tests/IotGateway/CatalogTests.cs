@@ -18,6 +18,17 @@ public sealed class CatalogFixture
 public sealed class CatalogTests(CatalogFixture catalog) : IClassFixture<CatalogFixture>
 {
     [Fact]
+    public void HslAuthorizationInputIsSecretAndAllowsLiteralValues()
+    {
+        var factory = catalog.Get("CNC.Fanuc.H");
+        var license = Assert.Single(factory.Descriptor.Parameters, field => field.Key == "AuthorizationCode");
+        Assert.True(license.IsSecret);
+        Assert.Equal("", license.DefaultValue);
+        Assert.Empty(factory.Validate(new DeviceConfiguration { DriverId = "CNC.Fanuc.H",
+            Properties = new() { ["AuthorizationCode"] = "  test-license;literal!  " } }));
+    }
+
+    [Fact]
     public void AllTwelveOriginalDriversPreserveEveryManifestMethodAndParameter()
     {
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "driver-migration-manifest.json")));

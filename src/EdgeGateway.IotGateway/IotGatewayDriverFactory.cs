@@ -43,7 +43,8 @@ internal sealed class IotGatewayDriverFactory : IDriverFactory
                 property.GetCustomAttribute<ConfigParameterAttribute>()!.Description,
                 ParameterDescription(property.Name, definition), property.PropertyType.Name,
                 defaults.GetValueOrDefault(property.Name, ""),
-                property.PropertyType.IsEnum ? Enum.GetNames(property.PropertyType) : [], property.Name == "DeviceId")
+                property.PropertyType.IsEnum ? Enum.GetNames(property.PropertyType) : [], property.Name == "DeviceId",
+                property.Name.Contains("Password", StringComparison.OrdinalIgnoreCase) || property.Name == "AuthorizationCode")
             {
                 BoundProperty = property.Name switch { "DeviceId" => "Id", "Timeout" => "TimeoutMs", "MinPeriod" => "PollIntervalMs", _ => null }
             }).ToArray()
@@ -208,7 +209,7 @@ internal sealed class IotGatewayDriverFactory : IDriverFactory
         "DeviceId" => "自动绑定设备唯一标识，不重复保存。",
         "Timeout" => "绑定基本信息中的请求超时（ms）；原协议单次操作使用此值。",
         "MinPeriod" => "绑定基本信息中的采集周期（ms）；每轮采样结束后等待此周期。",
-        "AuthorizationCodeEnvironmentVariable" => "填写授权码环境变量名称，程序不保存或展示授权码。",
+        "AuthorizationCode" => "直接填写有效授权码，随设备配置保存。",
         "DataBits" when definition.Id == "Other.Toledo" => "原驱动将此参数用于 TCP 帧字节长度，默认 17；不是串口数据位。",
         "Parity" or "StopBits" or "ConnectionType" when definition.Id == "Other.Toledo" => "保留原配置元数据；当前托利多驱动使用 TCP，此字段不启用串口连接。",
         _ => "原驱动参数：" + key

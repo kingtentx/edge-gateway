@@ -109,7 +109,7 @@ require(len(cases) == 20 and {case['name'] for case in cases} == set(case_specs)
         'Layout case names are missing, duplicated, or unexpected.')
 channel_names = {'ChannelName', 'ChannelDelay', 'ChannelDescription'}
 database_names = {'DatabaseName', 'DatabaseEnabled', 'DatabaseProvider', 'DatabaseHost', 'DatabasePort',
-                  'DatabaseCatalog', 'DatabaseUsername', 'DatabasePasswordEnvironment', 'DatabaseTls',
+                  'DatabaseCatalog', 'DatabaseUsername', 'DatabasePassword', 'DatabaseTls',
                   'DatabaseConnectTimeout', 'DatabaseCommandTimeout', 'DatabaseBatchSize', 'DatabaseFlushInterval',
                   'DatabaseQueueCapacity', 'DatabaseQueueCapacityMb', 'DatabaseMaxRetryAttempts'}
 logging_names = {'Logging_MinimumLevel', 'Logging_Samples', 'Logging_MaxFileSizeMb', 'Logging_RetainedFileCount', 'Logging_RetainedDays','Logging_MinimumFreeDiskSpaceMb','Logging_DiskResumeMarginMb'}

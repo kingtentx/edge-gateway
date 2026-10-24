@@ -26,8 +26,8 @@ namespace CNC.Fanuc.H
 
         [ConfigParameter("最小通讯周期ms")] public uint MinPeriod { get; set; } = 3000;
 
-        [ConfigParameter("Hsl 授权码环境变量名")]
-        public string AuthorizationCodeEnvironmentVariable { get; set; } = "EDGE_HSL_AUTHORIZATION_CODE";
+        [ConfigParameter("Hsl 授权码")]
+        public string AuthorizationCode { get; set; } = "";
 
         #endregion 配置参数
 
@@ -65,11 +65,10 @@ namespace CNC.Fanuc.H
 
                 Close();
                 if (Timeout <= 0) throw new ArgumentOutOfRangeException(nameof(Timeout));
-                if (!string.IsNullOrWhiteSpace(AuthorizationCodeEnvironmentVariable))
+                if (!string.IsNullOrEmpty(AuthorizationCode))
                 {
-                    var authorizationCode = Environment.GetEnvironmentVariable(AuthorizationCodeEnvironmentVariable);
-                    if (!string.IsNullOrWhiteSpace(authorizationCode) && !Authorization.SetAuthorizationCode(authorizationCode))
-                        throw new InvalidOperationException("HslCommunication 授权码无效；请核对指定环境变量中的合法授权。");
+                    if (!Authorization.SetAuthorizationCode(AuthorizationCode))
+                        throw new InvalidOperationException("HslCommunication 授权码无效；请核对配置中的合法授权码。");
                 }
                 _fanuc = new FanucSeries0i(IpAddress, Port)
                 {

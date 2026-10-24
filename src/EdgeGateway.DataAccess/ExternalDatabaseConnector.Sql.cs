@@ -52,9 +52,7 @@ public sealed partial class ExternalDatabaseConnector
             throw new ArgumentException("Oracle 服务名仅支持字母、数字、下划线、点与短横线；请勿填写 TNS 描述符。");
         if (string.IsNullOrWhiteSpace(configuration.Username) || configuration.Username.Length > 128 || configuration.Username.Any(char.IsControl))
             throw new ArgumentException("数据库用户名不能为空、包含控制字符或超过 128 字符。");
-        if (string.IsNullOrWhiteSpace(configuration.PasswordEnvironmentVariable)
-            || !Regex.IsMatch(configuration.PasswordEnvironmentVariable, @"\A[A-Za-z_][A-Za-z0-9_]*\z"))
-            throw new ArgumentException("数据库密码只能指定有效的环境变量名称。");
+        if (configuration.Password is null) throw new ArgumentException("数据库密码不能为 null；无密码时请留空。");
         if (configuration.ConnectionTimeoutSeconds is < 1 or > 120 || configuration.CommandTimeoutSeconds is < 1 or > 300)
             throw new ArgumentException("连接超时须为 1–120 秒，命令超时须为 1–300 秒。");
     }
@@ -62,8 +60,7 @@ public sealed partial class ExternalDatabaseConnector
     internal static string BuildConnectionString(DatabaseConnectionConfiguration configuration)
     {
         ValidateConnection(configuration);
-        var password = Environment.GetEnvironmentVariable(configuration.PasswordEnvironmentVariable)
-            ?? throw new ConnectorConfigurationException("数据库密码环境变量尚未设置；请先在运行网关的账户环境中配置后再连接。");
+        var password = configuration.Password;
         return configuration.Provider switch
         {
             ExternalDatabaseProvider.MySql => new MySqlConnectionStringBuilder

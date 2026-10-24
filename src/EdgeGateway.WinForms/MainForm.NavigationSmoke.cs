@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
 
@@ -45,8 +46,47 @@ public sealed partial class MainForm
                 tabs.SelectedIndex = 0;
                 _navigation["overview"].PerformClick();
             }
-            Console.WriteLine($"Deferred tab navigation passed: database/platform/logs first display with stale padding, three menu cycles and all tabs at actual {DeviceDpi} DPI.");
+            SmokeCredentialInputs();
+            Console.WriteLine($"Deferred tab navigation passed: database/platform/logs first display with stale padding, three menu cycles and all tabs, masked literal credential inputs at actual {DeviceDpi} DPI.");
         }
         finally { _navigation[originalPage].PerformClick(); }
+    }
+
+    private void SmokeCredentialInputs()
+    {
+        const string literal = "  ui-test-secret;with quotes\"!  ";
+        var source = new DatabaseConnectionConfiguration { Password = literal };
+        using (var editor = new DatabaseConnectionDialog(source, _application))
+        {
+            editor.Show(this);
+            try
+            {
+                var password = (TextBox)editor.SmokeInputs.Single(input => input.Name == "DatabasePassword");
+                if (!password.UseSystemPasswordChar || password.Text != literal || editor.CommitForSmoke().Password != literal)
+                    throw new InvalidOperationException("Database password input did not mask and preserve the literal credential.");
+                password.Text = "";
+                if (editor.CommitForSmoke().Password != "" || source.Password != literal)
+                    throw new InvalidOperationException("Empty password or cancelled draft isolation failed.");
+            }
+            finally { editor.Close(); }
+        }
+        var passwordInput = (TextBox)_cloudFields["password"];
+        var tokenInput = (TextBox)_cloudFields["accessToken"];
+        var savedPassword = passwordInput.Text;
+        var savedToken = tokenInput.Text;
+        var wasDirty = _dirty;
+        try
+        {
+            _navigation["cloud"].PerformClick();
+            passwordInput.Text = tokenInput.Text = literal;
+            if (!passwordInput.UseSystemPasswordChar || !tokenInput.UseSystemPasswordChar
+                || CloudDraft.Mqtt.Password != literal || CloudDraft.Mqtt.AccessToken != literal)
+                throw new InvalidOperationException("Platform credential inputs did not mask and preserve literal values.");
+        }
+        finally
+        {
+            passwordInput.Text = savedPassword; tokenInput.Text = savedToken;
+            _dirty = wasDirty; UpdateCommands();
+        }
     }
 }

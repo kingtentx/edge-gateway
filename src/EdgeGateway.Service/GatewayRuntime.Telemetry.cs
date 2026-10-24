@@ -262,9 +262,8 @@ public sealed partial class GatewayRuntime
 
     private string Redact(string text)
     {
-        foreach (var name in new[] { _configuration.Mqtt.PasswordEnvironmentVariable, _configuration.Mqtt.UsernameEnvironmentVariable })
+        foreach (var value in new[] { _configuration.Mqtt.Password, _configuration.Mqtt.AccessToken })
         {
-            var value = string.IsNullOrEmpty(name) ? null : Environment.GetEnvironmentVariable(name);
             if (!string.IsNullOrEmpty(value)) text = text.Replace(value, "***", StringComparison.Ordinal);
         }
         return text;

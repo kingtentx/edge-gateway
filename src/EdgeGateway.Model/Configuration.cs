@@ -28,8 +28,7 @@ public sealed class MqttConfiguration
     public bool UseTls { get; set; }
     public string ClientId { get; set; } = "edge-001";
     public string Username { get; set; } = "";
-    // Store only an environment-variable name, never a broker password.
-    public string PasswordEnvironmentVariable { get; set; } = "EDGE_MQTT_PASSWORD";
+    public string Password { get; set; } = "";
     public string Topic { get; set; } = "edge/{gatewayId}/telemetry";
     public int TimeoutMs { get; set; } = 10_000;
     public MqttPlatform Platform { get; set; } = MqttPlatform.Generic;
@@ -38,7 +37,7 @@ public sealed class MqttConfiguration
     public string RpcRequestTopic { get; set; } = "edge/{gatewayId}/rpc/request";
     public string RpcResponseTopic { get; set; } = "edge/{gatewayId}/rpc/response";
     public int RpcTimeoutMs { get; set; } = 10_000;
-    public string UsernameEnvironmentVariable { get; set; } = "";
+    public string AccessToken { get; set; } = "";
     public string PlatformDeviceType { get; set; } = "default";
     public string ThingsCloudTypeKey { get; set; } = "";
     public string PlatformGatewayId { get; set; } = "";

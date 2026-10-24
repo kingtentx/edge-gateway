@@ -225,8 +225,8 @@ public sealed partial class GatewayApplication : IGatewayApplication
         Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(candidate, GatewayJson.Options)));
     private static bool MqttDestinationChanged(MqttConfiguration previous, MqttConfiguration next) =>
         !string.Equals(previous.Host, next.Host, StringComparison.OrdinalIgnoreCase) || previous.Port != next.Port || previous.UseTls != next.UseTls
-        || previous.Username != next.Username || previous.ClientId != next.ClientId || previous.PasswordEnvironmentVariable != next.PasswordEnvironmentVariable
-        || previous.UsernameEnvironmentVariable != next.UsernameEnvironmentVariable || previous.PlatformGatewayId != next.PlatformGatewayId;
+        || previous.Username != next.Username || previous.ClientId != next.ClientId || previous.Password != next.Password
+        || previous.AccessToken != next.AccessToken || previous.PlatformGatewayId != next.PlatformGatewayId;
     private sealed record ConfirmationGrant(long Version, string CandidateFingerprint, long OutboxCount,
         DateTimeOffset? OldestOutboxAt, DateTimeOffset CreatedAt);
 }

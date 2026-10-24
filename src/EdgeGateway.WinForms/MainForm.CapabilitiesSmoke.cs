@@ -208,7 +208,7 @@ public sealed partial class MainForm
         ShowPage("cloud");
         void Text(string key, string value) => ((TextBox)_cloudFields[key]).Text = value;
         void Number(string key, decimal value) => ((NumericUpDown)_cloudFields[key]).Value = value;
-        Text("usernameEnv", "EDGE_SMOKE_TOKEN"); Text("passwordEnv", "EDGE_SMOKE_PASSWORD");
+        Text("accessToken", "EDGE_SMOKE_TOKEN"); Text("password", "EDGE_SMOKE_PASSWORD");
         Text("deviceType", "smoke-type"); Text("typeKey", "smoke-type-key"); Text("platformGatewayId", "smoke-gateway");
         Text("rpcRequest", "smoke/{gatewayId}/rpc/request"); Text("rpcResponse", "smoke/{gatewayId}/rpc/response");
         ((CheckBox)_cloudFields["rpcEnabled"]).Checked = true;
@@ -221,8 +221,8 @@ public sealed partial class MainForm
             await ApplyCloudSettingsAsync();
             var mqtt = _configuration.Mqtt;
             CheckCapability(!_dirty && !mqtt.Enabled && mqtt.Platform == platform && mqtt.RpcEnabled && mqtt.AllowRemoteWrite
-                && mqtt.RpcTimeoutMs == 7500 && mqtt.UsernameEnvironmentVariable == "EDGE_SMOKE_TOKEN"
-                && mqtt.PasswordEnvironmentVariable == "EDGE_SMOKE_PASSWORD" && mqtt.PlatformDeviceType == "smoke-type"
+                && mqtt.RpcTimeoutMs == 7500 && mqtt.AccessToken == "EDGE_SMOKE_TOKEN"
+                && mqtt.Password == "EDGE_SMOKE_PASSWORD" && mqtt.PlatformDeviceType == "smoke-type"
                 && mqtt.ThingsCloudTypeKey == "smoke-type-key" && mqtt.PlatformGatewayId == "smoke-gateway"
                 && mqtt.RpcRequestTopic == "smoke/{gatewayId}/rpc/request" && mqtt.RpcResponseTopic == "smoke/{gatewayId}/rpc/response"
                 && _configuration.ReportMode == TelemetryReportMode.OnChangeWithHeartbeat

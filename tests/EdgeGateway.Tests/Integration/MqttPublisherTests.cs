@@ -13,6 +13,58 @@ namespace EdgeGateway.Tests.Integration;
 
 public sealed class MqttPublisherTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConnectUsesLiteralCredentialsAndReconnectsWhenTheyChange(bool tokenAuthentication)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var settings = Settings(listener);
+        settings.Username = "test-account";
+        settings.Password = "  test-password;quotes\"!  ";
+        settings.AccessToken = tokenAuthentication ? "  test-token/with+symbols=  " : "";
+        var expected = new[]
+        {
+            (User: tokenAuthentication ? settings.AccessToken : settings.Username, Password: settings.Password),
+            (User: tokenAuthentication ? "rotated-test-token!" : settings.Username, Password: "rotated-test-password!")
+        };
+        var server = Task.Run(async () =>
+        {
+            foreach (var credential in expected)
+            {
+                using var peer = await listener.AcceptTcpClientAsync(deadline.Token);
+                var stream = peer.GetStream();
+                var connect = await ReadFrameAsync(stream, deadline.Token);
+                Assert.Equal(0x10, connect.Header);
+                Assert.Equal(0xC0, connect.Payload[7] & 0xC0); // User name and password flags.
+                var position = 10;
+                string ReadString()
+                {
+                    var length = BinaryPrimitives.ReadUInt16BigEndian(connect.Payload.AsSpan(position, 2));
+                    position += 2;
+                    var value = Encoding.UTF8.GetString(connect.Payload, position, length);
+                    position += length;
+                    return value;
+                }
+                Assert.Equal(settings.ClientId, ReadString());
+                Assert.Equal(credential.User, ReadString());
+                Assert.Equal(credential.Password, ReadString());
+                Assert.Equal(connect.Payload.Length, position);
+                await stream.WriteAsync(new byte[] { 0x20, 2, 0, 0 }, deadline.Token);
+                Assert.Equal(0xE0, (await ReadFrameAsync(stream, deadline.Token)).Header); // DISCONNECT.
+            }
+        }, deadline.Token);
+        await using var publisher = new MqttTelemetryPublisher();
+        await publisher.EnsureConnectedAsync(settings, [], deadline.Token);
+        settings.Password = expected[1].Password;
+        if (tokenAuthentication) settings.AccessToken = expected[1].User;
+        await publisher.EnsureConnectedAsync(settings, [], deadline.Token);
+        await publisher.DisconnectAsync(deadline.Token);
+        await server.WaitAsync(deadline.Token);
+    }
+
     [Fact]
     public async Task QosOnePublishCompletesOnlyAfterMatchingBrokerAcknowledgement()
     {

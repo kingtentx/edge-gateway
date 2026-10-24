@@ -423,8 +423,7 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
         private string SafeError(Exception exception)
         {
             var message = exception is OperationCanceledException ? "数据库操作超过配置的时间限制。" : exception.Message;
-            var name = State.Configuration.PasswordEnvironmentVariable;
-            var secret = string.IsNullOrEmpty(name) ? null : Environment.GetEnvironmentVariable(name);
+            var secret = State.Configuration.Password;
             if (!string.IsNullOrEmpty(secret)) message = message.Replace(secret, "***", StringComparison.Ordinal);
             return message.Replace('\r', ' ').Replace('\n', ' ');
         }

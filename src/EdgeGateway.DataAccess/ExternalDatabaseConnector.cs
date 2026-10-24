@@ -171,7 +171,7 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
 
     private static string MetadataCacheKey(DatabaseConnectionConfiguration connection, DatabaseWriteGroupConfiguration group) =>
         JsonSerializer.Serialize(new object[] { connection.Provider, connection.Host.ToLowerInvariant(), connection.Port,
-            connection.Database, connection.Username, connection.PasswordEnvironmentVariable, connection.UseTls,
+            connection.Database, connection.Username, connection.Password, connection.UseTls,
             group.Schema, group.Table, group.Mode, group.Columns.Select(column => new { column.Column, column.FieldType }).ToArray() });
 
     private async Task<IReadOnlyList<DatabaseColumnInfo>> GetValidatedColumnsAsync(DbConnection database,

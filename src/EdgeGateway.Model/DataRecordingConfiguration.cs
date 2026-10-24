@@ -37,7 +37,7 @@ public sealed class DatabaseConnectionConfiguration
     public int Port { get; set; } = 3306;
     public string Database { get; set; } = "edge_gateway";
     public string Username { get; set; } = "edge_gateway";
-    public string PasswordEnvironmentVariable { get; set; } = "EDGE_DATABASE_PASSWORD";
+    public string Password { get; set; } = "";
     public bool UseTls { get; set; }
     public int ConnectionTimeoutSeconds { get; set; } = 10;
     public int CommandTimeoutSeconds { get; set; } = 30;

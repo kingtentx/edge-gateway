@@ -6,7 +6,7 @@
 
 `Mqtt.Platform` 缺省为 `Generic`，旧配置保持原遥测格式。`RpcEnabled` 与 `AllowRemoteWrite` 均缺省为 `false`；启用 RPC 后先提供只读诊断。远程写同时要求全局允许、设备正在运行且启用、目标点位启用且 `Writable`，再由统一设备操作服务在设备互斥锁内复查权限和会话。表达式点位不能写入。
 
-Broker 地址、端口、TLS、客户端标识、用户名配置沿用已有字段。令牌用作用户名的平台可设置 `UsernameEnvironmentVariable`；此时从环境变量读取并覆盖普通用户名。密码通过 `PasswordEnvironmentVariable` 读取；平台允许空密码时将该字段留空。环境变量内容不进入配置和导出。TLS 使用系统证书信任链。
+Broker 地址、端口、TLS、客户端标识、用户名配置沿用已有字段。令牌用作用户名的平台直接设置 `AccessToken`，其值作为 MQTT 用户名并优先于 `Username`。密码直接设置 `Password`；平台允许空密码时留空。凭据字符串保留输入原值，写入配置 SQLite 和 JSON 导出，界面使用掩码，日志与诊断继续脱敏。TLS 使用系统证书信任链。
 
 ThingsBoard 可配置 `PlatformDeviceType`，默认 `default`。ThingsCloud 的 `ThingsCloudTypeKey` 是可选的子设备类型标识；已有且已绑定网关的子设备可以留空。ThingsPanel RPC 必须配置云端网关的 `PlatformGatewayId`（文档中的 `device_number`）。本地设备名称用作平台子设备名称或地址；专用模式要求名称唯一，IoTSharp 名称不能含 MQTT 主题分隔符或通配符。
 
@@ -76,7 +76,7 @@ IoTSharp 发布到 `devices/pump/rpc/request/write/operator-001`：
 
 `write` 走统一 `WriteVerifiedAsync`，执行类型检查、工程值逆转换、权限检查、写入及同一门闩内显式读回。回复只有 `Matched` 才 `success=true`；`Mismatched`、`TimedOut`、`Cancelled`、`Failed` 分别保留，不将 Broker 确认或写请求已提交视为数值核对通过。回复含命令 Guid、是否已提交、实际读回、次数与耗时。RPC 使用精确比较（绝对和相对容差均 0），浮点期望值按实际写入数据类型转换后再比较。
 
-远程写执行前在 `messaging/rpc` 命令文件 事务中占位，记录平台/连接/网关/设备/请求标识的键与命令指纹。去重域包含 Broker、客户端标识、本地 `GatewayId`、`PlatformGatewayId` 和配置的账号身份；令牌账号使用环境变量名称，不使用环境变量内容。切换云端网关或账号不会误重放另一个身份的结果；为同一逻辑网关轮换令牌时应保持本地网关标识、客户端标识和环境变量名称稳定。若把同一变量重新分配给另一租户或网关，必须同时分配新的本地网关/客户端标识。身份仅以 SHA-256 键持久化，不记录令牌。
+远程写执行前在 `messaging/rpc` 命令文件 事务中占位，记录平台/连接/网关/设备/请求标识的键与命令指纹。去重域包含 Broker、客户端标识、本地 `GatewayId`、`PlatformGatewayId` 和配置的账号身份；令牌账号使用认证模式与配置的 `Username` 作为稳定账号身份，不将可轮换的 `AccessToken` 值加入去重键。为同一逻辑网关轮换 Token 时保持本地网关、客户端、云端网关及账号标识稳定；切换租户或账号时必须分配新的网关/客户端/账号标识，不能仅替换 Token。身份仅以 SHA-256 键持久化，不记录令牌。
 
 相同写请求重投只重放已保存回复；同标识改用不同目标点位、值或方法拒绝，读取也会检查持久写占位，不能把已有写请求改成读取。占位存在而无完成记录，表示进程中断或结果持久化不确定，返回 `Indeterminate`，禁止自动再写。远程调用方必须为新的有意操作使用新的请求标识；平台若循环复用短 ID，应调整调用方生成策略。没有持久审计接口的存储实现拒绝远程写入。
 

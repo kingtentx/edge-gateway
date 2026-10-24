@@ -1,6 +1,5 @@
 using EdgeGateway.Application;
 using EdgeGateway.Model;
-using System.Text.RegularExpressions;
 
 namespace EdgeGateway.WinForms;
 
@@ -38,7 +37,7 @@ internal sealed class DatabaseConnectionDialog : EditorDialog
     internal IEnumerable<Control> SmokeInputs => new Control[] { _name, _enabled, _provider, _host, _port, _database, _username, _password, _tls, _connectTimeout, _commandTimeout, _batch, _flush, _capacity, _capacityMb, _retryAttempts };
 
     internal DatabaseConnectionDialog(DatabaseConnectionConfiguration configuration, IGatewayApplication application)
-        : base("数据库连接", "配置采集数据的外部数据库；密码只填写环境变量名称。保存前需停止全部设备。")
+        : base("数据库连接", "配置采集数据的外部数据库；直接输入密码并随连接配置保存。保存前需停止全部设备。")
     {
         _source = GatewayJson.Clone(configuration); _application = application;
         var fields = AddTab("连接设置");
@@ -46,14 +45,15 @@ internal sealed class DatabaseConnectionDialog : EditorDialog
         _provider = SelectInput(Enum.GetValues<ExternalDatabaseProvider>().Cast<object>().ToArray(), _source.Provider);
         _provider.FormattingEnabled = true; _provider.Format += (_, e) => { if (e.ListItem is ExternalDatabaseProvider value) e.Value = DatabaseUiText.Provider(value); };
         _host = TextInput(_source.Host); _port = NumberInput(_source.Port, 1, 65535); _database = TextInput(_source.Database);
-        _username = TextInput(_source.Username); _password = TextInput(_source.PasswordEnvironmentVariable);
-        _password.PlaceholderText = "例如 EDGE_DATABASE_PASSWORD，不填写密码原文";
+        _username = TextInput(_source.Username); _password = TextInput(_source.Password);
+        _password.UseSystemPasswordChar = true;
+        _password.PlaceholderText = "直接输入密码；无密码时留空";
         _tls = new CheckBox { Text = "启用 TLS（验证服务器证书）", AutoSize = true, Checked = _source.UseTls };
         Section(fields, "连接信息");
         Add(fields, "DatabaseName", "连接名称", _name); Add(fields, "DatabaseEnabled", "数据写入", _enabled);
         Add(fields, "DatabaseProvider", "数据库类型", _provider); Add(fields, "DatabaseHost", "服务器", _host);
         Add(fields, "DatabasePort", "端口", _port); Add(fields, "DatabaseCatalog", "数据库 / Oracle 服务名", _database);
-        Add(fields, "DatabaseUsername", "用户名", _username); Add(fields, "DatabasePasswordEnvironment", "密码环境变量名称", _password);
+        Add(fields, "DatabaseUsername", "用户名", _username); Add(fields, "DatabasePassword", "密码", _password);
         Add(fields, "DatabaseTls", "连接加密", _tls);
         var test = UiTheme.Button("测试连接", async (_, _) => await TestAsync()); test.Name = "TestDatabaseConnection";
         Span(fields, test); _testResult.Name = "DatabaseConnectionResult"; Span(fields, _testResult);
@@ -77,9 +77,7 @@ internal sealed class DatabaseConnectionDialog : EditorDialog
     {
         var value = GatewayJson.Clone(_source);
         value.Name = Required(_name, "连接名称"); value.Host = Required(_host, "服务器"); value.Database = Required(_database, "数据库 / 服务名");
-        value.Username = Required(_username, "用户名"); value.PasswordEnvironmentVariable = _password.Text.Trim();
-        if (value.PasswordEnvironmentVariable.Length > 0 && !Regex.IsMatch(value.PasswordEnvironmentVariable, "^[A-Za-z_][A-Za-z0-9_]*$"))
-            throw new EditorValidationException("密码字段只接受环境变量名称。请在运行环境设置真实密码。", _password);
+        value.Username = Required(_username, "用户名"); value.Password = _password.Text;
         value.Provider = (ExternalDatabaseProvider)_provider.SelectedItem!; value.Port = (int)_port.Value; value.Enabled = _enabled.Checked; value.UseTls = _tls.Checked;
         value.ConnectionTimeoutSeconds = (int)_connectTimeout.Value; value.CommandTimeoutSeconds = (int)_commandTimeout.Value;
         value.BatchSize = (int)_batch.Value; value.FlushIntervalMs = (int)_flush.Value; value.QueueCapacityRows = (int)_capacity.Value; value.QueueCapacityMb = (int)_capacityMb.Value; value.MaxRetryAttempts = (int)_retryAttempts.Value;

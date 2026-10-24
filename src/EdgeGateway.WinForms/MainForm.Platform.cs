@@ -47,9 +47,9 @@ public sealed partial class MainForm
             EditorDialog.Field(fields, title, input);
             _cloudFields.Add(key, input); _configurationCommands.Add(input);
         }
-        void TextField(string key, string title, Action<string> update, string? placeholder = null)
+        void TextField(string key, string title, Action<string> update, string? placeholder = null, bool secret = false)
         {
-            var input = new TextBox { PlaceholderText = placeholder ?? "" };
+            var input = new TextBox { PlaceholderText = placeholder ?? "", UseSystemPasswordChar = secret };
             input.TextChanged += (_, _) => { if (!_binding) { update(input.Text); MarkDirty(); } };
             AddField(key, title, input);
         }
@@ -82,11 +82,11 @@ public sealed partial class MainForm
         CheckField("tls", "TLS 加密连接", x => CloudDraft.Mqtt.UseTls = x);
         TextField("clientId", "Client ID", x => CloudDraft.Mqtt.ClientId = x);
         NumberField("mqttTimeout", "连接 / 发送超时 (ms)", 500, 120_000, x => CloudDraft.Mqtt.TimeoutMs = x);
-        Section("身份与凭据", "配置中只记录环境变量名称，凭据由运行环境提供。");
+        Section("身份与凭据", "直接输入用户名、密码或平台 Token，随配置保存。");
         TextField("username", "用户名", x => CloudDraft.Mqtt.Username = x);
-        TextField("usernameEnv", "用户名 / Token 环境变量", x => CloudDraft.Mqtt.UsernameEnvironmentVariable = x, "填写变量名称，不填写 Token 原文");
-        TextField("passwordEnv", "密码环境变量名称", x => CloudDraft.Mqtt.PasswordEnvironmentVariable = x);
-        Note("用户名环境变量非空时优先读取；TLS 使用系统信任链验证证书。");
+        TextField("accessToken", "平台 Token", x => CloudDraft.Mqtt.AccessToken = x, "平台使用 Token 作为用户名时填写", secret: true);
+        TextField("password", "密码", x => CloudDraft.Mqtt.Password = x, secret: true);
+        Note("平台 Token 非空时作为 MQTT 用户名；TLS 使用系统信任链验证证书。");
         Section("平台参数", "仅当前平台使用的专有字段可编辑；切换平台保留已填写的草稿。");
         TextField("topic", "通用 MQTT 上报主题", x => CloudDraft.Mqtt.Topic = x);
         Note("通用 MQTT 支持 {gatewayId}；专用平台自动生成主题和报文。");
@@ -221,11 +221,11 @@ public sealed partial class MainForm
             Number("maxOutbox", _configuration.MaxOutboxMessages);
             Check("mqttEnabled", _configuration.Mqtt.Enabled); Text("host", _configuration.Mqtt.Host); Number("port", _configuration.Mqtt.Port);
             Check("tls", _configuration.Mqtt.UseTls); Text("clientId", _configuration.Mqtt.ClientId); Text("username", _configuration.Mqtt.Username);
-            Text("passwordEnv", _configuration.Mqtt.PasswordEnvironmentVariable); Text("topic", _configuration.Mqtt.Topic);
+            Text("password", _configuration.Mqtt.Password); Text("topic", _configuration.Mqtt.Topic);
             Number("publishInterval", _configuration.PublishIntervalMs); Number("mqttTimeout", _configuration.Mqtt.TimeoutMs);
             Choice("platform", _configuration.Mqtt.Platform); Choice("reportMode", _configuration.ReportMode);
             Number("heartbeatInterval", _configuration.HeartbeatIntervalMs);
-            Text("usernameEnv", _configuration.Mqtt.UsernameEnvironmentVariable);
+            Text("accessToken", _configuration.Mqtt.AccessToken);
             Text("deviceType", _configuration.Mqtt.PlatformDeviceType); Text("typeKey", _configuration.Mqtt.ThingsCloudTypeKey);
             Text("platformGatewayId", _configuration.Mqtt.PlatformGatewayId);
             Check("rpcEnabled", _configuration.Mqtt.RpcEnabled); Check("remoteWrite", _configuration.Mqtt.AllowRemoteWrite);

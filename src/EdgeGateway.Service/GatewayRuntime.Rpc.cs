@@ -180,10 +180,10 @@ public sealed partial class GatewayRuntime
                 return RejectedRpcReply(request, "DeviceNotRunning", "RPC 只允许操作正在运行的设备。");
             if (request.Method == "write" && (!configuration.Mqtt.AllowRemoteWrite || !tag.Writable))
                 return RejectedRpcReply(request, "WriteDenied", "远程写入未获允许，或目标点位只读。");
-            // A token can rotate without creating a new logical command realm. Scope by its
-            // configured variable name, never by resolved credentials, and include cloud identity.
-            var account = string.IsNullOrWhiteSpace(configuration.Mqtt.UsernameEnvironmentVariable)
-                ? $"username:{configuration.Mqtt.Username}" : $"environment:{configuration.Mqtt.UsernameEnvironmentVariable}";
+            // Token rotation keeps the stable gateway/client/cloud identity. Token-based
+            // accounts must use distinct gateway identities when changing tenants.
+            var account = string.IsNullOrEmpty(configuration.Mqtt.AccessToken)
+                ? $"username:{configuration.Mqtt.Username}" : $"token:{configuration.Mqtt.Username}";
             var key = Hash(JsonSerializer.Serialize(new[]
             {
                 request.Platform.ToString(), configuration.Mqtt.Host, configuration.Mqtt.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -299,8 +299,7 @@ public sealed partial class GatewayRuntime
     private string RedactRpc(string text)
     {
         text = Redact(text);
-        var name = _configuration.Mqtt.UsernameEnvironmentVariable;
-        var token = string.IsNullOrEmpty(name) ? null : Environment.GetEnvironmentVariable(name);
+        var token = _configuration.Mqtt.AccessToken;
         return string.IsNullOrEmpty(token) ? text : text.Replace(token, "***", StringComparison.Ordinal);
     }
     private string? RedactRpcNullable(string? text) => text is null ? null : RedactRpc(text);

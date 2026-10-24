@@ -15,8 +15,7 @@ public static class PlatformMqttAdapter
         var errors = new List<string>();
         if (!Enum.IsDefined(settings.Platform)) errors.Add("MQTT 平台类型无效。");
         if (settings.RpcTimeoutMs is < 500 or > 60000) errors.Add("RPC 超时必须为 500–60000 ms。");
-        if (!string.IsNullOrEmpty(settings.UsernameEnvironmentVariable) && !Regex.IsMatch(settings.UsernameEnvironmentVariable, "^[A-Za-z_][A-Za-z0-9_]*$"))
-            errors.Add("MQTT 用户名/令牌只允许配置合法的环境变量名称。");
+        if (settings.AccessToken is null) errors.Add("平台 Token 不能为 null；不使用时请留空。");
         if (settings.AllowRemoteWrite && !settings.RpcEnabled) errors.Add("允许远程写入前须启用 RPC。");
         if (!settings.RpcEnabled) return errors;
         if (settings.Platform == MqttPlatform.Generic)

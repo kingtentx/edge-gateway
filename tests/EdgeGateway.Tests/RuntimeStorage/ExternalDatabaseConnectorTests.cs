@@ -41,13 +41,10 @@ public sealed class ExternalDatabaseConnectorTests
     [Fact]
     public void StructuredConnectionStringsEscapeSecretsAndRequireCertificateValidation()
     {
-        var name = "EDGE_TEST_SECRET_" + Guid.NewGuid().ToString("N");
-        const string secret = "temporary-test-value;Host=untrusted;Password=\"another\"";
-        Environment.SetEnvironmentVariable(name, secret);
-        try
+        const string secret = "  temporary-test-value;Host=untrusted;Password=\"another\"  ";
         {
             var configuration = Configuration();
-            configuration.PasswordEnvironmentVariable = name;
+            configuration.Password = secret;
             configuration.UseTls = true;
             var pg = new NpgsqlConnectionStringBuilder(ExternalDatabaseConnector.BuildConnectionString(configuration));
             Assert.Equal(secret, pg.Password);
@@ -66,19 +63,18 @@ public sealed class ExternalDatabaseConnectorTests
             Assert.Equal(secret, oracle.Password);
             Assert.Contains("(PROTOCOL=TCPS)", oracle.DataSource);
             Assert.Contains("(SSL_SERVER_DN_MATCH=YES)", oracle.DataSource);
-            Assert.DoesNotContain(secret, JsonSerializer.Serialize(configuration));
+            Assert.Equal(secret, JsonSerializer.Deserialize<DatabaseConnectionConfiguration>(JsonSerializer.Serialize(configuration))!.Password);
         }
-        finally { Environment.SetEnvironmentVariable(name, null); }
     }
 
     [Fact]
-    public async Task MissingEnvironmentSecretIsVisibleWithoutExposingAConnectionString()
+    public async Task InvalidPasswordConfigurationIsVisibleWithoutExposingAConnectionString()
     {
         var configuration = Configuration();
-        configuration.PasswordEnvironmentVariable = "EDGE_ABSENT_" + Guid.NewGuid().ToString("N");
+        configuration.Password = null!;
         var result = await new ExternalDatabaseConnector().TestConnectionAsync(configuration);
         Assert.False(result.Success);
-        Assert.Contains("环境变量", result.Message);
+        Assert.Contains("密码", result.Message);
         Assert.DoesNotContain("Password=", result.Message);
     }
 

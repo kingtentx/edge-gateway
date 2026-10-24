@@ -93,7 +93,7 @@ public sealed class RpcRuntimeTests
     [Theory]
     [InlineData("cloud")]
     [InlineData("account")]
-    [InlineData("credentialVariable")]
+    [InlineData("tokenGateway")]
     public async Task DistinctConfiguredCloudIdentitiesDoNotReplayAnotherGatewayResult(string changedIdentity)
     {
         var directory = Path.Combine(Path.GetTempPath(), "edge-rpc-identity-" + Guid.NewGuid().ToString("N"));
@@ -103,7 +103,7 @@ public sealed class RpcRuntimeTests
             var config = RpcHarness.Configuration(true);
             if (changedIdentity == "cloud") { config.Mqtt.Platform = MqttPlatform.ThingsPanel; config.Mqtt.PlatformGatewayId = "cloud-a"; }
             if (changedIdentity == "account") config.Mqtt.Username = "account-a";
-            if (changedIdentity == "credentialVariable") config.Mqtt.UsernameEnvironmentVariable = "EDGE_ACCOUNT_A";
+            if (changedIdentity == "tokenGateway") { config.Mqtt.AccessToken = "test-token-a"; config.GatewayId = "gateway-a"; }
             JsonElement first;
             await using (var harness = new RpcHarness(configuration: config, directory: directory))
             {
@@ -114,7 +114,7 @@ public sealed class RpcRuntimeTests
             }
             if (changedIdentity == "cloud") config.Mqtt.PlatformGatewayId = "cloud-b";
             if (changedIdentity == "account") config.Mqtt.Username = "account-b";
-            if (changedIdentity == "credentialVariable") config.Mqtt.UsernameEnvironmentVariable = "EDGE_ACCOUNT_B";
+            if (changedIdentity == "tokenGateway") { config.Mqtt.AccessToken = "test-token-b"; config.GatewayId = "gateway-b"; }
             await using (var differentIdentity = new RpcHarness(configuration: config, directory: directory))
             {
                 await differentIdentity.Start();
@@ -131,13 +131,11 @@ public sealed class RpcRuntimeTests
     public async Task RotatingCredentialValueKeepsDurableReplayIdentity()
     {
         var directory = Path.Combine(Path.GetTempPath(), "edge-rpc-rotation-" + Guid.NewGuid().ToString("N"));
-        var variable = "EDGE_RPC_TEST_" + Guid.NewGuid().ToString("N").ToUpperInvariant();
         Directory.CreateDirectory(directory);
         try
         {
             var config = RpcHarness.Configuration(true);
-            config.Mqtt.UsernameEnvironmentVariable = variable;
-            Environment.SetEnvironmentVariable(variable, "test-token-before");
+            config.Mqtt.AccessToken = "test-token-before";
             JsonElement first;
             await using (var harness = new RpcHarness(configuration: config, directory: directory))
             {
@@ -145,7 +143,7 @@ public sealed class RpcRuntimeTests
                 first = await harness.Request("rotation-1", "write", 31);
                 Assert.Equal(1, harness.Factory.Writes);
             }
-            Environment.SetEnvironmentVariable(variable, "test-token-after");
+            config.Mqtt.AccessToken = "test-token-after";
             await using (var rotated = new RpcHarness(configuration: config, directory: directory))
             {
                 await rotated.Start();
@@ -154,7 +152,7 @@ public sealed class RpcRuntimeTests
                 Assert.Equal(0, rotated.Factory.Writes);
             }
         }
-        finally { Environment.SetEnvironmentVariable(variable, null); Directory.Delete(directory, true); }
+        finally { Directory.Delete(directory, true); }
     }
 
     [Fact]
@@ -256,7 +254,8 @@ public sealed class RpcRuntimeTests
             var payload = Config.Mqtt.Platform == MqttPlatform.ThingsPanel
                 ? JsonSerializer.Serialize(new { sub_device_data = new Dictionary<string, object> { ["pump"] = command } })
                 : JsonSerializer.Serialize(new { id, device = "pump", method, @params = new { tag = "speed", value } });
-            var topic = Config.Mqtt.Platform == MqttPlatform.ThingsPanel ? $"gateway/command/{Config.Mqtt.PlatformGatewayId}/{id}" : "edge/edge-001/rpc/request";
+            var topic = Config.Mqtt.Platform == MqttPlatform.ThingsPanel ? $"gateway/command/{Config.Mqtt.PlatformGatewayId}/{id}"
+                : Config.Mqtt.RpcRequestTopic.Replace("{gatewayId}", Config.GatewayId, StringComparison.Ordinal);
             Publisher.Incoming.Writer.TryWrite(new(topic, payload, DateTimeOffset.UtcNow));
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(8));
             var reply = await Publisher.Replies.Reader.ReadAsync(deadline.Token);

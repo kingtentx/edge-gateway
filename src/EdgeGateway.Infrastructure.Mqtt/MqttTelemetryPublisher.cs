@@ -1,5 +1,6 @@
 using System.Security.Authentication;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Channels;
 using EdgeGateway.Abstractions;
 using EdgeGateway.Model;
@@ -75,24 +76,18 @@ public sealed partial class MqttTelemetryPublisher : ITelemetryPublisher, IMqttR
 
     private async Task ConnectCoreAsync(MqttConfiguration settings, CancellationToken cancellationToken)
     {
-        var key = $"{settings.Host}\n{settings.Port}\n{settings.ClientId}\n{settings.UseTls}\n{settings.Username}\n{settings.UsernameEnvironmentVariable}\n{settings.PasswordEnvironmentVariable}\n{settings.Platform}";
+        var key = JsonSerializer.Serialize(new { settings.Host, settings.Port, settings.ClientId, settings.UseTls,
+            settings.Username, settings.AccessToken, settings.Password, settings.Platform });
         if (_settingsKey != key && _client.IsConnected) await DisconnectCoreAsync(cancellationToken).ConfigureAwait(false);
         if (_client.IsConnected) return;
         _activePlatform = settings.Platform;
         var builder = new MqttClientOptionsBuilder().WithClientId(settings.ClientId)
             .WithTcpServer(settings.Host, settings.Port).WithProtocolVersion(MqttProtocolVersion.V311)
             .WithCleanSession().WithKeepAlivePeriod(TimeSpan.FromSeconds(30));
-        var username = settings.Username;
-        if (!string.IsNullOrEmpty(settings.UsernameEnvironmentVariable))
-            username = Environment.GetEnvironmentVariable(settings.UsernameEnvironmentVariable)
-                ?? throw new InvalidOperationException($"未设置 MQTT 用户名/令牌环境变量 {settings.UsernameEnvironmentVariable}。");
+        var username = string.IsNullOrEmpty(settings.AccessToken) ? settings.Username : settings.AccessToken;
         if (!string.IsNullOrEmpty(username))
         {
-            var password = string.IsNullOrEmpty(settings.PasswordEnvironmentVariable) ? null :
-                Environment.GetEnvironmentVariable(settings.PasswordEnvironmentVariable);
-            if (!string.IsNullOrEmpty(settings.PasswordEnvironmentVariable) && password is null)
-                throw new InvalidOperationException($"未设置 MQTT 密码环境变量 {settings.PasswordEnvironmentVariable}。");
-            builder.WithCredentials(username, password);
+            builder.WithCredentials(username, settings.Password);
         }
         if (settings.UseTls)
             builder.WithTlsOptions(options => options.UseTls().WithSslProtocols(SslProtocols.Tls12 | SslProtocols.Tls13));

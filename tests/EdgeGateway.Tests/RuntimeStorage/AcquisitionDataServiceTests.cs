@@ -219,7 +219,7 @@ public sealed class AcquisitionDataServiceTests
         var configuration = Configuration();
         var connection = AddConnection(configuration);
         var group = AddMappedGroup(configuration, connection);
-        connection.PasswordEnvironmentVariable = "actual password;not a variable";
+        connection.Password = null!;
         connection.QueueCapacityRows = 0;
         connection.QueueCapacityMb = 0;
         connection.MaxRetryAttempts = 100;
@@ -228,7 +228,7 @@ public sealed class AcquisitionDataServiceTests
         group.Columns[1].Column = group.Columns[0].Column;
         configuration.Logging.MaxFileSizeMb = 0;
         var errors = DataRecordingConfigurationValidator.Validate(configuration);
-        Assert.Contains(errors, error => error.Contains("环境变量"));
+        Assert.Contains(errors, error => error.Contains("密码"));
         Assert.Contains(errors, error => error.Contains("SQL 表达式"));
         Assert.Contains(errors, error => error.Contains("关联现有点位"));
         Assert.Contains(errors, error => error.Contains("重复的字段"));

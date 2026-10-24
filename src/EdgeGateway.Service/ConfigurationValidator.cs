@@ -32,8 +32,7 @@ public static class ConfigurationValidator
             if (string.IsNullOrWhiteSpace(mqtt.Topic) || mqtt.Topic.IndexOfAny(['+', '#', '\0']) >= 0 || Encoding.UTF8.GetByteCount(mqtt.Topic) > 65000)
                 errors.Add("MQTT 发布主题不能为空，不能包含通配符 +、# 或空字符，长度不能超过 65000 字节。");
             if (mqtt.TimeoutMs is < 500 or > 120000) errors.Add("MQTT 超时必须为 500–120000 ms。");
-            if (!string.IsNullOrEmpty(mqtt.PasswordEnvironmentVariable) && !Regex.IsMatch(mqtt.PasswordEnvironmentVariable, "^[A-Za-z_][A-Za-z0-9_]*$"))
-                errors.Add("MQTT 密码只允许配置合法的环境变量名称。");
+            if (mqtt.Password is null) errors.Add("MQTT 密码不能为 null；无密码时请留空。");
         }
         var channels = new HashSet<Guid>();
         var channelNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

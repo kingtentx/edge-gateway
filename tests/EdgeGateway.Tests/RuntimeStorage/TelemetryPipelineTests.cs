@@ -12,15 +12,14 @@ public sealed class TelemetryPipelineTests
     [Fact]
     public async Task FailureIsRedactedAndRecoveryRequiresPublisherAcknowledgement()
     {
-        var variable = "EDGE_PIPELINE_TEST_" + Guid.NewGuid().ToString("N");
         const string secret = "diagnostic-test-secret";
-        Environment.SetEnvironmentVariable(variable, secret);
-        try
+        const string token = "diagnostic-test-token";
         {
             await using var harness = new Harness();
-            harness.Configuration.Mqtt.PasswordEnvironmentVariable = variable;
+            harness.Configuration.Mqtt.Password = secret;
+            harness.Configuration.Mqtt.AccessToken = token;
             harness.Publisher.Fail = true;
-            harness.Publisher.FailureMessage = "connection rejected " + secret;
+            harness.Publisher.FailureMessage = "connection rejected " + secret + " " + token;
             harness.Runtime.Configure(harness.Configuration);
             await harness.Runtime.StartAsync();
             await Until(() => harness.Runtime.GetTelemetryStatus().ConsecutiveFailures > 0);
@@ -33,6 +32,7 @@ public sealed class TelemetryPipelineTests
             Assert.NotNull(failed.NextRetryAt);
             Assert.Contains("***", failed.SendError);
             Assert.DoesNotContain(secret, failed.SendError);
+            Assert.DoesNotContain(token, failed.SendError);
             Assert.Null(failed.LastBrokerAcknowledgedAt);
             Assert.Equal(0, failed.AcknowledgedMessages);
             Assert.Null(failed.PersistenceError);
@@ -54,8 +54,8 @@ public sealed class TelemetryPipelineTests
             Assert.NotNull(failed.SendError); // The previously returned snapshot must not mutate.
             Assert.Equal(0, failed.AcknowledgedMessages);
             Assert.All(harness.Log.GetEntries(), entry => Assert.DoesNotContain(secret, entry.Message));
+            Assert.All(harness.Log.GetEntries(), entry => Assert.DoesNotContain(token, entry.Message));
         }
-        finally { Environment.SetEnvironmentVariable(variable, null); }
     }
 
     [Fact]
@@ -82,13 +82,10 @@ public sealed class TelemetryPipelineTests
     [Fact]
     public async Task CapacityAndPersistenceErrorsRecoverWithoutBlockingAcquisition()
     {
-        var variable = "EDGE_QUEUE_TEST_" + Guid.NewGuid().ToString("N");
         const string secret = "queue-error-test-secret";
-        Environment.SetEnvironmentVariable(variable, secret);
-        try
         {
             await using var harness = new Harness();
-            harness.Configuration.Mqtt.PasswordEnvironmentVariable = variable;
+            harness.Configuration.Mqtt.Password = secret;
             harness.Store.EnqueueMode = EnqueueBehavior.Full;
             harness.Store.FailureMessage = "disk error " + secret;
             harness.Runtime.Configure(harness.Configuration);
@@ -121,7 +118,6 @@ public sealed class TelemetryPipelineTests
             Assert.True(recovered.LastPersistenceFailureAt >= failed.LastPersistenceFailureAt);
             Assert.All(harness.Log.GetEntries(), entry => Assert.DoesNotContain(secret, entry.Message));
         }
-        finally { Environment.SetEnvironmentVariable(variable, null); }
     }
 
     [Fact]

@@ -19,10 +19,9 @@ var configuration = new DatabaseConnectionConfiguration
 {
     Provider = provider, Host = Required("EDGE_DB_TEST_HOST"), Port = int.Parse(Required("EDGE_DB_TEST_PORT"), CultureInfo.InvariantCulture),
     Database = Required("EDGE_DB_TEST_DATABASE"), Username = Required("EDGE_DB_TEST_USERNAME"),
-    PasswordEnvironmentVariable = "EDGE_DB_TEST_PASSWORD", UseTls = Environment.GetEnvironmentVariable("EDGE_DB_TEST_TLS") == "1",
+    Password = Required("EDGE_DB_TEST_PASSWORD"), UseTls = Environment.GetEnvironmentVariable("EDGE_DB_TEST_TLS") == "1",
     ConnectionTimeoutSeconds = 5, CommandTimeoutSeconds = 10
 };
-_ = Required(configuration.PasswordEnvironmentVariable);
 var connector = new ExternalDatabaseConnector();
 var prefix = "eg_it_" + Guid.NewGuid().ToString("N")[..12];
 var schema = provider switch { ExternalDatabaseProvider.PostgreSql => "public", ExternalDatabaseProvider.Oracle => configuration.Username.ToUpperInvariant(), _ => configuration.Database };
@@ -172,7 +171,7 @@ static async Task ExpectFailure(Func<Task> action)
 static string Required(string name) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : throw new InvalidOperationException("Required test setting missing: " + name);
 static DbConnection CreateRawConnection(DatabaseConnectionConfiguration configuration)
 {
-    var password = Required(configuration.PasswordEnvironmentVariable);
+    var password = configuration.Password;
     if (configuration.Provider == ExternalDatabaseProvider.Oracle)
         return new OracleConnection(new OracleConnectionStringBuilder
         {
