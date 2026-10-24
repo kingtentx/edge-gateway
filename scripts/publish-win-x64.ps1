@@ -14,14 +14,23 @@ try {
     # Fail publication if any original upstream driver was left out of the application.
     $migration = Get-Content 'docs/driver-migration-manifest.json' -Raw | ConvertFrom-Json
     $requiredAssemblies = @('EdgeGateway.Model', 'EdgeGateway.Abstractions', 'EdgeGateway.Application', 'EdgeGateway.Hosting',
-        'EdgeGateway.Service', 'EdgeGateway.DataAccess', 'EdgeGateway.Infrastructure.Mqtt', 'EdgeGateway.Driver.Simulator', 'EdgeGateway.Driver.Modbus',
-        'EdgeGateway.IotGateway', 'PluginInterface', 'Interop.OPCAutomation', 'FontAwesome.Sharp',
-        'MySqlConnector', 'Npgsql', 'Oracle.ManagedDataAccess',
-        'Opc.Ua.Client', 'Opc.Ua.Configuration', 'Opc.Ua.Core', 'Opc.Ua.Types', 'Opc.Ua.Security.Certificates') + @($migration.drivers | ForEach-Object { $_.assembly })
+        'EdgeGateway.Service', 'EdgeGateway.DataAccess', 'EdgeGateway.Infrastructure.Mqtt',
+        'EdgeGateway.IotGateway', 'FontAwesome.Sharp', 'MySqlConnector', 'Npgsql', 'Oracle.ManagedDataAccess',
+        'Opc.Ua.Client', 'Opc.Ua.Configuration', 'Opc.Ua.Core', 'Opc.Ua.Types', 'Opc.Ua.Security.Certificates')
     foreach ($assembly in $requiredAssemblies) {
         if (-not (Test-Path (Join-Path $publishDirectory ($assembly + '.dll')))) {
-            throw "Required migrated driver/dependency missing from publish output: $assembly.dll"
+            throw "Required runtime dependency missing from publish output: $assembly.dll"
         }
+    }
+    $requiredDriverAssemblies = @('EdgeGateway.Driver.Simulator', 'EdgeGateway.Driver.Modbus', 'PluginInterface',
+        'Interop.OPCAutomation') + @($migration.drivers | ForEach-Object { $_.assembly })
+    foreach ($assembly in $requiredDriverAssemblies) {
+        if (-not (Test-Path (Join-Path (Join-Path $publishDirectory 'drivers') ($assembly + '.dll')))) {
+            throw "Required driver assembly missing from drivers directory: drivers/$assembly.dll"
+        }
+    }
+    if (-not (Test-Path (Join-Path $publishDirectory 'AppData/.gitkeep'))) {
+        throw 'AppData directory placeholder missing from published package.'
     }
     # The retained OPC UA client driver must not bring back the removed server.
     foreach ($assembly in @('EdgeGateway.OpcUa', 'Opc.Ua.Server')) {
