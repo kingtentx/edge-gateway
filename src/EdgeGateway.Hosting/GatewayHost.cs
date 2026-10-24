@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Security.Cryptography;
 using EdgeGateway.Abstractions;
 using EdgeGateway.Application;
 using EdgeGateway.DataAccess;
@@ -82,6 +84,32 @@ public sealed class GatewayHost : IAsyncDisposable
             // legacy driver assemblies are resolved from that directory rather than the app root.
             var drivers = new DriverRegistry(IotGatewayDriverCatalog.CreateFactories(log), log, configurations);
             drivers.LoadPlugins(driversDirectory);
+            var installedRoot = Path.GetFullPath(Path.Combine(driversDirectory, "installed")) + Path.DirectorySeparatorChar;
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var inventory = drivers.Drivers.Select(descriptor =>
+            {
+                var factory = drivers.GetFactory(descriptor.Id);
+                var assemblyName = descriptor.IsLegacy
+                    ? descriptor.Id
+                    : factory.GetType().Assembly.GetName().Name ?? descriptor.Id;
+                var assemblyPath = descriptor.IsLegacy
+                    ? Path.Combine(driversDirectory, assemblyName + ".dll")
+                    : factory.GetType().Assembly.Location;
+                var fullAssemblyPath = string.IsNullOrWhiteSpace(assemblyPath) ? "" : Path.GetFullPath(assemblyPath);
+                var exists = fullAssemblyPath.Length > 0 && File.Exists(fullAssemblyPath);
+                var source = exists && fullAssemblyPath.StartsWith(installedRoot, comparison) ? "uploaded" : "bundled";
+                var version = "unknown";
+                var sha256 = "";
+                if (exists)
+                {
+                    var assemblyIdentity = AssemblyName.GetAssemblyName(fullAssemblyPath);
+                    version = assemblyIdentity.Version?.ToString() ?? "unknown";
+                    sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(fullAssemblyPath)));
+                }
+                return new DriverInventoryRecord(descriptor.Id, descriptor.Name, descriptor.Description,
+                    descriptor.SupportsWrite, descriptor.IsLegacy, assemblyName, version, sha256, source);
+            }).ToArray();
+            await configurations.ReplaceDriverInventoryAsync(inventory, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             publisher = new MqttTelemetryPublisher();
             var databases = new ExternalDatabaseConnector();
