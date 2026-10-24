@@ -31,6 +31,14 @@ dotnet run --project tests/EdgeGateway.Endurance -c Release -- --seconds 86400 -
 
 CI Oracle 使用实际 Oracle Free 23 容器，非数据库模拟器；覆盖连接/元数据、批量数组写入、重放、UTC/Unicode/精确数值、跨批回滚、锁等待取消。是否实际通过，以对应提交的 CI 证据为准。
 
+## 自动化验收与长时间运行
+
+- `.github/workflows/build.yml` 在 Windows Server 2022/2025 上执行 Release 构建、核心测试、WinForms 交互/布局矩阵及 x64 发布包验证；通过表示 CI 指定环境通过，不等于客户机器的实际 DPI、驱动和硬件已验收。
+- `.github/workflows/phase2-acceptance.yml` 在真实 Oracle Free 23 容器执行 Oracle 数据库集成测试，并执行核心回归和 10 分钟慢写入/周期故障隔离烟测。
+- 手动触发 `.github/workflows/long-soak.yml` 可运行 1 小时、4 小时或 5 小时合成采集耐久测试。运行会保存队列/内存快照和最终计数；它验证慢数据库隔离、有限队列、背压、周期性连接故障及恢复，但仍不是物理 PLC 或客户 Oracle 的 24–72 小时现场验收。可从 GitHub Actions → Long-duration acquisition soak → Run workflow 选择时长。
+
+最近一次主分支基线 `dd02b1bd87e5445f773df1e810fe92c5c36f624a` 的 Windows 2022/2025、外部数据库集成与第二阶段验收工作流均成功。长时间运行工作流为本次新增，需手动触发后以对应运行产物判断结果。
+
 ## 仍须单独验收
 
 1. 客户指定版本 Oracle、TLS/证书、最小权限账号、真实断网和实例重启恢复。
