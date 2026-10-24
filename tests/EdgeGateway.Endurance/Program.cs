@@ -33,7 +33,8 @@ await using var sink = new AcquisitionDataService(connector, log);
 sink.UpdateConfiguration(configuration); await sink.StartAsync();
 var device = configuration.Devices[0]; sink.SetDeviceActive(device.Id, true);
 var timer = Stopwatch.StartNew(); long submitted = 0; var snapshots = new List<object>();
-var memoryBefore = GC.GetTotalMemory(false); long peakHeap = memoryBefore; var nextObservation = TimeSpan.Zero;
+using var process = Process.GetCurrentProcess();
+var memoryBefore = GC.GetTotalMemory(forceFullCollection: true); long peakHeap = memoryBefore; var nextObservation = TimeSpan.Zero;
 using var shutdown = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; shutdown.Cancel(); };
 try
@@ -56,7 +57,13 @@ try
         if (timer.Elapsed >= nextObservation)
         {
             // Bounded evidence even during a 24-hour run: at most one snapshot per minute after the first minute.
-            snapshots.Add(new { elapsedSeconds = timer.Elapsed.TotalSeconds, submitted, statuses = sink.GetStatuses(), heapBytes = GC.GetTotalMemory(false) });
+            // A full collection at each evidence point makes retained-heap trend more useful than
+            // a noisy allocation snapshot. This is a test harness, not production runtime behavior.
+            var retainedHeapBytes = GC.GetTotalMemory(forceFullCollection: true);
+            process.Refresh();
+            peakHeap = Math.Max(peakHeap, retainedHeapBytes);
+            snapshots.Add(new { elapsedSeconds = timer.Elapsed.TotalSeconds, submitted, statuses = sink.GetStatuses(),
+                retainedHeapBytes, privateMemoryBytes = process.PrivateMemorySize64 });
             nextObservation = timer.Elapsed + (timer.Elapsed < TimeSpan.FromMinutes(1) ? TimeSpan.FromSeconds(5) : TimeSpan.FromMinutes(1));
         }
     }
@@ -71,11 +78,13 @@ var faulted = final.Single(status => status.ConnectionId == slow.Id);
 if (healthy.DroppedRows != 0 || healthy.WrittenRows != submitted || faulted.FailedBatches == 0 || faulted.WrittenRows == 0
     || faulted.RetriedBatches == 0 || faulted.DroppedRows == 0)
     throw new InvalidOperationException("Healthy isolation, failure injection, recovery or backpressure was not exercised.");
+var memoryAfter = GC.GetTotalMemory(forceFullCollection: true);
 var report = new
 {
     source = "synthetic samples and deterministic fault-injected connector; not a real PLC/database test",
     requestedSeconds = seconds, elapsedSeconds = timer.Elapsed.TotalSeconds, submittedPerSink = submitted,
-    memoryBefore, memoryAfter = GC.GetTotalMemory(false), peakObservedManagedHeapBytes = peakHeap,
+    memoryBefore, memoryAfter, retainedHeapGrowthBytes = memoryAfter - memoryBefore,
+    peakObservedManagedHeapBytes = peakHeap,
     note = "Observed heap is diagnostic only, not a proof of absence of leaks; volatile queues may drop records by explicit policy.",
     passed = true, final, logging = log.GetStatus(), snapshots
 };
