@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>EdgeGateway.Driver.TestPlugin</AssemblyName>
+    <RootNamespace>EdgeGateway.Driver.TestPlugin</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />
+  </ItemGroup>
+</Project>
