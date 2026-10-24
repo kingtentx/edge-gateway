@@ -501,7 +501,7 @@ public sealed partial class MainForm
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         using var bitmap = new Bitmap(Math.Max(1, window.Width), Math.Max(1, window.Height));
-        window.DrawToBitmap(bitmap, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+        DrawSmokeWindow(window, bitmap, Path.GetFileName(path));
         bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
     }
 
@@ -525,6 +525,8 @@ public sealed partial class MainForm
             CollectionRunning = _application.IsRunning,
             FocusRecoveryCount = SmokeFocusRecoveries.Count,
             FocusRecoveries = SmokeFocusRecoveries,
+            ScreenshotVisibilityRestoreCount = SmokeScreenshotRestores.Count,
+            ScreenshotVisibilityRestores = SmokeScreenshotRestores,
             Cases = results
         };
         File.WriteAllText(Path.Combine(directory, "layout-matrix.json"), JsonSerializer.Serialize(report,

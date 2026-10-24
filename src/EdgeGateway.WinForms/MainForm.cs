@@ -339,7 +339,7 @@ public sealed partial class MainForm : DpiAwareForm
                     ResetScrollPositions(_pages[key], _navigation["overview"]);
                     if (key == "devices") VerifyPointRowsForSmoke("baseline devices", verifyInitialViewport: true);
                     using var bitmap = new Bitmap(Math.Max(1, Width), Math.Max(1, Height));
-                    DrawToBitmap(bitmap, new Rectangle(0, 0, Width, Height));
+                    DrawSmokeWindow(this, bitmap, "baseline " + key);
                     if (!string.IsNullOrWhiteSpace(_smokeScreenshotPath))
                     {
                         var requested = Path.GetFullPath(_smokeScreenshotPath);
@@ -486,7 +486,7 @@ public sealed partial class MainForm : DpiAwareForm
         var identifier = new string(driverId.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '-').ToArray());
         var output = Path.Combine(Path.GetDirectoryName(requested)!, Path.GetFileNameWithoutExtension(requested) + "-" + kind + "-" + identifier + ".png");
         using var bitmap = new Bitmap(editor.Width, editor.Height);
-        editor.DrawToBitmap(bitmap, new Rectangle(0, 0, editor.Width, editor.Height));
+        DrawSmokeWindow(editor, bitmap, Path.GetFileName(output));
         bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
     }
 

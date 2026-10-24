@@ -87,6 +87,13 @@ require(report['taskbarReserveLogicalPixels'] == 48, 'Unexpected taskbar reserve
 require(report['collectionRunning'] is False, 'Acquisition was left running at the end of layout verification.')
 actual_dpi = report['actualDeviceDpi']
 require(actual_dpi > 0 and actual_dpi == report['nativeWindowDpi'], 'Actual/native window DPI mismatch.')
+capture_restores = report['screenshotVisibilityRestores']
+require(report['screenshotVisibilityRestoreCount'] == len(capture_restores)
+        == stdout.count('Screenshot visibility restored:'), 'Screenshot visibility restoration evidence is inconsistent.')
+for restoration in capture_restores:
+    before, captured, restored = (int(restoration[key], 16) for key in ('beforeStyle', 'capturedStyle', 'restoredStyle'))
+    require(before == restored and before ^ captured == 0x10000000 and before & 0x10000000 != 0
+            and restoration['context'], 'Screenshot restoration changed more than the recorded visibility side effect.')
 
 pages = {'overview', 'devices', 'realtime', 'history', 'diagnostics', 'cloud', 'logs'}
 dialogs = {'PLC.ModBusMaster device', 'PLC.ModBusMaster tag', 'WriteValueDialog multiline',
@@ -196,6 +203,7 @@ summary = dict(sourceCommit=os.environ.get('GITHUB_SHA'), workflowRunId=os.envir
     actualDeviceDpi=actual_dpi, nativeWindowDpi=report['nativeWindowDpi'], viewportSimulation=True,
     layoutCasesPassed=20, layoutCasesExpected=20, checkedPages=sorted(pages), checkedDialogs=sorted(dialogs),
     screenshotCount=124, capabilitiesSmokePassed=True, usabilitySmokePassed=True,
+    screenshotVisibilityRestoreCount=len(capture_restores),
     controlMetricCounts=metric_counts, markersPassed=markers, testResultsSummary=test_results_summary,
     reportSha256=hashlib.sha256(report_path.read_bytes()).hexdigest())
 (output / 'ui-smoke-verification.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
