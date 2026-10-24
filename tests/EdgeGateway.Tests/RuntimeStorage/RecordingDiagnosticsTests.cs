@@ -141,12 +141,12 @@ public sealed class RecordingDiagnosticsTests : IDisposable
         var samples = new Dictionary<Guid, TelemetrySample> { [tag] = new(device, "d", tag, "t", "0", "", "", SampleQuality.Good, now, "") };
         DatabaseWritePreview Inspect(params DatabaseColumnInfo[] metadata) => DatabaseWriteInspector.Inspect(connection, group, metadata,
             samples, new HashSet<Guid> { tag }, new HashSet<Guid> { device }, now);
-        Assert.False(Inspect(new("NOTE", "VARCHAR2", true)).SchemaValid);
-        Assert.False(Inspect(new("note", "VARCHAR2", true, IsGenerated: true)).SchemaValid);
-        Assert.False(Inspect(new("note", "VARCHAR2", true), new("required", "NUMBER", false)).SchemaValid);
-        var empty = Inspect(new("note", "VARCHAR2", false));
+        Assert.False(Inspect(new DatabaseColumnInfo("NOTE", "VARCHAR2", true)).SchemaValid);
+        Assert.False(Inspect(new DatabaseColumnInfo("note", "VARCHAR2", true, IsGenerated: true)).SchemaValid);
+        Assert.False(Inspect(new DatabaseColumnInfo("note", "VARCHAR2", true), new("required", "NUMBER", false)).SchemaValid);
+        var empty = Inspect(new DatabaseColumnInfo("note", "VARCHAR2", false));
         Assert.True(empty.SchemaValid); Assert.False(empty.RowReady); Assert.Contains(empty.Errors, text => text.Contains("Oracle"));
-        Assert.True(Inspect(new("note", "VARCHAR2", true), new("generated", "NUMBER", false, IsGenerated: true)).RowReady);
+        Assert.True(Inspect(new DatabaseColumnInfo("note", "VARCHAR2", true), new("generated", "NUMBER", false, IsGenerated: true)).RowReady);
     }
 
     [Theory]
