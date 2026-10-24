@@ -29,6 +29,8 @@ public interface IGatewayApplication : IAsyncDisposable
 {
     IDriverCatalog Drivers { get; }
     IGatewayLog Log { get; }
+    IReadOnlyList<DriverPluginInfo> GetInstalledDriverPlugins() => [];
+    string InstallDriverPlugin(string sourcePath) => throw new NotSupportedException("当前宿主未启用驱动插件安装功能。");
     bool IsRunning { get; }
     bool IsMqttConnected { get; }
     bool IsDeviceRunning(Guid deviceId);
