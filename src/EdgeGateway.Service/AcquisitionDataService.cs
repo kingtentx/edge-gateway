@@ -116,7 +116,7 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
                 if (!SamplePayloadBudget.TryEstimate(sample, out var sampleBytes))
                 {
                     RemoveCached(sample.TagId);
-                    foreach (var worker in _workers.Where(worker => worker.Group.Mode == DatabaseStorageMode.PointRows
+                    foreach (var worker in _workers.Where(worker => worker.Group.Mode != DatabaseStorageMode.ColumnMapping
                         ? worker.Accepts(sample.TagId) : worker.RequiredTags.Contains(sample.TagId)))
                         worker.State.Drop(worker.Group.Id, 1, "单条采样超出 1 M 或结构复杂度限制，未进入数据库队列或字段映射缓存。");
                     continue;
@@ -139,6 +139,21 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
                     try { worker.Enqueue(row ??= DatabaseRowMapper.PointRow(sample)); }
                     catch (Exception exception) when (exception is JsonException or NotSupportedException or ArgumentException or InvalidOperationException)
                     { worker.State.Drop(worker.Group.Id, 1, $"写入组 [{worker.Group.Name}] 无法序列化采集值：{exception.Message}"); }
+                }
+                foreach (var worker in _workers.Where(worker => worker.Group.Mode == DatabaseStorageMode.PointMapping && worker.Accepts(sample.TagId)))
+                {
+                    var now = DateTimeOffset.UtcNow;
+                    if (!_activeDevices.TryGetValue(deviceId, out var pointActiveSince) || sample.Timestamp < pointActiveSince
+                        || now - sample.Timestamp > TimeSpan.FromMilliseconds(worker.Group.MaxSampleAgeMs)
+                        || sample.Timestamp - now > TimeSpan.FromSeconds(5)
+                        || worker.Group.RequireGoodQuality && sample.Quality != SampleQuality.Good)
+                    {
+                        worker.State.Skip(worker.Group.Id, $"写入组 [{worker.Group.Name}] 当前点位未运行或采样不满足质量/时效要求，未生成自定义逐点行。");
+                        continue;
+                    }
+                    try { worker.Enqueue(DatabaseRowMapper.MappedPointRow(worker.Group, sample, now)); }
+                    catch (Exception exception) when (exception is InvalidDataException or JsonException or NotSupportedException)
+                    { worker.State.Drop(worker.Group.Id, 1, $"写入组 [{worker.Group.Name}] 自定义逐点映射失败：{exception.Message}"); }
                 }
             }
             EmitMappedRows(DateTimeOffset.UtcNow);

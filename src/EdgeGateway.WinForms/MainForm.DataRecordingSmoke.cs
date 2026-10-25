@@ -5,6 +5,101 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
+    private void SmokeCustomPointMapping()
+    {
+        if (!_smokeTest) throw new InvalidOperationException("Database mapping smoke requires an isolated smoke host.");
+        static void Check(bool condition, string message)
+        { if (!condition) throw new InvalidOperationException("Custom point mapping: " + message); }
+        var connection = RecordingConnectionFixture();
+        var device = new DeviceConfiguration { Name = "映射验证设备", DriverId = "simulator",
+            Tags = [new() { Name = "温度" }, new() { Name = "计数" }] };
+        var group = new DatabaseWriteGroupConfiguration { ConnectionId = connection.Id, Table = "custom_samples",
+            TagIds = device.Tags.Select(tag => tag.Id).ToList() };
+        var before = RecordingSmokeJson(group);
+        using var editor = new DatabaseWriteGroupDialog(group, [connection], [device], _application);
+        editor.Show(this);
+        try
+        {
+            editor.ShowMappingForSmoke();
+            var switchMode = Descendants(editor).OfType<Button>().Single(control => control.Name == "UsePointMapping");
+            BringIntoViewAndAssert(switchMode, "switch to custom point mapping");
+            Check(switchMode.Enabled && switchMode.Visible, "standard mode has no reachable mapping action.");
+            switchMode.PerformClick();
+            var readColumns = Descendants(editor).OfType<Button>().Single(control => control.Name == "RefreshMappingColumns");
+            BringIntoViewAndAssert(readColumns, "read mapping columns");
+            Check(readColumns.Enabled, "field-read action remains disabled after switching modes.");
+            var rejected = false;
+            try { editor.CommitForSmoke(); } catch (EditorValidationException) { rejected = true; }
+            Check(rejected, "unread metadata was accepted.");
+            DatabaseColumnInfo[] columns = [new("id", "bigint", false, IsGenerated: true),
+                new("_NAME", "varchar", true), new("_NUMERICID", "varchar", true), new("_VALUE", "varchar", true),
+                new("_TIMESTAMP", "timestamp", true), new("_QUALITY", "int", true)];
+            editor.LoadColumnsForSmoke(columns);
+            var grid = editor.SmokeMapping;
+            Check(!grid.Columns["Point"].Visible, "point mode still asks each field for a fixed point binding.");
+            var generated = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "id"));
+            Check(generated.ReadOnly && generated.Cells["Include"].Value is false, "auto-increment id is writable.");
+            var choices = new[]
+            {
+                ("_NAME", DatabaseValueSource.TagName, DatabaseFieldType.Text),
+                ("_NUMERICID", DatabaseValueSource.DeviceName, DatabaseFieldType.Text),
+                ("_VALUE", DatabaseValueSource.EngineeringValue, DatabaseFieldType.Text),
+                ("_TIMESTAMP", DatabaseValueSource.SampleTime, DatabaseFieldType.Timestamp),
+                ("_QUALITY", DatabaseValueSource.Constant, DatabaseFieldType.Int64)
+            };
+            foreach (var (column, source, type) in choices)
+            {
+                var row = grid.Rows.Cast<DataGridViewRow>().Single(item => Equals(item.Cells["Column"].Value, column));
+                row.Cells["Include"].Value = true;
+                foreach (var (name, value) in new[] { ("Source", (object)source), ("FieldType", (object)type) })
+                {
+                    grid.CurrentCell = row.Cells[name];
+                    FocusForSmoke(grid, grid, editor, "custom point " + name);
+                    Check(grid.BeginEdit(true) && grid.EditingControl is ComboBox, "mapping dropdown cannot enter edit mode.");
+                    ((ComboBox)grid.EditingControl!).SelectedValue = value;
+                    grid.NotifyCurrentCellDirty(true); grid.CommitEdit(DataGridViewDataErrorContexts.Commit); grid.EndEdit();
+                    Check(Equals(row.Cells[name].Value, value), "mapping dropdown value was not retained.");
+                }
+                if (source == DatabaseValueSource.Constant)
+                {
+                    grid.CurrentCell = row.Cells["Constant"];
+                    Check(grid.BeginEdit(true) && grid.EditingControl is TextBox, "constant editor cannot be opened.");
+                    ((TextBox)grid.EditingControl!).Text = "7";
+                    grid.EndEdit();
+                }
+            }
+            var valueBeforeRefresh = editor.CommitForSmoke();
+            Check(valueBeforeRefresh.Mode == DatabaseStorageMode.PointMapping && valueBeforeRefresh.TagIds.SequenceEqual(group.TagIds)
+                && valueBeforeRefresh.Columns.Count == 5 && valueBeforeRefresh.Columns.All(mapping => mapping.TagId is null)
+                && valueBeforeRefresh.Columns.Single(mapping => mapping.Column == "_QUALITY").ConstantValue == "7",
+                "point selection, field sources, or typed constant did not round-trip.");
+            editor.LoadColumnsForSmoke(columns);
+            Check(RecordingSmokeJson(valueBeforeRefresh) == RecordingSmokeJson(editor.CommitForSmoke()), "refresh lost mapping drafts.");
+            var table = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DatabaseTable");
+            table.Text = "other_table";
+            rejected = false;
+            try { editor.CommitForSmoke(); } catch (EditorValidationException) { rejected = true; }
+            Check(rejected, "changing tables did not invalidate metadata.");
+            table.Text = group.Table; editor.LoadColumnsForSmoke(columns);
+            VerifyEditorLayout(editor, "custom point mapping");
+            var rowForLayout = grid.Rows[1];
+            foreach (DataGridViewColumn column in grid.Columns.Cast<DataGridViewColumn>().Where(column => column.Visible))
+            {
+                grid.CurrentCell = rowForLayout.Cells[column.Index];
+                FocusForSmoke(grid, grid, editor, "custom point cell " + column.Name);
+                grid.FirstDisplayedScrollingColumnIndex = column.Index;
+                var full = grid.GetCellDisplayRectangle(column.Index, rowForLayout.Index, false);
+                Check(full.Width > 0 && full == grid.GetCellDisplayRectangle(column.Index, rowForLayout.Index, true),
+                    "mapping cell is clipped: " + column.Name);
+            }
+            grid.EndEdit(); grid.CurrentCell = grid.Rows[1].Cells["Column"]; grid.HorizontalScrollingOffset = 0;
+            SaveEditorScreenshot(editor, "recording", "custom-point-mapping");
+            AssertRecordingSmokeUnchanged(before, group, "custom point mapping source isolation");
+            Console.WriteLine($"Custom point mapping smoke passed: mode switch, field metadata fixture, generated id, editable sources/types/constant, selected points, refresh and target invalidation at actual {DeviceDpi} DPI; no external database contacted.");
+        }
+        finally { editor.Close(); }
+    }
+
     private static string RecordingSmokeJson<T>(T value) => System.Text.Json.JsonSerializer.Serialize(value, GatewayJson.Options);
     private static void AssertRecordingSmokeUnchanged<T>(string before, T value, string context)
     { if (before != RecordingSmokeJson(value)) throw new InvalidOperationException(context + ": editor mutated the supplied configuration."); }

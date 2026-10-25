@@ -17,6 +17,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly string _driverDirectory;
     private readonly bool _smokeTest;
     private readonly bool _layoutMatrix;
+    private readonly bool _databaseMappingSmoke;
     private readonly string? _smokeScreenshotPath;
     private readonly Panel _pageHost = new() { Dock = DockStyle.Fill };
     private readonly Dictionary<string, Control> _pages = [];
@@ -36,7 +37,7 @@ public sealed partial class MainForm : DpiAwareForm
 
     public MainForm(IGatewayApplication application, string dataDirectory,
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
-        Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null)
+        Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
@@ -44,7 +45,8 @@ public sealed partial class MainForm : DpiAwareForm
         _log = application.Log;
         _dataDirectory = dataDirectory;
         _driverDirectory = Path.GetFullPath(driverDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
-        _smokeTest = smokeTest || layoutMatrix;
+        _smokeTest = smokeTest || layoutMatrix || databaseMappingSmoke;
+        _databaseMappingSmoke = databaseMappingSmoke;
         _configurationWriteFailureForSmoke = configurationWriteFailureForSmoke;
         _layoutMatrix = layoutMatrix;
         _smokeScreenshotPath = smokeScreenshotPath;
@@ -230,6 +232,17 @@ public sealed partial class MainForm : DpiAwareForm
 
     private async void OnShown(object? sender, EventArgs e)
     {
+        if (_databaseMappingSmoke)
+        {
+            try { SmokeCustomPointMapping(); }
+            catch (Exception exception)
+            {
+                SmokeTestFailed = true;
+                TrySaveSmokeFailure(this, "database-mapping-failed");
+                Console.Error.WriteLine(exception);
+            }
+            _allowClose = true; Close(); return;
+        }
         if (_smokeTest)
         {
             try

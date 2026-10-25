@@ -113,6 +113,34 @@ public sealed class RecordingDiagnosticsTests : IDisposable
     }
 
     [Fact]
+    public void CustomPointPreviewUsesOneSelectedSampleAndKeepsTheTypedBusinessConstant()
+    {
+        var now = DateTimeOffset.UtcNow; var device = Guid.NewGuid(); var selected = Guid.NewGuid(); var other = Guid.NewGuid();
+        var sample = new TelemetrySample(device, "device", selected, "selected point", "0", 42L, 42L, SampleQuality.Good, now, "");
+        var group = new DatabaseWriteGroupConfiguration { Mode = DatabaseStorageMode.PointMapping, TagIds = [selected],
+            Columns = [new() { Column = "_NAME", Source = DatabaseValueSource.TagName },
+                new() { Column = "_VALUE", Source = DatabaseValueSource.EngineeringValue, FieldType = DatabaseFieldType.Text },
+                new() { Column = "_QUALITY", Source = DatabaseValueSource.Constant, FieldType = DatabaseFieldType.Int64, ConstantValue = "7" }] };
+        var metadata = new DatabaseColumnInfo[] { new("id", "bigint", false, IsGenerated: true),
+            new("_NAME", "varchar", true), new("_VALUE", "varchar", true), new("_QUALITY", "int", true) };
+        var samples = new Dictionary<Guid, TelemetrySample> { [selected] = sample,
+            [other] = sample with { TagId = other, TagName = "other point", Timestamp = now.AddMilliseconds(1) } };
+        DatabaseWritePreview Inspect() => DatabaseWriteInspector.Inspect(new(), group, metadata, samples,
+            new HashSet<Guid> { selected, other }, new HashSet<Guid> { device }, now);
+        var preview = Inspect();
+        Assert.True(preview.SchemaValid); Assert.True(preview.RowReady);
+        Assert.Equal("selected point", preview.Columns.Single(column => column.Column == "_NAME").Value);
+        Assert.Equal("42", preview.Columns.Single(column => column.Column == "_VALUE").Value);
+        Assert.Equal("7", preview.Columns.Single(column => column.Column == "_QUALITY").Value);
+        samples[selected] = sample with { Quality = SampleQuality.Bad };
+        Assert.False(Inspect().RowReady);
+        group.RequireGoodQuality = false;
+        Assert.True(Inspect().RowReady);
+        samples.Remove(selected);
+        Assert.False(Inspect().RowReady);
+    }
+
+    [Fact]
     public void PreviewUsesExactRuntimeConversionsAndFlagsStoppedStaleOrBadSamples()
     {
         var now = DateTimeOffset.UtcNow; var tag = Guid.NewGuid(); var device = Guid.NewGuid();

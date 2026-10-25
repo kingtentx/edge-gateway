@@ -66,6 +66,101 @@ public sealed class AcquisitionDataServiceTests
     }
 
     [Fact]
+    public async Task CustomPointMappingWritesEachSelectedPointIndependentlyWithManualConstants()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration);
+        var group = AddPointMappedGroup(configuration, connection);
+        configuration.Devices[0].Tags[0].UploadEnabled = false;
+        var connector = new Connector();
+        await using var sink = await Start(configuration, connector);
+        var first = Sample(configuration, 0, ulong.MaxValue);
+        await sink.AppendAsync([first]);
+        await Until(() => connector.Writes.Count == 1); // Does not wait for the second point.
+        await sink.AppendAsync([Sample(configuration, 1, "状态文本")]);
+        await sink.StopAsync();
+        var rows = connector.Writes.SelectMany(write => write.Rows).ToArray();
+        Assert.Equal(2, rows.Length);
+        Assert.All(rows, row =>
+        {
+            Assert.Equal(7L, row.Values["_QUALITY"]);
+            Assert.Equal(configuration.Devices[0].Name, row.Values["_NUMERICID"]);
+            Assert.DoesNotContain("id", row.Values.Keys);
+            Assert.Equal(5, row.Values.Count);
+        });
+        var counter = rows.Single(row => Equals(row.Values["_NAME"], first.TagName));
+        Assert.Equal("18446744073709551615", counter.Values["_VALUE"]);
+        Assert.Equal(first.Timestamp.ToUniversalTime(), counter.Values["_TIMESTAMP"]);
+        Assert.Contains(rows, row => Equals(row.Values["_VALUE"], "状态文本"));
+        Assert.All(connector.Writes, write => Assert.Equal(group.Id, write.GroupId));
+    }
+
+    [Fact]
+    public async Task CustomPointMappingFiltersPointsQualityAndOldDeviceSessions()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration);
+        var group = AddPointMappedGroup(configuration, connection);
+        group.TagIds = [configuration.Devices[0].Tags[0].Id];
+        var connector = new Connector();
+        await using var sink = await Start(configuration, connector);
+        await sink.AppendAsync([Sample(configuration, 1, 99), Sample(configuration, 0, null, SampleQuality.Bad),
+            Sample(configuration, 0, 100) with { Timestamp = DateTimeOffset.UtcNow.AddHours(-1) },
+            Sample(configuration, 0, 101) with { Timestamp = DateTimeOffset.UtcNow.AddMinutes(1) }]);
+        sink.SetDeviceActive(configuration.Devices[0].Id, false);
+        var previousSession = Sample(configuration, 0, 102);
+        await sink.AppendAsync([previousSession]);
+        sink.SetDeviceActive(configuration.Devices[0].Id, true);
+        await sink.AppendAsync([previousSession with { Timestamp = previousSession.Timestamp.AddSeconds(-1) }, Sample(configuration, 0, 42)]);
+        await sink.StopAsync();
+        Assert.Equal("42", Assert.Single(connector.Writes.SelectMany(write => write.Rows)).Values["_VALUE"]);
+        Assert.Equal(5, Assert.Single(sink.GetStatuses()).SkippedRows);
+    }
+
+    [Fact]
+    public async Task CustomPointMappingCanPreserveBadSampleWithoutRepeatingItOnTheTicker()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration);
+        var group = AddPointMappedGroup(configuration, connection); group.RequireGoodQuality = false;
+        var connector = new Connector();
+        await using var sink = await Start(configuration, connector);
+        await sink.AppendAsync([Sample(configuration, 0, null, SampleQuality.Bad)]);
+        await Until(() => connector.Writes.Count == 1);
+        await Task.Delay(160);
+        await sink.StopAsync();
+        var row = Assert.Single(connector.Writes.SelectMany(write => write.Rows));
+        Assert.Null(row.Values["_VALUE"]);
+        Assert.Equal(7L, row.Values["_QUALITY"]); // Explicit business constant, not inferred sample quality.
+    }
+
+    [Fact]
+    public async Task CustomPointMappingConversionFailureDoesNotBlockOtherPoints()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration);
+        var group = AddPointMappedGroup(configuration, connection);
+        group.Columns.Single(column => column.Column == "_VALUE").FieldType = DatabaseFieldType.Int64;
+        var connector = new Connector();
+        await using var sink = await Start(configuration, connector);
+        await sink.AppendAsync([Sample(configuration, 0, 1.5m), Sample(configuration, 1, 2L)]);
+        await sink.StopAsync();
+        Assert.Equal(2L, Assert.Single(connector.Writes.SelectMany(write => write.Rows)).Values["_VALUE"]);
+        Assert.Equal(1, Assert.Single(sink.GetStatuses()).DroppedRows);
+    }
+
+    [Fact]
+    public void CustomPointMappingConfigurationRoundTripsAndRejectsFixedBindingsAndInvalidIntegerConstants()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration);
+        var group = AddPointMappedGroup(configuration, connection);
+        var copy = GatewayJson.Clone(configuration);
+        Assert.Empty(DataRecordingConfigurationValidator.Validate(copy));
+        Assert.Equal(DatabaseStorageMode.PointMapping, Assert.Single(copy.DatabaseWriteGroups).Mode);
+        group.Columns[0].TagId = configuration.Devices[0].Tags[0].Id;
+        Assert.Contains(DataRecordingConfigurationValidator.Validate(configuration), error => error.Contains("不能固定关联"));
+        group.Columns[0].TagId = null;
+        group.Columns.Single(column => column.Column == "_QUALITY").ConstantValue = "not-an-integer";
+        Assert.Contains(DataRecordingConfigurationValidator.Validate(configuration), error => error.Contains("_QUALITY") && error.Contains("常量"));
+    }
+
+    [Fact]
     public async Task CustomMappingWaitsForCompleteGoodSnapshotAndPreservesLargeInteger()
     {
         var configuration = Configuration();
@@ -386,6 +481,22 @@ public sealed class AcquisitionDataServiceTests
                 new() { Column = "recorded_at", Source = DatabaseValueSource.RecordTime },
                 new() { Column = "event_key", Source = DatabaseValueSource.EventId },
                 new() { Column = "line_code", Source = DatabaseValueSource.Constant, ConstantValue = "A01" }
+            ]
+        };
+        configuration.DatabaseWriteGroups.Add(group); return group;
+    }
+    private static DatabaseWriteGroupConfiguration AddPointMappedGroup(GatewayConfiguration configuration, DatabaseConnectionConfiguration connection)
+    {
+        var group = new DatabaseWriteGroupConfiguration
+        {
+            Name = "custom points", Enabled = true, ConnectionId = connection.Id, Mode = DatabaseStorageMode.PointMapping,
+            Table = "custom_samples", Columns =
+            [
+                new() { Column = "_NAME", Source = DatabaseValueSource.TagName, FieldType = DatabaseFieldType.Text },
+                new() { Column = "_NUMERICID", Source = DatabaseValueSource.DeviceName, FieldType = DatabaseFieldType.Text },
+                new() { Column = "_VALUE", Source = DatabaseValueSource.EngineeringValue, FieldType = DatabaseFieldType.Text },
+                new() { Column = "_TIMESTAMP", Source = DatabaseValueSource.SampleTime, FieldType = DatabaseFieldType.Timestamp },
+                new() { Column = "_QUALITY", Source = DatabaseValueSource.Constant, FieldType = DatabaseFieldType.Int64, ConstantValue = "7" }
             ]
         };
         configuration.DatabaseWriteGroups.Add(group); return group;

@@ -39,7 +39,7 @@ public static class DatabaseWriteInspector
             if (!activeDevices.Contains(sample.DeviceId)) return "设备已停止，缓存值不作为可写的新采样。";
             if (now - sample.Timestamp > TimeSpan.FromMilliseconds(group.MaxSampleAgeMs) || sample.Timestamp - now > TimeSpan.FromSeconds(5))
                 return "采样已过期或源时间超前。";
-            if (group.Mode == DatabaseStorageMode.ColumnMapping && group.RequireGoodQuality && sample.Quality != SampleQuality.Good)
+            if (group.Mode != DatabaseStorageMode.PointRows && group.RequireGoodQuality && sample.Quality != SampleQuality.Good)
                 return "采样质量不满足 Good 要求。";
             return null;
         }
@@ -66,11 +66,18 @@ public static class DatabaseWriteInspector
         else
         {
             var eventId = Guid.NewGuid().ToString("N");
+            var currentPoint = group.Mode == DatabaseStorageMode.PointMapping
+                ? samples.Values.Where(sample => enabledTags.Contains(sample.TagId)
+                    && (group.TagIds.Count == 0 || group.TagIds.Contains(sample.TagId)) && activeDevices.Contains(sample.DeviceId))
+                    .OrderByDescending(sample => sample.Timestamp).FirstOrDefault() : null;
+            if (group.Mode == DatabaseStorageMode.PointMapping)
+                warnings.Add("自定义逐点仅预览最近一个选中点位；运行时每个选中点位各生成一行，共用字段映射。常量状态值为用户业务值，不代表真实采样质量。");
             foreach (var mapping in group.Columns)
             {
                 var requiresSample = mapping.Source is not (DatabaseValueSource.Constant or DatabaseValueSource.RecordTime or DatabaseValueSource.EventId);
-                var sample = requiresSample && mapping.TagId.HasValue ? samples.GetValueOrDefault(mapping.TagId.Value) : null;
-                var error = requiresSample ? CheckSample(sample, mapping.TagId) : null;
+                var sample = !requiresSample ? null : group.Mode == DatabaseStorageMode.PointMapping
+                    ? currentPoint : mapping.TagId.HasValue ? samples.GetValueOrDefault(mapping.TagId.Value) : null;
+                var error = requiresSample ? CheckSample(sample, group.Mode == DatabaseStorageMode.PointMapping ? sample?.TagId : mapping.TagId) : null;
                 object? value = null;
                 if (error is null)
                 {

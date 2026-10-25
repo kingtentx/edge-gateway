@@ -73,12 +73,14 @@ public sealed partial class MainForm
         var groups = _configuration.DatabaseWriteGroups.Select(group => new DatabaseGroupRow(group.Id, group.Name,
             _configuration.Databases.FirstOrDefault(connection => connection.Id == group.ConnectionId)?.Name ?? "连接不存在",
             DatabaseUiText.Mode(group.Mode), new DatabaseTableInfo(group.Schema, group.Table).ToString(),
-            group.Mode == DatabaseStorageMode.PointRows ? group.TagIds.Count == 0 ? "全部启用点位" : $"{group.TagIds.Count} 个点位" : $"{group.Columns.Count} 个字段",
+            group.Mode == DatabaseStorageMode.ColumnMapping ? $"{group.Columns.Count} 个字段"
+                : (group.TagIds.Count == 0 ? "全部启用点位" : $"{group.TagIds.Count} 个点位")
+                    + (group.Mode == DatabaseStorageMode.PointMapping ? $" / {group.Columns.Count} 个映射字段" : ""),
             group.Enabled ? "已启用" : "未启用")).ToArray();
         GridViewState.Rebind(_databaseGroupGrid, groups, row => row.Id, groupId);
         _databaseState.Text = _application.IsRunning ? "设备正在运行。停止全部设备后可修改数据库与写入组；当前已保存的写入配置继续工作。"
             : _configuration.Databases.Count == 0 ? "默认采集结果写入日志。添加数据库连接 → 配置写入组 → 启用连接与写入组 → 启动设备。"
-            : "数据库配置已保存。标准点行记录每个采样结果；自定义字段映射按完整快照写入。连接与写入组均需启用。";
+            : "数据库配置已保存。标准点行和自定义逐点按采样写入；自定义整行按关联点位组合。连接与写入组均需启用。";
         foreach (DataGridViewRow row in _databaseGrid.Rows) if (row.DataBoundItem is DatabaseConnectionRow data) row.Cells["Error"].ToolTipText = data.Error;
     }
 

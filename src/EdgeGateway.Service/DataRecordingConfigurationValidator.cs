@@ -55,7 +55,7 @@ public static partial class DataRecordingConfigurationValidator
             foreach (var tagId in group.TagIds.Where(id => !tags.Contains(id))) errors.Add($"{label} 选择了不存在的点位 {tagId}，请先调整数据库映射再删除点位。");
             if (group.WriteIntervalMs is < 100 or > 3_600_000) errors.Add($"{label} 写入间隔须为 100–3600000 ms。");
             if (group.MaxSampleAgeMs is < 100 or > 86_400_000) errors.Add($"{label} 允许的数据年龄须为 100–86400000 ms。");
-            if (group.Mode != DatabaseStorageMode.ColumnMapping) continue;
+            if (group.Mode == DatabaseStorageMode.PointRows) continue;
             if (group.Columns.Count is < 1 or > 256) errors.Add($"{label} 须配置 1–256 个字段映射。");
             var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var boundTag = false;
@@ -67,8 +67,11 @@ public static partial class DataRecordingConfigurationValidator
                 if (mapping.Source is not (DatabaseValueSource.RecordTime or DatabaseValueSource.EventId or DatabaseValueSource.Constant))
                 {
                     boundTag = true;
-                    if (!mapping.TagId.HasValue || !tags.Contains(mapping.TagId.Value)) errors.Add($"{label} 字段 [{mapping.Column}] 须关联现有点位。");
+                    if (group.Mode == DatabaseStorageMode.ColumnMapping && (!mapping.TagId.HasValue || !tags.Contains(mapping.TagId.Value)))
+                        errors.Add($"{label} 字段 [{mapping.Column}] 须关联现有点位。");
                 }
+                if (group.Mode == DatabaseStorageMode.PointMapping && mapping.TagId.HasValue)
+                    errors.Add($"{label} 字段 [{mapping.Column}] 的自定义逐点映射应使用当前采样点，不能固定关联其他点位。");
                 if (mapping.ConstantValue is null || mapping.ConstantValue.Length > 4000) errors.Add($"{label} 字段 [{mapping.Column}] 常量须少于 4001 字符。");
                 if (mapping.Source == DatabaseValueSource.Constant)
                 {
@@ -77,7 +80,9 @@ public static partial class DataRecordingConfigurationValidator
                     { errors.Add($"{label} 字段 [{mapping.Column}] 的常量不符合所选类型：{exception.Message}"); }
                 }
             }
-            if (!boundTag) errors.Add($"{label} 的自定义映射须至少关联一个采集点位。");
+            if (!boundTag) errors.Add(group.Mode == DatabaseStorageMode.PointMapping
+                ? $"{label} 的自定义逐点映射须至少包含一个采样来源字段。"
+                : $"{label} 的自定义映射须至少关联一个采集点位。");
         }
         return errors;
     }

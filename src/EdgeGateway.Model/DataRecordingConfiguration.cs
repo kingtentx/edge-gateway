@@ -22,7 +22,7 @@ public sealed record GatewayLoggingStatus(long PendingEntries, long DroppedEntri
 }
 
 public enum ExternalDatabaseProvider { MySql, PostgreSql, Oracle }
-public enum DatabaseStorageMode { PointRows, ColumnMapping }
+public enum DatabaseStorageMode { PointRows, ColumnMapping, PointMapping }
 public enum DatabaseValueSource
 {
     EngineeringValue, RawValue, NumericValue, SampleTime, Quality, DeviceId, DeviceName,
@@ -60,7 +60,7 @@ public sealed class DatabaseWriteGroupConfiguration
     public DatabaseStorageMode Mode { get; set; } = DatabaseStorageMode.PointRows;
     public string Schema { get; set; } = "";
     public string Table { get; set; } = "gateway_point";
-    // In PointRows mode an empty selection means all enabled points, independent of MQTT UploadEnabled.
+    // In PointRows/PointMapping an empty selection means all enabled points, independent of MQTT UploadEnabled.
     public List<Guid> TagIds { get; set; } = [];
     public List<DatabaseColumnMapping> Columns { get; set; } = [];
     // ColumnMapping emits complete, sufficiently fresh snapshots at this maximum frequency.

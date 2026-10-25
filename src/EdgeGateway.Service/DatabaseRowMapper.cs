@@ -35,6 +35,14 @@ internal static class DatabaseRowMapper
         return new(eventId, now, values);
     }
 
+    public static DatabaseWriteRow MappedPointRow(DatabaseWriteGroupConfiguration group, TelemetrySample sample, DateTimeOffset now)
+    {
+        var eventId = Guid.NewGuid().ToString("N");
+        var values = group.Columns.ToDictionary(mapping => mapping.Column,
+            mapping => ResolveField(mapping, sample, eventId, now), StringComparer.Ordinal);
+        return new(eventId, now, values);
+    }
+
     internal static object? ResolveField(DatabaseColumnMapping mapping, TelemetrySample? sample, string eventId, DateTimeOffset now)
     {
         if (mapping.Source is not (DatabaseValueSource.RecordTime or DatabaseValueSource.EventId or DatabaseValueSource.Constant) && sample is null)

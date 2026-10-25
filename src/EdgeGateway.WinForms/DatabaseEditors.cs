@@ -7,7 +7,12 @@ internal static class DatabaseUiText
 {
     internal static string Provider(ExternalDatabaseProvider value) => value switch
     { ExternalDatabaseProvider.MySql => "MySQL", ExternalDatabaseProvider.PostgreSql => "PostgreSQL", _ => "Oracle" };
-    internal static string Mode(DatabaseStorageMode value) => value == DatabaseStorageMode.PointRows ? "标准点行（每点一行）" : "自定义字段映射";
+    internal static string Mode(DatabaseStorageMode value) => value switch
+    {
+        DatabaseStorageMode.PointRows => "标准点行（每点一行）",
+        DatabaseStorageMode.PointMapping => "自定义逐点（每点一行）",
+        _ => "自定义整行（固定点位组合）"
+    };
     internal static string Source(DatabaseValueSource value) => value switch
     {
         DatabaseValueSource.EngineeringValue => "工程值", DatabaseValueSource.RawValue => "原始值", DatabaseValueSource.NumericValue => "数值",
@@ -120,12 +125,15 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
     private readonly TextBox _pointSearch = new() { Name = "DatabasePointSearch", PlaceholderText = "搜索设备或点位", Dock = DockStyle.Fill };
     private readonly DataGridView _mapping = UiTheme.Grid();
     private readonly Label _status = EditorLayout.WrappingLabel("标准模式每个点位每次采样一行；自定义模式按字段映射写入已有表。", color: UiTheme.Muted);
+    private readonly Label _mappingStatus = EditorLayout.WrappingLabel("", color: UiTheme.Muted);
+    private readonly Label _mappingHint = EditorLayout.WrappingLabel("", color: UiTheme.Muted);
+    private readonly Label _mappingEmpty = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.White };
     private readonly HashSet<Guid> _selectedPoints;
     private IReadOnlyList<DatabaseColumnInfo> _columns = [];
     private string? _metadataKey;
     private bool _loading, _bindingPoints, _bindingTable;
     private readonly TabPage _pointTab, _mappingTab;
-    private readonly Button _loadColumns, _createTable;
+    private readonly Button _loadColumns, _createTable, _mappingLoadColumns, _switchPointMapping;
     internal DatabaseWriteGroupConfiguration Value { get; private set; } = null!;
     internal DataGridView SmokeMapping => _mapping;
     internal CheckedListBox SmokePointList => _pointList;
@@ -161,11 +169,7 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
             _status.Text = $"读取到 {tables.Count} 张表。可从列表选择目标表，或直接填写表名。";
         })); listTables.Name = "ReadDatabaseTables";
         Span(fields, listTables); Field(fields, "已有数据表", _tables);
-        _loadColumns = UiTheme.Button("读取表字段", async (_, _) => await InspectAsync(async () =>
-        {
-            var columns = await _application.GetDatabaseColumnsAsync(CurrentConnection(), CurrentTable());
-            LoadColumns(columns); _status.Text = $"已读取 {columns.Count} 个字段。请在“字段映射”页完成必填列；转换类型和实际采样值仍须满足目标列的类型与非空约束。";
-        })); _loadColumns.Name = "ReadDatabaseColumns";
+        _loadColumns = UiTheme.Button("读取表字段并映射", async (_, _) => await ReadColumnsAsync()); _loadColumns.Name = "ReadDatabaseColumns";
         _createTable = UiTheme.Button("创建标准点行表", async (_, _) => await CreateTableAsync()); _createTable.Name = "CreateDatabasePointTable";
         var preview = UiTheme.Button("检查与预览", async (_, _) =>
         {
@@ -182,7 +186,7 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         });
         preview.Name = "PreviewDatabaseWrite";
         Span(fields, UiTheme.Toolbar(_loadColumns, _createTable, preview)); _status.Name = "DatabaseGroupResult"; Span(fields, _status);
-        Section(fields, "自定义整行策略", "只对自定义字段映射生效；标准点行会保留 Bad / Uncertain 质量以便追溯。");
+        Section(fields, "自定义写入策略", "逐点模式按每次采样生成行；最小写入间隔只用于固定点位组合。标准点行保留实际采样质量。");
         Add(fields, "DatabaseWriteInterval", "最小写入间隔（ms）", _interval); Add(fields, "DatabaseMaxSampleAge", "点位最大数据年龄（ms）", _maxAge);
         Add(fields, "DatabaseRequireGood", "写入质量要求", _goodOnly);
 
@@ -197,7 +201,30 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         BindPoints(); _pointList.Enabled = !_allPoints.Checked;
 
         _mappingTab = new TabPage("自定义 · 字段映射") { BackColor = Color.White };
-        ConfigureMappingGrid(); _mappingTab.Controls.Add(_mapping); Tabs.TabPages.Add(_mappingTab);
+        ConfigureMappingGrid();
+        _mappingLoadColumns = UiTheme.Button("读取 / 刷新字段", async (_, _) => await ReadColumnsAsync());
+        _mappingLoadColumns.Name = "RefreshMappingColumns";
+        _switchPointMapping = UiTheme.Button("使用自定义逐点映射", (_, _) => _mode.SelectedItem = DatabaseStorageMode.PointMapping, primary: true);
+        _switchPointMapping.Name = "UsePointMapping";
+        var mappingLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
+        mappingLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        mappingLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); mappingLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        mappingLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); mappingLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        mappingLayout.Controls.Add(UiTheme.Toolbar(_switchPointMapping, _mappingLoadColumns), 0, 0);
+        mappingLayout.Controls.Add(_mappingHint, 0, 1);
+        var mappingBody = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty };
+        mappingBody.Controls.Add(_mapping); mappingBody.Controls.Add(_mappingEmpty);
+        mappingLayout.Controls.Add(mappingBody, 0, 2); mappingLayout.Controls.Add(_mappingStatus, 0, 3);
+        mappingLayout.SizeChanged += (_, _) =>
+        {
+            foreach (var label in new[] { _mappingHint, _mappingStatus })
+                label.MaximumSize = new Size(Math.Max(1, mappingLayout.ClientSize.Width - label.Margin.Horizontal), 0);
+        };
+        _mappingStatus.Name = "DatabaseMappingResult"; _mappingEmpty.Name = "DatabaseMappingEmpty";
+        _status.TextChanged += (_, _) => _mappingStatus.Text = _status.Text;
+        _status.ForeColorChanged += (_, _) => _mappingStatus.ForeColor = _status.ForeColor;
+        _mappingStatus.Text = _status.Text;
+        _mappingTab.Controls.Add(mappingLayout); Tabs.TabPages.Add(_mappingTab);
         BindMappingRows(_source.Columns, _source.Columns.Select(mapping => new DatabaseColumnInfo(mapping.Column, "尚未读取", true)).ToArray());
         _mode.SelectedIndexChanged += (_, _) => UpdateMode();
         _tables.SelectedIndexChanged += (_, _) => { if (!_bindingTable && _tables.SelectedItem is DatabaseTableInfo table) { _schema.Text = table.Schema; _table.Text = table.Name; } };
@@ -211,15 +238,32 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         ? _connections.Single(connection => connection.Id == choice.Id) : throw new EditorValidationException("请先配置并选择数据库连接。", _connection);
     private DatabaseTableInfo CurrentTable() => new(_schema.Text.Trim(), Required(_table, "表名"));
     private string CurrentMetadataKey() => CurrentConnection().Id + "|" + _schema.Text.Trim() + "|" + _table.Text.Trim();
-    private void InvalidateMetadata() { _metadataKey = null; _status.Text = "目标已变更。自定义映射保存前请重新读取该表字段。"; }
+    private void InvalidateMetadata()
+    {
+        _metadataKey = null;
+        _status.Text = "目标已变更。映射草稿已保留；保存前请在“字段映射”页重新读取目标表字段。";
+        _status.ForeColor = UiTheme.Muted;
+    }
     private void UpdateMode()
     {
         var standard = _mode.SelectedItem is DatabaseStorageMode.PointRows;
-        _pointTab.Text = standard ? "标准点行 · 点位选择" : "点位选择（标准模式）";
-        _mappingTab.Text = standard ? "字段映射（自定义模式）" : "自定义 · 字段映射";
+        var pointMapping = _mode.SelectedItem is DatabaseStorageMode.PointMapping;
+        _pointTab.Text = standard || pointMapping ? "点位选择" : "点位选择（逐点模式）";
+        _mappingTab.Text = "字段映射";
         _loadColumns.Enabled = !standard; _createTable.Enabled = standard;
-        _interval.Enabled = _maxAge.Enabled = _goodOnly.Enabled = !standard;
-        _pointTab.Enabled = standard; _mappingTab.Enabled = !standard;
+        _mappingLoadColumns.Enabled = !standard; _switchPointMapping.Visible = standard;
+        _interval.Enabled = !standard && !pointMapping; _maxAge.Enabled = _goodOnly.Enabled = !standard;
+        _goodOnly.Text = pointMapping ? "仅写入质量为 Good 的采样" : "仅在关联点位全部为 Good 时写入整行";
+        _pointTab.Enabled = standard || pointMapping; _mapping.Enabled = !standard;
+        _mapping.Columns["Point"].Visible = !pointMapping;
+        _mappingHint.Text = standard ? "当前为标准点行模式，字段固定。已有业务表请切换为自定义逐点，再读取字段。"
+            : pointMapping ? "在“点位选择”页选中采集点。各点位独立写入一行，字段取该点位的名称、值和时间；固定状态请选择“常量”和“整数”。"
+            : "每列分别绑定点位，所需点位到齐后组合一行。自增字段由数据库生成，无需勾选。";
+        _mappingEmpty.Visible = _mapping.Rows.Count == 0;
+        _mappingEmpty.Text = standard ? "已有自定义表？点击上方“使用自定义逐点映射”。"
+            : "尚未读取表字段。\n请先在“写入设置”选择数据库和表名，\n再点击上方“读取 / 刷新字段”。";
+        if (_mappingEmpty.Visible) _mappingEmpty.BringToFront();
+        foreach (DataGridViewRow row in _mapping.Rows) UpdateMappingRow(row);
     }
     private void BindPoints()
     {
@@ -247,6 +291,16 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         _mapping.Columns.Add(new DataGridViewComboBoxColumn { Name = "FieldType", HeaderText = "转换类型", MinimumWidth = 110, FillWeight = 110,
             DataSource = Enum.GetValues<DatabaseFieldType>().Select(value => new DatabaseUiText.EnumItem<DatabaseFieldType>(value, DatabaseUiText.FieldType(value))).ToArray(), ValueMember = "Value", DisplayMember = "Text" });
         UiTheme.AddColumn(_mapping, "Constant", "常量值", 150, 150);
+        // Combo/check columns also need logical minimum widths registered for DPI scaling.
+        if (_mapping is DpiDataGridView dpiGrid)
+            foreach (DataGridViewColumn column in _mapping.Columns) dpiGrid.RegisterColumn(column, column.MinimumWidth);
+        _mapping.Columns["Include"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+        _mapping.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+        _mapping.EditingControlShowing += (_, e) =>
+        {
+            if (e.Control is ComboBox combo)
+                combo.DropDownWidth = Math.Min(Screen.FromControl(this).WorkingArea.Width, Math.Max(combo.Width, UiTheme.Scale(this, 360)));
+        };
         _mapping.CurrentCellDirtyStateChanged += (_, _) => { if (_mapping.IsCurrentCellDirty) _mapping.CommitEdit(DataGridViewDataErrorContexts.Commit); };
         _mapping.CellValueChanged += (_, e) => { if (e.RowIndex >= 0) UpdateMappingRow(_mapping.Rows[e.RowIndex]); };
     }
@@ -256,7 +310,7 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         _mapping.Rows.Clear();
         foreach (var column in columns)
         {
-            var mapping = mappings.FirstOrDefault(item => string.Equals(item.Column, column.Name, StringComparison.OrdinalIgnoreCase));
+            var mapping = mappings.FirstOrDefault(item => string.Equals(item.Column, column.Name, StringComparison.Ordinal));
             var required = !column.IsNullable && !column.HasDefault && !column.IsGenerated;
             var index = _mapping.Rows.Add(mapping is not null || required, column.Name,
                 column.DataType + (column.IsGenerated ? " · 自动生成" : required ? " · 必填" : column.HasDefault ? " · 有默认值" : " · 可空"),
@@ -265,13 +319,14 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
             if (column.IsGenerated) { row.Cells["Include"].Value = false; row.ReadOnly = true; row.DefaultCellStyle.ForeColor = UiTheme.Muted; }
             UpdateMappingRow(row);
         }
+        _mappingEmpty.Visible = _mapping.Rows.Count == 0;
     }
 
     private void UpdateMappingRow(DataGridViewRow row)
     {
         if (row.Cells["Source"].Value is not DatabaseValueSource source) return;
         var generated = row.Tag is DatabaseColumnInfo { IsGenerated: true };
-        row.Cells["Point"].ReadOnly = generated || !DatabaseUiText.NeedsPoint(source);
+        row.Cells["Point"].ReadOnly = generated || _mode.SelectedItem is DatabaseStorageMode.PointMapping || !DatabaseUiText.NeedsPoint(source);
         row.Cells["Constant"].ReadOnly = generated || source != DatabaseValueSource.Constant;
         row.Cells["Point"].Style.BackColor = row.Cells["Point"].ReadOnly ? UiTheme.Background : Color.White;
         row.Cells["Constant"].Style.BackColor = row.Cells["Constant"].ReadOnly ? UiTheme.Background : Color.White;
@@ -279,16 +334,18 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
 
     private IReadOnlyList<DatabaseColumnMapping> CaptureMappings(bool validate)
     {
-        _mapping.EndEdit(); var mappings = new List<DatabaseColumnMapping>();
+        if (!_mapping.EndEdit()) throw new EditorValidationException("字段映射输入无效，请完成当前单元格编辑。", _mapping);
+        var mappings = new List<DatabaseColumnMapping>();
+        var pointMapping = _mode.SelectedItem is DatabaseStorageMode.PointMapping;
         foreach (DataGridViewRow row in _mapping.Rows)
         {
             if (row.Cells["Include"].Value is not true) continue;
             var source = row.Cells["Source"].Value is DatabaseValueSource selected ? selected : DatabaseValueSource.EngineeringValue;
             var point = row.Cells["Point"].Value is Guid id && id != Guid.Empty ? id : (Guid?)null;
-            if (validate && DatabaseUiText.NeedsPoint(source) && (point is null || !_points.Any(item => item.Id == point)))
+            if (validate && !pointMapping && DatabaseUiText.NeedsPoint(source) && (point is null || !_points.Any(item => item.Id == point)))
                 throw new EditorValidationException($"字段“{row.Cells["Column"].Value}”的值来源为{DatabaseUiText.Source(source)}，请绑定有效点位。", _mapping);
             mappings.Add(new() { Column = row.Cells["Column"].Value?.ToString() ?? "", Source = source,
-                TagId = DatabaseUiText.NeedsPoint(source) ? point : null,
+                TagId = !pointMapping && DatabaseUiText.NeedsPoint(source) ? point : null,
                 FieldType = row.Cells["FieldType"].Value is DatabaseFieldType type ? type : DatabaseFieldType.Auto,
                 ConstantValue = row.Cells["Constant"].Value?.ToString() ?? "" });
         }
@@ -301,6 +358,17 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         var mappings = CaptureMappings(false); _columns = columns; _metadataKey = CurrentMetadataKey();
         BindMappingRows(mappings, columns);
     }
+
+    private Task ReadColumnsAsync() => InspectAsync(async () =>
+    {
+        if (_mode.SelectedItem is DatabaseStorageMode.PointRows)
+            throw new InvalidOperationException("请先切换为自定义逐点或自定义整行模式。");
+        var connection = CurrentConnection(); var table = CurrentTable();
+        var columns = await _application.GetDatabaseColumnsAsync(connection, table);
+        LoadColumns(columns);
+        Tabs.SelectedTab = _mappingTab;
+        _status.Text = $"目标：{connection.Name} / {table}；已读取 {columns.Count} 个字段。勾选写入字段并选择值来源；自增列无需映射。";
+    });
 
     private async Task InspectAsync(Func<Task> action)
     {
@@ -330,21 +398,23 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         var table = CurrentTable(); value.Schema = table.Schema; value.Table = table.Name;
         value.WriteIntervalMs = (int)_interval.Value; value.MaxSampleAgeMs = (int)_maxAge.Value; value.RequireGoodQuality = _goodOnly.Checked;
         value.TagIds = _allPoints.Checked ? [] : _selectedPoints.ToList();
+        if (value.Mode != DatabaseStorageMode.ColumnMapping && !_allPoints.Checked && value.TagIds.Count == 0)
+            throw new EditorValidationException("请选择至少一个点位，或勾选“全部启用点位”。", _allPoints);
         if (value.Mode == DatabaseStorageMode.PointRows)
         {
-            if (!_allPoints.Checked && value.TagIds.Count == 0) throw new EditorValidationException("请选择至少一个点位，或勾选“全部启用点位”。", _allPoints);
             value.Columns = [];
         }
         else
         {
-            if (_metadataKey != CurrentMetadataKey()) throw new EditorValidationException("保存自定义字段映射前，请读取当前目标表的字段并核对必填列。", _table);
-            value.Columns = CaptureMappings(true).ToList(); value.TagIds = [];
+            if (_metadataKey != CurrentMetadataKey()) throw new EditorValidationException("保存自定义字段映射前，请读取当前目标表的字段并核对必填列。", _mappingLoadColumns);
+            value.Columns = CaptureMappings(true).ToList();
+            if (value.Mode == DatabaseStorageMode.ColumnMapping) value.TagIds = [];
             if (value.Columns.Count == 0) throw new EditorValidationException("请至少选择一个要写入的字段。", _mapping);
             var missing = _columns.Where(column => !column.IsNullable && !column.HasDefault && !column.IsGenerated
-                && !value.Columns.Any(mapping => string.Equals(mapping.Column, column.Name, StringComparison.OrdinalIgnoreCase))).Select(column => column.Name).ToArray();
+                && !value.Columns.Any(mapping => string.Equals(mapping.Column, column.Name, StringComparison.Ordinal))).Select(column => column.Name).ToArray();
             if (missing.Length > 0) throw new EditorValidationException("以下必填列尚未映射：" + string.Join("、", missing), _mapping);
             if (!value.Columns.Any(mapping => DatabaseUiText.NeedsPoint(mapping.Source)))
-                throw new EditorValidationException("自定义整行至少需要绑定一个采集点位；只有新采样到达才会触发写入。", _mapping);
+                throw new EditorValidationException("自定义映射至少需要一个采样来源字段；只有新采样到达才会触发写入。", _mapping);
         }
         Value = value;
     }

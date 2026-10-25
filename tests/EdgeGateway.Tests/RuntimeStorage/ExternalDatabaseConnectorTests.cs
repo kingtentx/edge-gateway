@@ -440,6 +440,24 @@ public sealed class ExternalDatabaseConnectorTests
     }
 
     [Fact]
+    public async Task CustomPointModeUsesMappedColumnsAndDoesNotCreateAMissingBusinessTable()
+    {
+        var group = MappedGroup(); group.Mode = DatabaseStorageMode.PointMapping;
+        var database = new RecordingConnection();
+        await new ExternalDatabaseConnector(_ => database).WriteRowsAsync(Configuration(), group, [Row("value")]);
+        Assert.Equal(1, database.CommitCount);
+        var insert = Assert.Single(database.Commands, command => command.Sql.StartsWith("INSERT "));
+        Assert.Contains("\"value\"", insert.Sql);
+        Assert.DoesNotContain("event_id", insert.Sql);
+        Assert.True(insert.InTransaction);
+        var missing = new RecordingConnection { MetadataMode = "missing" };
+        group.Table = "gateway_point"; // Auto-creation applies only to the standard schema mode.
+        await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
+            new ExternalDatabaseConnector(_ => missing).WriteRowsAsync(Configuration(), group, [Row("value")]));
+        Assert.DoesNotContain(missing.Commands, command => command.Sql.StartsWith("CREATE ") || command.Sql.StartsWith("INSERT "));
+    }
+
+    [Fact]
     public async Task DefaultNameInCustomMappingModeDoesNotCreateATable()
     {
         var database = new RecordingConnection { MetadataMode = "missing" };
