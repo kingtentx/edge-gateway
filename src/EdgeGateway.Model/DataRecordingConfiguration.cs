@@ -12,6 +12,9 @@ public sealed class GatewayLoggingConfiguration
 }
 public sealed record GatewayLoggingStatus(long PendingEntries, long DroppedEntries, long FailedEntries, string? FileError)
 {
+    public string? DirectoryPath { get; init; }
+    public string? SampleDirectoryPath { get; init; }
+
     public long PendingBytes { get; init; }
     public long? AvailableDiskBytes { get; init; }
     public bool DiskProtectionActive { get; init; }

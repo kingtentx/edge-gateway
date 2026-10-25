@@ -27,7 +27,14 @@ public sealed partial class GatewayLog
         long scanned = 0; var invalid = 0; var partial = false; var resultBytes = 0;
         if (_directory is null || !Directory.Exists(_directory))
             return new(query, entries, 0, 0, false, ["日志目录尚未建立，或当前宿主只保留内存运行记录。"]);
-        var files = Directory.EnumerateFiles(_directory, "gateway-*.log", SearchOption.TopDirectoryOnly)
+        var directories = new List<string> { _directory };
+        var samples = Path.Combine(_directory, "data");
+        if (query.IncludeSamples && Directory.Exists(samples))
+        {
+            if ((File.GetAttributes(samples) & FileAttributes.ReparsePoint) == 0) directories.Add(samples);
+            else { partial = true; warnings.Add("已跳过采样日志链接目录 data。"); }
+        }
+        var files = directories.SelectMany(directory => Directory.EnumerateFiles(directory, "gateway-*.log", SearchOption.TopDirectoryOnly))
             .Take(1001).Select(path => new FileInfo(path)).OrderByDescending(file => file.LastWriteTimeUtc)
             .ThenByDescending(file => file.Name, StringComparer.Ordinal).ToArray();
         if (files.Length > 1000) { partial = true; warnings.Add("文件数超过 1000，查询仅扫描受限文件集合。"); }
@@ -75,7 +82,7 @@ public sealed partial class GatewayLog
                         else
                         {
                             GatewayLogFileEntry? entry;
-                            try { entry = ParseArchiveLine(ArchiveEncoding.GetString(buffer, start, size), file.Name, query, ref invalid); }
+                            try { entry = ParseArchiveLine(ArchiveEncoding.GetString(buffer, start, size), Path.GetRelativePath(_directory, file.FullName), query, ref invalid); }
                             catch (DecoderFallbackException) { invalid++; partial = true; entry = null; }
                             if (entry is not null)
                             {

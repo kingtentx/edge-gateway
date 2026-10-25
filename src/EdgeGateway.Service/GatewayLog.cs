@@ -54,6 +54,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
     public string? FileError { get { lock (_sync) return _fileError; } }
     public GatewayLoggingStatus GetStatus() => new(PendingEntries, DroppedEntries, FailedEntries, FileError)
     {
+        DirectoryPath = _directory, SampleDirectoryPath = _directory is null ? null : Path.Combine(_directory, "data"),
         PendingBytes = PendingBytes, AvailableDiskBytes = Interlocked.Read(ref _diskFreeBytes) is var free && free >= 0 ? free : null,
         DiskProtectionActive = Volatile.Read(ref _diskPaused) != 0, DiskRejectedEntries = Interlocked.Read(ref _diskRejected)
     };
@@ -147,21 +148,17 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
 
     private async Task WriteLoopAsync()
     {
-        FileStream? stream = null;
-        string? activePath = null;
-        GatewayLoggingConfiguration? appliedPolicy = null;
-        var lastMaintenance = DateOnly.MinValue;
-        var unflushed = 0;
-        void MaintainCurrentPolicy(GatewayLoggingConfiguration policy, string path, bool force = false)
+        var destinations = new[] { new LogFileState(_directory!), new LogFileState(Path.Combine(_directory!, "data")) };
+        void MaintainCurrentPolicy(LogFileState state, GatewayLoggingConfiguration policy, string path, bool force = false)
         {
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            if (!force && ReferenceEquals(appliedPolicy, policy) && today == lastMaintenance) return;
-            Directory.CreateDirectory(_directory!);
+            if (!force && ReferenceEquals(state.AppliedPolicy, policy) && today == state.LastMaintenance) return;
+            Directory.CreateDirectory(state.Directory);
             MaintainFiles(path, policy);
-            appliedPolicy = policy; lastMaintenance = today;
-            _diskPolicy = null; // Re-probe after deleting retained files; do not use stale free space.
+            state.AppliedPolicy = policy; state.LastMaintenance = today;
+            _diskPolicy = null;
         }
-        string CurrentPath() => activePath ?? Path.Combine(_directory!, $"gateway-{DateTimeOffset.UtcNow:yyyyMMdd}.log");
+        string CurrentPath(LogFileState state) => state.ActivePath ?? Path.Combine(state.Directory, $"gateway-{DateTimeOffset.UtcNow:yyyyMMdd}.log");
         try
         {
             while (await _writes!.Reader.WaitToReadAsync().ConfigureAwait(false))
@@ -173,7 +170,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                         try
                         {
                             var current = Volatile.Read(ref _configuration);
-                            MaintainCurrentPolicy(current, CurrentPath());
+                            foreach (var destination in destinations) MaintainCurrentPolicy(destination, current, CurrentPath(destination));
                             CanWriteToDisk(0, current);
                         }
                         catch (Exception exception) when (IsLoggingFailure(exception))
@@ -184,17 +181,19 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                     {
                         try
                         {
-                            if (stream is not null)
-                            {
-                                await stream.FlushAsync().ConfigureAwait(false);
-                                stream.Flush(flushToDisk: true);
-                            }
+                            foreach (var destination in destinations)
+                                if (destination.Stream is not null)
+                                {
+                                    await destination.Stream.FlushAsync().ConfigureAwait(false);
+                                    destination.Stream.Flush(flushToDisk: true);
+                                }
                             work.Barrier.TrySetResult();
                         }
                         catch (Exception exception) when (IsLoggingFailure(exception))
                         { SetFileError($"日志刷新失败：{exception.Message}"); work.Barrier.TrySetException(exception); }
                         continue;
                     }
+                    var state = destinations[work.Sample is null ? 0 : 1];
                     try
                     {
                         var entry = work.Entry!;
@@ -205,38 +204,38 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                         var limit = (long)policy.MaxFileSizeMb * 1024 * 1024;
                         if (bytes.LongLength > limit)
                             throw new InvalidDataException($"单条日志超过单文件 {policy.MaxFileSizeMb} MB 上限，本条未写入。");
-                        var path = Path.Combine(_directory!, $"gateway-{entry.Timestamp:yyyyMMdd}.log");
-                        if (activePath != path)
+                        var path = Path.Combine(state.Directory, $"gateway-{entry.Timestamp:yyyyMMdd}.log");
+                        if (state.ActivePath != path)
                         {
-                            if (stream is not null) await stream.DisposeAsync().ConfigureAwait(false);
-                            stream = null;
-                            activePath = path;
+                            if (state.Stream is not null) await state.Stream.DisposeAsync().ConfigureAwait(false);
+                            state.Stream = null;
+                            state.ActivePath = path;
                         }
                         // Retention must run BEFORE disk protection, otherwise expired logs can
                         // keep the writer permanently paused even though it could reclaim space.
-                        MaintainCurrentPolicy(policy, path);
+                        MaintainCurrentPolicy(state, policy, path);
                         if (!CanWriteToDisk(bytes.Length, policy))
                         {
                             Interlocked.Increment(ref _diskRejected);
                             Interlocked.Increment(ref _droppedEntries);
                             continue;
                         }
-                        stream ??= OpenLogFile(path);
-                        if (stream.Length + bytes.LongLength > limit)
+                        state.Stream ??= OpenLogFile(path);
+                        if (state.Stream.Length + bytes.LongLength > limit)
                         {
-                            await stream.DisposeAsync().ConfigureAwait(false);
-                            stream = null;
-                            var rotated = Path.Combine(_directory!, $"gateway-{entry.Timestamp:yyyyMMdd}-{DateTimeOffset.UtcNow:HHmmssfff}-{Guid.NewGuid():N}.log");
+                            await state.Stream.DisposeAsync().ConfigureAwait(false);
+                            state.Stream = null;
+                            var rotated = Path.Combine(state.Directory, $"gateway-{entry.Timestamp:yyyyMMdd}-{DateTimeOffset.UtcNow:HHmmssfff}-{Guid.NewGuid():N}.log");
                             File.Move(path, rotated);
-                            stream = OpenLogFile(path);
-                            MaintainCurrentPolicy(policy, path, force: true);
+                            state.Stream = OpenLogFile(path);
+                            MaintainCurrentPolicy(state, policy, path, force: true);
                         }
-                        await stream.WriteAsync(bytes).ConfigureAwait(false);
+                        await state.Stream.WriteAsync(bytes).ConfigureAwait(false);
                         _bytesSinceDiskCheck += bytes.Length;
-                        if (++unflushed >= 128)
+                        if (++state.Unflushed >= 128)
                         {
-                            await stream.FlushAsync().ConfigureAwait(false);
-                            unflushed = 0;
+                            await state.Stream.FlushAsync().ConfigureAwait(false);
+                            state.Unflushed = 0;
                         }
                         ClearFileError();
                     }
@@ -245,31 +244,43 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                         Interlocked.Increment(ref _failedEntries);
                         Interlocked.Increment(ref _droppedEntries);
                         SetFileError($"日志文件写入失败，本条未保存：{exception.Message}");
-                        if (stream is not null)
+                        if (state.Stream is not null)
                         {
-                            try { await stream.DisposeAsync().ConfigureAwait(false); } catch (Exception closeError) when (IsLoggingFailure(closeError)) { }
-                            stream = null;
+                            try { await state.Stream.DisposeAsync().ConfigureAwait(false); } catch (Exception closeError) when (IsLoggingFailure(closeError)) { }
+                            state.Stream = null;
                         }
                     }
                     finally { Interlocked.Decrement(ref _pendingEntries); Interlocked.Add(ref _pendingBytes, -work.EstimatedBytes); }
                 }
-                if (stream is not null && unflushed > 0)
+                foreach (var state in destinations)
                 {
-                    try { await stream.FlushAsync().ConfigureAwait(false); unflushed = 0; }
+                    if (state.Stream is null || state.Unflushed == 0) continue;
+                    try { await state.Stream.FlushAsync().ConfigureAwait(false); state.Unflushed = 0; }
                     catch (Exception exception) when (IsLoggingFailure(exception)) { SetFileError($"日志刷新失败：{exception.Message}"); }
                 }
             }
         }
         finally
         {
-            if (stream is not null)
+            foreach (var state in destinations)
             {
-                try { await stream.FlushAsync().ConfigureAwait(false); stream.Flush(flushToDisk: true); }
+                if (state.Stream is null) continue;
+                try { await state.Stream.FlushAsync().ConfigureAwait(false); state.Stream.Flush(flushToDisk: true); }
                 catch (Exception exception) when (IsLoggingFailure(exception)) { SetFileError($"退出时日志刷新失败：{exception.Message}"); }
-                try { await stream.DisposeAsync().ConfigureAwait(false); }
+                try { await state.Stream.DisposeAsync().ConfigureAwait(false); }
                 catch (Exception exception) when (IsLoggingFailure(exception)) { SetFileError($"关闭日志文件失败：{exception.Message}"); }
             }
         }
+    }
+
+    private sealed class LogFileState(string directory)
+    {
+        public string Directory { get; } = directory;
+        public FileStream? Stream;
+        public string? ActivePath;
+        public GatewayLoggingConfiguration? AppliedPolicy;
+        public DateOnly LastMaintenance = DateOnly.MinValue;
+        public int Unflushed;
     }
 
     private static FileStream OpenLogFile(string path)
@@ -292,7 +303,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
     private void MaintainFiles(string activePath, GatewayLoggingConfiguration configuration)
     {
         var cutoff = DateTime.UtcNow.AddDays(-configuration.RetainedDays);
-        var files = Directory.EnumerateFiles(_directory!, "gateway-*.log").Select(path => new FileInfo(path)).ToArray();
+        var files = Directory.EnumerateFiles(Path.GetDirectoryName(activePath)!, "gateway-*.log").Select(path => new FileInfo(path)).ToArray();
         foreach (var file in files.Where(file => file.FullName != activePath && file.LastWriteTimeUtc < cutoff)) file.Delete();
         var retained = files.Where(file => file.FullName != activePath && File.Exists(file.FullName))
             .OrderByDescending(file => file.LastWriteTimeUtc).ThenByDescending(file => file.Name, StringComparer.Ordinal).ToArray();

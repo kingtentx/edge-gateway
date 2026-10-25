@@ -33,7 +33,7 @@ public sealed class GatewayLogTests : IDisposable
             ulong.MaxValue, SampleQuality.Good, DateTimeOffset.UtcNow, "件");
         for (var i = 0; i < 100; i++) log.WriteSample(sample);
         await log.DisposeAsync();
-        var lines = await File.ReadAllLinesAsync(Assert.Single(Directory.GetFiles(_directory, "*.log")));
+        var lines = await File.ReadAllLinesAsync(Assert.Single(Directory.GetFiles(Path.Combine(_directory, "data"), "*.log")));
         Assert.Equal(100, lines.Length);
         using var document = JsonDocument.Parse(lines[0]);
         Assert.Equal("sample", document.RootElement.GetProperty("kind").GetString());
@@ -41,6 +41,52 @@ public sealed class GatewayLogTests : IDisposable
         Assert.Equal("Good", document.RootElement.GetProperty("sample").GetProperty("quality").GetString());
         Assert.Equal(0, log.PendingEntries);
         Assert.Equal(0, log.DroppedEntries);
+    }
+
+    [Fact]
+    public async Task EventsAndSamplesUseSeparateDirectoriesAndRetentionBudgets()
+    {
+        await using var log = new GatewayLog(_directory, availableDiskBytes: _ => long.MaxValue);
+        log.ApplyConfiguration(new() { MaxFileSizeMb = 1, RetainedFileCount = 2 });
+        var sampleDirectory = Path.Combine(_directory, "data");
+        var value = new string('x', 40_000);
+        for (var i = 0; i < 40; i++)
+        {
+            log.Write(GatewayLogLevel.Information, value);
+            log.WriteSample(new(Guid.NewGuid(), "设备", Guid.NewGuid(), "点位", "0", value, value,
+                SampleQuality.Good, DateTimeOffset.UtcNow, ""));
+        }
+        await log.FlushAsync();
+        Assert.Equal(_directory, log.GetStatus().DirectoryPath);
+        Assert.Equal(sampleDirectory, log.GetStatus().SampleDirectoryPath);
+        var events = Directory.GetFiles(_directory, "*.log");
+        var samples = Directory.GetFiles(sampleDirectory, "*.log");
+        Assert.Equal(2, events.Length);
+        Assert.Equal(2, samples.Length);
+        foreach (var file in events.Concat(samples))
+        {
+            Assert.InRange(new FileInfo(file).Length, 1L, 1024L * 1024);
+            foreach (var line in await ReadOpenLogLinesAsync(file))
+            {
+                using var json = JsonDocument.Parse(line);
+                Assert.Equal(Path.GetDirectoryName(file) == sampleDirectory ? "sample" : "event", json.RootElement.GetProperty("kind").GetString());
+            }
+        }
+        Assert.Equal(0, log.DroppedEntries);
+    }
+
+    [Fact]
+    public async Task SampleDirectoryFailureDoesNotStopProgramLogging()
+    {
+        Directory.CreateDirectory(_directory);
+        await File.WriteAllTextAsync(Path.Combine(_directory, "data"), "directory is blocked");
+        await using var log = new GatewayLog(_directory, availableDiskBytes: _ => long.MaxValue);
+        log.WriteSample(new(Guid.NewGuid(), "设备", Guid.NewGuid(), "点位", "0", 1, 1, SampleQuality.Good, DateTimeOffset.UtcNow, ""));
+        log.Write(GatewayLogLevel.Error, "程序日志仍写入");
+        await log.FlushAsync();
+        Assert.Equal(1, log.FailedEntries);
+        var line = Assert.Single(await ReadOpenLogLinesAsync(Assert.Single(Directory.GetFiles(_directory, "*.log"))));
+        Assert.Contains("程序日志仍写入", line);
     }
 
     [Fact]

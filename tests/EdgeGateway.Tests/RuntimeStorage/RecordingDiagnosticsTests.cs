@@ -77,7 +77,10 @@ public sealed class RecordingDiagnosticsTests : IDisposable
         using var header = JsonDocument.Parse(lines[0]);
         Assert.Equal("export", header.RootElement.GetProperty("kind").GetString());
         Assert.Equal(result.Entries[0].Json, lines[1]);
-        Assert.Equal(4, (await log.QueryAsync(Query())).Entries.Count);
+        var combined = await log.QueryAsync(Query());
+        Assert.Equal(4, combined.Entries.Count);
+        Assert.Contains(combined.Entries, entry => entry.FileName.StartsWith("data" + Path.DirectorySeparatorChar));
+        Assert.Equal(3, (await log.QueryAsync(Query(samples: false))).Entries.Count);
     }
 
     [Fact]

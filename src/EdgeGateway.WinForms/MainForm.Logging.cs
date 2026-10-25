@@ -38,15 +38,24 @@ public sealed partial class MainForm
         Add("MinimumLevel", "运行日志最低级别", level); Add("Samples", "采样日志", samples);
         void Number(string key, string label, int min, int max)
         { var input = new NumericUpDown { Minimum = min, Maximum = max, ThousandsSeparator = true }; input.ValueChanged += (_, _) => Changed(); Add(key, label, input); }
-        EditorDialog.Section(fields, "文件保留", "文件达到大小后轮转；超过保留文件数或天数的旧日志将清理。");
+        EditorDialog.Section(fields, "文件保留", "程序日志与采样日志分别轮转，各自按保留文件数和天数清理。");
         Number("MaxFileSizeMb", "单文件最大大小（M）", 1, 1024); Number("RetainedFileCount", "最多保留文件数", 1, 1000); Number("RetainedDays", "最多保留天数", 1, 3650);
         EditorDialog.Section(fields, "磁盘保护", "低于保护阈值暂停文件写入；空间达到阈值加恢复余量后自动恢复。保护期间的日志不补写，丢弃数可见。不会删除其他业务文件。");
         Number("MinimumFreeDiskSpaceMb", "最低剩余空间（M）", 16, 1048576);
         Number("DiskResumeMarginMb", "恢复余量（M）", 1, 65536);
-        EditorDialog.Hint(fields, "采样日志用于本地追溯。需要按设备、点位查询长期数据时，请配置外部数据库的标准点行写入组。" + Environment.NewLine + Path.Combine(_dataDirectory, "logs"));
+        var logPaths = _application.GetLoggingStatus();
+        EditorDialog.Hint(fields, "程序日志：" + (logPaths.DirectoryPath ?? "未启用文件日志") + Environment.NewLine
+            + "点位采样日志：" + (logPaths.SampleDirectoryPath ?? "未启用文件日志") + Environment.NewLine
+            + "采样日志用于本地追溯。需要按设备、点位查询长期数据时，请配置外部数据库的标准点行写入组。");
         var openLogs = UiTheme.Button("打开日志目录", (_, _) =>
         {
-            try { Directory.CreateDirectory(Path.Combine(_dataDirectory, "logs")); Process.Start(new ProcessStartInfo(Path.Combine(_dataDirectory, "logs")) { UseShellExecute = true }); }
+            try
+            {
+                var directory = _application.GetLoggingStatus().DirectoryPath;
+                if (directory is null) throw new InvalidOperationException("当前宿主未启用文件日志。");
+                Directory.CreateDirectory(directory);
+                Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
+            }
             catch (Exception exception) { ShowError(exception.Message); }
         });
         _loggingFileState.Name = "LoggingFileStatus"; DatabaseConnectionDialog.Span(fields, _loggingFileState);
