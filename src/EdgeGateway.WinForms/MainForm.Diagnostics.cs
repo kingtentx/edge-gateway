@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
@@ -5,12 +6,14 @@ namespace EdgeGateway.WinForms;
 public sealed partial class MainForm
 {
     private readonly DataGridView _telemetryDiagnosticsGrid = UiTheme.Grid();
+    private readonly BindingList<DiagnosticRow> _telemetryDiagnosticRows = [];
 
     private Control BuildDiagnosticsPage()
     {
         UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Item", "诊断项目", 180, 180);
         UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Value", "当前值 / 最近事件", 260, 260);
         UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Meaning", "说明", 350, 350);
+        _telemetryDiagnosticsGrid.DataSource = _telemetryDiagnosticRows;
         _telemetryDiagnosticsGrid.CellDoubleClick += (_, e) =>
         {
             if (e.RowIndex >= 0 && _telemetryDiagnosticsGrid.Rows[e.RowIndex].DataBoundItem is DiagnosticRow row)
@@ -50,7 +53,7 @@ public sealed partial class MainForm
         };
         foreach (var database in _application.GetDatabaseStatuses())
         {
-            rows.Add(new(database.Name + " · 数据库写入", $"已写 {database.WrittenRows:N0} / 排队 {database.QueuedRows:N0} / 丢弃 {database.DroppedRows:N0} / 跳过 {database.SkippedRows:N0}", database.Error ?? "数据库记录独立于 MQTT 上传开关；积压、失败或丢弃须检查连接、权限及表结构。"));
+            rows.Add(new(database.Name + " · 数据库写入", $"已写 {database.WrittenRows:N0} / 排队 {database.QueuedRows:N0} / 丢弃 {database.DroppedRows:N0} / 跳过 {database.SkippedRows:N0}", database.Error ?? "数据库记录独立于 MQTT 上传开关；积压、失败或丢弃须检查连接、权限及表结构。", $"database:{database.ConnectionId}"));
         }
         var rpc = _application.GetRpcStatus();
         rows.AddRange([
@@ -65,13 +68,44 @@ public sealed partial class MainForm
         foreach (var device in _application.GetCommunicationStatistics())
         {
             var name = devices[device.DeviceId].Name;
-            rows.Add(new(name + " · 通信批次", $"读 {device.ReadRequests} / 写 {device.WriteRequests} / 失败 {device.FailedRequests}", "读取按驱动调用批次计数；不是底层协议帧或字节计数。"));
-            rows.Add(new(name + " · 最近耗时", device.LastDurationMs.ToString("F1") + " ms", Time(device.LastRequestAt) + "；不含通道排队等待。"));
-            rows.Add(new(name + " · 故障降速", device.DemotedUntil is null ? "未降速" : "下一次重试 " + Time(device.DemotedUntil), device.LastError ?? "当前无通信错误"));
+            rows.Add(new(name + " · 通信批次", $"读 {device.ReadRequests} / 写 {device.WriteRequests} / 失败 {device.FailedRequests}", "读取按驱动调用批次计数；不是底层协议帧或字节计数。", $"device:{device.DeviceId}:requests"));
+            rows.Add(new(name + " · 最近耗时", device.LastDurationMs.ToString("F1") + " ms", Time(device.LastRequestAt) + "；不含通道排队等待。", $"device:{device.DeviceId}:duration"));
+            rows.Add(new(name + " · 故障降速", device.DemotedUntil is null ? "未降速" : "下一次重试 " + Time(device.DemotedUntil), device.LastError ?? "当前无通信错误", $"device:{device.DeviceId}:demotion"));
         }
-        GridViewState.Rebind(_telemetryDiagnosticsGrid, rows, row => row.Item);
+        UpdateTelemetryDiagnosticRows(rows);
         foreach (DataGridViewRow row in _telemetryDiagnosticsGrid.Rows)
-            if (row.DataBoundItem is DiagnosticRow data) row.Cells["Value"].ToolTipText = data.Value;
+            if (row.DataBoundItem is DiagnosticRow data && row.Cells["Value"].ToolTipText != data.Value)
+                row.Cells["Value"].ToolTipText = data.Value;
+    }
+
+    private void UpdateTelemetryDiagnosticRows(IReadOnlyList<DiagnosticRow> rows)
+    {
+        // Keep the bound list and grid rows alive on polling ticks. Rebinding briefly removes
+        // the vertical scrollbar, redistributes Fill columns, then moves them back again.
+        var structureChanged = !_telemetryDiagnosticRows.Select(row => row.Key).SequenceEqual(rows.Select(row => row.Key));
+        object? Key(object item) => (item as DiagnosticRow)?.Key;
+        var state = structureChanged ? GridViewState.Capture(_telemetryDiagnosticsGrid, Key) : null;
+        if (structureChanged)
+        {
+            var keys = rows.Select(row => row.Key).ToHashSet(StringComparer.Ordinal);
+            for (var index = _telemetryDiagnosticRows.Count - 1; index >= 0; index--)
+                if (!keys.Contains(_telemetryDiagnosticRows[index].Key)) _telemetryDiagnosticRows.RemoveAt(index);
+        }
+        for (var index = 0; index < rows.Count; index++)
+        {
+            var next = rows[index];
+            if (index < _telemetryDiagnosticRows.Count && _telemetryDiagnosticRows[index].Key == next.Key)
+            {
+                if (_telemetryDiagnosticRows[index] != next) _telemetryDiagnosticRows[index] = next;
+                continue;
+            }
+            var previousIndex = -1;
+            for (var candidate = index + 1; candidate < _telemetryDiagnosticRows.Count; candidate++)
+                if (_telemetryDiagnosticRows[candidate].Key == next.Key) { previousIndex = candidate; break; }
+            if (previousIndex >= 0) _telemetryDiagnosticRows.RemoveAt(previousIndex);
+            _telemetryDiagnosticRows.Insert(index, next);
+        }
+        state?.Restore(_telemetryDiagnosticsGrid, Key);
     }
 
     private async Task ExportDiagnosticsAsync()
@@ -89,5 +123,8 @@ public sealed partial class MainForm
         SetFooter("通信与 RPC 诊断快照已导出。");
     }
 
-    private sealed record DiagnosticRow(string Item, string Value, string Meaning);
+    private sealed record DiagnosticRow(string Item, string Value, string Meaning, string? Identity = null)
+    {
+        public string Key => Identity ?? Item;
+    }
 }
