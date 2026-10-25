@@ -1,6 +1,8 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using EdgeGateway.Abstractions;
 using EdgeGateway.Model;
@@ -102,8 +104,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         if (_writes is null) return;
         if (!SamplePayloadBudget.TryEstimate(sample, out var bytes))
         { Reject("单条采样超出 1 M 或结构复杂度限制，未写入采集日志。"); return; }
-        var entry = new GatewayLogEntry(DateTimeOffset.UtcNow, GatewayLogLevel.Information,
-            $"采集：设备 [{sample.DeviceName}] 点位 [{sample.TagName}]，质量 {sample.Quality}。".Replace('\r', ' ').Replace('\n', ' '));
+        var entry = new GatewayLogEntry(DateTimeOffset.UtcNow, GatewayLogLevel.Information, "");
         // Samples go to structured files; preserve the small UI ring for operational events.
         Queue(new LogWork(entry, sample, configuration, null, bytes));
     }
@@ -158,7 +159,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
             state.AppliedPolicy = policy; state.LastMaintenance = today;
             _diskPolicy = null;
         }
-        string CurrentPath(LogFileState state) => state.ActivePath ?? Path.Combine(state.Directory, $"gateway-{DateTimeOffset.UtcNow:yyyyMMdd}.log");
+        string CurrentPath(LogFileState state) => state.ActivePath ?? DailyLogPath(state.Directory, DateTimeOffset.UtcNow);
         try
         {
             while (await _writes!.Reader.WaitToReadAsync().ConfigureAwait(false))
@@ -204,7 +205,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                         var limit = (long)policy.MaxFileSizeMb * 1024 * 1024;
                         if (bytes.LongLength > limit)
                             throw new InvalidDataException($"单条日志超过单文件 {policy.MaxFileSizeMb} MB 上限，本条未写入。");
-                        var path = Path.Combine(state.Directory, $"gateway-{entry.Timestamp:yyyyMMdd}.log");
+                        var path = DailyLogPath(state.Directory, entry.Timestamp);
                         if (state.ActivePath != path)
                         {
                             if (state.Stream is not null) await state.Stream.DisposeAsync().ConfigureAwait(false);
@@ -225,7 +226,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                         {
                             await state.Stream.DisposeAsync().ConfigureAwait(false);
                             state.Stream = null;
-                            var rotated = Path.Combine(state.Directory, $"gateway-{entry.Timestamp:yyyyMMdd}-{DateTimeOffset.UtcNow:HHmmssfff}-{Guid.NewGuid():N}.log");
+                            var rotated = NextRotatedLogPath(path);
                             File.Move(path, rotated);
                             state.Stream = OpenLogFile(path);
                             MaintainCurrentPolicy(state, policy, path, force: true);
@@ -294,16 +295,47 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
     {
         var content = sample is null
             ? JsonSerializer.SerializeToUtf8Bytes(new { timestamp = entry.Timestamp, level = entry.Level, kind = "event", message = entry.Message }, LineOptions)
-            : JsonSerializer.SerializeToUtf8Bytes(new { timestamp = entry.Timestamp, level = entry.Level, kind = "sample", sample }, LineOptions);
+            : JsonSerializer.SerializeToUtf8Bytes(new SampleLogLine(sample.Timestamp.ToUniversalTime(), sample.DeviceId, sample.DeviceName,
+                sample.TagId, sample.TagName, sample.Address, sample.RawValue, sample.Value, sample.Quality,
+                string.IsNullOrWhiteSpace(sample.Unit) ? null : sample.Unit,
+                string.IsNullOrWhiteSpace(sample.Error) ? null : sample.Error), LineOptions);
         var line = new byte[content.Length + 1];
         content.CopyTo(line, 0); line[^1] = (byte)'\n';
         return line;
     }
 
+    // Keep this file format separate from TelemetrySample's API/MQTT/database serialization.
+    // Null raw/value fields carry meaning for failed reads and must remain explicit.
+    private sealed record SampleLogLine(DateTimeOffset Timestamp, Guid DeviceId, string DeviceName,
+        Guid TagId, string TagName, string Address, object? RawValue, object? Value, SampleQuality Quality,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Unit,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Error);
+
+    private static string DailyLogPath(string directory, DateTimeOffset timestamp) =>
+        Path.Combine(directory, timestamp.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".log");
+
+    private static string NextRotatedLogPath(string path)
+    {
+        var stem = Path.Combine(Path.GetDirectoryName(path)!, Path.GetFileNameWithoutExtension(path));
+        for (var number = 1; ; number++)
+        {
+            var candidate = stem + "." + number.ToString("D3", CultureInfo.InvariantCulture) + ".log";
+            if (!File.Exists(candidate)) return candidate;
+        }
+    }
+
+    private static IEnumerable<string> EnumerateLogFiles(string directory) =>
+        Directory.EnumerateFiles(directory, "*.log", SearchOption.TopDirectoryOnly)
+            .Where(path => Path.GetFileName(path).StartsWith("gateway-", StringComparison.Ordinal)
+                || DailyLogFileName().IsMatch(Path.GetFileName(path)));
+
+    [GeneratedRegex(@"\A[0-9]{8}(?:\.[0-9]{3,})?\.log\z", RegexOptions.CultureInvariant)]
+    private static partial Regex DailyLogFileName();
+
     private void MaintainFiles(string activePath, GatewayLoggingConfiguration configuration)
     {
         var cutoff = DateTime.UtcNow.AddDays(-configuration.RetainedDays);
-        var files = Directory.EnumerateFiles(Path.GetDirectoryName(activePath)!, "gateway-*.log").Select(path => new FileInfo(path)).ToArray();
+        var files = EnumerateLogFiles(Path.GetDirectoryName(activePath)!).Select(path => new FileInfo(path)).ToArray();
         foreach (var file in files.Where(file => file.FullName != activePath && file.LastWriteTimeUtc < cutoff)) file.Delete();
         var retained = files.Where(file => file.FullName != activePath && File.Exists(file.FullName))
             .OrderByDescending(file => file.LastWriteTimeUtc).ThenByDescending(file => file.Name, StringComparer.Ordinal).ToArray();

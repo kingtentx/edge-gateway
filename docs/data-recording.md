@@ -7,7 +7,8 @@
 | 内容 | 当前存放位置 | 说明 |
 |---|---|---|
 | 网关、通道、设备、点位、MQTT、日志、数据库及字段映射配置，以及驱动元数据 | `AppData/gateway.config.db` | `configuration_versions` 保存当前与上一份同版本配置，`driver_plugins` / `driver_catalog` 保存插件登记和可用驱动清单；配置版本在一个事务内更新 |
-| 采集数据的默认输出 | `logs/gateway-*.log` | JSON Lines 滚动日志，默认开启；不创建 SQLite 采样表 |
+| 程序运行事件 | `logs/yyyyMMdd.log` | JSON Lines 滚动日志 |
+| 采集数据的默认输出 | `logs/data/yyyyMMdd.log` | 精简 JSON Lines 滚动日志，默认开启；不创建 SQLite 采样表 |
 | 启用后的业务采集记录 | 用户配置的 MySQL / PostgreSQL / Oracle | 支持标准点表与自定义字段映射；默认没有启用的外部连接或写入组 |
 | 未确认 MQTT 消息 | `messaging/outbox/*.json` | 独立原子文件；正常重启后继续补传 |
 | RPC 写入占位及结果 | `messaging/rpc/*.json` | 独立原子文件；在下发写指令前记录占位，避免重复执行 |
@@ -40,7 +41,17 @@ flowchart TD
 | 保留文件数 | 30 | 包括当前文件；超过数量时先删除较旧文件 |
 | 保留天数 | 30 | 按文件时间清理；数量和天数同时生效，不能把它理解为保证保存 30 天 |
 
-采样日志为一条样本一行 JSON，包含设备/点位身份、原始值、工程值、质量、UTC 采样时间、单位和错误。字符串/64 位整数/结构值按原类型序列化，日志不会把所有值强制转为 double。
+程序日志保存到程序根目录 `logs`，采样日志保存到 `logs/data`，两类文件独立轮转和保留。当天主文件名为 `yyyyMMdd.log`（沿用 UTC 写入日期），不再添加 `gateway-` 前缀；达到大小上限后归档为 `yyyyMMdd.001.log`、`yyyyMMdd.002.log` 等未占用的序号文件，继续写入当天主文件。已有 `gateway-*.log` 仍参与查询和保留策略，不重写历史内容。
+
+采样日志为一条样本一行扁平 JSON，保留 `timestamp`（UTC 采样时间）、`deviceId`、`deviceName`、`tagId`、`tagName`、`address`、`rawValue`、`value`、`quality`。不再写入重复的外层时间、`sample` 包装、`level`、`kind` 和可计算的 `numericValue`；`unit`、`error` 仅在有内容时输出。失败采样保留实际质量、错误以及为 null 的原始值/工程值，不能省略故障语义。字符串/64 位整数/结构值按原类型序列化，日志不会把所有值强制转为 double。程序事件仍保留等级、类别和消息。
+
+日志查询将精简采样视为 Information，按采样时间筛选；导出保留原始 JSON 行。示例（测试标识）：
+
+```json
+{"timestamp":"2026-10-26T00:00:00+00:00","deviceId":"00000000-0000-0000-0000-000000000001","deviceName":"测试设备","tagId":"00000000-0000-0000-0000-000000000002","tagName":"温度","address":"0","rawValue":250,"value":25,"quality":"Good","unit":"℃"}
+```
+
+2026-10-26 文件命名及采样格式调整：已更新写入、日志查询/导出和定向测试用例；尚未执行本次编译或测试，等待用户确认验证范围。
 
 内存查看区保留运行事件，避免采样量较大时刷掉通信和保存错误；采样记录在日志文件中，可通过“打开日志目录”查看。日志配置页显示待写、累计丢弃、累计失败及当前文件错误。
 

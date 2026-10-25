@@ -36,11 +36,42 @@ public sealed class GatewayLogTests : IDisposable
         var lines = await File.ReadAllLinesAsync(Assert.Single(Directory.GetFiles(Path.Combine(_directory, "data"), "*.log")));
         Assert.Equal(100, lines.Length);
         using var document = JsonDocument.Parse(lines[0]);
-        Assert.Equal("sample", document.RootElement.GetProperty("kind").GetString());
-        Assert.Equal(ulong.MaxValue, document.RootElement.GetProperty("sample").GetProperty("value").GetUInt64());
-        Assert.Equal("Good", document.RootElement.GetProperty("sample").GetProperty("quality").GetString());
+        var root = document.RootElement;
+        Assert.Equal(ulong.MaxValue, root.GetProperty("value").GetUInt64());
+        Assert.Equal(ulong.MaxValue, root.GetProperty("rawValue").GetUInt64());
+        Assert.Equal("Good", root.GetProperty("quality").GetString());
+        Assert.Equal(sample.Timestamp, root.GetProperty("timestamp").GetDateTimeOffset());
+        Assert.Equal(sample.DeviceId, root.GetProperty("deviceId").GetGuid());
+        Assert.Equal(sample.TagId, root.GetProperty("tagId").GetGuid());
+        Assert.Equal("件", root.GetProperty("unit").GetString());
+        foreach (var field in new[] { "level", "kind", "sample", "numericValue", "error" })
+            Assert.False(root.TryGetProperty(field, out _));
         Assert.Equal(0, log.PendingEntries);
         Assert.Equal(0, log.DroppedEntries);
+    }
+
+    [Fact]
+    public async Task CompactSamplesOmitEmptyMetadataButPreserveFailedReadQualityAndError()
+    {
+        var log = new GatewayLog(_directory, availableDiskBytes: _ => long.MaxValue);
+        var sample = new TelemetrySample(Guid.NewGuid(), "设备", Guid.NewGuid(), "点位", "0", 42, 42,
+            SampleQuality.Good, DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(8)), "");
+        log.WriteSample(sample);
+        log.WriteSample(sample with { RawValue = null, Value = null, Quality = SampleQuality.Bad, Error = "读取超时" });
+        await log.DisposeAsync();
+        var path = Assert.Single(Directory.GetFiles(Path.Combine(_directory, "data"), "*.log"));
+        Assert.Matches(@"\A[0-9]{8}\.log\z", Path.GetFileName(path));
+        var lines = await File.ReadAllLinesAsync(path);
+        Assert.Equal(2, lines.Length);
+        using var good = JsonDocument.Parse(lines[0]);
+        Assert.False(good.RootElement.TryGetProperty("unit", out _));
+        Assert.False(good.RootElement.TryGetProperty("error", out _));
+        Assert.Equal(TimeSpan.Zero, good.RootElement.GetProperty("timestamp").GetDateTimeOffset().Offset);
+        using var bad = JsonDocument.Parse(lines[1]);
+        Assert.Equal("Bad", bad.RootElement.GetProperty("quality").GetString());
+        Assert.Equal("读取超时", bad.RootElement.GetProperty("error").GetString());
+        Assert.Equal(JsonValueKind.Null, bad.RootElement.GetProperty("rawValue").ValueKind);
+        Assert.Equal(JsonValueKind.Null, bad.RootElement.GetProperty("value").ValueKind);
     }
 
     [Fact]
@@ -69,7 +100,12 @@ public sealed class GatewayLogTests : IDisposable
             foreach (var line in await ReadOpenLogLinesAsync(file))
             {
                 using var json = JsonDocument.Parse(line);
-                Assert.Equal(Path.GetDirectoryName(file) == sampleDirectory ? "sample" : "event", json.RootElement.GetProperty("kind").GetString());
+                if (Path.GetDirectoryName(file) == sampleDirectory)
+                {
+                    Assert.True(json.RootElement.TryGetProperty("rawValue", out _));
+                    Assert.False(json.RootElement.TryGetProperty("kind", out _));
+                }
+                else Assert.Equal("event", json.RootElement.GetProperty("kind").GetString());
             }
         }
         Assert.Equal(0, log.DroppedEntries);
@@ -97,17 +133,22 @@ public sealed class GatewayLogTests : IDisposable
         var message = new string('x', 100_000);
         for (var i = 0; i < 40; i++) log.Write(GatewayLogLevel.Information, message);
         await log.FlushAsync();
-        var files = Directory.GetFiles(_directory, "gateway-*.log");
+        var files = Directory.GetFiles(_directory, "*.log");
         Assert.Equal(2, files.Length);
+        Assert.All(files, path => Assert.Matches(@"\A[0-9]{8}(?:\.[0-9]{3,})?\.log\z", Path.GetFileName(path)));
+        Assert.Single(files, path => Path.GetFileNameWithoutExtension(path).Length == 8);
         Assert.All(files, path => Assert.InRange(new FileInfo(path).Length, 1L, 1024L * 1024));
         Assert.Equal(0, log.DroppedEntries);
     }
 
-    [Fact]
-    public async Task RetentionRemovesExpiredFilesAndSampleLoggingCanBeDisabled()
+    [Theory]
+    [InlineData("gateway-20000101.log")]
+    [InlineData("20000101.log")]
+    [InlineData("20000101.001.log")]
+    public async Task RetentionRemovesExpiredFilesAndSampleLoggingCanBeDisabled(string fileName)
     {
         Directory.CreateDirectory(_directory);
-        var expired = Path.Combine(_directory, "gateway-20000101.log");
+        var expired = Path.Combine(_directory, fileName);
         await File.WriteAllTextAsync(expired, "old");
         File.SetLastWriteTimeUtc(expired, DateTime.UtcNow.AddDays(-20));
         await using var log = new GatewayLog(_directory);

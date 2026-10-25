@@ -84,6 +84,39 @@ public sealed class RecordingDiagnosticsTests : IDisposable
     }
 
     [Fact]
+    public async Task CompactSampleArchiveUsesSampleTimeAndExportsBothRecordedFormats()
+    {
+        await using var log = new GatewayLog(Logs, availableDiskBytes: _ => long.MaxValue);
+        var sampledAt = DateTimeOffset.UtcNow.AddMinutes(-10);
+        var sample = new TelemetrySample(Guid.NewGuid(), "设备", Guid.NewGuid(), "温度", "0", 5, 5,
+            SampleQuality.Good, sampledAt, "");
+        log.WriteSample(sample);
+        await log.FlushAsync();
+        var legacy = JsonSerializer.Serialize(new { timestamp = sampledAt, level = "Information", kind = "sample", sample });
+        await File.WriteAllTextAsync(Path.Combine(Logs, "data", "gateway-fixture.log"), legacy + "\n");
+        var query = Query() with { From = sampledAt.AddSeconds(-1), To = sampledAt.AddSeconds(1) };
+        var result = await log.QueryAsync(query);
+        Assert.False(result.IsPartial);
+        Assert.Equal(2, result.Entries.Count);
+        Assert.All(result.Entries, entry =>
+        {
+            Assert.Equal(sampledAt, entry.Timestamp);
+            Assert.Equal("sample", entry.Kind);
+            Assert.Equal(GatewayLogLevel.Information, entry.Level);
+        });
+        var compact = Assert.Single(result.Entries, entry => !entry.Json.Contains("\"kind\""));
+        Assert.Contains("\"rawValue\":5", compact.Json);
+        Assert.Empty((await log.QueryAsync(query with { IncludeSamples = false })).Entries);
+        Assert.Empty((await log.QueryAsync(query with { MinimumLevel = GatewayLogLevel.Warning })).Entries);
+        var destination = Path.Combine(_root, "samples.jsonl");
+        await log.ExportAsync(result, destination);
+        var lines = await File.ReadAllLinesAsync(destination);
+        Assert.Equal(3, lines.Length);
+        Assert.Contains(compact.Json, lines);
+        Assert.Contains(legacy, lines);
+    }
+
+    [Fact]
     public async Task ArchiveReportsInvalidLinesIncompleteTailAndRowLimits()
     {
         Directory.CreateDirectory(Logs);

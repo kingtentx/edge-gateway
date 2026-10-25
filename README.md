@@ -2,6 +2,8 @@
 
 **日志目录：** 程序运行日志保存到程序根目录 `logs`，点位采样日志保存到 `logs/data`，分别轮转和保留；不再创建 `AppData/logs`。详见 [运行目录约定](docs/runtime-directory-layout.md#日志分目录2026-10-25)。
 
+**2026-10-26 日志精简：** 主文件名改为 `yyyyMMdd.log`，大小轮转使用数字序号；采样只保留一层业务字段，空单位/错误不输出，失败质量和错误仍记录。查询与导出同步支持新格式；本次编译和定向测试待用户确认后执行。详见 [日志格式](docs/data-recording.md#日志配置)。
+
 **2026-10-25 驱动插件管理：** 内置与上传驱动均支持查看详情、更新 DLL 与删除，也可上传新增驱动；同 DLL 的驱动整组处理。更新需停止引用设备并通过现有配置校验，卸载需解除所有设备引用。实现和验证状态见 [驱动插件管理](docs/driver-plugin-management.md)。
 
 **2026-10-25 输入区优化：** 各页面和弹窗的单行输入区按普通按钮统一高度，覆盖文本、密码、下拉、数值和日期字段，并保持高 DPI 居中及键盘操作。[实现与验证](docs/input-height.md)。
@@ -183,7 +185,8 @@ RPC 与“允许远程写入”分别默认关闭。启用后真实订阅对应�
 |---|---|
 | `gateway.config.db` | 仅网关、设备、点位、日志及数据库映射等配置；事务内保存当前/上一份配置 |
 | `gateway.config.db-wal` / `gateway.config.db-shm` | 配置库的 SQLite 运行文件 |
-| `logs/gateway-*.log` | 默认采样与运行事件 JSONL；按大小、份数和天数轮转 |
+| `logs/yyyyMMdd.log` | 程序运行事件 JSONL；按大小、份数和天数轮转 |
+| `logs/data/yyyyMMdd.log` | 点位采样 JSONL；独立轮转及保留 |
 | `messaging/outbox/` | 未确认 MQTT 报文 |
 | `messaging/rpc/` | RPC 写入占位与结果 |
 

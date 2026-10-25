@@ -16,7 +16,7 @@ public sealed class RecordingHardeningTests : IDisposable
     public async Task ExpiredLogsAreReclaimedBeforeLowDiskSpaceDecision()
     {
         Directory.CreateDirectory(_directory);
-        var expired = Path.Combine(_directory, "gateway-20000101.log");
+        var expired = Path.Combine(_directory, "20000101.log");
         await File.WriteAllTextAsync(expired, "old");
         File.SetLastWriteTimeUtc(expired, DateTime.UtcNow.AddDays(-20));
         // Available capacity models space occupied by the expired gateway file.
@@ -34,7 +34,7 @@ public sealed class RecordingHardeningTests : IDisposable
     public async Task HotRetentionAppliesWithoutProducingAnEventAndLeavesOtherFilesAlone()
     {
         Directory.CreateDirectory(_directory);
-        var expired = Path.Combine(_directory, "gateway-20000101.log");
+        var expired = Path.Combine(_directory, "20000101.001.log");
         var other = Path.Combine(_directory, "business.log");
         await File.WriteAllTextAsync(expired, "old"); await File.WriteAllTextAsync(other, "keep");
         File.SetLastWriteTimeUtc(expired, DateTime.UtcNow.AddDays(-20));
@@ -42,7 +42,7 @@ public sealed class RecordingHardeningTests : IDisposable
         log.ApplyConfiguration(new() { RetainedDays = 7, MinimumFreeDiskSpaceMb = 16 });
         await log.FlushAsync();
         Assert.False(File.Exists(expired)); Assert.Equal("keep", await File.ReadAllTextAsync(other));
-        Assert.Empty(Directory.GetFiles(_directory, "gateway-*.log"));
+        Assert.Equal(other, Assert.Single(Directory.GetFiles(_directory, "*.log")));
         Assert.Equal(0, log.PendingEntries); Assert.Equal(0, log.PendingBytes);
     }
 

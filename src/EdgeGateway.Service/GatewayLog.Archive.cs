@@ -34,7 +34,7 @@ public sealed partial class GatewayLog
             if ((File.GetAttributes(samples) & FileAttributes.ReparsePoint) == 0) directories.Add(samples);
             else { partial = true; warnings.Add("已跳过采样日志链接目录 data。"); }
         }
-        var files = directories.SelectMany(directory => Directory.EnumerateFiles(directory, "gateway-*.log", SearchOption.TopDirectoryOnly))
+        var files = directories.SelectMany(EnumerateLogFiles)
             .Take(1001).Select(path => new FileInfo(path)).OrderByDescending(file => file.LastWriteTimeUtc)
             .ThenByDescending(file => file.Name, StringComparer.Ordinal).ToArray();
         if (files.Length > 1000) { partial = true; warnings.Add("文件数超过 1000，查询仅扫描受限文件集合。"); }
@@ -111,13 +111,31 @@ public sealed partial class GatewayLog
             using var document = JsonDocument.Parse(line, new JsonDocumentOptions { MaxDepth = 64 });
             var root = document.RootElement;
             var time = root.GetProperty("timestamp").GetDateTimeOffset();
-            if (!Enum.TryParse<GatewayLogLevel>(root.GetProperty("level").GetString(), out var level) || !Enum.IsDefined(level))
-                throw new JsonException("日志级别无效。");
-            var kind = root.GetProperty("kind").GetString();
-            if (kind is not ("event" or "sample")) throw new JsonException("日志类别无效。");
+            GatewayLogLevel level;
+            string? kind;
+            string message;
+            if (root.TryGetProperty("kind", out var kindProperty))
+            {
+                // Operational events and previously recorded sample envelopes.
+                if (!Enum.TryParse<GatewayLogLevel>(root.GetProperty("level").GetString(), out level) || !Enum.IsDefined(level))
+                    throw new JsonException("日志级别无效。");
+                kind = kindProperty.GetString();
+                if (kind is not ("event" or "sample")) throw new JsonException("日志类别无效。");
+                message = kind == "event" ? root.GetProperty("message").GetString() ?? "" : root.GetProperty("sample").GetRawText();
+            }
+            else
+            {
+                // Compact samples have no persisted level/kind. Require their identifying
+                // fields so arbitrary JSON is not silently accepted as acquisition data.
+                _ = root.GetProperty("deviceId").GetGuid();
+                _ = root.GetProperty("tagId").GetGuid();
+                _ = root.GetProperty("rawValue"); _ = root.GetProperty("value");
+                if (!Enum.TryParse<SampleQuality>(root.GetProperty("quality").GetString(), out var quality) || !Enum.IsDefined(quality))
+                    throw new JsonException("采样质量无效。");
+                level = GatewayLogLevel.Information; kind = "sample"; message = root.GetRawText();
+            }
             if (time < query.From || time > query.To || level < query.MinimumLevel || !query.IncludeSamples && kind == "sample"
                 || query.Text.Length > 0 && !line.Contains(query.Text, StringComparison.OrdinalIgnoreCase)) return null;
-            var message = kind == "event" ? root.GetProperty("message").GetString() ?? "" : root.GetProperty("sample").GetRawText();
             if (message.Length > 2000) message = message[..2000] + "…（详情及导出保留完整 JSON）";
             return new(time, level, kind, message, fileName, line);
         }
