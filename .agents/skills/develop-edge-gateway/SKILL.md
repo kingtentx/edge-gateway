@@ -59,6 +59,8 @@ description: 为 .NET 8 WinForms 工业采集网关实现和审查分层架构�
 
 开发驱动前阅读 [驱动与测试规范](references/driver-development.md)。新增驱动必须实现 `IDriverFactory` 和 `IDeviceDriver`，公开稳定 ID、名称、能力说明和配置验证。
 
+驱动管理提供完整列表、新增、详情、更新 DLL 和删除；按用户 2026-10-25 最新要求，内置与上传驱动均可操作，源码和默认发布仍保留全部迁移及原生驱动。同 DLL 的驱动整组更新或删除；更新保持完整稳定驱动 ID 集合与程序集名称，要求版本递增并校验现有完整配置；先停止引用设备，删除则要求无任何设备引用（包括禁用设备）。应用命令和运行时生命周期锁共同串行化插件变更、配置、启停与停止设备的临时诊断，不重启其他设备。插件 DLL 分修订存储，以单一原子激活清单选择当前版本，卸载保留停用标记防止重启重新加载；SQLite 保存失败回滚清单且保留原注册，重启按清单重新校验哈希并修复元数据。详见 [插件管理](../../../docs/driver-plugin-management.md)。
+
 维护源驱动时，通过 `EdgeGateway.IotGateway` 适配 `PluginInterface.IDriver`，反射并保留全部 `ConfigParameter` 和 `Method` 元数据。WinForms 必须能编辑驱动专用参数并选择读取方法，不要求用户手写内部 JSON。OPC 默认使用 `ReadNode`；源 Modbus 默认选择真实寄存器读取；演示返回当前时间的方法必须标识，不能冒充现场数据。未实现的 `WriteAsync` 不得公开为可写能力。
 
 Fanuc FOCAS 原生 DLL、HslCommunication 有效授权、OPC DA COM/DCOM 和现场服务器由实际运行环境提供。缺少依赖时明确失败；不能制造 DLL、绕过授权、接受全部证书或用模拟值填补数据。构造、调用和释放 COM 对象保持同一 STA 线程。

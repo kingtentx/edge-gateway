@@ -88,15 +88,27 @@ public sealed class GatewayHost : IAsyncDisposable
                 DriverAssemblyResolver.Configure(driversDirectory);
             // Protocol assemblies ship under the executable's drivers directory. Isolated UI
             // smoke runs may use a temporary upload directory without losing bundled drivers.
-            var drivers = new DriverRegistry(IotGatewayDriverCatalog.CreateFactories(log), log, configurations);
+            var bundledAssemblies = IotGatewayDriverCatalog.DriverAssemblies.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+            bundledAssemblies["simulator"] = "EdgeGateway.Driver.Simulator";
+            bundledAssemblies["modbus-tcp"] = bundledAssemblies["modbus-rtu"] = "EdgeGateway.Driver.Modbus";
+            var drivers = new DriverRegistry([], log, configurations, bundledAssemblies,
+                assembly => IotGatewayDriverCatalog.CreateFactories(assembly, log));
+            drivers.PrepareManagedPlugins(packagedDriversDirectory, driversDirectory);
             drivers.LoadPlugins(packagedDriversDirectory);
             if (!string.Equals(packagedDriversDirectory, driversDirectory,
                 OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                 drivers.LoadPlugins(driversDirectory);
+            foreach (var factory in IotGatewayDriverCatalog.CreateFactories(log, drivers.ManagedDriverIds)) drivers.Register(factory);
             var installedRoot = Path.GetFullPath(Path.Combine(driversDirectory, "installed")) + Path.DirectorySeparatorChar;
             var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var uploadedPlugins = drivers.GetInstalledPlugins().Where(plugin => plugin.Status == "已加载")
+                .ToDictionary(plugin => plugin.Id, StringComparer.OrdinalIgnoreCase);
             var inventory = drivers.Drivers.Select(descriptor =>
             {
+                if (uploadedPlugins.TryGetValue(descriptor.Id, out var uploaded))
+                    return new DriverInventoryRecord(descriptor.Id, descriptor.Name, descriptor.Description,
+                        descriptor.SupportsWrite, descriptor.IsLegacy, uploaded.AssemblyName, uploaded.Version, uploaded.Sha256,
+                        drivers.IsBundledDriver(descriptor.Id) ? "bundled" : "uploaded");
                 var factory = drivers.GetFactory(descriptor.Id);
                 var assemblyName = descriptor.IsLegacy
                     ? descriptor.Id

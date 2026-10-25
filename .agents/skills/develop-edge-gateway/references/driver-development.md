@@ -18,8 +18,8 @@
 4. 返回 `TagReadResult` 的真实原始值。发生点位错误返回 Bad；链路损坏抛出异常让运行时重连。不要在驱动内二次缩放。
 5. 仅接受已启用且授权写入点位，验证地址、数据类型与数据范围。写入失败不自动重试，记录结果不确定。
 6. 在 UI 中增加有业务含义的配置输入，或在高级配置的 `DeviceConfiguration.Properties` 中保存协议专用参数；禁止将密码写入该字典。
-7. 为插件设置 `EnableDynamicLoading=true`，发布依赖与 `.deps.json`，把完整输出放在程序目录 `plugins/<Protocol>/` 后重启。
-8. 使用与宿主一致的契约版本。插件加载器共享宿主 Model / Abstractions；插件有本机代码执行权限，只安装可信插件。无热卸载或沙箱隔离承诺。
+7. 为插件设置 `EnableDynamicLoading=true`，发布依赖与 `.deps.json`，把完整输出放在程序目录 `drivers/<Protocol>/` 后重启；符合单 DLL 条件的插件可使用管理窗口上传。
+8. 使用与宿主一致的契约版本。插件加载器共享宿主 Model / Abstractions；插件有本机代码执行权限，只安装可信插件。内置与上传驱动可在引用设备停止后更新，无设备引用时删除；同 DLL 的驱动整组处理，不承诺强制回收本机代码或沙箱隔离。
 
 ## 原生 modbus-tcp / modbus-rtu 约定
 

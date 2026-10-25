@@ -23,7 +23,14 @@ public static class IotGatewayDriverCatalog
         new("Other.Toledo", "Other.Toledo.DeviceToledo", "托利多称重 TCP", "Read", "原驱动通过 TCP 读取称重帧；DataBits 为期望帧长度，串口外观参数不代表已实现串口通讯。")
     ];
 
-    public static IReadOnlyList<IDriverFactory> CreateFactories(IGatewayLog log) => Definitions.Select(definition =>
+    public static IReadOnlyDictionary<string, string> DriverAssemblies => Definitions.ToDictionary(definition => definition.Id, definition => definition.Id);
+
+    public static IReadOnlyList<IDriverFactory> CreateFactories(Assembly assembly, IGatewayLog log) => Definitions
+        .Where(definition => string.Equals(definition.Id, assembly.GetName().Name, StringComparison.OrdinalIgnoreCase))
+        .Select(definition => (IDriverFactory)new IotGatewayDriverFactory(assembly.GetType(definition.TypeName, throwOnError: true)!, definition, log)).ToArray();
+
+    public static IReadOnlyList<IDriverFactory> CreateFactories(IGatewayLog log, IReadOnlySet<string>? excludedIds = null) => Definitions
+        .Where(definition => excludedIds?.Contains(definition.Id) != true).Select(definition =>
     {
         var assembly = Assembly.Load(new AssemblyName(definition.Id));
         var type = assembly.GetType(definition.TypeName, throwOnError: true)!;

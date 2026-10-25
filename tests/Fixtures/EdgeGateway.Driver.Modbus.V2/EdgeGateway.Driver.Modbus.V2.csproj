@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>EdgeGateway.Driver.Modbus</AssemblyName>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+    <Compile Include="../../../Plugins/Drivers/EdgeGateway.Driver.Modbus/*.cs" />
+  </ItemGroup>
+</Project>

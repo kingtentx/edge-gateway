@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>EdgeGateway.Driver.TestPlugin</AssemblyName>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <DefineConstants>$(DefineConstants);PLUGIN_V2</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/EdgeGateway.Abstractions/EdgeGateway.Abstractions.csproj" />
+    <Compile Include="../EdgeGateway.Driver.TestPlugin/TestPluginFactory.cs" Link="TestPluginFactory.cs" />
+  </ItemGroup>
+</Project>

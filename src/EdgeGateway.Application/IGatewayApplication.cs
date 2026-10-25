@@ -23,6 +23,9 @@ public sealed record ConfigurationChangePreview(
 
 public sealed record DriverListItem(string Id, string Name, string Version, string AssemblyName,
     string Sha256, string Source, string Status, bool IsAvailable);
+public sealed record DriverDeviceReference(Guid Id, string Name, bool IsRunning);
+public sealed record DriverDetails(DriverListItem Driver, DriverDescriptor? Descriptor, IReadOnlyList<DriverDeviceReference> Devices,
+    IReadOnlyList<string> RelatedDriverIds);
 
 /// <summary>
 /// The desktop application boundary. Configuration commands validate and persist before
@@ -34,7 +37,10 @@ public interface IGatewayApplication : IAsyncDisposable
     IGatewayLog Log { get; }
     IReadOnlyList<DriverPluginInfo> GetInstalledDriverPlugins() => [];
     Task<IReadOnlyList<DriverListItem>> GetDriverListAsync(CancellationToken cancellationToken = default);
-    string InstallDriverPlugin(string sourcePath) => throw new NotSupportedException("当前宿主未启用驱动插件安装功能。");
+    Task<DriverDetails> GetDriverDetailsAsync(string driverId, CancellationToken cancellationToken = default);
+    Task<string> InstallDriverPluginAsync(string sourcePath, CancellationToken cancellationToken = default);
+    Task<string> UpdateDriverPluginAsync(string driverId, string sourcePath, CancellationToken cancellationToken = default);
+    Task<string> UninstallDriverPluginAsync(string driverId, CancellationToken cancellationToken = default);
     bool IsRunning { get; }
     bool IsMqttConnected { get; }
     bool IsDeviceRunning(Guid deviceId);

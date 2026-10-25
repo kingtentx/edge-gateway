@@ -16,6 +16,9 @@
     <ProjectReference Include="../../src/EdgeGateway.DataAccess/EdgeGateway.DataAccess.csproj" />
     <ProjectReference Include="../../src/EdgeGateway.Service/EdgeGateway.Service.csproj" />
     <ProjectReference Include="../Fixtures/EdgeGateway.Driver.TestPlugin/EdgeGateway.Driver.TestPlugin.csproj" />
+    <ProjectReference Include="../Fixtures/EdgeGateway.Driver.TestPlugin.V2/EdgeGateway.Driver.TestPlugin.V2.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Fixtures/EdgeGateway.Driver.Modbus.V2/EdgeGateway.Driver.Modbus.V2.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Fixtures/Mock.TcpClient.V2/Mock.TcpClient.V2.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../src/EdgeGateway.Application/EdgeGateway.Application.csproj" />
     <ProjectReference Include="../../src/EdgeGateway.Hosting/EdgeGateway.Hosting.csproj" />
     <ProjectReference Include="../../src/EdgeGateway.Infrastructure.Mqtt/EdgeGateway.Infrastructure.Mqtt.csproj" />
@@ -35,4 +38,12 @@
     <None Include="../../examples/migrated-drivers.json" Link="migrated-drivers.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../examples/modbus-rtu-com11.json" Link="modbus-rtu-com11.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <Target Name="CopyPluginUpdateFixture" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../Fixtures/EdgeGateway.Driver.TestPlugin.V2/bin/$(Configuration)/net8.0/EdgeGateway.Driver.TestPlugin.dll"
+          DestinationFolder="$(OutDir)plugin-v2" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../Fixtures/EdgeGateway.Driver.Modbus.V2/bin/$(Configuration)/net8.0/EdgeGateway.Driver.Modbus.dll"
+          DestinationFolder="$(OutDir)plugin-v2" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../Fixtures/Mock.TcpClient.V2/bin/$(Configuration)/net8.0/Mock.TcpClient.dll"
+          DestinationFolder="$(OutDir)plugin-v2" />
+  </Target>
 </Project>

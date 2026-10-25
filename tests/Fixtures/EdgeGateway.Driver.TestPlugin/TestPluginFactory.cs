@@ -5,9 +5,19 @@ namespace EdgeGateway.Driver.TestPlugin;
 
 public sealed class TestPluginFactory : IDriverFactory
 {
-    public DriverDescriptor Descriptor { get; } = new("test-dynamic-plugin", "Dynamic plugin fixture", "Used only to verify upload and restart registration.", false);
+    public DriverDescriptor Descriptor { get; } = new("test-dynamic-plugin",
+#if PLUGIN_V2
+        "Dynamic plugin fixture v2",
+#else
+        "Dynamic plugin fixture",
+#endif
+        "Used only to verify upload and restart registration.", false);
     public IDeviceDriver Create(DeviceConfiguration configuration) => new TestPluginDriver();
-    public IReadOnlyList<string> Validate(DeviceConfiguration configuration) => [];
+    public IReadOnlyList<string> Validate(DeviceConfiguration configuration) =>
+#if PLUGIN_V2
+        configuration.Properties.ContainsKey("reject-v2") ? ["fixture v2 rejects this configuration"] :
+#endif
+        [];
 }
 
 internal sealed class TestPluginDriver : IDeviceDriver

@@ -150,6 +150,45 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
         finally { _gate.Release(); }
     }
 
+    public async Task ReplaceDriverPluginsAsync(IReadOnlyList<string> driverIds, IReadOnlyList<DriverPluginInfo> plugins,
+        CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            await Task.Run(() =>
+            {
+                var connection = OpenCore();
+                using var transaction = connection.BeginTransaction();
+                foreach (var id in driverIds)
+                {
+                    using var delete = connection.CreateCommand();
+                    delete.Transaction = transaction;
+                    delete.CommandText = "DELETE FROM driver_plugins WHERE driver_id=$id COLLATE NOCASE; DELETE FROM driver_catalog WHERE driver_id=$id COLLATE NOCASE;";
+                    delete.Parameters.AddWithValue("$id", id);
+                    delete.ExecuteNonQuery();
+                }
+                foreach (var plugin in plugins)
+                {
+                    using var insert = connection.CreateCommand();
+                    insert.Transaction = transaction;
+                    insert.CommandText = "INSERT INTO driver_plugins(driver_id,name,version,assembly_name,sha256,status,updated_ms) VALUES($id,$name,$version,$assembly,$hash,$status,$time);";
+                    insert.Parameters.AddWithValue("$id", plugin.Id);
+                    insert.Parameters.AddWithValue("$name", plugin.Name);
+                    insert.Parameters.AddWithValue("$version", plugin.Version);
+                    insert.Parameters.AddWithValue("$assembly", plugin.AssemblyName);
+                    insert.Parameters.AddWithValue("$hash", plugin.Sha256);
+                    insert.Parameters.AddWithValue("$status", plugin.Status);
+                    insert.Parameters.AddWithValue("$time", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                    insert.ExecuteNonQuery();
+                }
+                transaction.Commit();
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task<IReadOnlyList<DriverPluginInfo>> GetDriverPluginsAsync(CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);

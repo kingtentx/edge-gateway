@@ -453,6 +453,10 @@ public sealed class GatewayApplicationTests
         public IDriverFactory GetFactory(string driverId) => inner.GetFactory(driverId);
         public IReadOnlyList<DriverPluginInfo> GetInstalledPlugins() => Plugins.ToArray();
         public string InstallPlugin(string sourcePath) => throw new NotSupportedException();
+        public string UpdatePlugin(string driverId, string sourcePath, GatewayConfiguration configuration) => throw new NotSupportedException();
+        public string UninstallPlugin(string driverId) => throw new NotSupportedException();
+        public IReadOnlyList<string> GetRelatedDriverIds(string driverId) => [driverId];
+        public bool IsBundledDriver(string driverId) => false;
     }
 
     private sealed class MemoryConfigurationStore(GatewayConfiguration initial) : IConfigurationStore, IDriverInventoryStore

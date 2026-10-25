@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Mock.TcpClient</AssemblyName>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <Nullable>annotations</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../Plugins/PluginInterface/PluginInterface.csproj" />
+    <PackageReference Include="SimpleTCP.Core" Version="1.0.4" />
+    <Compile Include="../../../Plugins/Drivers/Mock.TcpClient/DeviceTcpClient.cs" />
+  </ItemGroup>
+</Project>

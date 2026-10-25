@@ -25,11 +25,12 @@ public sealed partial class GatewayApplication
                 uploaded ? plugin!.Version : saved?.Version ?? "unknown",
                 uploaded ? plugin!.AssemblyName : saved?.AssemblyName ?? "",
                 uploaded ? plugin!.Sha256 : saved?.Sha256 ?? "",
-                uploaded ? "uploaded" : saved?.Source ?? "registered", "已加载", true);
+                _driverPluginManager?.IsBundledDriver(driver.Id) == true ? "bundled" : uploaded ? "uploaded" : saved?.Source ?? "registered", "已加载", true);
         }
         foreach (var plugin in plugins.Values.Where(plugin => !result.ContainsKey(plugin.Id)))
             result[plugin.Id] = new(plugin.Id, plugin.Name, plugin.Version, plugin.AssemblyName,
-                plugin.Sha256, "uploaded", plugin.Status == "已加载" ? "未加载" : "未加载（" + plugin.Status + "）", false);
+                plugin.Sha256, _driverPluginManager?.IsBundledDriver(plugin.Id) == true ? "bundled" : "uploaded",
+                plugin.Status == "已加载" ? "未加载" : "未加载（" + plugin.Status + "）", false);
         return result.Values.OrderByDescending(driver => driver.IsAvailable)
             .ThenBy(driver => driver.Id, StringComparer.OrdinalIgnoreCase).ToArray();
     }
@@ -40,14 +41,51 @@ public sealed partial class GatewayApplication
         return _driverPluginManager?.GetInstalledPlugins() ?? [];
     }
 
-    public string InstallDriverPlugin(string sourcePath)
+    public async Task<DriverDetails> GetDriverDetailsAsync(string driverId, CancellationToken cancellationToken = default)
     {
-        ThrowIfDisposed();
+        await _commands.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfDisposed();
+            var list = await GetDriverListAsync(cancellationToken).ConfigureAwait(false);
+            var driver = list.SingleOrDefault(item => string.Equals(item.Id, driverId, StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException("驱动不存在，请刷新列表。");
+            var relatedIds = _driverPluginManager?.GetRelatedDriverIds(driverId) ?? new[] { driverId };
+            var affected = relatedIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var references = _configuration.Devices.Where(device => affected.Contains(device.DriverId))
+                .Select(device => new DriverDeviceReference(device.Id, device.Name, _runtime.IsDeviceRunning(device.Id))).ToArray();
+            return new(driver, driver.IsAvailable ? Drivers.GetDescriptor(driverId) : null, references, relatedIds);
+        }
+        finally { _commands.Release(); }
+    }
+
+    public Task<string> InstallDriverPluginAsync(string sourcePath, CancellationToken cancellationToken = default)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
-        if (_driverPluginManager is null)
-            throw new NotSupportedException("当前宿主未启用驱动插件安装功能。");
-        var result = _driverPluginManager.InstallPlugin(sourcePath);
-        // DriverCatalog reads the registry live; a subsequent editor open sees the new descriptor.
-        return result;
+        return ChangeDriverPluginAsync(null, sourcePath, cancellationToken);
+    }
+
+    public Task<string> UpdateDriverPluginAsync(string driverId, string sourcePath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(driverId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        return ChangeDriverPluginAsync(driverId, sourcePath, cancellationToken);
+    }
+
+    public Task<string> UninstallDriverPluginAsync(string driverId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(driverId);
+        return ChangeDriverPluginAsync(driverId, null, cancellationToken);
+    }
+
+    private async Task<string> ChangeDriverPluginAsync(string? driverId, string? sourcePath, CancellationToken cancellationToken)
+    {
+        await _commands.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfDisposed();
+            return await _runtime.ChangeDriverPluginAsync(driverId, sourcePath, cancellationToken).ConfigureAwait(false);
+        }
+        finally { _commands.Release(); }
     }
 }

@@ -27,6 +27,10 @@ public interface IDriverRegistry
 public interface IDriverPluginManager
 {
     string InstallPlugin(string sourcePath);
+    string UpdatePlugin(string driverId, string sourcePath, GatewayConfiguration configuration);
+    string UninstallPlugin(string driverId);
+    IReadOnlyList<string> GetRelatedDriverIds(string driverId);
+    bool IsBundledDriver(string driverId);
     IReadOnlyList<DriverPluginInfo> GetInstalledPlugins();
 }
 
@@ -36,6 +40,7 @@ public sealed record DriverPluginInfo(string Id, string Name, string Version, st
 public interface IDriverPluginStore
 {
     Task SaveDriverPluginAsync(DriverPluginInfo plugin, CancellationToken cancellationToken = default);
+    Task ReplaceDriverPluginsAsync(IReadOnlyList<string> driverIds, IReadOnlyList<DriverPluginInfo> plugins, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<DriverPluginInfo>> GetDriverPluginsAsync(CancellationToken cancellationToken = default);
 }
 
