@@ -110,16 +110,16 @@ public sealed partial class ExternalDatabaseConnector
     {
         var name = QualifiedTable(provider, table);
         string Column(string column, string type) => Q(provider, column) + " " + type;
-        var text = provider switch { ExternalDatabaseProvider.MySql => "LONGTEXT", ExternalDatabaseProvider.Oracle => "NCLOB", _ => "text" };
+        var text = provider == ExternalDatabaseProvider.Oracle ? "VARCHAR2(128 CHAR)" : "varchar(128)";
         var small = provider == ExternalDatabaseProvider.Oracle ? "VARCHAR2" : "varchar";
         var timestamp = provider switch { ExternalDatabaseProvider.MySql => "datetime(6)", ExternalDatabaseProvider.Oracle => "timestamp(6)", _ => "timestamp with time zone" };
-        var number = provider switch { ExternalDatabaseProvider.MySql => "double", ExternalDatabaseProvider.Oracle => "BINARY_DOUBLE", _ => "double precision" };
         var columns = new[]
         {
-            Column("event_id", small + "(64) NOT NULL PRIMARY KEY"), Column("sample_time", timestamp + " NOT NULL"),
-            Column("device_id", small + "(36) NOT NULL"), Column("device_name", text), Column("tag_id", small + "(36) NOT NULL"),
-            Column("tag_name", text), Column("address", text), Column("raw_value", text), Column("value_text", text),
-            Column("numeric_value", number), Column("quality", small + "(16) NOT NULL"), Column("unit", text), Column("error", text)
+            Column("event_id", small + "(64) NOT NULL PRIMARY KEY"),
+            Column("device_id", small + "(36) NOT NULL"), Column("device_name", text),
+            Column("tag_id", small + "(36) NOT NULL"), Column("tag_name", text),
+            Column("address", text), Column("raw_value", text), Column("value_text", text),
+            Column("timestamp", timestamp + " NOT NULL"), Column("quality", small + "(16) NOT NULL")
         };
         return $"CREATE TABLE {name} ({string.Join(", ", columns)})"
             + (provider == ExternalDatabaseProvider.MySql ? " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin" : "");

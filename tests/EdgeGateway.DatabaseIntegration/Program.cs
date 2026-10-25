@@ -126,7 +126,7 @@ try
         await ExpectFailure(() => connector.WriteRowsAsync(configuration, conflictGroup, [fresh, rows[1]]));
         Check(await Count(conflictTable) == 1, "Oracle array replay never hides another business-key conflict or commits a partial chunk");
         var invalid = PointRow(4002, timestamp, device, Guid.NewGuid());
-        var invalidValues = new Dictionary<string, object?>(invalid.Values) { ["sample_time"] = null };
+        var invalidValues = new Dictionary<string, object?>(invalid.Values) { ["timestamp"] = null };
         await ExpectFailure(() => connector.WriteRowsAsync(configuration, pointGroup, [PointRow(4003, timestamp, device, Guid.NewGuid()), invalid with { Values = invalidValues }]));
         Check(await Count(pointTable) == rows.Length + 1, "Oracle non-duplicate array failure rolls back all new rows");
     }
@@ -187,9 +187,9 @@ static DatabaseWriteRow PointRow(int index, DateTimeOffset time, Guid device, Gu
     var id = Guid.NewGuid().ToString("N");
     return new(id, time, new Dictionary<string, object?>
     {
-        ["event_id"] = id, ["sample_time"] = time, ["device_id"] = device.ToString("D"), ["device_name"] = "验证设备", ["tag_id"] = tag.ToString("D"), ["tag_name"] = "温度", ["address"] = "0",
+        ["event_id"] = id, ["timestamp"] = time, ["device_id"] = device.ToString("D"), ["device_name"] = "验证设备", ["tag_id"] = tag.ToString("D"), ["tag_name"] = "温度", ["address"] = "0",
         ["raw_value"] = index == 0 ? JsonSerializer.Serialize(long.MaxValue) : JsonSerializer.Serialize(index), ["value_text"] = JsonSerializer.Serialize(new Dictionary<string, object?> { ["文本"] = "温度; SELECT 'quoted';--", ["index"] = index }),
-        ["numeric_value"] = null, ["quality"] = "Good", ["unit"] = "℃", ["error"] = null
+        ["quality"] = "Good"
     });
 }
 static DatabaseWriteRow CustomRow(int index, DateTimeOffset time) => new(Guid.NewGuid().ToString("N"), time, new Dictionary<string, object?>

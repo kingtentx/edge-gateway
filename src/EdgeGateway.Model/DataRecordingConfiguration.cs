@@ -56,7 +56,7 @@ public sealed class DatabaseWriteGroupConfiguration
     public Guid ConnectionId { get; set; }
     public DatabaseStorageMode Mode { get; set; } = DatabaseStorageMode.PointRows;
     public string Schema { get; set; } = "";
-    public string Table { get; set; } = "gateway_samples";
+    public string Table { get; set; } = "gateway_point";
     // In PointRows mode an empty selection means all enabled points, independent of MQTT UploadEnabled.
     public List<Guid> TagIds { get; set; } = [];
     public List<DatabaseColumnMapping> Columns { get; set; } = [];
@@ -101,6 +101,5 @@ public sealed record ExternalDatabaseStatus(Guid ConnectionId, string Name, bool
 public static class DatabasePointTable
 {
     public static IReadOnlyList<string> Columns { get; } =
-        ["event_id", "sample_time", "device_id", "device_name", "tag_id", "tag_name", "address",
-         "raw_value", "value_text", "numeric_value", "quality", "unit", "error"];
+        ["event_id", "device_id", "device_name", "tag_id", "tag_name", "address", "raw_value", "value_text", "timestamp", "quality"];
 }

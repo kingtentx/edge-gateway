@@ -84,6 +84,7 @@ TCP 读取按协议长度组帧，不假设一次 `ReadAsync` 得到完整报文
 - `SqliteConfigurationStore.OpenCore` 返回存储实例持有的共用连接，调用方只释放命令、读取器和事务，连接统一由存储的 `DisposeAsync` 释放。驱动目录刷新成功、失败回滚后都须验证同一实例仍可保存与读取当前/上一版本配置。
 - SQLite 仅保存网关/设备/点位/日志/数据库映射等配置，禁止样本、outbox、RPC 或外部数据库重试队列进入 SQLite。默认采集输出到可配置滚动 JSONL，日志等级、单文件大小、保留份数和天数可热更新；日志有界后台写入，单条/字节/条数配额和失败、丢弃计数可见。
 - 外部数据库通过 `IExternalDatabaseConnector` 与 DataAccess 接入 MySQL、PostgreSQL、Oracle；每点一行模式保留类型、质量与UTC，并以稳定 event_id 去重重试；自定义字段模式绑定现有表，完整、新鲜、活跃样本才生成一行，转换不静默丢整数精度。SQL标识符验证/引用，数值参数化；只有用户显式建标准表操作执行建表，普通采集不改结构。
+- 标准点表默认 `gateway_point`，仅保留 event_id、device_id、device_name、tag_id、tag_name、address、raw_value、value_text、timestamp、quality。设备/点位 ID 使用 varchar(36)，名称、地址与两个 JSON 值字段使用 varchar(128)；Oracle 使用 VARCHAR2(128 CHAR)。按序列化后字符数拒绝超长整批，不截断，不恢复 numeric_value/unit/error 列；历史查询同步使用 timestamp 和稳定 ID。当前开发变更不兼容或迁移旧标准表和旧连接配置。
 - 每组独立队列，连接共享行数/字节限额，数据库故障不等待采集；重试有限且计数，停止有界排空，丢弃明确可见。大样本在序列化与缓存前预检，自定义缓存只保留引用点位并另设64MiB估算配额。同连接某组成功不能抹掉其他组错误。外库内存队列不保证断电无损；自定义表重复记录须由业务唯一键处理。完整规则见 [数据记录](../../../docs/data-recording.md)。
 - 遥测 outbox 先持久化再发送；Generic、ThingsBoard、ThingsPanel、IoTSharp 等待 QoS 1 PUBACK，ThingsCloud 还须收到 attributes/response 成功后才能移除。失败保留原记录，重启后继续发送；发送确认不等于最终业务入库，不能混淆诊断指标。
 - 周期、变化、变化加心跳通过 `TelemetryReportPlanner` 选择样本。死区相对最后成功入队值累计，质量与错误变化独立触发；仅完整持久化后推进基线。配置变化、进程/单台设备重启重新发初值，心跳保留原采样时间。部分平台分片已经落盘时不可撤回，未落盘部分按新配置重建。

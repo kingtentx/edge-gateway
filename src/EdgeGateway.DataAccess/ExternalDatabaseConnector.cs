@@ -86,7 +86,7 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
             // DDL is deliberately outside a transaction: MySQL/Oracle DDL commits implicitly.
             // A partially completed DDL operation is reported; ordinary writes never try to repair schema.
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(table.Schema + "." + table.Name)))[..12];
-            foreach (var (suffix, fields) in new[] { ("T", new[] { "sample_time" }), ("P", new[] { "tag_id", "sample_time" }) })
+            foreach (var (suffix, fields) in new[] { ("T", new[] { "timestamp" }), ("P", new[] { "tag_id", "timestamp" }) })
             {
                 var indexName = QuoteIdentifier(connection.Provider, "EG_" + hash + "_" + suffix);
                 if (connection.Provider == ExternalDatabaseProvider.Oracle && table.Schema.Length > 0)
@@ -121,6 +121,10 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
             if (pointRows && (string.IsNullOrWhiteSpace(row.EventId) || row.EventId.Length > 64
                 || !string.Equals(row.Values["event_id"] as string, row.EventId, StringComparison.Ordinal)))
                 throw new ArgumentException("标准点表写入必须保留一致且长度不超过 64 字符的稳定 event_id。");
+            if (pointRows)
+                foreach (var column in new[] { "device_name", "tag_name", "address", "raw_value", "value_text" })
+                    if (row.Values[column] is string text && text.EnumerateRunes().Count() > 128)
+                        throw new ConnectorConfigurationException($"标准点表 {column} 超过 128 字符，整批拒绝写入；请缩短内容或使用自定义字段映射。");
         }
         var cacheKey = MetadataCacheKey(connection, group);
         return InvalidateOnFailureAsync(cacheKey, () => WithConnectionAsync(connection, async (database, token) =>
@@ -203,10 +207,10 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
         {
             var provider = connection.Provider;
             var sql = $"SELECT {string.Join(", ", DatabasePointTable.Columns.Select(column => Q(provider, column)))} FROM {QualifiedTable(provider, Table(group))}"
-                + $" WHERE {Q(provider, "sample_time")} >= {Parameter(provider, "from_time")} AND {Q(provider, "sample_time")} <= {Parameter(provider, "to_time")}";
+                + $" WHERE {Q(provider, "timestamp")} >= {Parameter(provider, "from_time")} AND {Q(provider, "timestamp")} <= {Parameter(provider, "to_time")}";
             if (query.DeviceId.HasValue) sql += $" AND {Q(provider, "device_id")} = {Parameter(provider, "device")}";
             if (query.TagId.HasValue) sql += $" AND {Q(provider, "tag_id")} = {Parameter(provider, "tag")}";
-            sql += $" ORDER BY {Q(provider, "sample_time")} DESC, {Q(provider, "event_id")} DESC";
+            sql += $" ORDER BY {Q(provider, "timestamp")} DESC, {Q(provider, "event_id")} DESC";
             sql += provider == ExternalDatabaseProvider.Oracle ? " FETCH FIRST :row_limit ROWS ONLY" : " LIMIT @row_limit";
             await using var command = Command(database, connection, sql);
             var timestampType = provider == ExternalDatabaseProvider.PostgreSql ? "timestamp with time zone" : "TIMESTAMP";
@@ -219,12 +223,12 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
             await using var reader = await command.ExecuteReaderAsync(token).ConfigureAwait(false);
             while (await reader.ReadAsync(token).ConfigureAwait(false))
             {
-                if (!Guid.TryParse(reader.GetString(2), out var deviceId) || !Guid.TryParse(reader.GetString(4), out var tagId)
-                    || !Enum.TryParse<SampleQuality>(reader.GetString(10), out var quality) || !Enum.IsDefined(quality))
+                if (!Guid.TryParse(reader.GetString(1), out var deviceId) || !Guid.TryParse(reader.GetString(3), out var tagId)
+                    || !Enum.TryParse<SampleQuality>(reader.GetString(9), out var quality) || !Enum.IsDefined(quality))
                     throw new ConnectorConfigurationException("标准点表包含无效的设备标识、点位标识或质量码，请核对数据结构。");
-                var utc = DateTime.SpecifyKind(reader.GetDateTime(1), DateTimeKind.Utc);
-                result.Add(new(deviceId, Text(reader, 3), tagId, Text(reader, 5), Text(reader, 6),
-                    JsonValue(reader, 7), JsonValue(reader, 8), quality, new DateTimeOffset(utc), Text(reader, 11), reader.IsDBNull(12) ? null : reader.GetString(12)));
+                var utc = DateTime.SpecifyKind(reader.GetDateTime(8), DateTimeKind.Utc);
+                result.Add(new(deviceId, Text(reader, 2), tagId, Text(reader, 4), Text(reader, 5),
+                    JsonValue(reader, 6), JsonValue(reader, 7), quality, new DateTimeOffset(utc), ""));
             }
             return result;
         }, cancellationToken);
@@ -376,11 +380,11 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
             throw new ConnectorConfigurationException("标准点表必须具有仅包含 event_id 的主键或唯一约束，才能保证补偿重试不重复写入。");
         if (configuration.Provider == ExternalDatabaseProvider.MySql && keys.Values.Any(fields => fields.Count != 1 || fields[0] != eventColumn))
             throw new ConnectorConfigurationException("MySQL 标准点表不能包含 event_id 以外的唯一约束，以免把业务键冲突误判为补偿重试。");
-        var timestamp = metadata.Single(column => column.Name == PointColumn(configuration.Provider, "sample_time")).DataType;
+        var timestamp = metadata.Single(column => column.Name == PointColumn(configuration.Provider, "timestamp")).DataType;
         if (configuration.Provider == ExternalDatabaseProvider.PostgreSql && !string.Equals(timestamp, "timestamp with time zone", StringComparison.OrdinalIgnoreCase)
             || configuration.Provider == ExternalDatabaseProvider.MySql && !string.Equals(timestamp, "datetime", StringComparison.OrdinalIgnoreCase)
             || configuration.Provider == ExternalDatabaseProvider.Oracle && (!timestamp.StartsWith("TIMESTAMP", StringComparison.OrdinalIgnoreCase) || timestamp.Contains("TIME ZONE", StringComparison.OrdinalIgnoreCase)))
-            throw new ConnectorConfigurationException("标准点表 sample_time 类型不匹配；须使用 PostgreSQL timestamptz、MySQL datetime 或 Oracle UTC timestamp。");
+            throw new ConnectorConfigurationException("标准点表 timestamp 类型不匹配；须使用 PostgreSQL timestamptz、MySQL datetime 或 Oracle UTC timestamp。");
     }
 
     private static async Task RequireTransactionalMySqlTableAsync(DbConnection database, DatabaseConnectionConfiguration configuration, DatabaseTableInfo table, CancellationToken token)
@@ -403,7 +407,7 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
     }
 
     private static DatabaseFieldType PointFieldType(string column) => column switch
-    { "sample_time" => DatabaseFieldType.Timestamp, "numeric_value" => DatabaseFieldType.Double, _ => DatabaseFieldType.Text };
+    { "timestamp" => DatabaseFieldType.Timestamp, _ => DatabaseFieldType.Text };
     private static string Text(DbDataReader reader, int ordinal) => reader.IsDBNull(ordinal) ? "" : reader.GetString(ordinal);
     private static object? JsonValue(DbDataReader reader, int ordinal)
     {

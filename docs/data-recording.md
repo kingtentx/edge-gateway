@@ -63,24 +63,28 @@ Oracle 的“数据库”填写 **Service Name**，不是连接字符串或任�
 
 ## 方式一：每个点位一行
 
-默认写入组使用标准点表 `gateway_samples`。可选择一部分点位，点位选择为空表示所有启用设备的启用点位；是否向 MQTT 上传与数据库选择相互独立。
+默认写入组使用标准点表 `gateway_point`。可选择一部分点位，点位选择为空表示所有启用设备的启用点位；是否向 MQTT 上传与数据库选择相互独立。
 
 如果表不存在，用户可以点击“创建标准点表”，明确确认后创建。程序不会在采集过程中自动建表、改表或修改业务字段。已有表必须符合标准点表要求。
 
-| 字段 | 内容 |
-|---|---|
-| `event_id` | 本次样本记录的稳定唯一键；同一批重试保持不变 |
-| `sample_time` | 源采样时间，按 UTC 保存 |
-| `device_id` / `device_name` | 设备稳定 ID / 名称 |
-| `tag_id` / `tag_name` | 点位稳定 ID / 名称 |
-| `address` | 点位地址 |
-| `raw_value` | 原始值的 JSON 文本，保留类型和精度 |
-| `value_text` | 工程值的 JSON 文本，保留类型和精度 |
-| `numeric_value` | 可转换为有限 double 的数值索引/趋势值；精确原值仍以 JSON 字段为准 |
-| `quality` | Good / Uncertain / Bad |
-| `unit` / `error` | 单位和本次错误 |
+| 字段 | 类型 | 内容 |
+|---|---|---|
+| `event_id` | varchar(64)，主键 | 本次样本记录的稳定唯一键；同一批重试保持不变 |
+| `device_id` | varchar(36)，非空 | 设备稳定 GUID |
+| `device_name` | varchar(128) | 采样时的设备名称 |
+| `tag_id` | varchar(36)，非空 | 点位稳定 GUID |
+| `tag_name` | varchar(128) | 采样时的点位名称 |
+| `address` | varchar(128) | 点位地址 |
+| `raw_value` | varchar(128) | 原始值的 JSON 文本，保留类型和精度 |
+| `value_text` | varchar(128) | 工程值的 JSON 文本，保留类型和精度 |
+| `timestamp` | UTC 时间，非空 | 源采样时间 |
+| `quality` | varchar(16)，非空 | Good / Uncertain / Bad |
 
-读取失败也形成记录，`quality=Bad`，值为空并带错误，不把上一次成功值补成新值。数据库 `sample_time` 使用 PostgreSQL timestamptz、MySQL datetime(6)、Oracle timestamp(6)，后两者按 UTC 约定保存。
+标准表只保留上述 10 列，不保存 `numeric_value`、`unit`、`error`；错误详情仍记录在日志中，历史趋势从工程值计算数值。读取失败也形成记录，`quality=Bad`，值为空，不把上一次成功值补成新值。数据库 `timestamp` 使用 PostgreSQL timestamptz、MySQL datetime(6)、Oracle timestamp(6)，后两者按 UTC 约定保存。Oracle 字符列使用 VARCHAR2，128 字符列显式使用 `VARCHAR2(128 CHAR)`。
+
+128 字符限制对序列化后实际写入的文本生效，JSON 引号与转义也占长度。超长名称、地址或值在连接数据库前拒绝整批写入并显示失败，不静默截断；较大的结构数据请使用自定义字段映射及足够长的业务字段。
+
+本次开发调整不迁移旧标准表、不兼容旧连接配置；需重新配置连接与写入组，并显式创建新标准表。2026-10-25 已清除本机 Debug 运行目录配置库当前/上一版本中的外库连接与写入组，设备、点位和其他设置保持原内容；未删除外部数据库内的数据表。
 
 标准表具有 `event_id` 主键以及采样时间、点位+采样时间索引。标准点表重试按 `event_id` 去重；这保证同一已接收记录的重试不会重复插入，不代表队列溢出或突然退出时所有采样都能保存。
 
@@ -142,9 +146,15 @@ MySQL / PostgreSQL 使用真正的多行 INSERT，Oracle 同类型列使用 Arra
 
 ## 历史与趋势
 
-“历史与趋势”从选定的外部标准点表查询，可按设备、点位、时间范围过滤，单次最多 10,000 条，时间边界为 `From <= sample_time <= To`，按时间倒序。尚未配置标准点表时显示说明，不会查询不存在的本地 SQLite 历史。自定义业务表结构任意，需使用该业务数据库的查询工具。
+“历史与趋势”从选定的外部标准点表查询，可按设备、点位、时间范围过滤，单次最多 10,000 条，时间边界为 `From <= timestamp <= To`，按时间倒序。设备和点位按稳定 ID 过滤；历史记录未保存的单位和错误详情为空。尚未配置标准点表时显示说明，不会查询不存在的本地 SQLite 历史。自定义业务表结构任意，需使用该业务数据库的查询工具。
 
 ## 验证与实施边界
+
+### 标准表精简（2026-10-25）
+
+本轮在用户确认范围后完成测试工程及依赖的 Release 编译，执行 `ExternalDatabaseConnectorTests`、`AcquisitionDataServiceTests`、`RecordingHardeningTests` 共 55 项，全部通过、无跳过。覆盖新字段顺序、UTC 历史查询、设备/点位筛选、128 字符边界、129 字符整批拒绝、JSON 精度与故障隔离；架构门禁通过。证据位于 `artifacts/gateway-point-20261025/` 的 `database-targeted.trx`、`tests.log`、`architecture.log`。
+
+未执行全量测试、WinForms 构建/界面烟测、真实 MySQL/PostgreSQL/Oracle 集成或发布打包。下面既往数据库 CI 与性能记录对应旧版表结构，不作为本次 10 列标准表的真实数据库验收结果。
 
 自动测试覆盖默认日志输出、精确整数与 UTC、完整/新鲜快照、停止与重启的旧值隔离、数据库故障隔离、队列容量、重试事件 ID、失败计数、参数绑定、配置事务及文件状态恢复。数据库连接器的单元测试不等同于真实数据库或现场长期验收。
 

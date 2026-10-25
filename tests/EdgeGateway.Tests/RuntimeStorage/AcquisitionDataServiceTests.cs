@@ -53,14 +53,15 @@ public sealed class AcquisitionDataServiceTests
         var row = rows.Single(item => (string)item.Values["tag_id"]! == first.TagId.ToString("D"));
         Assert.Equal("18446744073709551615", row.Values["value_text"]);
         Assert.Equal("18446744073709551615", row.Values["raw_value"]);
-        var storedTime = Assert.IsType<DateTimeOffset>(row.Values["sample_time"]);
+        var storedTime = Assert.IsType<DateTimeOffset>(row.Values["timestamp"]);
         Assert.Equal(TimeSpan.Zero, storedTime.Offset);
         Assert.Equal(timestamp, storedTime);
         Assert.Equal(row.EventId, row.Values["event_id"]);
         var bad = rows.Single(item => (string)item.Values["tag_id"]! == second.TagId.ToString("D"));
         Assert.Equal("Bad", bad.Values["quality"]);
         Assert.Null(bad.Values["value_text"]);
-        Assert.Equal("PLC timeout", bad.Values["error"]);
+        Assert.Equal(DatabasePointTable.Columns.Order(), bad.Values.Keys.Order());
+        Assert.DoesNotContain("error", bad.Values.Keys);
         Assert.Equal(2, Assert.Single(sink.GetStatuses()).WrittenRows);
     }
 

@@ -15,12 +15,10 @@ internal static class DatabaseRowMapper
         return new(eventId, DateTimeOffset.UtcNow, new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["event_id"] = eventId,
-            ["sample_time"] = sample.Timestamp.ToUniversalTime(),
             ["device_id"] = sample.DeviceId.ToString("D"), ["device_name"] = sample.DeviceName,
             ["tag_id"] = sample.TagId.ToString("D"), ["tag_name"] = sample.TagName, ["address"] = sample.Address,
             ["raw_value"] = JsonValue(sample.RawValue), ["value_text"] = JsonValue(sample.Value),
-            ["numeric_value"] = sample.NumericValue, ["quality"] = sample.Quality.ToString(),
-            ["unit"] = sample.Unit, ["error"] = sample.Error
+            ["timestamp"] = sample.Timestamp.ToUniversalTime(), ["quality"] = sample.Quality.ToString()
         });
     }
 

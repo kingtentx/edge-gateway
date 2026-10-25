@@ -160,13 +160,24 @@ public sealed class ExternalDatabaseConnectorTests
         var table = new DatabaseTableInfo("factory", "samples");
         var pg = ExternalDatabaseConnector.BuildInsertSql(ExternalDatabaseProvider.PostgreSql, table, DatabasePointTable.Columns, 2, true);
         Assert.Contains("ON CONFLICT (\"event_id\") DO NOTHING", pg);
-        Assert.Contains("@p1_12", pg);
+        Assert.Contains("@p1_9", pg);
+        Assert.DoesNotContain("@p1_10", pg);
         var mysql = ExternalDatabaseConnector.BuildInsertSql(ExternalDatabaseProvider.MySql, table, DatabasePointTable.Columns, 2, true);
         Assert.Contains("ON DUPLICATE KEY UPDATE `event_id` = IF(`factory`.`samples`.`event_id` = `eg_incoming`.`event_id`, `factory`.`samples`.`event_id`, NULL)", mysql);
         Assert.DoesNotContain("IGNORE", mysql);
         Assert.Contains("timestamp with time zone", ExternalDatabaseConnector.BuildCreatePointTableSql(ExternalDatabaseProvider.PostgreSql, table));
         Assert.Contains("datetime(6)", ExternalDatabaseConnector.BuildCreatePointTableSql(ExternalDatabaseProvider.MySql, table));
-        Assert.Contains("\"SAMPLE_TIME\" timestamp(6)", ExternalDatabaseConnector.BuildCreatePointTableSql(ExternalDatabaseProvider.Oracle, table));
+        Assert.Contains("\"TIMESTAMP\" timestamp(6)", ExternalDatabaseConnector.BuildCreatePointTableSql(ExternalDatabaseProvider.Oracle, table));
+        foreach (var provider in Enum.GetValues<ExternalDatabaseProvider>())
+        {
+            var ddl = ExternalDatabaseConnector.BuildCreatePointTableSql(provider, table);
+            foreach (var field in new[] { "device_name", "tag_name", "address", "raw_value", "value_text" })
+                Assert.Contains(provider == ExternalDatabaseProvider.Oracle
+                    ? $"\"{field.ToUpperInvariant()}\" VARCHAR2(128 CHAR)"
+                    : ExternalDatabaseConnector.QuoteIdentifier(provider, field) + " varchar(128)", ddl);
+            Assert.Contains(provider == ExternalDatabaseProvider.Oracle ? "\"DEVICE_ID\" VARCHAR2(36)" : ExternalDatabaseConnector.QuoteIdentifier(provider, "device_id") + " varchar(36)", ddl);
+            Assert.DoesNotContain("numeric_value", ddl, StringComparison.OrdinalIgnoreCase);
+        }
         Assert.DoesNotContain("ON CONFLICT", ExternalDatabaseConnector.BuildInsertSql(ExternalDatabaseProvider.PostgreSql, table, ["business_value"], 1, false));
     }
 
@@ -319,13 +330,62 @@ public sealed class ExternalDatabaseConnectorTests
         Assert.Equal(10000, command.Values["row_limit"]);
         Assert.Equal(instant.AddHours(-1).UtcDateTime, command.Values["from_time"]);
         Assert.Equal(device.ToString("D"), command.Values["device"]);
+        Assert.Contains("\"timestamp\" >= @from_time", command.Sql);
+        Assert.Equal(device, result.DeviceId);
+        Assert.Equal(tag, result.TagId);
+        Assert.Equal("0", result.Address);
+        Assert.Equal("", result.Unit);
+        Assert.Null(result.Error);
         Assert.Equal(tag.ToString("D"), command.Values["tag"]);
         Assert.DoesNotContain(device.ToString("D"), command.Sql);
         await Assert.ThrowsAsync<ArgumentException>(() => connector.QueryPointHistoryAsync(Configuration(), new() { Mode = DatabaseStorageMode.ColumnMapping }, query));
     }
 
+    [Theory]
+    [InlineData("device_name")]
+    [InlineData("tag_name")]
+    [InlineData("address")]
+    [InlineData("raw_value")]
+    [InlineData("value_text")]
+    public async Task OversizedStandardTextRejectsWholeBatchBeforeOpeningDatabase(string column)
+    {
+        var database = new RecordingConnection();
+        var connector = new ExternalDatabaseConnector(_ => database);
+        var valid = StandardRow();
+        var invalid = valid with { Values = new Dictionary<string, object?>(valid.Values) { [column] = new string('温', 129) } };
+        var error = await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
+            connector.WriteRowsAsync(Configuration(), new(), [valid, invalid]));
+        Assert.Contains(column, error.Message);
+        Assert.False(error.IsTransient);
+        Assert.DoesNotContain(new string('温', 129), error.Message);
+        Assert.Empty(database.Commands);
+        Assert.Equal(ConnectionState.Closed, database.State);
+    }
+
+    [Fact]
+    public async Task StandardTextAllows128UnicodeCharactersBeforeMetadataValidation()
+    {
+        var database = new RecordingConnection { MetadataMode = "missing" };
+        var connector = new ExternalDatabaseConnector(_ => database);
+        var row = StandardRow();
+        var values = new Dictionary<string, object?>(row.Values);
+        foreach (var column in new[] { "device_name", "tag_name", "address", "raw_value", "value_text" })
+            values[column] = string.Concat(Enumerable.Repeat("😀", 128));
+        var error = await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
+            connector.WriteRowsAsync(Configuration(), new(), [row with { Values = values }]));
+        Assert.Contains("目标数据表不存在", error.Message);
+        Assert.Single(database.Commands);
+    }
+
     private static DatabaseConnectionConfiguration Configuration() => new()
     { Provider = ExternalDatabaseProvider.PostgreSql, Username = "edge_test", Database = "edge_test", Port = 5432 };
+
+    private static DatabaseWriteRow StandardRow() => new("event", DateTimeOffset.UtcNow, new Dictionary<string, object?>
+    {
+        ["event_id"] = "event", ["device_id"] = Guid.NewGuid().ToString("D"), ["device_name"] = "设备",
+        ["tag_id"] = Guid.NewGuid().ToString("D"), ["tag_name"] = "点", ["address"] = "0",
+        ["raw_value"] = "1", ["value_text"] = "1", ["timestamp"] = DateTimeOffset.UtcNow, ["quality"] = "Good"
+    });
 
     private static DatabaseWriteGroupConfiguration MappedGroup() => new()
     { Mode = DatabaseStorageMode.ColumnMapping, Table = "business", Columns = [new() { Column = "value", FieldType = DatabaseFieldType.Text }] };
@@ -377,8 +437,8 @@ public sealed class ExternalDatabaseConnectorTests
             var table = new DataTable();
             if (History)
             {
-                for (var index = 0; index < 13; index++) table.Columns.Add("c" + index, index == 1 ? typeof(DateTime) : index == 9 ? typeof(double) : typeof(string));
-                table.Rows.Add("event", new DateTime(2026, 10, 23, 23, 0, 0), Guid.NewGuid().ToString("D"), "设备", Guid.NewGuid().ToString("D"), "点", "0", long.MaxValue.ToString(), "{\"v\":42}", 42d, "Good", "℃", DBNull.Value);
+                for (var index = 0; index < 10; index++) table.Columns.Add("c" + index, index == 8 ? typeof(DateTime) : typeof(string));
+                table.Rows.Add("event", command.Parameters["device"].Value, "设备", command.Parameters["tag"].Value, "点", "0", long.MaxValue.ToString(), "{\"v\":42}", new DateTime(2026, 10, 23, 23, 0, 0), "Good");
             }
             else
             {
