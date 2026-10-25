@@ -13,6 +13,49 @@ namespace EdgeGateway.Tests.Application;
 public sealed class GatewayApplicationTests
 {
     [Fact]
+    public async Task DriverListIncludesBundledDriversWithoutUploadedPlugins()
+    {
+        await using var h = await Harness.CreateAsync();
+        h.Configurations.Inventory = [
+            new("simulator", "旧名称", "fixture", true, false, "Simulator", "1.2.3.0", "fixture-hash", "bundled"),
+            new("stale", "过期记录", "fixture", false, false, "Stale", "1.0", "", "bundled")
+        ];
+        Assert.Empty(h.App.GetInstalledDriverPlugins());
+        var driver = Assert.Single(await h.App.GetDriverListAsync());
+        Assert.Equal("simulator", driver.Id);
+        Assert.Equal(h.App.Drivers.GetDescriptor("simulator").Name, driver.Name);
+        Assert.Equal("1.2.3.0", driver.Version);
+        Assert.Equal("Simulator", driver.AssemblyName);
+        Assert.Equal("fixture-hash", driver.Sha256);
+        Assert.Equal("bundled", driver.Source);
+        Assert.Equal("已加载", driver.Status);
+        Assert.True(driver.IsAvailable);
+    }
+
+    [Fact]
+    public async Task DriverListMergesLiveUploadsAndDoesNotTreatSavedPluginsAsLoaded()
+    {
+        DriverListRegistry registry = null!;
+        await using var h = await Harness.CreateAsync(wrapRegistry: inner => registry = new(inner));
+        Assert.Single(await h.App.GetDriverListAsync());
+        registry.AdditionalDrivers.Add(new("custom", "新上传驱动", "fixture", false));
+        registry.Plugins.Add(new("custom", "新上传驱动", "2.0", "Custom", "uploaded-hash", "已加载"));
+        registry.Plugins.Add(new("missing", "文件丢失", "1.0", "Missing", "old-hash", "等待文件校验"));
+        var drivers = await h.App.GetDriverListAsync();
+        Assert.Equal(3, drivers.Count);
+        var uploaded = Assert.Single(drivers, driver => driver.Id == "custom");
+        Assert.True(uploaded.IsAvailable);
+        Assert.Equal("uploaded", uploaded.Source);
+        Assert.Equal("2.0", uploaded.Version);
+        Assert.Equal("uploaded-hash", uploaded.Sha256);
+        var missing = Assert.Single(drivers, driver => driver.Id == "missing");
+        Assert.False(missing.IsAvailable);
+        Assert.Contains("未加载", missing.Status);
+        Assert.Equal("uploaded", missing.Source);
+        Assert.Equal("unknown", drivers.Single(driver => driver.Id == "simulator").Version);
+    }
+
+    [Fact]
     public async Task FirstStartPersistsDefaultIdentitiesBeforeCreatingAnyDriver()
     {
         await using var h = await Harness.CreateAsync(persisted: false);
@@ -272,6 +315,11 @@ public sealed class GatewayApplicationTests
                 Assert.False(host.Application.IsRunning);
                 Assert.False(File.Exists(Path.Combine(directory, "gateway.json")));
                 Assert.Contains(host.Application.Drivers.Drivers, descriptor => descriptor.Id == "OPC.UaClient");
+                var driverList = await host.Application.GetDriverListAsync();
+                Assert.Equal(host.Application.Drivers.Drivers.Select(driver => driver.Id).Order(), driverList.Where(driver => driver.IsAvailable).Select(driver => driver.Id).Order());
+                Assert.Equal(15, driverList.Count(driver => driver.IsAvailable));
+                Assert.All(driverList, driver => Assert.Equal("bundled", driver.Source));
+                Assert.Equal(64, driverList.Single(driver => driver.Id == "simulator").Sha256.Length);
                 await Assert.ThrowsAsync<InvalidOperationException>(() => GatewayHost.CreateAsync(directory,
                     pluginDirectory: drivers, runtimeDirectory: directory));
                 var simulator = original.Devices.Single(device => device.DriverId == "simulator");
@@ -372,7 +420,7 @@ public sealed class GatewayApplicationTests
         public DeviceConfiguration A { get; private set; } = null!;
         public DeviceConfiguration B { get; private set; } = null!;
         private readonly NoNetworkPublisher _publisher = new();
-        public static async Task<Harness> CreateAsync(bool persisted = true)
+        public static async Task<Harness> CreateAsync(bool persisted = true, Func<IDriverRegistry, IDriverRegistry>? wrapRegistry = null)
         {
             var h = new Harness();
             System.IO.Directory.CreateDirectory(h.Directory);
@@ -383,7 +431,8 @@ public sealed class GatewayApplicationTests
             h.Configurations = new(configuration);
             h.Factory = new(h.Configurations);
             var log = new Core.GatewayLog();
-            h.App = new(configuration, new Core.DriverRegistry([h.Factory], log), h.Configurations,
+            IDriverRegistry registry = new Core.DriverRegistry([h.Factory], log);
+            h.App = new(configuration, wrapRegistry?.Invoke(registry) ?? registry, h.Configurations,
                 h.Store, h._publisher, log, new JsonConfigurationFiles(), persisted);
             return h;
         }
@@ -396,8 +445,22 @@ public sealed class GatewayApplicationTests
         }
     }
 
-    private sealed class MemoryConfigurationStore(GatewayConfiguration initial) : IConfigurationStore
+    private sealed class DriverListRegistry(IDriverRegistry inner) : IDriverRegistry, IDriverPluginManager
     {
+        public List<DriverDescriptor> AdditionalDrivers { get; } = [];
+        public List<DriverPluginInfo> Plugins { get; } = [];
+        public IReadOnlyList<DriverDescriptor> Drivers => inner.Drivers.Concat(AdditionalDrivers).ToArray();
+        public IDriverFactory GetFactory(string driverId) => inner.GetFactory(driverId);
+        public IReadOnlyList<DriverPluginInfo> GetInstalledPlugins() => Plugins.ToArray();
+        public string InstallPlugin(string sourcePath) => throw new NotSupportedException();
+    }
+
+    private sealed class MemoryConfigurationStore(GatewayConfiguration initial) : IConfigurationStore, IDriverInventoryStore
+    {
+        public IReadOnlyList<DriverInventoryRecord> Inventory { get; set; } = [];
+        public Task<IReadOnlyList<DriverInventoryRecord>> GetDriverInventoryAsync(CancellationToken cancellationToken = default) => Task.FromResult(Inventory);
+        public Task ReplaceDriverInventoryAsync(IReadOnlyList<DriverInventoryRecord> drivers, CancellationToken cancellationToken = default)
+        { Inventory = drivers.ToArray(); return Task.CompletedTask; }
         private GatewayConfiguration _saved = GatewayJson.Clone(initial);
         public int Saves;
         public bool FailSave;

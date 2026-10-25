@@ -120,7 +120,7 @@ public sealed partial class MainForm
         CheckField("autoStart", "程序启动后自动采集", x => CloudDraft.AutoStart = x);
         Section("数据目录", "配置、离线消息和日志保存在当前用户的数据目录。采集数据库在“数据库”页单独配置。");
         EditorDialog.Hint(fields, _dataDirectory);
-        Section("驱动插件", "可上传实现网关驱动工厂契约的 .NET 8 驱动 DLL。安装成功后立即注册，新建设备时可直接选择；插件必须来自可信来源。");
+        Section("驱动插件", "查看随程序提供及上传安装的全部驱动。可上传可信来源的 .NET 8 驱动 DLL，安装成功后立即注册，新建设备时可直接选择。");
         var manageDrivers = UiTheme.Button("驱动 DLL 管理 / 上传", (_, _) =>
         {
             using var dialog = new DriverPluginDialog(_application, _driverDirectory);

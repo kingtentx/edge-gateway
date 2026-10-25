@@ -21,6 +21,9 @@ public sealed record ConfigurationChangePreview(
     bool RequiresMqttDestinationConfirmation, Guid? ConfirmationToken, long PendingOutboxMessages,
     MqttConfiguration PreviousMqtt, MqttConfiguration ProposedMqtt);
 
+public sealed record DriverListItem(string Id, string Name, string Version, string AssemblyName,
+    string Sha256, string Source, string Status, bool IsAvailable);
+
 /// <summary>
 /// The desktop application boundary. Configuration commands validate and persist before
 /// publishing a new snapshot; callers must await success before closing an editor.
@@ -30,6 +33,7 @@ public interface IGatewayApplication : IAsyncDisposable
     IDriverCatalog Drivers { get; }
     IGatewayLog Log { get; }
     IReadOnlyList<DriverPluginInfo> GetInstalledDriverPlugins() => [];
+    Task<IReadOnlyList<DriverListItem>> GetDriverListAsync(CancellationToken cancellationToken = default);
     string InstallDriverPlugin(string sourcePath) => throw new NotSupportedException("当前宿主未启用驱动插件安装功能。");
     bool IsRunning { get; }
     bool IsMqttConnected { get; }

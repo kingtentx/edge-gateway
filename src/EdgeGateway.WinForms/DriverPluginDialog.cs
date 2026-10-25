@@ -10,6 +10,7 @@ internal sealed class DriverPluginDialog : DpiAwareForm
     private readonly DataGridView _grid = UiTheme.Grid();
     private readonly Label _status = UiTheme.Label("仅安装可信来源的驱动 DLL。驱动代码将在网关进程内执行。", 10, UiTheme.Muted);
     private readonly string _pluginDirectory;
+    private bool _refreshing;
 
     public DriverPluginDialog(IGatewayApplication application, string driverDirectory)
     {
@@ -21,12 +22,13 @@ internal sealed class DriverPluginDialog : DpiAwareForm
         ConfigureWindow(new Size(980, 650), new Size(700, 480));
         StartPosition = FormStartPosition.CenterParent;
 
-        UiTheme.AddColumn(_grid, "Id", "驱动标识", 180, 150);
         UiTheme.AddColumn(_grid, "Name", "驱动名称", 200, 160);
+        UiTheme.AddColumn(_grid, "Source", "来源", 110, 100);
+        UiTheme.AddColumn(_grid, "Status", "状态", 100, 90);
+        UiTheme.AddColumn(_grid, "Id", "驱动标识", 180, 150);
         UiTheme.AddColumn(_grid, "Version", "版本", 110, 100);
         UiTheme.AddColumn(_grid, "AssemblyName", "程序集", 180, 140);
         UiTheme.AddColumn(_grid, "Sha256", "SHA-256", 260, 160);
-        UiTheme.AddColumn(_grid, "Status", "状态", 90, 80);
         _grid.Dock = DockStyle.Fill;
         _grid.ReadOnly = true;
         _grid.AutoGenerateColumns = false;
@@ -42,7 +44,7 @@ internal sealed class DriverPluginDialog : DpiAwareForm
             }
             catch (Exception ex) { ShowMessage(ex.Message, MessageBoxIcon.Error); }
         });
-        var refresh = UiTheme.Button("刷新驱动列表", (_, _) => RefreshGrid());
+        var refresh = UiTheme.Button("刷新驱动列表", async (_, _) => await RefreshGridAsync());
         var close = UiTheme.Button("关闭", (_, _) => Close());
         var actions = UiTheme.Toolbar(upload, refresh, open, close);
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(12), BackColor = Color.White };
@@ -54,8 +56,9 @@ internal sealed class DriverPluginDialog : DpiAwareForm
         layout.Controls.Add(actions, 0, 0);
         layout.Controls.Add(_grid, 0, 1);
         layout.Controls.Add(_status, 0, 2);
+        layout.SizeChanged += (_, _) => _status.MaximumSize = new Size(Math.Max(1, layout.ClientSize.Width - layout.Padding.Horizontal), 0);
         Controls.Add(layout);
-        Shown += (_, _) => RefreshGrid();
+        Shown += async (_, _) => await RefreshGridAsync();
     }
 
     private async Task InstallAsync()
@@ -80,7 +83,7 @@ internal sealed class DriverPluginDialog : DpiAwareForm
             var sourcePath = picker.FileName;
             var message = await Task.Run(() => _application.InstallDriverPlugin(sourcePath));
             _status.Text = message + Environment.NewLine + "插件已注册；后续打开设备配置即可选择新驱动。";
-            RefreshGrid();
+            await RefreshGridAsync();
             MessageBox.Show(this, message, "驱动安装完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
@@ -91,18 +94,29 @@ internal sealed class DriverPluginDialog : DpiAwareForm
         finally { UseWaitCursor = false; }
     }
 
-    private void RefreshGrid()
+    private async Task RefreshGridAsync()
     {
-        var available = _application.Drivers.Drivers.ToDictionary(d => d.Id, StringComparer.OrdinalIgnoreCase);
-        var installed = _application.GetInstalledDriverPlugins();
-        _grid.DataSource = installed.Select(plugin => new
+        if (_refreshing || IsDisposed) return;
+        _refreshing = true;
+        try
         {
-            plugin.Id, plugin.Name, plugin.Version, plugin.AssemblyName, plugin.Sha256, plugin.Status
-        }).ToArray();
-        if (installed.Count == 0)
-            _status.Text = $"当前可用驱动 {available.Count} 个；尚未通过上传安装第三方 DLL。内置驱动不会显示在“已上传插件”列表中。{Environment.NewLine}插件目录：{_pluginDirectory}";
-        else
-            _status.Text = $"当前可用驱动 {available.Count} 个，上传安装的插件 {installed.Count} 个。{Environment.NewLine}插件目录：{_pluginDirectory}";
+            var drivers = await _application.GetDriverListAsync();
+            if (IsDisposed) return;
+            var rows = drivers.Select(driver => driver with
+            {
+                Source = driver.Source switch { "bundled" => "随程序提供", "uploaded" => "上传安装", _ => "已注册" },
+                Version = driver.Version is "" or "unknown" ? "未知" : driver.Version,
+                AssemblyName = driver.AssemblyName.Length == 0 ? "未知" : driver.AssemblyName,
+                Sha256 = driver.Sha256.Length == 0 ? "未记录" : driver.Sha256
+            }).ToArray();
+            GridViewState.Rebind(_grid, rows, row => row.Id);
+            _status.Text = $"当前可用驱动 {drivers.Count(driver => driver.IsAvailable)} 个，上传安装 {drivers.Count(driver => driver.Source == "uploaded")} 个，未加载 {drivers.Count(driver => !driver.IsAvailable)} 个。{Environment.NewLine}插件目录：{_pluginDirectory}";
+        }
+        catch (Exception exception)
+        {
+            if (!IsDisposed) _status.Text = "读取驱动列表失败：" + exception.Message;
+        }
+        finally { _refreshing = false; }
     }
 
     private void ShowMessage(string message, MessageBoxIcon icon) =>
