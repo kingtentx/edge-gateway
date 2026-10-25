@@ -223,12 +223,13 @@ internal abstract class EditorDialog : DpiAwareForm
         var row = table.RowCount++; table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         var caption = EditorLayout.WrappingLabel(label, 10, UiTheme.Ink); caption.Padding = new Padding(0, 7, 14, 7);
         caption.Margin = Padding.Empty;
+        caption.TextAlign = ContentAlignment.MiddleLeft;
         control.Margin = new Padding(0, 5, 0, 10);
         control.AccessibleName ??= label;
         control.TabIndex = row;
         UiTheme.StyleInput(control);
         if (control is not CheckBox) control.Dock = DockStyle.Fill;
-        table.Controls.Add(caption, 0, row); table.Controls.Add(control, 1, row);
+        table.Controls.Add(caption, 0, row); table.Controls.Add(UiTheme.InputSurface(control), 1, row);
     }
     internal static void Section(TableLayoutPanel table, string title, string? description = null) =>
         EditorLayout.Section(table, title, description);

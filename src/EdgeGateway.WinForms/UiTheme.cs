@@ -4,6 +4,7 @@ namespace EdgeGateway.WinForms;
 
 internal static class UiTheme
 {
+    public const int ActionHeight = 38;
     public static readonly Color Navy = Color.FromArgb(18, 31, 51);
     public static readonly Color Blue = Color.FromArgb(37, 99, 235);
     public static readonly Color Background = Color.FromArgb(244, 247, 251);
@@ -30,7 +31,7 @@ internal static class UiTheme
     {
         var button = new ModernButton
         {
-            Text = text, AutoSize = true, MinimumSize = new Size(100, 38), Height = 38,
+            Text = text, AutoSize = true, MinimumSize = new Size(100, ActionHeight), Height = ActionHeight,
             Padding = new Padding(13, 6, 13, 6), BackColor = primary ? Blue : Color.White,
             ForeColor = primary ? Color.White : text.Contains("删除") ? Red : Ink,
             Margin = new Padding(0, 0, 8, 6), AccessibleName = text,
@@ -101,6 +102,14 @@ internal static class UiTheme
         else if (input is CheckBox check) check.MinimumSize = new Size(check.MinimumSize.Width, 32);
     }
 
+    public static Control InputSurface(Control input)
+    {
+        if (input.Parent is InputFrame existing) return existing;
+        if (input is not (TextBox { Multiline: false } or ComboBox or NumericUpDown or DateTimePicker)) return input;
+        StyleInput(input);
+        return new InputFrame(input);
+    }
+
     public static Control FilterField(string caption, Control input)
     {
         StyleInput(input);
@@ -116,6 +125,7 @@ internal static class UiTheme
         label.Margin = new Padding(0, 0, 0, 5);
         input.Margin = Padding.Empty;
         input.AccessibleName = caption;
+        input = InputSurface(input);
         group.Controls.Add(label, 0, 0); group.Controls.Add(input, 0, 1);
         var measuring = false;
         void MeasureInputRow()
@@ -196,7 +206,12 @@ internal static class UiTheme
             WrapContents = true, FlowDirection = FlowDirection.LeftToRight,
             Padding = new Padding(0, 8, 0, 4), Margin = new Padding(0)
         };
-        panel.Controls.AddRange(controls);
+        panel.Controls.AddRange(controls.Select(control =>
+        {
+            var surface = InputSurface(control);
+            if (surface is InputFrame) surface.Margin = new Padding(0, 0, 8, 6);
+            return surface;
+        }).ToArray());
         if (controls.Length == 0) panel.Padding = Padding.Empty;
         return panel;
     }

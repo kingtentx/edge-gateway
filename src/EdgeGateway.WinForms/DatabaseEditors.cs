@@ -191,7 +191,7 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         selection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); selection.RowStyles.Add(new RowStyle(SizeType.AutoSize)); selection.RowStyles.Add(new RowStyle(SizeType.AutoSize)); selection.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _allPoints = new CheckBox { Name = "DatabaseAllEnabledPoints", Text = "全部启用点位（后续新增点位也写入）", AutoSize = true, Checked = _source.TagIds.Count == 0, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8) };
         UiTheme.StyleInput(_pointSearch); _pointSearch.Margin = new Padding(0, 0, 0, 8);
-        selection.Controls.Add(_allPoints, 0, 0); selection.Controls.Add(_pointSearch, 0, 1); selection.Controls.Add(_pointList, 0, 2); _pointTab.Controls.Add(selection); Tabs.TabPages.Add(_pointTab);
+        selection.Controls.Add(_allPoints, 0, 0); selection.Controls.Add(UiTheme.InputSurface(_pointSearch), 0, 1); selection.Controls.Add(_pointList, 0, 2); _pointTab.Controls.Add(selection); Tabs.TabPages.Add(_pointTab);
         _pointList.ItemCheck += (_, e) => { if (_bindingPoints) return; var id = ((DatabaseUiText.PointItem)_pointList.Items[e.Index]).Id; if (e.NewValue == CheckState.Checked) _selectedPoints.Add(id); else _selectedPoints.Remove(id); };
         _pointSearch.TextChanged += (_, _) => BindPoints(); _allPoints.CheckedChanged += (_, _) => _pointList.Enabled = !_allPoints.Checked;
         BindPoints(); _pointList.Enabled = !_allPoints.Checked;

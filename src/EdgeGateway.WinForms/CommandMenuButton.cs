@@ -14,7 +14,7 @@ internal sealed class CommandMenuButton : ModernButton
     public CommandMenuButton(string text, Func<IReadOnlyList<MenuCommand>> commands, Action<Exception> onError)
     {
         Text = text; AccessibleName = text; _commands = commands; _onError = onError;
-        AutoSize = true; MinimumSize = new Size(100, 38); Height = 38;
+        AutoSize = true; MinimumSize = new Size(100, UiTheme.ActionHeight); Height = UiTheme.ActionHeight;
         Padding = new Padding(13, 6, 13, 6); Margin = new Padding(0, 0, 8, 6);
         BackColor = Color.White; ForeColor = UiTheme.Ink; Glyph = UiTheme.ActionIcon(text);
         Cursor = Cursors.Hand;

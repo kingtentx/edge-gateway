@@ -358,9 +358,10 @@ public sealed partial class MainForm : DpiAwareForm
                 if (!focusTarget.Focus() || !focusTarget.ContainsFocus)
                     throw new InvalidOperationException($"{context}: could not focus {focusTarget.GetType().Name} '{focusTarget.Name}' / '{focusTarget.Text}' before inspecting field '{input.Name}'.");
                 for (var parent = input.Parent; parent is not null && parent != editor; parent = parent.Parent)
-                    if (parent is ScrollableControl scroll && scroll.AutoScroll) scroll.ScrollControlIntoView(input);
+                    if (parent is ScrollableControl scroll && scroll.AutoScroll) scroll.ScrollControlIntoView(input.Parent as InputFrame ?? input);
                 PerformLayoutRecursively(editor);
                 AssertVisibleBounds(input, context + " field");
+                AssertInputSurface(input, context);
                 // A NumericUpDown is one operator field. Verify its internal edit box after
                 // scrolling the whole control without treating it as another keyboard stop.
                 foreach (var child in Descendants(input).Where(x => x.Visible && x is TextBoxBase))

@@ -119,7 +119,6 @@ public sealed partial class MainForm
             SelectionButton("编辑点位", async (_, _) => await EditTagAsync(), () => SelectedTag() is not null),
             SelectionButton("单点读取", async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(true)), () => SelectedTag() is not null),
             _tagMore, _tagSearch);
-        _tagSearch.Margin = new Padding(0, 3, 0, 6);
         tagHeader.Controls.Add(tagToolbar, 0, 2);
         var arrangingTagHeader = false;
         int MeasureTagHeaderHeight()

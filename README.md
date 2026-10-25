@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**2026-10-25 输入区优化：** 各页面和弹窗的单行输入区按普通按钮统一高度，覆盖文本、密码、下拉、数值和日期字段，并保持高 DPI 居中及键盘操作。[实现与验证](docs/input-height.md)。
+
 参考 [iioter/iotgateway](https://github.com/iioter/iotgateway) 的分层与驱动扩展思路，使用 **.NET 8 + 原生 Windows Forms** 实现的桌面工业数据采集网关。网关主体独立实现，并将源项目 **`Plugins/Drivers` 下全部 12 个驱动工程**及其驱动接口迁入本仓库，接入统一采集、配置与监控界面。围绕 Kepware 的采集侧工作流程完善通道、设备、点位管理、诊断与读写核对，并提供实时监控、历史趋势、多平台 MQTT 与持久化补传。
 
 新版数据存储：[SQLite 仅配置、采集日志与外部数据库](docs/data-recording.md)。默认采集只写滚动日志；按需启用 MySQL / PostgreSQL / Oracle，支持每点一行和自定义字段映射。仅支持 schema 3，不保留旧历史或提供迁移。
@@ -215,7 +217,7 @@ RPC 与“允许远程写入”分别默认关闭。启用后真实订阅对应�
 ```powershell
 dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release
 # Windows 上执行；检查界面与隔离配置中的本地模拟采集，不连接现场设备
-./scripts/smoke-test-winforms.ps1
+./scripts/smoke-test-winforms-background.ps1
 ```
 
 核心自动测试包含实际 TCP 回环与 TLS 握手，覆盖采集策略、表达式、读写核对、五平台 JSON、MQTT 订阅/回复、ThingsCloud 应用响应和持久请求去重。本轮 Windows 脚本必须实际验证 8 个主页面、7 类矩阵弹窗、20 个等效工作区、149 张 PNG 和 14 个完成标记，包含真实菜单/页签、选择保持、查询条件与反馈检查，并保留真实焦点与 DPI 边界断言；发布前再次核对同一源码的测试、截图和矩阵证据。实际运行结果及产物见 [PR 检查](https://github.com/kingtentx/edge-gateway/pull/1/checks) 和 [本轮验收入口](docs/ui-usability.md#执行证据)。真实 PLC、串口、南向 OPC UA 目标服务器和用户现场平台租户仍需对应环境验收，自动测试不等于现场验收；现场还需核对点表、字节序、串口硬件、证书信任与 24–72 小时长稳运行。

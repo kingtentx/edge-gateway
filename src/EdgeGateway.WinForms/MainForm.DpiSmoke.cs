@@ -485,13 +485,28 @@ public sealed partial class MainForm
         };
         var focusTarget = control.Enabled && control.CanSelect ? control : stableFocus;
         FocusForSmoke(focusTarget, control, form, context);
+        var surface = control.Parent as InputFrame;
         for (var parent = control.Parent; parent is not null && parent != form; parent = parent.Parent)
-            if (parent is ScrollableControl scroll && scroll.AutoScroll) scroll.ScrollControlIntoView(control);
+            if (parent is ScrollableControl scroll && scroll.AutoScroll) scroll.ScrollControlIntoView(surface ?? control);
         PerformLayoutRecursively(form);
         AssertVisibleBounds(control, context);
+        AssertInputSurface(control, context);
         if (control is Button button) AssertButtonContentFits(button, context);
         foreach (var child in Descendants(control).Where(x => x.Visible && x is TextBoxBase))
             AssertVisibleBounds(child, context + " input content");
+    }
+
+    private static void AssertInputSurface(Control control, string context)
+    {
+        if (control is not (TextBox { Multiline: false } or ComboBox or NumericUpDown or DateTimePicker)) return;
+        if (control.Parent is not InputFrame surface)
+            throw new InvalidOperationException(context + ": single-line editor is missing its button-height surface: " + control.Name);
+        AssertVisibleBounds(surface, context + " input surface");
+        var expected = Math.Max(UiTheme.Scale(control, UiTheme.ActionHeight),
+            TextRenderer.MeasureText("确定", control.Font, Size.Empty, TextFormatFlags.SingleLine | TextFormatFlags.NoPadding).Height
+            + UiTheme.Scale(control, 14));
+        if (Math.Abs(surface.Height - expected) > 1 || Math.Abs(control.Top - (surface.ClientSize.Height - control.Height) / 2) > 1)
+            throw new InvalidOperationException($"{context}: input surface height/centering differs from buttons: surface={surface.Height}, expected={expected}, editor={control.Bounds}.");
     }
 
     private static void FocusForSmoke(Control target, Control requested, Form window, string context)
