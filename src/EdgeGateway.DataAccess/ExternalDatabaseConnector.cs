@@ -14,8 +14,7 @@ using Oracle.ManagedDataAccess.Client;
 namespace EdgeGateway.DataAccess;
 
 /// <summary>
-/// External acquisition storage. Missing default point tables are created before writing.
-/// Other tables require the explicit EnsurePointTable action; existing tables are never altered.
+/// External acquisition storage. No method except the explicit EnsurePointTable action executes DDL.
 /// UTC instants are stored as PostgreSQL timestamptz, MySQL datetime(6), and Oracle timestamp(6).
 /// Standard point rows deduplicate immutable event_id values; custom mappings use ordinary INSERT semantics.
 /// </summary>
@@ -23,7 +22,6 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
 {
     private readonly Func<DatabaseConnectionConfiguration, DbConnection> _connectionFactory;
     private readonly ConcurrentDictionary<string, ValidatedTable> _validatedTables = new(StringComparer.Ordinal);
-    private readonly SemaphoreSlim _tableCreationGate = new(1, 1);
     private sealed record ValidatedTable(IReadOnlyList<DatabaseColumnInfo> Columns, long ExpiresAt);
     public ExternalDatabaseConnector() : this(CreateConnection) { }
     internal ExternalDatabaseConnector(Func<DatabaseConnectionConfiguration, DbConnection> connectionFactory) =>
@@ -76,38 +74,17 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
         _validatedTables.Clear();
         return WithConnectionAsync(connection, async (database, token) =>
         {
-            var columns = await EnsurePointTableCoreAsync(database, connection, table, token).ConfigureAwait(false);
-            await ValidatePointTableAsync(database, connection, table, columns, token).ConfigureAwait(false);
-            return true;
-        }, cancellationToken);
-    }
-
-    private async Task<IReadOnlyList<DatabaseColumnInfo>> EnsurePointTableCoreAsync(DbConnection database,
-        DatabaseConnectionConfiguration connection, DatabaseTableInfo table, CancellationToken token)
-    {
-        // Serialize the rare creation path, including explicit creation, across write groups.
-        // Re-read inside the gate; normal writes continue to use the metadata cache.
-        await _tableCreationGate.WaitAsync(token).ConfigureAwait(false);
-        try
-        {
             var columns = await ReadColumnsAsync(database, connection, table, token).ConfigureAwait(false);
-            if (columns.Count > 0) return columns;
-            try
+            if (columns.Count > 0)
             {
-                await using var command = Command(database, connection, BuildCreatePointTableSql(connection.Provider, table));
+                await ValidatePointTableAsync(database, connection, table, columns, token).ConfigureAwait(false);
+                return true; // Existing tables are inspected, never rewritten or altered.
+            }
+            await using (var command = Command(database, connection, BuildCreatePointTableSql(connection.Provider, table)))
                 await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
-            }
-            catch (DbException exception) when (IsTableAlreadyPresent(exception))
-            {
-                // Another process may have created it after our metadata read. Inspect it;
-                // never treat a name collision as proof that its schema is compatible.
-                columns = await ReadColumnsAsync(database, connection, table, token).ConfigureAwait(false);
-                if (columns.Count == 0) throw;
-                return columns;
-            }
 
             // DDL is deliberately outside a transaction: MySQL/Oracle DDL commits implicitly.
-            // A partially completed operation is reported; existing tables are never repaired.
+            // A partially completed DDL operation is reported; ordinary writes never try to repair schema.
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(table.Schema + "." + table.Name)))[..12];
             foreach (var (suffix, fields) in new[] { ("T", new[] { "timestamp" }), ("P", new[] { "tag_id", "timestamp" }) })
             {
@@ -118,20 +95,9 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
                 await using var command = Command(database, connection, sql);
                 await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
             }
-            columns = await ReadColumnsAsync(database, connection, table, token).ConfigureAwait(false);
-            if (columns.Count == 0) throw new ConnectorConfigurationException("标准点表创建后无法读取字段，请检查目标 Schema 和账户权限。");
-            return columns;
-        }
-        finally { _tableCreationGate.Release(); }
+            return true;
+        }, cancellationToken);
     }
-
-    private static bool IsTableAlreadyPresent(DbException exception) => exception switch
-    {
-        MySqlException mysql => mysql.Number == 1050,
-        PostgresException postgres => postgres.SqlState == "42P07",
-        OracleException oracle => oracle.Number == 955,
-        _ => false
-    };
 
     public Task WriteRowsAsync(DatabaseConnectionConfiguration connection, DatabaseWriteGroupConfiguration group,
         IReadOnlyList<DatabaseWriteRow> rows, CancellationToken cancellationToken = default)
@@ -218,9 +184,6 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
     {
         if (_validatedTables.TryGetValue(cacheKey, out var cached) && cached.ExpiresAt > Environment.TickCount64) return cached.Columns;
         var metadata = await ReadColumnsAsync(database, connection, Table(group), token).ConfigureAwait(false);
-        if (metadata.Count == 0 && group.Mode == DatabaseStorageMode.PointRows
-            && string.Equals(group.Table, "gateway_point", StringComparison.Ordinal))
-            metadata = await EnsurePointTableCoreAsync(database, connection, Table(group), token).ConfigureAwait(false);
         if (metadata.Count == 0) throw new ConnectorConfigurationException("目标数据表不存在或当前账户无权访问。请先选择已有表，或显式创建标准点表。");
         if (group.Mode == DatabaseStorageMode.PointRows) await ValidatePointTableAsync(database, connection, Table(group), metadata, token).ConfigureAwait(false);
         else ValidateMappedColumns(columns, metadata);

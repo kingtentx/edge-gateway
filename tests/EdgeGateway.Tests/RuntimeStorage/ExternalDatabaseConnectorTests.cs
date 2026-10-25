@@ -363,109 +363,6 @@ public sealed class ExternalDatabaseConnectorTests
     }
 
     [Fact]
-    public async Task MissingDefaultPointTableIsCreatedWithIndexesBeforeWritingAndReused()
-    {
-        var database = new RecordingConnection { MetadataMode = "missing" };
-        var connector = new ExternalDatabaseConnector(_ => database);
-        await connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]);
-        await connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]);
-        var create = Assert.Single(database.Commands.Where(command => command.Sql.StartsWith("CREATE TABLE ")));
-        Assert.Contains("\"gateway_point\"", create.Sql);
-        Assert.False(create.InTransaction);
-        var indexes = database.Commands.Where(command => command.Sql.StartsWith("CREATE INDEX ")).ToArray();
-        Assert.Equal(2, indexes.Length);
-        Assert.All(indexes, command => Assert.False(command.InTransaction));
-        Assert.All(database.Commands.Where(command => command.Sql.StartsWith("INSERT ")), command => Assert.True(command.InTransaction));
-        Assert.True(database.Commands.FindIndex(command => command.Sql.StartsWith("CREATE INDEX "))
-            < database.Commands.FindIndex(command => command.Sql.StartsWith("INSERT ")));
-        Assert.Equal(2, database.CommitCount);
-    }
-
-    [Fact]
-    public async Task AutoCreationPermissionFailureDoesNotWriteAndRemainsRedacted()
-    {
-        var database = new RecordingConnection { MetadataMode = "missing", CreateFailure = "42501" };
-        var connector = new ExternalDatabaseConnector(_ => database);
-        var error = await Assert.ThrowsAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
-            connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]));
-        Assert.Contains("42501", error.Message);
-        Assert.DoesNotContain("provider-secret", error.Message);
-        Assert.False(error.IsTransient);
-        Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("INSERT "));
-        Assert.Equal(0, database.CommitCount);
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ConcurrentCreatorTableIsValidatedBeforeWriting(bool incompatible)
-    {
-        var database = new RecordingConnection
-        { MetadataMode = "missing", CreateFailure = "42P07", ConcurrentTableIncompatible = incompatible };
-        var connector = new ExternalDatabaseConnector(_ => database);
-        var write = connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]);
-        if (incompatible)
-        {
-            await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() => write);
-            Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("INSERT "));
-        }
-        else
-        {
-            await write;
-            Assert.Equal(1, database.CommitCount);
-        }
-        Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("CREATE INDEX ") || command.Sql.StartsWith("ALTER TABLE "));
-    }
-
-    [Fact]
-    public async Task ExistingIncompatibleDefaultTableIsNotAlteredOrWritten()
-    {
-        var database = new RecordingConnection(); // Existing business columns, not a point table.
-        var connector = new ExternalDatabaseConnector(_ => database);
-        await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
-            connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]));
-        Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("CREATE ")
-            || command.Sql.StartsWith("ALTER ") || command.Sql.StartsWith("INSERT "));
-    }
-
-    [Fact]
-    public async Task MissingNonDefaultPointTableRequiresExplicitCreation()
-    {
-        var database = new RecordingConnection { MetadataMode = "missing" };
-        var connector = new ExternalDatabaseConnector(_ => database);
-        await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
-            connector.WriteRowsAsync(Configuration(), new() { Table = "business_points" }, [StandardRow()]));
-        Assert.Single(database.Commands);
-        Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("CREATE "));
-    }
-
-    [Fact]
-    public async Task DefaultNameInCustomMappingModeDoesNotCreateATable()
-    {
-        var database = new RecordingConnection { MetadataMode = "missing" };
-        var connector = new ExternalDatabaseConnector(_ => database);
-        var group = MappedGroup();
-        group.Table = "gateway_point";
-        await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
-            connector.WriteRowsAsync(Configuration(), group, [Row("sample")]));
-        Assert.Single(database.Commands);
-        Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("CREATE "));
-    }
-
-    [Fact]
-    public async Task EmptyOrCancelledBatchDoesNotCreateATable()
-    {
-        var database = new RecordingConnection { MetadataMode = "missing" };
-        var connector = new ExternalDatabaseConnector(_ => database);
-        await connector.WriteRowsAsync(Configuration(), new(), []);
-        using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            connector.WriteRowsAsync(Configuration(), new(), [StandardRow()], cancellation.Token));
-        Assert.Empty(database.Commands);
-    }
-
-    [Fact]
     public async Task StandardTextAllows128UnicodeCharactersBeforeMetadataValidation()
     {
         var database = new RecordingConnection { MetadataMode = "missing" };
@@ -475,7 +372,7 @@ public sealed class ExternalDatabaseConnectorTests
         foreach (var column in new[] { "device_name", "tag_name", "address", "raw_value", "value_text" })
             values[column] = string.Concat(Enumerable.Repeat("😀", 128));
         var error = await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
-            connector.WriteRowsAsync(Configuration(), new() { Table = "business_points" }, [row with { Values = values }]));
+            connector.WriteRowsAsync(Configuration(), new(), [row with { Values = values }]));
         Assert.Contains("目标数据表不存在", error.Message);
         Assert.Single(database.Commands);
     }
@@ -506,10 +403,6 @@ public sealed class ExternalDatabaseConnectorTests
         public bool BlockWrite { get; init; }
         public bool History { get; init; }
         public string MetadataMode { get; init; } = "normal";
-        public string? CreateFailure { get; init; }
-        public bool ConcurrentTableIncompatible { get; init; }
-        private bool _standardTableCreated;
-        private bool _incompatibleTableCreated;
         public TaskCompletionSource WriteStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _writes;
         private ConnectionState _state;
@@ -531,15 +424,6 @@ public sealed class ExternalDatabaseConnectorTests
         public async Task<int> NonQuery(RecordingCommand command, CancellationToken token)
         {
             Capture(command);
-            if (command.CommandText.StartsWith("CREATE TABLE ", StringComparison.Ordinal))
-            {
-                if (CreateFailure is null or "42P07")
-                {
-                    _standardTableCreated = !ConcurrentTableIncompatible;
-                    _incompatibleTableCreated = ConcurrentTableIncompatible;
-                }
-                if (CreateFailure is not null) throw new PostgresException("provider-secret", "ERROR", "ERROR", CreateFailure);
-            }
             if (!command.CommandText.StartsWith("INSERT ", StringComparison.Ordinal)) return 1;
             WriteStarted.TrySetResult();
             if (BlockWrite) await Task.Delay(Timeout.Infinite, token);
@@ -551,19 +435,7 @@ public sealed class ExternalDatabaseConnectorTests
         {
             Capture(command);
             var table = new DataTable();
-            if (_standardTableCreated && command.CommandText.Contains("information_schema.table_constraints"))
-            {
-                table.Columns.Add("constraint_name", typeof(string));
-                table.Columns.Add("column_name", typeof(string));
-                table.Rows.Add("gateway_point_pkey", "event_id");
-            }
-            else if (_standardTableCreated)
-            {
-                for (var index = 0; index < 6; index++) table.Columns.Add("c" + index, typeof(string));
-                foreach (var column in DatabasePointTable.Columns)
-                    table.Rows.Add(column, column == "timestamp" ? "timestamp with time zone" : "character varying", "NO", "N", "NO", "NEVER");
-            }
-            else if (History)
+            if (History)
             {
                 for (var index = 0; index < 10; index++) table.Columns.Add("c" + index, index == 8 ? typeof(DateTime) : typeof(string));
                 table.Rows.Add("event", command.Parameters["device"].Value, "设备", command.Parameters["tag"].Value, "点", "0", long.MaxValue.ToString(), "{\"v\":42}", new DateTime(2026, 10, 23, 23, 0, 0), "Good");
@@ -571,7 +443,7 @@ public sealed class ExternalDatabaseConnectorTests
             else
             {
                 for (var index = 0; index < 6; index++) table.Columns.Add("c" + index, typeof(string));
-                if (MetadataMode != "missing" || _incompatibleTableCreated) table.Rows.Add("value", "text", "NO", "N", "NO", MetadataMode == "generated" ? "ALWAYS" : "NEVER");
+                if (MetadataMode != "missing") table.Rows.Add("value", "text", "NO", "N", "NO", MetadataMode == "generated" ? "ALWAYS" : "NEVER");
                 if (MetadataMode == "unmapped") table.Rows.Add("required", "text", "NO", "N", "NO", "NEVER");
             }
             return table.CreateDataReader();
