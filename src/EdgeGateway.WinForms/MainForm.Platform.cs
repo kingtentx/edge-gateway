@@ -1,6 +1,5 @@
 using EdgeGateway.Application;
 using EdgeGateway.Model;
-using System.Diagnostics;
 
 namespace EdgeGateway.WinForms;
 
@@ -130,13 +129,6 @@ public sealed partial class MainForm
         }, true);
         manageDrivers.Name = "ManageDriverPlugins";
         DatabaseConnectionDialog.Span(fields, manageDrivers);
-        var open = UiTheme.Button("打开数据目录", (_, _) =>
-        {
-            try { Process.Start(new ProcessStartInfo(_dataDirectory) { UseShellExecute = true }); }
-            catch (Exception exception) { ShowError(exception.Message); }
-        });
-        var pathRow = fields.RowCount++; fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        fields.Controls.Add(open, 1, pathRow);
 
         _cloudApply = ConfigurationButton("应用设置", async (_, _) => await RunBusyAsync(ApplyCloudSettingsAsync), true);
         _cloudApply.Name = "ApplyCloudSettings"; _stoppedConfigurationCommands.Add(_cloudApply);
