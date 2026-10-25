@@ -17,6 +17,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
     private readonly IGatewayStore _store;
     private readonly IConfigurationFiles _files;
     private readonly IExternalDatabaseConnector? _externalDatabases;
+    private readonly IServerResourceMonitor? _serverResources;
     private readonly IDriverPluginManager? _driverPluginManager;
     private readonly SemaphoreSlim _commands = new(1, 1);
     private readonly Dictionary<Guid, ConfirmationGrant> _confirmations = [];
@@ -28,7 +29,8 @@ public sealed partial class GatewayApplication : IGatewayApplication
     public GatewayApplication(GatewayConfiguration configuration, IDriverRegistry drivers,
         IConfigurationStore configurationStore, IGatewayStore store, ITelemetryPublisher publisher,
         IGatewayLog log, IConfigurationFiles files, bool configurationPersisted = true,
-        IExternalDatabaseConnector? externalDatabases = null, IAcquisitionDataSink? dataSink = null)
+        IExternalDatabaseConnector? externalDatabases = null, IAcquisitionDataSink? dataSink = null,
+        IServerResourceMonitor? serverResources = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(drivers);
@@ -45,6 +47,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
         _store = store;
         _files = files;
         _externalDatabases = externalDatabases;
+        _serverResources = serverResources;
         _driverPluginManager = drivers as IDriverPluginManager;
         Log = log;
         _configurationPersisted = configurationPersisted;
@@ -57,6 +60,20 @@ public sealed partial class GatewayApplication : IGatewayApplication
     public bool IsMqttConnected => _runtime.IsMqttConnected;
     public bool IsDeviceRunning(Guid deviceId) => _runtime.IsDeviceRunning(deviceId);
     public GatewayConfiguration GetConfiguration() { ThrowIfDisposed(); return GatewayJson.Clone(_configuration); }
+    public GatewayOverviewSummary GetOverviewSummary()
+    {
+        ThrowIfDisposed();
+        var configuration = _configuration;
+        return OverviewSummaryBuilder.Build(configuration, _runtime.GetDeviceStatuses(), _runtime.GetLatest(),
+            configuration.Devices.Where(device => _runtime.IsDeviceRunning(device.Id)).Select(device => device.Id).ToHashSet());
+    }
+    public Task<ServerResourceSnapshot> GetServerResourcesAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        return _serverResources?.ReadAsync(cancellationToken) ?? Task.FromResult(new ServerResourceSnapshot(
+            DateTimeOffset.UtcNow, Environment.MachineName, Environment.ProcessorCount, null, null, [], ["宿主未提供服务器监控。"]));
+    }
     public IReadOnlyList<string> ValidateConfiguration(GatewayConfiguration candidate) => Drivers.ValidateConfiguration(candidate);
 
     public async Task<ConfigurationChangePreview> PreviewConfigurationAsync(GatewayConfiguration candidate, CancellationToken cancellationToken = default)

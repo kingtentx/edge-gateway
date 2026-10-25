@@ -62,6 +62,7 @@ def require(condition, message):
         raise RuntimeError(message)
 
 markers = [
+    'Overview health smoke passed:',
     'Deferred tab navigation passed:',
     'WinForms editor smoke passed: 15 drivers',
     'Device configuration smoke passed: 15 dedicated driver windows',

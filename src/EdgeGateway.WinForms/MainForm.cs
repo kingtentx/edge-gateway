@@ -29,11 +29,6 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly Label _footer = UiTheme.Label("就绪", 10, UiTheme.Muted);
     private readonly ToolTip _feedbackTip = new() { AutoPopDelay = 30000, InitialDelay = 350, ReshowDelay = 100 };
     private string _lastFeedback = "就绪";
-    private readonly Label _deviceCount = UiTheme.Label("0 / 0", 26, UiTheme.Ink, true);
-    private readonly Label _pointCount = UiTheme.Label("0", 26, UiTheme.Ink, true);
-    private readonly Label _pendingCount = UiTheme.Label("0", 26, UiTheme.Ink, true);
-    private readonly Label _mqttStatus = UiTheme.Label("未启用", 20, UiTheme.Muted, true);
-    private readonly DataGridView _overviewGrid = UiTheme.Grid();
     private readonly Label _automaticSaveState = UiTheme.Label("配置自动保存", 9, UiTheme.Muted);
     private string _activePage = "overview";
     private bool _dirty, _busy, _refreshing, _closing, _allowClose;
@@ -212,95 +207,6 @@ public sealed partial class MainForm : DpiAwareForm
         ShowPage("overview");
     }
 
-    private Control BuildOverviewPage()
-    {
-        UiTheme.AddColumn(_overviewGrid, "Name", "设备", 120, 140);
-        UiTheme.AddColumn(_overviewGrid, "Driver", "驱动", 100);
-        UiTheme.AddColumn(_overviewGrid, "State", "运行状态", 90);
-        UiTheme.AddColumn(_overviewGrid, "Points", "启用点位", 75, 60);
-        UiTheme.AddColumn(_overviewGrid, "LastSuccess", "最近成功", 150, 130);
-        UiTheme.AddColumn(_overviewGrid, "Error", "连接信息", 180, 200);
-        var content = new TableLayoutPanel { Name = "OverviewContent", ColumnCount = 1, RowCount = 4, Margin = new Padding(0) };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var cards = new TableLayoutPanel
-        {
-            Name = "OverviewCards", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 4, RowCount = 1, Margin = new Padding(0)
-        };
-        var cardInfo = new[] { ("在线 / 启用设备", _deviceCount, "独立连接，自动重连"), ("优质 / 最新采样", _pointCount, "质量与时间戳同步展示"), ("待补传消息", _pendingCount, "消息确认后自动清理"), ("平台连接", _mqttStatus, "离线缓存 · 自动补传") };
-        var cardPanels = new List<TableLayoutPanel>();
-        for (var i = 0; i < 4; i++)
-        {
-            var accent = i switch { 0 => UiTheme.Blue, 1 => UiTheme.Green, 2 => Color.FromArgb(217, 119, 6), _ => Color.FromArgb(8, 145, 178) };
-            var card = UiTheme.Card(accent);
-            card.Name = "OverviewCard_" + i; card.Dock = DockStyle.Fill;
-            card.AutoSize = true; card.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            card.Padding = new Padding(28, 16, 14, 14); card.ColumnCount = 1; card.RowCount = 3;
-            card.Margin = new Padding(0, 0, 12, 12);
-            card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            for (var row = 0; row < 3; row++) card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            var title = UiTheme.Label(cardInfo[i].Item1, 10, UiTheme.Muted);
-            var detail = UiTheme.Label(cardInfo[i].Item3, 10, UiTheme.Muted);
-            title.Dock = DockStyle.Fill; detail.Dock = DockStyle.Fill;
-            card.Controls.Add(title, 0, 0); card.Controls.Add(cardInfo[i].Item2, 0, 1); card.Controls.Add(detail, 0, 2);
-            card.SizeChanged += (_, _) =>
-            {
-                if (!IsDpiLayoutReady) return;
-                var width = Math.Max(1, card.ClientSize.Width - card.Padding.Horizontal);
-                SetWrappingWidth(title, width); SetWrappingWidth(detail, width);
-            };
-            cardPanels.Add(card); cards.Controls.Add(card, i, 0);
-        }
-        content.Controls.Add(cards, 0, 0);
-        var deviceHeading = UiTheme.Label("设备连接状态", 12, UiTheme.Ink, true);
-        deviceHeading.Margin = new Padding(0, 6, 0, 12);
-        content.Controls.Add(deviceHeading, 0, 1); content.Controls.Add(_overviewGrid, 0, 2);
-        var help = UiTheme.Label("首次使用：直接启动内置模拟设备，观察实时数据；添加真实设备后，按现场点表配置协议、地址和字节序。", 10, UiTheme.Muted);
-        help.Dock = DockStyle.Fill; content.Controls.Add(help, 0, 3);
-        var viewport = ScrollableContent(content, "OverviewViewport", () => cards.PreferredSize.Height + UiTheme.Scale(content, 260));
-        bool arranging = false;
-        void ArrangeCards()
-        {
-            if (arranging || !cards.IsHandleCreated || !IsDpiLayoutReady) return;
-            arranging = true;
-            try
-            {
-                var count = cards.ClientSize.Width >= UiTheme.Scale(cards, 920) ? 4 : cards.ClientSize.Width >= UiTheme.Scale(cards, 360) ? 2 : 1;
-                if (cards.ColumnCount != count || cards.ColumnStyles.Count != count)
-                {
-                    cards.SuspendLayout();
-                    cards.Controls.Clear(); cards.ColumnStyles.Clear(); cards.RowStyles.Clear();
-                    cards.ColumnCount = count; cards.RowCount = 4 / count;
-                    for (var column = 0; column < count; column++) cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / count));
-                    for (var row = 0; row < cards.RowCount; row++) cards.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                    for (var i = 0; i < cardPanels.Count; i++) cards.Controls.Add(cardPanels[i], i % count, i / count);
-                    cards.ResumeLayout(true);
-                }
-                for (var i = 0; i < cardPanels.Count; i++)
-                {
-                    var margin = UiTheme.Scale(cards, new Padding(0, 0, i % count == count - 1 ? 0 : 12, 12));
-                    if (cardPanels[i].Margin != margin) cardPanels[i].Margin = margin;
-                    var textWidth = Math.Max(1, cardPanels[i].ClientSize.Width - cardPanels[i].Padding.Horizontal);
-                    foreach (var label in cardPanels[i].Controls.OfType<Label>().Where(x => x.Font.SizeInPoints <= 12))
-                        SetWrappingWidth(label, textWidth);
-                }
-                SetWrappingWidth(help, Math.Max(1, content.ClientSize.Width));
-                viewport.PerformLayout();
-            }
-            finally { arranging = false; }
-        }
-        cards.SizeChanged += (_, _) => ArrangeCards();
-        cards.HandleCreated += (_, _) => ArrangeCards();
-        cards.DpiChangedAfterParent += (_, _) => ArrangeCards();
-        DpiLayoutCompleted += (_, _) => ArrangeCards();
-        content.SizeChanged += (_, _) => ArrangeCards();
-        return UiTheme.PageLayout("运行总览", "从设备现场到数据平台，掌握每条采集链路的状态。", UiTheme.Toolbar(), viewport);
-    }
-
     private void AddPage(string key, Control page)
     {
         page.Visible = false; page.Dock = DockStyle.Fill;
@@ -329,6 +235,7 @@ public sealed partial class MainForm : DpiAwareForm
             try
             {
                 await RefreshSnapshotsAsync();
+                await SmokeOverviewAsync();
                 SmokeDeferredPageNavigation();
                 var originalSize = Size;
                 Width = MinimumSize.Width;
@@ -620,35 +527,16 @@ public sealed partial class MainForm : DpiAwareForm
         _refreshing = true;
         try
         {
-            var samples = _application.GetLatest();
-            var statuses = _application.GetDeviceStatuses();
-            var enabled = _configuration.Devices.Count(x => x.Enabled);
-            _deviceCount.Text = $"{statuses.Count(x => x.State == DeviceState.Running)} / {enabled}";
-            _pointCount.Text = $"{samples.Count(x => x.Quality == SampleQuality.Good)} / {samples.Count}";
-            _mqttStatus.Text = !_configuration.Mqtt.Enabled ? "未启用" : _application.IsMqttConnected ? "已连接" : _application.IsRunning ? "等待连接" : "已断开";
-            _mqttStatus.ForeColor = _application.IsMqttConnected ? UiTheme.Green : UiTheme.Muted;
-            if (_activePage == "overview")
-            {
-                var byId = statuses.ToDictionary(x => x.DeviceId);
-                var overviewRows = _configuration.Devices.Select(d =>
-                {
-                    byId.TryGetValue(d.Id, out var s);
-                    return new
-                    {
-                        d.Id, d.Name, Driver = d.DriverId, State = !d.Enabled ? "未启用" : StateText(s?.State ?? DeviceState.Stopped),
-                        Points = d.Tags.Count(t => t.Enabled), LastSuccess = s?.LastSuccess?.ToLocalTime().ToString("MM-dd HH:mm:ss") ?? "—",
-                        Error = s?.Error ?? (d.DriverId == "simulator" ? "本地模拟设备" : "—")
-                    };
-                }).ToList();
-                GridViewState.Rebind(_overviewGrid, overviewRows, row => row.Id);
-            }
-            if (_activePage == "realtime") RefreshRealtime(samples);
+            if (_activePage == "overview") RefreshOverview(_application.GetOverviewSummary());
+            if (_activePage == "realtime") RefreshRealtime(_application.GetLatest());
             if (_activePage == "logs") RefreshLogs();
             if (_activePage == "database") BindDatabaseViews();
             var statistics = await _application.GetStatisticsAsync();
             if (!IsDisposed)
             {
-                _pendingCount.Text = statistics.OutboxCount.ToString("N0", CultureInfo.CurrentCulture);
+                _pendingCount.Text = $"待补传 {statistics.OutboxCount:N0} 条";
+                if (_activePage == "overview" && (_serverResourceRefresh is null || _serverResourceRefresh.IsCompleted))
+                    _serverResourceRefresh = RefreshServerResourcesAsync();
                 if (_activePage == "diagnostics") RefreshTelemetryDiagnostics(statistics);
             }
             UpdateCommands();

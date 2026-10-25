@@ -350,6 +350,8 @@ public sealed partial class MainForm
     {
         var cards = Descendants(_pages["overview"]).Where(x => x.Name.StartsWith("OverviewCard_", StringComparison.Ordinal)).ToArray();
         if (cards.Length != 4) throw new InvalidOperationException("Overview must retain all four live status cards.");
+        if (Descendants(_pages["overview"]).OfType<DataGridView>().Any())
+            throw new InvalidOperationException("Overview must contain device summaries, not device lists.");
         for (var i = 0; i < cards.Length; i++)
         {
             if (cards[i].Width <= 0 || cards[i].Height <= 0) throw new InvalidOperationException(context + ": empty overview card.");
@@ -357,6 +359,11 @@ public sealed partial class MainForm
                 if (cards[i].Bounds.IntersectsWith(cards[j].Bounds)) throw new InvalidOperationException(context + ": overview cards overlap.");
             foreach (var label in cards[i].Controls.OfType<Label>())
                 BringIntoViewAndAssert(label, context + " card text");
+        }
+        foreach (var name in new[] { "OverviewCollectionHealth", "OverviewDeliveryHealth", "OverviewServerResources" })
+        {
+            var panel = Descendants(_pages["overview"]).Single(control => control.Name == name);
+            foreach (var label in panel.Controls.OfType<Label>()) BringIntoViewAndAssert(label, context + " " + name);
         }
     }
 

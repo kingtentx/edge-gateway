@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><InternalsVisibleTo Include="EdgeGateway.Tests" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../EdgeGateway.Application/EdgeGateway.Application.csproj" />
     <ProjectReference Include="../EdgeGateway.DataAccess/EdgeGateway.DataAccess.csproj" />

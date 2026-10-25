@@ -60,6 +60,8 @@ public interface IGatewayApplication : IAsyncDisposable
     IReadOnlyList<TelemetrySample> GetLatest();
     TelemetrySample? GetLatestSample(Guid tagId);
     IReadOnlyList<DeviceRuntimeStatus> GetDeviceStatuses();
+    GatewayOverviewSummary GetOverviewSummary();
+    Task<ServerResourceSnapshot> GetServerResourcesAsync(CancellationToken cancellationToken = default);
     IReadOnlyList<DeviceCommunicationStatistics> GetCommunicationStatistics();
     TelemetryPipelineStatus GetTelemetryStatus();
     RpcRuntimeStatus GetRpcStatus();
