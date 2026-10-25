@@ -175,7 +175,7 @@ MySQL / PostgreSQL 使用真正的多行 INSERT，Oracle 同类型列使用 Arra
 
 新增 `PointMapping` 模式；已有 `PointRows` 与 `ColumnMapping` 的枚举值和默认配置保持原语义。定向用例覆盖逐点独立写入、选择/质量/会话过滤、转换失败隔离、手动整数常量、配置序列化、预览和业务表不自动建表。另提供后台映射弹窗定向验证入口：`scripts/smoke-test-winforms-background.ps1 -Scenario DatabaseMapping -OutputDirectory <新的证据目录>`，仅检查本次映射弹窗，不启动全量页面或 DPI 矩阵，使用字段元数据样例且不连接外部数据库。
 
-本次实现尚未执行编译、测试、架构检查或界面验证，等待用户确认；未读取或修改本机 MySQL 表中的业务数据，未执行用户 SQL 脚本。
+经用户确认，针对实现提交 `ed7a846` 完成 WinForms Release 编译（0 错误、419 条驱动相关警告），逐点映射/预览/连接器定向测试 51 项全部通过（0 失败、0 跳过；测试编译有 1 条已有 xUnit2031 建议），架构检查通过（8 层边界、24 个无环工程）。隔离后台桌面的单个映射弹窗验证通过，实际 192 DPI，核对模式切换、字段元数据样例、自增列、值来源/类型/常量编辑、点位选择、刷新保留与目标变更校验，并人工查看截图。证据：`artifacts/custom-point-mapping-20261026/` 下的 `build.log`、`tests.log`、`custom-point-mapping.trx` 和 `ui/` 日志、截图。未运行全量测试或完整 DPI 矩阵，未连接本机 MySQL、写入业务表或执行用户 SQL 脚本；元数据样例验证不等于真实数据库写入验收。
 
 ### 默认点表自动创建（2026-10-25）
 
