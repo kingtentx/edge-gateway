@@ -64,8 +64,8 @@ internal sealed class DatabaseConnectionDialog : EditorDialog
         Section(fields, "连接与命令"); Add(fields, "DatabaseConnectTimeout", "连接超时（秒）", _connectTimeout); Add(fields, "DatabaseCommandTimeout", "命令超时（秒）", _commandTimeout);
         Section(fields, "批量写入", "采集结果通过独立队列批量写入；队列积压、失败及丢弃数量在数据库页显示。");
         Add(fields, "DatabaseBatchSize", "每批最大行数", _batch); Add(fields, "DatabaseFlushInterval", "提交间隔（ms）", _flush); Add(fields, "DatabaseQueueCapacity", "队列最大行数", _capacity);
-        Add(fields, "DatabaseQueueCapacityMb", "队列最大大小（MiB）", _capacityMb); Add(fields, "DatabaseMaxRetryAttempts", "每批最多尝试次数", _retryAttempts);
-        Hint(fields, "同一连接下所有写入组共享行数和大小配额；队列满时拒绝新记录并计数。单行最多 1 MiB。");
+        Add(fields, "DatabaseQueueCapacityMb", "队列最大大小（M）", _capacityMb); Add(fields, "DatabaseMaxRetryAttempts", "每批最多尝试次数", _retryAttempts);
+        Hint(fields, "同一连接下所有写入组共享行数和大小配额；队列满时拒绝新记录并计数。单行最多 1 M。");
         _provider.SelectedIndexChanged += (_, _) =>
         {
             if (_provider.SelectedItem is not ExternalDatabaseProvider selected) return;

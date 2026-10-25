@@ -87,7 +87,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         if (level < configuration.MinimumLevel) return;
         var bytes = 512 + message.Length * 6L;
         if (bytes > SamplePayloadBudget.MaximumSampleBytes)
-        { Reject("单条日志超过 1 MiB 预估载荷上限，已拒绝该条记录。"); return; }
+        { Reject("单条日志超过 1 M 预估载荷上限，已拒绝该条记录。"); return; }
         var entry = new GatewayLogEntry(DateTimeOffset.UtcNow, level, message.Replace('\r', ' ').Replace('\n', ' '));
         lock (_sync) Append(entry);
         Queue(new LogWork(entry, null, configuration, null, bytes));
@@ -100,7 +100,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         if (!configuration.LogAcquisitionSamples || configuration.MinimumLevel > GatewayLogLevel.Information) return;
         if (_writes is null) return;
         if (!SamplePayloadBudget.TryEstimate(sample, out var bytes))
-        { Reject("单条采样超出 1 MiB 或结构复杂度限制，未写入采集日志。"); return; }
+        { Reject("单条采样超出 1 M 或结构复杂度限制，未写入采集日志。"); return; }
         var entry = new GatewayLogEntry(DateTimeOffset.UtcNow, GatewayLogLevel.Information,
             $"采集：设备 [{sample.DeviceName}] 点位 [{sample.TagName}]，质量 {sample.Quality}。".Replace('\r', ' ').Replace('\n', ' '));
         // Samples go to structured files; preserve the small UI ring for operational events.
@@ -114,7 +114,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         {
             var pending = Interlocked.Read(ref _pendingBytes);
             if (pending + work.EstimatedBytes > MaximumQueuedBytes)
-            { Reject("日志后台队列已达 64 MiB 预估载荷配额，本条日志未入队。"); return; }
+            { Reject("日志后台队列已达 64 M 预估载荷配额，本条日志未入队。"); return; }
             if (Interlocked.CompareExchange(ref _pendingBytes, pending + work.EstimatedBytes, pending) == pending) break;
         }
         Interlocked.Increment(ref _pendingEntries);
@@ -199,7 +199,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                     {
                         var entry = work.Entry!;
                         if (work.Sample is not null && !SamplePayloadBudget.TryEstimate(work.Sample, out _))
-                            throw new InvalidDataException("排队期间采样载荷变化，超出 1 MiB 或结构复杂度限制。");
+                            throw new InvalidDataException("排队期间采样载荷变化，超出 1 M 或结构复杂度限制。");
                         var bytes = SerializeLine(entry, work.Sample);
                         var policy = Volatile.Read(ref _configuration);
                         var limit = (long)policy.MaxFileSizeMb * 1024 * 1024;

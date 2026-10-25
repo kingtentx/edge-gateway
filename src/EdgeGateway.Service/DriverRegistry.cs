@@ -119,7 +119,7 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
         if (!info.Exists || !string.Equals(info.Extension, ".dll", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("请选择有效的 .dll 驱动文件。", nameof(sourcePath));
         if (info.Length is < 1 or > 100L * 1024 * 1024)
-            throw new ArgumentException("驱动 DLL 必须大于 0 字节且不超过 100 MiB。", nameof(sourcePath));
+            throw new ArgumentException("驱动 DLL 必须大于 0 字节且不超过 100 M。", nameof(sourcePath));
 
         var assemblyName = AssemblyName.GetAssemblyName(source);
         var simpleName = assemblyName.Name ?? throw new BadImageFormatException("无法读取 DLL 程序集名称。");

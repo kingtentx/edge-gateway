@@ -73,7 +73,7 @@ public static class TagCsvExchange
         {
             var record = string.Join(',', cells.Select(Quote)) + "\r\n";
             byteCount += StrictUtf8.GetByteCount(record);
-            if (byteCount > MaxFileBytes) throw new InvalidDataException($"CSV 文件不能超过 {MaxFileBytes / 1024 / 1024} MiB。");
+            if (byteCount > MaxFileBytes) throw new InvalidDataException($"CSV 文件不能超过 {MaxFileBytes / 1024 / 1024} M。");
             output.Append(record);
         }
     }
@@ -94,7 +94,7 @@ public static class TagCsvExchange
         }
         if (content.Length > MaxFileBytes)
         {
-            errors.Add(new(1, "文件", $"CSV 文件不能超过 {MaxFileBytes / 1024 / 1024} MiB。"));
+            errors.Add(new(1, "文件", $"CSV 文件不能超过 {MaxFileBytes / 1024 / 1024} M。"));
             return Failed();
         }
         string text;

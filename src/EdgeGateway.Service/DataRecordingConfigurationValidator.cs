@@ -14,11 +14,11 @@ public static partial class DataRecordingConfigurationValidator
         else
         {
             if (!Enum.IsDefined(logging.MinimumLevel)) errors.Add("日志等级无效。");
-            if (logging.MaxFileSizeMb is < 1 or > 1024) errors.Add("单个日志文件大小须为 1–1024 MiB。");
+            if (logging.MaxFileSizeMb is < 1 or > 1024) errors.Add("单个日志文件大小须为 1–1024 M。");
             if (logging.RetainedFileCount is < 1 or > 1000) errors.Add("日志保留文件数须为 1–1000。");
             if (logging.RetainedDays is < 1 or > 3650) errors.Add("日志保留天数须为 1–3650。");
-            if (logging.MinimumFreeDiskSpaceMb is < 16 or > 1048576) errors.Add("日志磁盘保护阈值须为 16–1048576 MiB。");
-            if (logging.DiskResumeMarginMb is < 1 or > 65536) errors.Add("日志磁盘恢复余量须为 1–65536 MiB。");
+            if (logging.MinimumFreeDiskSpaceMb is < 16 or > 1048576) errors.Add("日志磁盘保护阈值须为 16–1048576 M。");
+            if (logging.DiskResumeMarginMb is < 1 or > 65536) errors.Add("日志磁盘恢复余量须为 1–65536 M。");
         }
         if (configuration.Databases is null || configuration.DatabaseWriteGroups is null)
         {
@@ -103,7 +103,7 @@ public static partial class DataRecordingConfigurationValidator
         if (connection.FlushIntervalMs is < 50 or > 60000) errors.Add($"{label} 刷新间隔须为 50–60000 ms。");
         if (connection.QueueCapacityRows is < 1 or > 1000000 || connection.QueueCapacityRows < connection.BatchSize)
             errors.Add($"{label} 队列行数须为 1–1000000 且不小于批次大小。");
-        if (connection.QueueCapacityMb is < 1 or > 1024) errors.Add($"{label} 队列内存限额须为 1–1024 MiB。");
+        if (connection.QueueCapacityMb is < 1 or > 1024) errors.Add($"{label} 队列内存限额须为 1–1024 M。");
         if (connection.MaxRetryAttempts is < 1 or > 10) errors.Add($"{label} 每批最大尝试次数须为 1–10。");
         return errors;
     }

@@ -86,7 +86,7 @@ internal static class DatabaseRowMapper
     }
 
     // A conservative serialized-size budget includes object/column overhead. This bounds
-    // queued payload, not total CLR heap usage; individual rows above 1 MiB are rejected.
+    // queued payload, not total CLR heap usage; individual rows above 1 M are rejected.
     public static long EstimateBytes(DatabaseWriteRow row)
     {
         long bytes = 512;

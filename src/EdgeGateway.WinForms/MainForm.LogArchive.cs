@@ -12,7 +12,7 @@ public sealed partial class MainForm
     private readonly NumericUpDown _archiveLimit = new() { Name = "ArchiveLimit", Minimum = 1, Maximum = 2000, Value = 500, Width = 85 };
     private readonly NumericUpDown _archiveBudget = new() { Name = "ArchiveBudget", Minimum = 1, Maximum = 64, Value = 32, Width = 80 };
     private readonly CheckBox _archiveSamples = new() { Name = "ArchiveSamples", Text = "包含采样", Checked = true, AutoSize = true };
-    private readonly Label _archiveState = EditorLayout.WrappingLabel("查询近期日志文件；结果受扫描量、行数及 4 MiB 结果载荷限制，不等于完整备份。", color: UiTheme.Muted);
+    private readonly Label _archiveState = EditorLayout.WrappingLabel("查询近期日志文件；结果受扫描量、行数及 4 M 结果载荷限制，不等于完整备份。", color: UiTheme.Muted);
     private CancellationTokenSource? _archiveCancellation;
     private GatewayLogQueryResult? _archiveResult;
     private Button _archiveSearch = null!, _archiveCancel = null!, _archiveExport = null!;
@@ -32,7 +32,7 @@ public sealed partial class MainForm
         _archiveCancel = UiTheme.Button("取消查询 / 导出", (_, _) => _archiveCancellation?.Cancel()); _archiveCancel.Name = "CancelLogArchive"; _archiveCancel.Enabled = false;
         _archiveExport = UiTheme.Button("导出当前结果", async (_, _) => await ExportArchiveAsync()); _archiveExport.Name = "ExportLogArchive"; _archiveExport.Enabled = false;
         var filters = UiTheme.Toolbar(UiTheme.Label("开始", 10), _archiveFrom, UiTheme.Label("结束", 10), _archiveTo,
-            _archiveLevel, _archiveText, _archiveSamples, UiTheme.Label("最多行数", 10), _archiveLimit, UiTheme.Label("扫描 MiB", 10), _archiveBudget);
+            _archiveLevel, _archiveText, _archiveSamples, UiTheme.Label("最多行数", 10), _archiveLimit, UiTheme.Label("扫描 M", 10), _archiveBudget);
         filters.Name = "LogArchiveFilters";
         var actions = UiTheme.Toolbar(_archiveSearch, _archiveCancel, _archiveExport); actions.Name = "LogArchiveActions";
         var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
@@ -71,7 +71,7 @@ public sealed partial class MainForm
                 Timestamp = entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff"), Level = LogLevelText(entry.Level),
                 Kind = entry.Kind == "sample" ? "采样" : "事件", entry.Message, entry.FileName
             }).ToArray();
-            _archiveState.Text = $"本次结果 {result.Entries.Count:N0} 条，扫描 {result.ScannedBytes / 1048576d:F2} MiB，损坏 {result.InvalidLines} 条。"
+            _archiveState.Text = $"本次结果 {result.Entries.Count:N0} 条，扫描 {result.ScannedBytes / 1048576d:F2} M，损坏 {result.InvalidLines} 条。"
                 + (result.IsPartial ? "【受限结果】" : "") + "导出的是这次查询的快照，不是当前尚未提交的筛选项。\n" + string.Join("；", result.Warnings);
         }
         catch (OperationCanceledException) { if (!IsDisposed) _archiveState.Text = "查询已取消，保留上一次结果。"; }

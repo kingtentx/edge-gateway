@@ -111,7 +111,7 @@ public sealed class GatewayLogTests : IDisposable
         Assert.Equal(1, log.DroppedEntries);
         Assert.Equal(0, log.PendingEntries);
         Assert.Equal(0, log.PendingBytes);
-        Assert.Contains("1 MiB", log.FileError);
+        Assert.Contains("1 M", log.FileError);
         Assert.DoesNotContain(log.GetEntries(), entry => entry.Message.Contains(huge, StringComparison.Ordinal));
         log.Write(GatewayLogLevel.Information, "后续正常记录");
         await log.FlushAsync();

@@ -39,10 +39,10 @@ public sealed partial class MainForm
         void Number(string key, string label, int min, int max)
         { var input = new NumericUpDown { Minimum = min, Maximum = max, ThousandsSeparator = true }; input.ValueChanged += (_, _) => Changed(); Add(key, label, input); }
         EditorDialog.Section(fields, "文件保留", "文件达到大小后轮转；超过保留文件数或天数的旧日志将清理。");
-        Number("MaxFileSizeMb", "单文件最大大小（MiB）", 1, 1024); Number("RetainedFileCount", "最多保留文件数", 1, 1000); Number("RetainedDays", "最多保留天数", 1, 3650);
+        Number("MaxFileSizeMb", "单文件最大大小（M）", 1, 1024); Number("RetainedFileCount", "最多保留文件数", 1, 1000); Number("RetainedDays", "最多保留天数", 1, 3650);
         EditorDialog.Section(fields, "磁盘保护", "低于保护阈值暂停文件写入；空间达到阈值加恢复余量后自动恢复。保护期间的日志不补写，丢弃数可见。不会删除其他业务文件。");
-        Number("MinimumFreeDiskSpaceMb", "最低剩余空间（MiB）", 16, 1048576);
-        Number("DiskResumeMarginMb", "恢复余量（MiB）", 1, 65536);
+        Number("MinimumFreeDiskSpaceMb", "最低剩余空间（M）", 16, 1048576);
+        Number("DiskResumeMarginMb", "恢复余量（M）", 1, 65536);
         EditorDialog.Hint(fields, "采样日志用于本地追溯。需要按设备、点位查询长期数据时，请配置外部数据库的标准点行写入组。" + Environment.NewLine + Path.Combine(_dataDirectory, "logs"));
         var openLogs = UiTheme.Button("打开日志目录", (_, _) =>
         {
@@ -104,7 +104,7 @@ public sealed partial class MainForm
         _loggingState.ForeColor = _loggingDirty ? UiTheme.Warning : UiTheme.Muted;
         var status = _application.GetLoggingStatus();
         _loggingFileState.Text = $"日志队列：{status.PendingEntries:N0} 条；累计丢弃：{status.DroppedEntries:N0} 条；写入失败：{status.FailedEntries:N0} 条。"
-            + $"\n队列载荷：{status.PendingBytes / 1048576d:F2} MiB；可用磁盘：{(status.AvailableDiskBytes.HasValue ? (status.AvailableDiskBytes.Value / 1048576d).ToString("F0") + " MiB" : "未探测")}；磁盘保护：{(status.DiskProtectionActive ? "已暂停" : "未触发")}；保护丢弃：{status.DiskRejectedEntries:N0}。"
+            + $"\n队列载荷：{status.PendingBytes / 1048576d:F2} M；可用磁盘：{(status.AvailableDiskBytes.HasValue ? (status.AvailableDiskBytes.Value / 1048576d).ToString("F0") + " M" : "未探测")}；磁盘保护：{(status.DiskProtectionActive ? "已暂停" : "未触发")}；保护丢弃：{status.DiskRejectedEntries:N0}。"
             + (string.IsNullOrWhiteSpace(status.FileError) ? "" : "\n文件写入错误：" + status.FileError);
         _loggingFileState.ForeColor = string.IsNullOrWhiteSpace(status.FileError) ? UiTheme.Muted : UiTheme.Red;
     }

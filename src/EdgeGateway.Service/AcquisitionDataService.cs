@@ -118,7 +118,7 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
                     RemoveCached(sample.TagId);
                     foreach (var worker in _workers.Where(worker => worker.Group.Mode == DatabaseStorageMode.PointRows
                         ? worker.Accepts(sample.TagId) : worker.RequiredTags.Contains(sample.TagId)))
-                        worker.State.Drop(worker.Group.Id, 1, "单条采样超出 1 MiB 或结构复杂度限制，未进入数据库队列或字段映射缓存。");
+                        worker.State.Drop(worker.Group.Id, 1, "单条采样超出 1 M 或结构复杂度限制，未进入数据库队列或字段映射缓存。");
                     continue;
                 }
                 if (_mappedTags.Contains(sample.TagId) && _activeDevices.TryGetValue(deviceId, out var activeSince) && sample.Timestamp >= activeSince)
@@ -131,7 +131,7 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
                         _latestSizes[sample.TagId] = sampleBytes; _latestBytes += sampleBytes;
                     }
                     else foreach (var worker in _workers.Where(worker => worker.RequiredTags.Contains(sample.TagId)))
-                        worker.State.Drop(worker.Group.Id, 1, "自定义字段的最新采样缓存已达 64 MiB 配额，未使用旧值生成新行。");
+                        worker.State.Drop(worker.Group.Id, 1, "自定义字段的最新采样缓存已达 64 M 配额，未使用旧值生成新行。");
                 }
                 DatabaseWriteRow? row = null;
                 foreach (var worker in _workers.Where(worker => worker.Group.Mode == DatabaseStorageMode.PointRows && worker.Accepts(sample.TagId)))
@@ -323,7 +323,7 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
         public void Enqueue(DatabaseWriteRow row)
         {
             var bytes = DatabaseRowMapper.EstimateBytes(row);
-            if (bytes > 1024 * 1024) { State.Drop(Group.Id, 1, $"写入组 [{Group.Name}] 单行超过 1 MiB，已拒绝该行。"); return; }
+            if (bytes > 1024 * 1024) { State.Drop(Group.Id, 1, $"写入组 [{Group.Name}] 单行超过 1 M，已拒绝该行。"); return; }
             if (!State.Reserve(bytes)) { State.Drop(Group.Id, 1, "写入队列已达行数或内存配额，拒绝新记录；已有记录继续重试。"); return; }
             if (!_queue.Writer.TryWrite(new(row, bytes))) { State.Release(1, bytes); State.Drop(Group.Id, 1, "写入队列已关闭，记录未入库。"); }
         }

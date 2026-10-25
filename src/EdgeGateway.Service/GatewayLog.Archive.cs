@@ -15,7 +15,7 @@ public sealed partial class GatewayLog
         ArgumentNullException.ThrowIfNull(query);
         if (query.From > query.To || !Enum.IsDefined(query.MinimumLevel) || query.Text is null || query.Text.Length > 256
             || query.Limit is < 1 or > 2000 || query.ScanLimitMb is < 1 or > 64)
-            throw new ArgumentException("日志查询要求开始时间不晚于结束时间、关键词不超过 256 字符、1–2000 行及 1–64 MiB 扫描上限。", nameof(query));
+            throw new ArgumentException("日志查询要求开始时间不晚于结束时间、关键词不超过 256 字符、1–2000 行及 1–64 M 扫描上限。", nameof(query));
         // Directory enumeration, JSON parsing and sorting must not run on the WinForms thread.
         return Task.Run(() => QueryFilesAsync(query, cancellationToken), cancellationToken);
     }

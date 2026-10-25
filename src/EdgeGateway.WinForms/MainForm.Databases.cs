@@ -65,7 +65,7 @@ public sealed partial class MainForm
             return new DatabaseConnectionRow(connection.Id, connection.Name, DatabaseUiText.Provider(connection.Provider),
                 $"{connection.Host}:{connection.Port} / {connection.Database}", state, status?.QueuedRows ?? 0, status?.WrittenRows ?? 0,
                 $"{status?.DroppedRows ?? 0} / {status?.SkippedRows ?? 0}", status?.Error ?? "—",
-                $"{(status?.QueuedBytes ?? 0) / 1048576d:F2} MiB / {status?.PeakQueuedRows ?? 0:N0} 行" + (status?.IsBackpressured == true ? "（高水位）" : ""),
+                $"{(status?.QueuedBytes ?? 0) / 1048576d:F2} M / {status?.PeakQueuedRows ?? 0:N0} 行" + (status?.IsBackpressured == true ? "（高水位）" : ""),
                 $"{status?.FailedBatches ?? 0} / {status?.RetriedBatches ?? 0} / {status?.TimedOutOperations ?? 0}",
                 $"{status?.InFlightBatches ?? 0} 批 / {status?.LastWriteMilliseconds ?? 0:F1} ms");
         }).ToArray();
