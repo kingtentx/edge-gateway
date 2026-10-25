@@ -81,16 +81,16 @@ public sealed partial class MainForm
                 "point selection, field sources, or typed constant did not round-trip.");
             editor.LoadColumnsForSmoke(columns);
             Check(RecordingSmokeJson(valueBeforeRefresh) == RecordingSmokeJson(editor.CommitForSmoke()), "refresh lost mapping drafts.");
-            var name = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DatabaseGroupName");
-            name.Text = "  " + original.Name + "  ";
+            var nameInput = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DatabaseGroupName");
+            nameInput.Text = "  " + original.Name + "  ";
             editor.ShowMappingForSmoke();
             EditorValidationException? nameError = null;
             try { await editor.ApplyAndAcceptForSmokeAsync(); } catch (EditorValidationException exception) { nameError = exception; }
-            Check(nameError?.Field == name && nameError.Message.Contains("已存在") && name.Focused,
+            Check(nameError?.Field == nameInput && nameError.Message.Contains("已存在") && nameInput.Focused,
                 "duplicate group name did not reveal and focus the name input from the mapping tab.");
             Check(editor.Visible && editor.DialogResult != DialogResult.OK && _application.GetConfiguration().DatabaseWriteGroups.Count == 2,
                 "rejected save closed the dialog or changed the saved groups.");
-            name.Text = group.Name;
+            nameInput.Text = group.Name;
             Check(RecordingSmokeJson(valueBeforeRefresh) == RecordingSmokeJson(editor.CommitForSmoke()), "name validation lost mapping drafts.");
             editor.ShowMappingForSmoke();
             var table = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DatabaseTable");
