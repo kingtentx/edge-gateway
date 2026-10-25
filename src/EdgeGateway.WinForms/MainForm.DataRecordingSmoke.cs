@@ -5,7 +5,7 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private void SmokeCustomPointMapping()
+    private async Task SmokeCustomPointMappingAsync()
     {
         if (!_smokeTest) throw new InvalidOperationException("Database mapping smoke requires an isolated smoke host.");
         static void Check(bool condition, string message)
@@ -13,8 +13,14 @@ public sealed partial class MainForm
         var connection = RecordingConnectionFixture();
         var device = new DeviceConfiguration { Name = "映射验证设备", DriverId = "simulator",
             Tags = [new() { Name = "温度" }, new() { Name = "计数" }] };
-        var group = new DatabaseWriteGroupConfiguration { ConnectionId = connection.Id, Table = "custom_samples",
-            TagIds = device.Tags.Select(tag => tag.Id).ToList() };
+        var original = new DatabaseWriteGroupConfiguration { ConnectionId = connection.Id };
+        var other = new DatabaseWriteGroupConfiguration { ConnectionId = connection.Id, Name = "采集数据（2）" };
+        await _application.ApplyDatabaseSettingsAsync([connection], [original, other]);
+        var group = DatabaseUiText.NewWriteGroup(connection.Id, _application.GetConfiguration().DatabaseWriteGroups);
+        Check(group.Name == "采集数据（3）" && group.Id != original.Id && group.Id != other.Id, "new group name or stable identity collides.");
+        group.Table = "custom_samples"; group.TagIds = device.Tags.Select(tag => tag.Id).ToList();
+        using (var existing = new DatabaseWriteGroupDialog(original, [connection], [device], _application))
+            Check(existing.CommitForSmoke().Id == original.Id, "editing an existing group falsely rejects its own name or changes its identity.");
         var before = RecordingSmokeJson(group);
         using var editor = new DatabaseWriteGroupDialog(group, [connection], [device], _application);
         editor.Show(this);
@@ -75,6 +81,18 @@ public sealed partial class MainForm
                 "point selection, field sources, or typed constant did not round-trip.");
             editor.LoadColumnsForSmoke(columns);
             Check(RecordingSmokeJson(valueBeforeRefresh) == RecordingSmokeJson(editor.CommitForSmoke()), "refresh lost mapping drafts.");
+            var name = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DatabaseGroupName");
+            name.Text = "  " + original.Name + "  ";
+            editor.ShowMappingForSmoke();
+            EditorValidationException? nameError = null;
+            try { await editor.ApplyAndAcceptForSmokeAsync(); } catch (EditorValidationException exception) { nameError = exception; }
+            Check(nameError?.Field == name && nameError.Message.Contains("已存在") && name.Focused,
+                "duplicate group name did not reveal and focus the name input from the mapping tab.");
+            Check(editor.Visible && editor.DialogResult != DialogResult.OK && _application.GetConfiguration().DatabaseWriteGroups.Count == 2,
+                "rejected save closed the dialog or changed the saved groups.");
+            name.Text = group.Name;
+            Check(RecordingSmokeJson(valueBeforeRefresh) == RecordingSmokeJson(editor.CommitForSmoke()), "name validation lost mapping drafts.");
+            editor.ShowMappingForSmoke();
             var table = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DatabaseTable");
             table.Text = "other_table";
             rejected = false;
@@ -95,7 +113,7 @@ public sealed partial class MainForm
             grid.EndEdit(); grid.CurrentCell = grid.Rows[1].Cells["Column"]; grid.HorizontalScrollingOffset = 0;
             SaveEditorScreenshot(editor, "recording", "custom-point-mapping");
             AssertRecordingSmokeUnchanged(before, group, "custom point mapping source isolation");
-            Console.WriteLine($"Custom point mapping smoke passed: mode switch, field metadata fixture, generated id, editable sources/types/constant, selected points, refresh and target invalidation at actual {DeviceDpi} DPI; no external database contacted.");
+            Console.WriteLine($"Custom point mapping smoke passed: unique new names, editing identity, duplicate-name focus and draft retention, mode switch, field metadata fixture, generated id, editable sources/types/constant, selected points, refresh and target invalidation at actual {DeviceDpi} DPI; no external database contacted.");
         }
         finally { editor.Close(); }
     }

@@ -77,6 +77,7 @@ TCP 读取按协议长度组帧，不假设一次 `ReadAsync` 得到完整报文
 
 ## 5. 保持数据与配置可靠
 
+- 数据库写入组新增默认名须避开全部已保存组名（忽略前后空格/大小写）；编辑按稳定 ID 排除自身。名称重复与长度错误分开提示，重名保存定位到名称输入框且保留字段映射草稿，不通过放宽唯一性约束解决默认名冲突。
 - 日志主文件使用 `yyyyMMdd.log`（UTC 写入日期），大小轮转使用 `yyyyMMdd.001.log` 等未占用序号，不再加 `gateway-` 前缀。采样文件使用扁平 JSON，仅保留一次采样时间、设备/点位身份、地址、原始值/工程值及实际质量；去掉 level/kind/sample 包装和 numericValue，空 unit/error 不写入，有错误时保留错误及失败空值。查询/导出识别精简记录，已有日志仍可查询并按保留策略清理。
 - 配置在 SQLite 中保存 schema 3 的 JSON 内容，UTF-8 JSON 文件只作导入/导出；使用稳定 Guid、枚举名称和 `SchemaVersion`。设备、点位与导入使用独立候选，经 `IGatewayApplication` 基于最新配置提交，内部通过 `GatewayRuntime.ApplyConfigurationAsync(candidate, configurationStore, cancellationToken)` 在生命周期锁内校验、以 SQLite WAL/FULL 事务更新当前及上一份同版本配置，再应用运行时；禁止 UI 自行保存或调用仅适合全停初始化的 `Configure`。首次启动默认设备前由应用层先落盘，保持重启后的设备和点位 ID 稳定。
 - 仅在配置数据库没有当前配置时创建演示配置。损坏、无效或版本不支持的配置应显示错误，不静默重置；不读取旧 gateway.json / gateway.db。

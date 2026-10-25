@@ -45,7 +45,8 @@ public static partial class DataRecordingConfigurationValidator
             if (group is null) { errors.Add("数据库写入组列表包含空对象。"); continue; }
             var label = $"写入组 [{group.Name}]";
             if (group.Id == Guid.Empty || !groupIds.Add(group.Id)) errors.Add($"{label} 标识为空或重复。");
-            if (!ValidName(group.Name) || !groupNames.Add(group.Name.Trim())) errors.Add($"{label} 名称须为 1–100 字符且不能重复。");
+            if (!ValidName(group.Name)) errors.Add($"{label} 名称须为 1–100 字符且不能包含控制字符。");
+            else if (!groupNames.Add(group.Name.Trim())) errors.Add($"{label} 名称已存在，请在“写入设置”中使用其他名称。");
             if (!connections.ContainsKey(group.ConnectionId)) errors.Add($"{label} 引用了不存在的数据库连接。");
             if (!Enum.IsDefined(group.Mode)) errors.Add($"{label} 存储模式无效。");
             if (!IsIdentifier(group.Table) || (!string.IsNullOrEmpty(group.Schema) && !IsIdentifier(group.Schema)))

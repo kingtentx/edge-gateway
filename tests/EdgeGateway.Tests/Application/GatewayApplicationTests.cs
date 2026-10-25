@@ -399,6 +399,36 @@ public sealed class GatewayApplicationTests
         Assert.Equal(connection.Id, Assert.Single(h.App.GetConfiguration().Databases).Id);
         Assert.Equal(group.Id, Assert.Single((await h.App.ReadSavedConfigurationAsync()).DatabaseWriteGroups).Id);
     }
+    [Fact]
+    public async Task DatabaseMappingSaveRejectsDuplicateNamesAndAllowsEditingTheSameGroup()
+    {
+        await using var h = await Harness.CreateAsync();
+        var connection = new DatabaseConnectionConfiguration { Name = "mapping save fixture", Enabled = false };
+        var original = new DatabaseWriteGroupConfiguration { ConnectionId = connection.Id };
+        await h.App.ApplyDatabaseSettingsAsync([connection], [original]);
+        var mapping = new DatabaseWriteGroupConfiguration
+        {
+            ConnectionId = connection.Id, Name = "  " + original.Name + "  ", Table = "custom_samples",
+            Mode = DatabaseStorageMode.PointMapping, TagIds = [h.A.Tags[0].Id],
+            Columns = [new() { Column = "_NAME", Source = DatabaseValueSource.TagName },
+                new() { Column = "_QUALITY", Source = DatabaseValueSource.Constant, FieldType = DatabaseFieldType.Int64, ConstantValue = "7" }]
+        };
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => h.App.ApplyDatabaseSettingsAsync([connection], [original, mapping]));
+        Assert.Contains("名称已存在", error.Message);
+        Assert.DoesNotContain("1–100", error.Message);
+        Assert.Equal(original.Id, Assert.Single(h.App.GetConfiguration().DatabaseWriteGroups).Id);
+        Assert.Equal(original.Id, Assert.Single((await h.App.ReadSavedConfigurationAsync()).DatabaseWriteGroups).Id);
+        mapping.Name = "采集数据（2）";
+        await h.App.ApplyDatabaseSettingsAsync([connection], [original, mapping]);
+        mapping.Columns[1].ConstantValue = "9";
+        await h.App.ApplyDatabaseSettingsAsync([connection], [original, mapping]);
+        var saved = (await h.App.ReadSavedConfigurationAsync()).DatabaseWriteGroups;
+        Assert.Equal(2, saved.Count);
+        Assert.Equal(original.Id, saved[0].Id);
+        Assert.Equal(mapping.Id, saved[1].Id);
+        Assert.Equal("9", saved[1].Columns[1].ConstantValue);
+    }
+
     private static DeviceConfiguration Device(string name) => new()
     {
         Name = name, DriverId = "simulator", PollIntervalMs = 100, TimeoutMs = 1000,

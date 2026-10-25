@@ -234,7 +234,7 @@ public sealed partial class MainForm : DpiAwareForm
     {
         if (_databaseMappingSmoke)
         {
-            try { SmokeCustomPointMapping(); }
+            try { await SmokeCustomPointMappingAsync(); }
             catch (Exception exception)
             {
                 SmokeTestFailed = true;

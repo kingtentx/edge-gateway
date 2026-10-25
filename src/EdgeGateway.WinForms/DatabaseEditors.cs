@@ -5,6 +5,15 @@ namespace EdgeGateway.WinForms;
 
 internal static class DatabaseUiText
 {
+    internal static DatabaseWriteGroupConfiguration NewWriteGroup(Guid connectionId, IReadOnlyList<DatabaseWriteGroupConfiguration> groups)
+    {
+        var draft = new DatabaseWriteGroupConfiguration { ConnectionId = connectionId };
+        var names = groups.Select(group => group.Name.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var baseName = draft.Name;
+        for (var suffix = 2; names.Contains(draft.Name); suffix++) draft.Name = $"{baseName}（{suffix}）";
+        return draft;
+    }
+
     internal static string Provider(ExternalDatabaseProvider value) => value switch
     { ExternalDatabaseProvider.MySql => "MySQL", ExternalDatabaseProvider.PostgreSql => "PostgreSQL", _ => "Oracle" };
     internal static string Mode(DatabaseStorageMode value) => value switch
@@ -394,6 +403,11 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
     {
         if (_loading) throw new InvalidOperationException("数据库操作尚未完成，请稍后保存。");
         var value = GatewayJson.Clone(_source); value.Name = Required(_name, "写入组名称"); value.Enabled = _enabled.Checked;
+        if (value.Name.Length > 100 || value.Name.Any(char.IsControl))
+            throw new EditorValidationException("写入组名称须为 1–100 字符，不能包含控制字符。", _name);
+        if (_application.GetConfiguration().DatabaseWriteGroups.Any(group => group.Id != value.Id
+            && string.Equals(group.Name.Trim(), value.Name, StringComparison.OrdinalIgnoreCase)))
+            throw new EditorValidationException($"写入组名称“{value.Name}”已存在，请在“写入设置”中使用其他名称。字段映射已保留。", _name);
         value.ConnectionId = CurrentConnection().Id; value.Mode = (DatabaseStorageMode)_mode.SelectedItem!;
         var table = CurrentTable(); value.Schema = table.Schema; value.Table = table.Name;
         value.WriteIntervalMs = (int)_interval.Value; value.MaxSampleAgeMs = (int)_maxAge.Value; value.RequireGoodQuality = _goodOnly.Checked;

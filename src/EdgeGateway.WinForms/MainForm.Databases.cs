@@ -125,10 +125,11 @@ public sealed partial class MainForm
     private Task EditDatabaseGroupAsync(bool isNew)
     {
         RequireDatabaseStopped();
-        if (_configuration.Databases.Count == 0) throw new InvalidOperationException("请先在“数据库连接”页添加连接。");
-        var source = isNew ? new DatabaseWriteGroupConfiguration { ConnectionId = _configuration.Databases[0].Id }
-            : _configuration.DatabaseWriteGroups.Single(group => group.Id == SelectedDatabaseGroupId());
-        using var editor = new DatabaseWriteGroupDialog(source, _configuration.Databases, _configuration.Devices, _application);
+        var configuration = _application.GetConfiguration();
+        if (configuration.Databases.Count == 0) throw new InvalidOperationException("请先在“数据库连接”页添加连接。");
+        var source = isNew ? DatabaseUiText.NewWriteGroup(configuration.Databases[0].Id, configuration.DatabaseWriteGroups)
+            : configuration.DatabaseWriteGroups.Single(group => group.Id == SelectedDatabaseGroupId());
+        using var editor = new DatabaseWriteGroupDialog(source, configuration.Databases, configuration.Devices, _application);
         editor.SetApplyHandler(async () =>
         {
             var current = _application.GetConfiguration(); var index = current.DatabaseWriteGroups.FindIndex(group => group.Id == source.Id);
