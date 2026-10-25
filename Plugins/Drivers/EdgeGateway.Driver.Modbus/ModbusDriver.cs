@@ -33,42 +33,52 @@ internal sealed class ModbusDriver(DeviceConfiguration configuration, IModbusTra
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            var results = new List<TagReadResult>(tags.Count);
-            foreach (var tag in tags.Where(t => t.Enabled))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var address = ModbusValidation.ValidateTag(tag);
-                var isBit = tag.Area is ModbusArea.Coil or ModbusArea.DiscreteInput;
-                var quantity = isBit ? 1 : RegisterCodec.GetRegisterCount(tag.DataType);
-                var function = tag.Area switch
-                {
-                    ModbusArea.Coil => (byte)1,
-                    ModbusArea.DiscreteInput => (byte)2,
-                    ModbusArea.HoldingRegister => (byte)3,
-                    ModbusArea.InputRegister => (byte)4,
-                    _ => throw new ArgumentException("寄存区无效。")
-                };
-                var request = new byte[5];
-                request[0] = function;
-                BinaryPrimitives.WriteUInt16BigEndian(request.AsSpan(1), address);
-                BinaryPrimitives.WriteUInt16BigEndian(request.AsSpan(3), checked((ushort)quantity));
-                try
-                {
-                    var response = await ExchangeAsync(request, cancellationToken).ConfigureAwait(false);
-                    var byteCount = isBit ? 1 : quantity * 2;
-                    if (response.Length != byteCount + 2 || response[1] != byteCount)
-                        await FailFrameAsync("Modbus 响应字节数与请求不一致。").ConfigureAwait(false);
-                    object raw = isBit ? (response[2] & 1) != 0 : RegisterCodec.Decode(response.AsSpan(2), tag.DataType, tag.ByteOrder);
-                    if (raw is float f && !float.IsFinite(f) || raw is double d && !double.IsFinite(d))
-                        results.Add(new(tag.Id, null, SampleQuality.Bad, "设备返回 NaN 或 Infinity。"));
-                    else
-                        results.Add(new(tag.Id, raw));
-                }
-                catch (ModbusDeviceException ex) { results.Add(new(tag.Id, null, SampleQuality.Bad, ex.Message)); }
-            }
+            var batches = ModbusReadPlanner.Build(tags);
+            var results = new TagReadResult[batches.Sum(batch => batch.Points.Count)];
+            foreach (var batch in batches)
+                await ReadBatchAsync(batch, results, cancellationToken).ConfigureAwait(false);
             return results;
         }
         finally { _operation.Release(); }
+    }
+
+    private async Task ReadBatchAsync(ModbusReadBatch batch, TagReadResult[] results, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var request = new byte[5];
+        request[0] = batch.Function;
+        BinaryPrimitives.WriteUInt16BigEndian(request.AsSpan(1), batch.Address);
+        BinaryPrimitives.WriteUInt16BigEndian(request.AsSpan(3), checked((ushort)batch.Quantity));
+        try
+        {
+            var response = await ExchangeAsync(request, cancellationToken).ConfigureAwait(false);
+            var isBit = batch.Function <= 2;
+            var byteCount = isBit ? (batch.Quantity + 7) / 8 : batch.Quantity * 2;
+            if (response.Length != byteCount + 2 || response[1] != byteCount)
+                await FailFrameAsync("Modbus 响应字节数与请求不一致。").ConfigureAwait(false);
+            foreach (var point in batch.Points)
+            {
+                var offset = point.Address - batch.Address;
+                object raw = isBit ? (response[2 + offset / 8] & (1 << (offset % 8))) != 0
+                    : RegisterCodec.Decode(response.AsSpan(2 + offset * 2, point.Quantity * 2), point.Tag.DataType, point.Tag.ByteOrder);
+                results[point.Index] = raw is float f && !float.IsFinite(f) || raw is double d && !double.IsFinite(d)
+                    ? new(point.Tag.Id, null, SampleQuality.Bad, "设备返回 NaN 或 Infinity。")
+                    : new(point.Tag.Id, raw);
+            }
+        }
+        catch (ModbusDeviceException ex) when (batch.Points.Count > 1 && ex.Code is 2 or 3)
+        {
+            // Some devices reject block boundaries/lengths, or one address is invalid.
+            // At most one individual read per point; keep the caller's cycle deadline.
+            // Never retry writes, malformed frames, timeouts, or busy/device-failure responses.
+            foreach (var point in batch.Points)
+                await ReadBatchAsync(new(point.Function, point.Address, point.Quantity, [point]), results, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ModbusDeviceException ex)
+        {
+            foreach (var point in batch.Points)
+                results[point.Index] = new(point.Tag.Id, null, SampleQuality.Bad, ex.Message);
+        }
     }
 
     public async Task WriteAsync(TagConfiguration tag, object value, CancellationToken cancellationToken)
@@ -154,6 +164,7 @@ internal sealed class ModbusDriver(DeviceConfiguration configuration, IModbusTra
 
 internal sealed class ModbusDeviceException(byte code) : IOException($"Modbus 设备异常 0x{code:X2}：{Describe(code)}")
 {
+    public byte Code { get; } = code;
     private static string Describe(byte code) => code switch
     {
         1 => "不支持的功能码", 2 => "非法数据地址", 3 => "非法数据值", 4 => "设备故障",

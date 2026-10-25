@@ -6,7 +6,7 @@ using EdgeGateway.Model;
 
 namespace EdgeGateway.Tests.Drivers;
 
-public sealed class ModbusTcpTests
+public sealed partial class ModbusTcpTests
 {
     [Fact]
     public async Task Fragmented_tcp_responses_support_all_read_areas()
@@ -57,7 +57,8 @@ public sealed class ModbusTcpTests
         await using var server = new TcpServer(async (stream, token) =>
         {
             var request = await ReadRequestAsync(stream, token);
-            var response = Response(request, [3, 2, 0, 42]);
+            Assert.Equal((ushort)2, BinaryPrimitives.ReadUInt16BigEndian(request.AsSpan(10)));
+            var response = Response(request, [3, 4, 0, 42, 0, 7]);
             switch (defect)
             {
                 case "transaction": response[1] ^= 1; break;
@@ -72,9 +73,10 @@ public sealed class ModbusTcpTests
             await AssertPeerClosedAsync(stream, token);
         });
         var tag = new TagConfiguration { Address = "0" };
-        await using var driver = new ModbusTcpDriverFactory().Create(server.Configuration([tag]));
+        var tags = new List<TagConfiguration> { tag, new() { Address = "1" } };
+        await using var driver = new ModbusTcpDriverFactory().Create(server.Configuration(tags));
         await driver.ConnectAsync(server.Token);
-        await Assert.ThrowsAsync<InvalidDataException>(() => driver.ReadAsync([tag], server.Token));
+        await Assert.ThrowsAsync<InvalidDataException>(() => driver.ReadAsync(tags, server.Token));
         await Assert.ThrowsAsync<IOException>(() => driver.ReadAsync([tag], server.Token));
         await server.Completion;
     }
@@ -84,9 +86,14 @@ public sealed class ModbusTcpTests
     {
         await using var server = new TcpServer(async (stream, token) =>
         {
+            var batch = await ReadRequestAsync(stream, token);
+            Assert.Equal((ushort)2, BinaryPrimitives.ReadUInt16BigEndian(batch.AsSpan(10)));
+            await stream.WriteAsync(Response(batch, [0x83, 2]), token);
             var first = await ReadRequestAsync(stream, token);
+            Assert.Equal((ushort)1, BinaryPrimitives.ReadUInt16BigEndian(first.AsSpan(10)));
             await stream.WriteAsync(Response(first, [0x83, 2]), token);
             var second = await ReadRequestAsync(stream, token);
+            Assert.Equal((ushort)1, BinaryPrimitives.ReadUInt16BigEndian(second.AsSpan(8)));
             await stream.WriteAsync(Response(second, [3, 2, 0, 7]), token);
         });
         var tags = new List<TagConfiguration> { new() { Address = "0" }, new() { Address = "1" } };
@@ -111,16 +118,17 @@ public sealed class ModbusTcpTests
             await AssertPeerClosedAsync(stream, token);
         });
         var tag = new TagConfiguration { Address = "0" };
-        var configuration = server.Configuration([tag]);
+        var tags = new List<TagConfiguration> { tag, new() { Address = "1" } };
+        var configuration = server.Configuration(tags);
         configuration.TimeoutMs = cancel ? 3000 : 100;
         await using var driver = new ModbusTcpDriverFactory().Create(configuration);
         await driver.ConnectAsync(server.Token);
         using var cancellation = new CancellationTokenSource();
         if (cancel) cancellation.CancelAfter(100);
         if (cancel)
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => driver.ReadAsync([tag], cancellation.Token));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => driver.ReadAsync(tags, cancellation.Token));
         else
-            await Assert.ThrowsAsync<TimeoutException>(() => driver.ReadAsync([tag], server.Token));
+            await Assert.ThrowsAsync<TimeoutException>(() => driver.ReadAsync(tags, server.Token));
         await Assert.ThrowsAsync<IOException>(() => driver.ReadAsync([tag], server.Token));
         await server.Completion;
     }
