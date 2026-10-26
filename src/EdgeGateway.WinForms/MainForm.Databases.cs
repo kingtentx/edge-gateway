@@ -4,12 +4,18 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private readonly TabControl _databaseTabs = new EditorLayout.EditorTabs { Name = "DatabaseTabs", Dock = DockStyle.Fill, Multiline = true };
-    private readonly DataGridView _databaseGrid = UiTheme.Grid(), _databaseGroupGrid = UiTheme.Grid();
-    private readonly Label _databaseState = UiTheme.Label("默认采集结果写入日志。需要长期查询时，添加外部数据库并配置写入组。", 10, UiTheme.Muted);
+    private TabControl _databaseTabs = null!;
+    private DataGridView _databaseGrid = null!, _databaseGroupGrid = null!;
+    private Label _databaseState = null!;
+    private DatabasePageView _databasePageView = null!;
 
     private Control BuildDatabasesPage()
     {
+        _databasePageView = new DatabasePageView();
+        _databaseTabs = _databasePageView.DatabaseTabs;
+        _databaseGrid = _databasePageView.ConnectionsGrid;
+        _databaseGroupGrid = _databasePageView.GroupsGrid;
+        _databaseState = _databasePageView.DatabaseState;
         _databaseGrid.Name = "DatabaseConnections"; _databaseGroupGrid.Name = "DatabaseWriteGroups";
         UiTheme.AddColumn(_databaseGrid, "Name", "连接名称", 150, 150); UiTheme.AddColumn(_databaseGrid, "Provider", "类型", 110, 110);
         UiTheme.AddColumn(_databaseGrid, "Target", "服务器 / 数据库", 220, 220); UiTheme.AddColumn(_databaseGrid, "State", "状态", 130, 130);
@@ -26,32 +32,19 @@ public sealed partial class MainForm
             var button = UiTheme.Button(name, async (_, _) => await RunBusyAsync(action));
             _stoppedConfigurationCommands.Add(button); return button;
         }
-        var connections = new TabPage("数据库连接") { BackColor = Color.White };
-        connections.Controls.Add(DatabasePanel(UiTheme.Toolbar(
+        _databasePageView.ConnectionsToolbarHost.Controls.Add(UiTheme.Toolbar(
             Change("添加连接", () => EditDatabaseConnectionAsync(true)), Change("编辑连接", () => EditDatabaseConnectionAsync(false)),
             Change("启用 / 停用连接", ToggleDatabaseConnectionAsync), Change("删除连接", DeleteDatabaseConnectionAsync),
-            UiTheme.Button("测试连接", async (_, _) => await RunBusyAsync(TestSelectedDatabaseAsync))), _databaseGrid));
-        var groups = new TabPage("采集写入组") { BackColor = Color.White };
-        groups.Controls.Add(DatabasePanel(UiTheme.Toolbar(
+            UiTheme.Button("测试连接", async (_, _) => await RunBusyAsync(TestSelectedDatabaseAsync))));
+        _databasePageView.GroupsToolbarHost.Controls.Add(UiTheme.Toolbar(
             Change("添加写入组", () => EditDatabaseGroupAsync(true)), Change("编辑写入组", () => EditDatabaseGroupAsync(false)),
-            Change("启用 / 停用写入组", ToggleDatabaseGroupAsync), Change("删除写入组", DeleteDatabaseGroupAsync), UiTheme.Button("检查与预览", async (_, _) => await RunBusyAsync(PreviewSelectedDatabaseGroupAsync))), _databaseGroupGrid));
-        _databaseTabs.TabPages.Add(connections); _databaseTabs.TabPages.Add(groups);
+            Change("启用 / 停用写入组", ToggleDatabaseGroupAsync), Change("删除写入组", DeleteDatabaseGroupAsync),
+            UiTheme.Button("检查与预览", async (_, _) => await RunBusyAsync(PreviewSelectedDatabaseGroupAsync))));
         _databaseGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseConnectionAsync(false)); };
         _databaseGroupGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseGroupAsync(false)); };
-        var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = Padding.Empty };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); content.RowStyles.Add(new RowStyle(SizeType.AutoSize)); content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        _databaseState.Name = "DatabaseConfigurationState"; _databaseState.Dock = DockStyle.Fill; _databaseState.Margin = new Padding(8);
-        content.Controls.Add(_databaseState, 0, 0); content.Controls.Add(_databaseTabs, 0, 1);
-        content.SizeChanged += (_, _) => SetWrappingWidth(_databaseState, content.ClientSize.Width - 16);
-        return UiTheme.PageLayout("数据库", "配置 MySQL、PostgreSQL 或 Oracle；标准点行可直接查询历史，自定义映射写入已有业务表。", UiTheme.Toolbar(), content);
-    }
-
-    private Control DatabasePanel(FlowLayoutPanel toolbar, DataGridView grid)
-    {
-        var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = Padding.Empty };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); content.RowStyles.Add(new RowStyle(SizeType.AutoSize)); content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        content.Controls.Add(toolbar, 0, 0); content.Controls.Add(grid, 0, 1);
-        return ScrollableContent(content, grid.Name + "Viewport", () => toolbar.Height + UiTheme.Scale(content, 170));
+        _databaseState.Name = "DatabaseConfigurationState";
+        _databasePageView.SizeChanged += (_, _) => SetWrappingWidth(_databaseState, Math.Max(1, _databasePageView.ClientSize.Width - 16));
+        return _databasePageView;
     }
 
     private void BindDatabaseViews(Guid? connectionId = null, Guid? groupId = null)
