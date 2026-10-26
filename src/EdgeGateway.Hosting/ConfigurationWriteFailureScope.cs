@@ -12,7 +12,7 @@ internal sealed class ConfigurationWriteFailureScope : IDisposable
     {
         _connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath, Mode = SqliteOpenMode.ReadWrite, Pooling = false }.ToString();
         Execute("""
-            CREATE TRIGGER smoke_configuration_write_failure BEFORE INSERT ON configuration_versions
+            CREATE TRIGGER smoke_configuration_write_failure BEFORE INSERT ON configuration_snapshots
             WHEN NEW.slot = 'current'
             BEGIN SELECT RAISE(ABORT, 'smoke_configuration_write_rejected'); END;
             """);
