@@ -50,6 +50,7 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
                 group_id TEXT NOT NULL,
                 created_ms INTEGER NOT NULL,
                 payload TEXT NOT NULL,
+                target_fingerprint TEXT NOT NULL DEFAULT '',
                 payload_bytes INTEGER NOT NULL CHECK(payload_bytes >= 0),
                 row_count INTEGER NOT NULL CHECK(row_count > 0));
             CREATE INDEX IF NOT EXISTS ix_acquisition_spool_group_created
@@ -57,9 +58,21 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
             PRAGMA user_version=1;
             """;
         command.ExecuteNonQuery();
+        using var columns = connection.CreateCommand();
+        columns.CommandText = "PRAGMA table_info(acquisition_spool_batches)";
+        using var reader = columns.ExecuteReader();
+        var hasFingerprint = false;
+        while (reader.Read()) if (string.Equals(reader.GetString(1), "target_fingerprint", StringComparison.OrdinalIgnoreCase)) hasFingerprint = true;
+        reader.Close();
+        if (!hasFingerprint)
+        {
+            using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE acquisition_spool_batches ADD COLUMN target_fingerprint TEXT NOT NULL DEFAULT ''";
+            alter.ExecuteNonQuery();
+        }
     }
 
-    public async Task<string> AppendAsync(Guid groupId, IReadOnlyList<DatabaseWriteRow> rows, CancellationToken cancellationToken = default)
+    public async Task<string> AppendAsync(Guid groupId, IReadOnlyList<DatabaseWriteRow> rows, string targetFingerprint = "", CancellationToken cancellationToken = default)
     {
         if (groupId == Guid.Empty) throw new ArgumentException("写入组标识不能为空。", nameof(groupId));
         ArgumentNullException.ThrowIfNull(rows);
@@ -101,11 +114,12 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
             using (var insert = connection.CreateCommand())
             {
                 insert.Transaction = transaction;
-                insert.CommandText = "INSERT OR IGNORE INTO acquisition_spool_batches(batch_id,group_id,created_ms,payload,payload_bytes,row_count) VALUES($batch,$group,$created,$payload,$bytes,$rows)";
+                insert.CommandText = "INSERT OR IGNORE INTO acquisition_spool_batches(batch_id,group_id,created_ms,payload,target_fingerprint,payload_bytes,row_count) VALUES($batch,$group,$created,$payload,$fingerprint,$bytes,$rows)";
                 insert.Parameters.AddWithValue("$batch", batchId);
                 insert.Parameters.AddWithValue("$group", groupId.ToString("D"));
                 insert.Parameters.AddWithValue("$created", created.ToUnixTimeMilliseconds());
                 insert.Parameters.AddWithValue("$payload", payload);
+                insert.Parameters.AddWithValue("$fingerprint", targetFingerprint ?? "");
                 insert.Parameters.AddWithValue("$bytes", bytes);
                 insert.Parameters.AddWithValue("$rows", rows.Count);
                 insert.ExecuteNonQuery();
@@ -130,7 +144,7 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
             ThrowIfDisposed();
             using var connection = Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT batch_id,created_ms,payload,payload_bytes FROM acquisition_spool_batches WHERE group_id=$group ORDER BY created_ms,batch_id LIMIT $limit";
+            command.CommandText = "SELECT batch_id,created_ms,payload,target_fingerprint,payload_bytes FROM acquisition_spool_batches WHERE group_id=$group ORDER BY created_ms,batch_id LIMIT $limit";
             command.Parameters.AddWithValue("$group", groupId.ToString("D"));
             command.Parameters.AddWithValue("$limit", Math.Clamp(maxBatches, 1, 256));
             using var reader = command.ExecuteReader();
@@ -140,7 +154,7 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
                 cancellationToken.ThrowIfCancellationRequested();
                 var stored = JsonSerializer.Deserialize<StoredRow[]>(reader.GetString(2)) ?? throw new InvalidDataException("持久缓冲批次内容为空。");
                 batches.Add(new(groupId, reader.GetString(0), DateTimeOffset.FromUnixTimeMilliseconds(reader.GetInt64(1)),
-                    stored.Select(DecodeRow).ToArray(), reader.GetInt64(3)));
+                    reader.GetString(3), stored.Select(DecodeRow).ToArray(), reader.GetInt64(4)));
             }
             return batches.AsReadOnly();
         }
