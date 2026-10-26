@@ -60,12 +60,12 @@ internal sealed partial class HistoryPageView
         contentLayout.Dock = DockStyle.Fill;
         contentLayout.Margin = Padding.Empty;
         contentLayout.ColumnCount = 1;
-        contentLayout.RowCount = 5;
+        contentLayout.RowCount = 6;
         contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         querySummary.Name = "HistoryQuerySummary";
         querySummary.Dock = DockStyle.Fill;
@@ -74,7 +74,8 @@ internal sealed partial class HistoryPageView
         contentLayout.Controls.Add(descriptionLabel, 0, 1);
         contentLayout.Controls.Add(toolbarHost, 0, 2);
         contentLayout.Controls.Add(querySummary, 0, 3);
-        contentLayout.Controls.Add(historyGrid, 0, 4);
+        contentLayout.Controls.Add(trendChart, 0, 4);
+        contentLayout.Controls.Add(historyGrid, 0, 5);
         Controls.Add(contentLayout);
         contentLayout.ResumeLayout(false);
         contentLayout.PerformLayout();
