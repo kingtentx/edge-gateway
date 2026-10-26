@@ -86,7 +86,7 @@ public sealed partial class GatewayApplication
                 Tags = [new() { Name = "点位示例（请修改）", Address = "0" }] }
         } : deviceId.HasValue ? [FindDevice(current, deviceId.Value)] : current.Devices;
         var ids = devices.Select(device => device.ChannelId).ToHashSet();
-        return Workbooks.WriteDevicesAsync(path, new() { Devices = devices, Channels = current.Channels.Where(channel => ids.Contains(channel.Id)).ToList() }, cancellationToken);
+        return Workbooks.WriteDevicesAsync(path, new() { IsTemplate = template, Devices = devices, Channels = current.Channels.Where(channel => ids.Contains(channel.Id)).ToList() }, cancellationToken);
     }
 
     public Task<ConfigurationApplyResult> ImportTagFileAsync(Guid deviceId, byte[] content, TagCsvImportMode mode,

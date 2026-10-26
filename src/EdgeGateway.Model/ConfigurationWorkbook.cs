@@ -3,6 +3,7 @@ namespace EdgeGateway.Model;
 /// <summary>Portable device configuration only; excludes gateway, platform and database credentials.</summary>
 public sealed class DeviceConfigurationWorkbook
 {
+    public bool IsTemplate { get; set; }
     public List<ChannelConfiguration> Channels { get; set; } = [];
     public List<DeviceConfiguration> Devices { get; set; } = [];
 }

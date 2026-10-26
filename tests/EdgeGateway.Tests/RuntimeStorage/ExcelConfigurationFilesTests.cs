@@ -21,7 +21,7 @@ public sealed class ExcelConfigurationFilesTests : IDisposable
             PollIntervalMs = 123, TimeoutMs = 567, ScanMode = DeviceScanMode.TagRate, AutoDemotionEnabled = true,
             DemotionFailureCount = 7, DemotionIntervalMs = 45678, Host = "192.0.2.1", Port = 1502, UnitId = 3,
             SerialPortName = "COM17", BaudRate = 19200, DataBits = 7, Parity = "Even", StopBits = "Two",
-            Properties = new() { ["地址"] = "000001234567890123456789", ["literal"] = "=1+1" }, Tags = [Tag()]
+            Properties = new() { ["地址"] = "000001234567890123456789", ["literal"] = "=1+1", ["空值"] = "", ["特殊=参数"] = "C:\\Folder\n下一行\r结束" }, Tags = [Tag()]
         };
         var second = new DeviceConfiguration { Name = "设备二", ChannelId = channel.Id, Tags = [new() { Name = "另一点" }] };
         var input = new DeviceConfigurationWorkbook { Channels = [channel], Devices = [first, second] };
@@ -29,7 +29,7 @@ public sealed class ExcelConfigurationFilesTests : IDisposable
         var actual = await _files.ReadDevicesAsync(FilePath);
         Assert.Equal(System.Text.Json.JsonSerializer.Serialize(input), System.Text.Json.JsonSerializer.Serialize(actual));
         using var excel = new XLWorkbook(FilePath);
-        Assert.Equal(5, excel.Worksheets.Count);
+        Assert.Equal(new[] { "设备", "点位" }, excel.Worksheets.Select(sheet => sheet.Name));
         Assert.All(excel.Worksheets.SelectMany(sheet => sheet.CellsUsed()), cell => Assert.False(cell.HasFormula));
     }
 
@@ -77,33 +77,64 @@ public sealed class ExcelConfigurationFilesTests : IDisposable
         Assert.Contains("设备键", error.Message);
     }
 
-    [Theory]
-    [InlineData("设备", "通道键")]
-    [InlineData("点位", "设备键")]
-    [InlineData("驱动参数", "设备键")]
-    public async Task MissingCrossSheetReferencesAreRejected(string sheet, string column)
+    [Fact]
+    public async Task MissingDeviceKeyDoesNotSilentlyFallBackToName()
     {
-        await _files.WriteDevicesAsync(FilePath, new() { Devices = [new() { Tags = [Tag()], Properties = new() { ["x"] = "y" } }] });
-        Edit(excel => Cell(excel.Worksheet(sheet), column).Value = "missing");
+        await _files.WriteDevicesAsync(FilePath, new() { Devices = [new() { Tags = [Tag()] }] });
+        Edit(excel => Cell(excel.Worksheet("点位"), "设备键").Value = "missing");
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => _files.ReadDevicesAsync(FilePath));
         Assert.Contains("第 2 行", error.Message);
     }
 
     [Fact]
-    public async Task BlankIdsReceiveStableIdsAndResolveChannelByWorkbookKey()
+    public async Task TemplateLeavesAllKeysAndIdsBlankAndAssociatesMultipleDevicesByName()
     {
-        var channel = new ChannelConfiguration();
-        await _files.WriteDevicesAsync(FilePath, new() { Channels = [channel], Devices = [new() { ChannelId = channel.Id, Tags = [Tag()] }] });
-        Edit(excel =>
+        var channel = new ChannelConfiguration { Name = "共享通道" };
+        var input = new DeviceConfigurationWorkbook { IsTemplate = true, Channels = [channel], Devices = [
+            new() { Name = "设备一", ChannelId = channel.Id, Tags = [Tag()] },
+            new() { Name = "设备二", ChannelId = channel.Id, Tags = [Tag()] }] };
+        await _files.WriteDevicesAsync(FilePath, input);
+        using (var excel = new XLWorkbook(FilePath))
         {
-            Cell(excel.Worksheet("设备"), "设备标识").Clear();
-            Cell(excel.Worksheet("通道"), "通道标识").Clear();
-            Cell(excel.Worksheet("点位"), "点位标识").Clear();
-        });
+            Assert.Equal(2, excel.Worksheets.Count);
+            foreach (var sheet in excel.Worksheets)
+                foreach (var header in sheet.Row(1).CellsUsed().Where(cell => cell.GetString().EndsWith("键") || cell.GetString().EndsWith("标识") && cell.GetString() != "驱动标识"))
+                    Assert.All(sheet.Column(header.Address.ColumnNumber).CellsUsed().Where(cell => cell.Address.RowNumber > 1), cell => Assert.True(cell.IsEmpty()));
+        }
         var actual = await _files.ReadDevicesAsync(FilePath);
-        Assert.NotEqual(channel.Id, actual.Channels[0].Id);
-        Assert.Equal(actual.Channels[0].Id, actual.Devices[0].ChannelId);
-        Assert.NotEqual(Guid.Empty, actual.Devices[0].Tags[0].Id);
+        Assert.Equal(2, actual.Devices.Count);
+        Assert.Single(actual.Channels);
+        Assert.All(actual.Devices, device => Assert.Equal(actual.Channels[0].Id, device.ChannelId));
+        Assert.All(actual.Devices, device => Assert.Single(device.Tags));
+        Assert.DoesNotContain(actual.Devices[0].Id, input.Devices.Select(device => device.Id));
+        Assert.NotEqual(actual.Devices[0].Tags[0].Id, actual.Devices[1].Tags[0].Id);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("")]
+    public async Task BlankKeyRequiresMatchingDeviceName(string name)
+    {
+        await _files.WriteDevicesAsync(FilePath, new() { IsTemplate = true, Devices = [new() { Tags = [Tag()] }] });
+        Edit(excel => Cell(excel.Worksheet("点位"), "设备名称").Value = name);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => _files.ReadDevicesAsync(FilePath));
+        Assert.Contains("设备名称", error.Message);
+    }
+
+    [Fact]
+    public async Task AmbiguousNameWithBlankKeysIsRejected()
+    {
+        await _files.WriteDevicesAsync(FilePath, new() { IsTemplate = true, Devices = [new() { Name = "同名", Tags = [Tag()] }, new() { Name = "同名" }] });
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => _files.ReadDevicesAsync(FilePath));
+        Assert.Contains("重名", error.Message);
+    }
+
+    [Fact]
+    public async Task StandalonePointsHaveOnlyOneSheet()
+    {
+        await _files.WriteTagsAsync(FilePath, [Tag()]);
+        using var excel = new XLWorkbook(FilePath);
+        Assert.Equal("点位", Assert.Single(excel.Worksheets).Name);
     }
 
     [Fact]

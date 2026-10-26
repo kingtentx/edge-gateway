@@ -7,7 +7,7 @@ using EdgeGateway.Model;
 namespace EdgeGateway.DataAccess;
 
 /// <summary>Bounded .xlsx exchange with literal text cells, explicit column maps and no formula evaluation.</summary>
-public sealed class ExcelConfigurationFiles : IConfigurationWorkbookFiles
+public sealed partial class ExcelConfigurationFiles : IConfigurationWorkbookFiles
 {
     public const int MaxFileBytes = 8 * 1024 * 1024;
     private const int MaxRows = 20000;
@@ -85,15 +85,7 @@ public sealed class ExcelConfigurationFiles : IConfigurationWorkbookFiles
         return Task.Run(() =>
         {
             using var excel = new XLWorkbook();
-            AddInstructions(excel, true);
-            WriteSheet(excel, "设备", new[] { "设备键", "通道键" }.Concat(DeviceColumns.Select(c => c.Header)),
-                captured.Devices.Select(device => new[] { device.Id.ToString("D"), device.ChannelId?.ToString("D") ?? "" }.Concat(Values(device, DeviceColumns))), cancellationToken);
-            WriteSheet(excel, "通道", new[] { "通道键" }.Concat(ChannelColumns.Select(c => c.Header)),
-                captured.Channels.Select(channel => new[] { channel.Id.ToString("D") }.Concat(Values(channel, ChannelColumns))), cancellationToken);
-            WriteSheet(excel, "驱动参数", ["设备键", "参数名", "参数值"],
-                captured.Devices.SelectMany(device => device.Properties.Select(pair => new[] { device.Id.ToString("D"), pair.Key, pair.Value })), cancellationToken);
-            WriteSheet(excel, "点位", new[] { "设备键" }.Concat(TagColumns.Select(c => c.Header)),
-                captured.Devices.SelectMany(device => device.Tags.Select(tag => new[] { device.Id.ToString("D") }.Concat(Values(tag, TagColumns)))), cancellationToken);
+            WriteSimpleDevices(excel, captured, cancellationToken);
             Save(excel, path, cancellationToken);
         }, cancellationToken);
     }
@@ -105,15 +97,13 @@ public sealed class ExcelConfigurationFiles : IConfigurationWorkbookFiles
         {
             if (captured.Count > 2000) throw new InvalidDataException("每台设备最多导出 2000 个点位。");
             using var excel = new XLWorkbook();
-            AddInstructions(excel, false);
             WriteSheet(excel, "点位", PointColumns.Select(c => c.Header), captured.Select(tag => Values(tag, PointColumns)), cancellationToken);
             Save(excel, path, cancellationToken);
         }, cancellationToken);
     }
 
-    private static DeviceConfigurationWorkbook ReadDevices(string path, CancellationToken token)
+    private static DeviceConfigurationWorkbook ReadLegacyDevices(XLWorkbook excel, CancellationToken token)
     {
-        using var excel = Open(path);
         var channels = new Dictionary<string, ChannelConfiguration>(StringComparer.Ordinal);
         foreach (var row in ReadRows(RequiredSheet(excel, "通道"), new[] { "通道键" }.Concat(ChannelColumns.Select(c => c.Header)), token))
         {
@@ -296,30 +286,6 @@ public sealed class ExcelConfigurationFiles : IConfigurationWorkbookFiles
             rowIndex++;
         }
         sheet.Range(1, 1, Math.Max(1, rowIndex - 1), columns.Length).SetAutoFilter();
-    }
-
-    private static void AddInstructions(XLWorkbook workbook, bool devices)
-    {
-        var sheet = workbook.AddWorksheet("填写说明");
-        var lines = new List<string>
-        {
-            "Edge Gateway 配置信息工作簿",
-            "请保留工作表名称和表头；导入前预览并校验，确认后一次保存。公式须先粘贴为值；布尔字段填写 是/否。",
-            devices ? "设备键/通道键是工作簿内关联键，可使用任意唯一文本；其他工作表填写相同键。标识留空表示新增，更新原对象请保留导出的标识。" : "点位导入到所选设备，支持追加或按名称更新；更新保留原点位标识，文件未出现的原点位保留。",
-            "标识、地址和驱动参数以文本保存，避免前导零和长整数被 Excel 改写。数值字段不能留空，报警上下限可留空。",
-            "设备工作簿包含驱动专用参数，可能含授权码。文件不包含网关平台账号或数据库连接。",
-            "单文件最多 8 M、每表 20000 行；最多 500 台设备、每设备 2000 个点位。超出请分批导出导入。",
-            "设备更新按标识匹配，未出现的设备、点位和驱动参数保留；同标识通道参数冲突拒绝覆盖。",
-            "扫描模式：" + string.Join("、", Enum.GetNames<DeviceScanMode>()),
-            "数据类型：" + string.Join("、", Enum.GetNames<TagDataType>()),
-            "寄存区：" + string.Join("、", Enum.GetNames<ModbusArea>()),
-            "字节序：" + string.Join("、", Enum.GetNames<RegisterByteOrder>()),
-            "协议字节序：" + string.Join("、", Enum.GetNames<ProtocolEndian>())
-        };
-        sheet.Column(1).Width = 115;
-        sheet.Style.Alignment.WrapText = true;
-        for (var i = 0; i < lines.Count; i++) { sheet.Cell(i + 1, 1).Value = lines[i]; sheet.Row(i + 1).Height = 42; }
-        sheet.Cell(1, 1).Style.Font.Bold = true;
     }
 
     private static void Save(XLWorkbook workbook, string path, CancellationToken token)

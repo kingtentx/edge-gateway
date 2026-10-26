@@ -39,7 +39,7 @@ internal sealed class DeviceWorkbookImportDialog : EditorDialog
         UiTheme.StyleInput(_errors);
         _errors.AccessibleName = "设备工作簿校验结果";
         AddWide(_errors);
-        Hint(fields, "同标识通道须与现有参数一致；导入新通道需停止全部设备。导入不会删除未列出的数据或修改网关平台设置。");
+        Hint(fields, "新增时键和标识留空，点位按设备名称关联。通道和驱动参数在设备表中填写；导入新通道需停止全部设备。");
         _mode.SelectedIndexChanged += (_, _) => RefreshPreview();
         RefreshPreview();
 

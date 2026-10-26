@@ -6,6 +6,19 @@ namespace EdgeGateway.Tests.Application;
 public sealed partial class GatewayApplicationTests
 {
     [Fact]
+    public async Task WorkbookTemplateCreatesNewIdentitiesOnEachRead()
+    {
+        await using var h = await Harness.CreateAsync();
+        var path = Path.Combine(h.Directory, "模板.xlsx");
+        await h.App.ExportDeviceWorkbookAsync(path, template: true);
+        var first = await h.App.ReadDeviceWorkbookAsync(path);
+        var second = await h.App.ReadDeviceWorkbookAsync(path);
+        Assert.NotEqual(first.Devices[0].Id, second.Devices[0].Id);
+        Assert.NotEqual(first.Devices[0].Tags[0].Id, second.Devices[0].Tags[0].Id);
+        Assert.Single(first.Devices[0].Tags);
+    }
+
+    [Fact]
     public async Task WorkbookPreviewDoesNotSaveAndImportIncludesChannelAndTags()
     {
         await using var h = await Harness.CreateAsync();

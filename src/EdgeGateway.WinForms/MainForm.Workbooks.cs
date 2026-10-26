@@ -41,6 +41,6 @@ public sealed partial class MainForm
             Title = template ? "保存设备模板" : "导出设备及其点位", OverwritePrompt = true };
         if (file.ShowDialog(this) != DialogResult.OK) return;
         await _application.ExportDeviceWorkbookAsync(file.FileName, deviceId, template);
-        SetFooter(template ? "设备 Excel 模板已导出，请修改示例行后导入。" : "设备 Excel 已导出，包含关联通道、驱动参数及全部点位。");
+        SetFooter(template ? "设备 Excel 模板已导出，仅含设备和点位；新增时键和标识留空，按设备名称关联。" : "设备 Excel 已导出，包含关联通道、驱动参数及全部点位。");
     }
 }
