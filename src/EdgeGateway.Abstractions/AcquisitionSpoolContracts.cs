@@ -8,7 +8,7 @@ namespace EdgeGateway.Abstractions;
 /// </summary>
 public interface IAcquisitionSpool : IAsyncDisposable
 {
-    Task AppendAsync(Guid groupId, IReadOnlyList<DatabaseWriteRow> rows, CancellationToken cancellationToken = default);
+    Task<string> AppendAsync(Guid groupId, IReadOnlyList<DatabaseWriteRow> rows, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<DurableAcquisitionBatch>> ReadPendingAsync(Guid groupId, int maxBatches = 32, CancellationToken cancellationToken = default);
     Task AcknowledgeAsync(Guid groupId, string batchId, CancellationToken cancellationToken = default);
     Task<AcquisitionSpoolStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
