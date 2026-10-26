@@ -229,7 +229,9 @@ internal static class UiTheme
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var heading = Label(title, 21, Ink, true);
+        var hasDescription = !string.IsNullOrWhiteSpace(description);
         var subtitle = Label(description, 10, Muted);
+        subtitle.Visible = hasDescription;
         heading.Dock = subtitle.Dock = DockStyle.Fill;
         var titleRow = new TableLayoutPanel
         {
@@ -255,7 +257,7 @@ internal static class UiTheme
             var shortViewport = panel.FindForm()?.ClientSize.Height < Scale(panel, 480);
             panel.Padding = Scale(panel, compact ? new Padding(14, 8, 14, 12) : new Padding(22, 16, 22, 18));
             var width = Math.Max(1, panel.ClientSize.Width - panel.Padding.Horizontal);
-            subtitle.Visible = !shortViewport; help.Visible = shortViewport;
+            subtitle.Visible = hasDescription && !shortViewport; help.Visible = hasDescription && shortViewport;
             heading.MaximumSize = new Size(Math.Max(1, width - (help.Visible ? help.PreferredWidth + help.Margin.Horizontal : 0)), 0);
             subtitle.MaximumSize = new Size(width, 0);
             heading.Margin = Scale(panel, new Padding(0, 0, 0, compact ? 2 : 4));

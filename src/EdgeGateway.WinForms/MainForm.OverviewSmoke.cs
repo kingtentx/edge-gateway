@@ -22,6 +22,12 @@ public sealed partial class MainForm
             if (_serverCpu.ForeColor != UiTheme.Warning || _serverMemory.ForeColor != UiTheme.Warning
                 || _serverDisks.ForeColor != UiTheme.Warning || !_serverDisks.Text.Contains("空间偏紧"))
                 throw new InvalidOperationException("Overview did not identify high resource usage.");
+            if (_serverIdentity.Text.Contains("逻辑处理器") || _serverCpuTitle.Text != "CPU · 8 逻辑处理器"
+                || _serverMemoryTitle.Text != "内存 · " + ServerDiskBar.Capacity(16L << 30))
+                throw new InvalidOperationException("CPU count and total memory must be displayed in their own card titles.");
+            var removedHints = new[] { "设备连接、采集质量与数据输出，一屏掌握网关健康情况。", "消息确认后清理补传队列；输出错误请查看通信诊断。", "整机平均 · 85% 起偏高", "已用 " };
+            if (Descendants(_pages["overview"]).OfType<Label>().Any(label => removedHints.Any(hint => label.Text.StartsWith(hint))))
+                throw new InvalidOperationException("Overview still contains a removed explanatory label.");
             ShowServerResourceFailure("fixture unavailable");
             if (_serverCpu.Text.Contains("95") || !_serverMemory.Text.Contains("不可用") || !_serverDisks.Text.Contains("不可用"))
                 throw new InvalidOperationException("Overview reused stale resource values after an error.");
@@ -92,7 +98,10 @@ public sealed partial class MainForm
                 if (name == "narrow" && resourceGrid.ColumnCount != 1)
                     throw new InvalidOperationException("Narrow resource cards must remain readable in one column.");
                 foreach (var chart in new Control[] { _serverCpuChart, _serverMemoryChart })
+                {
+                    if (chart.Height < UiTheme.Scale(chart, 120)) throw new InvalidOperationException("Resource chart did not retain its increased height.");
                     BringIntoViewAndAssert(chart, "server resources " + name + " trend");
+                }
                 SaveSmokeScreenshot(this, Path.Combine(directory, $"server-resources-{name}-trends.png"));
                 foreach (var bar in _serverDiskBars.Values) BringIntoViewAndAssert(bar, "server resources " + name + " disk");
                 BringIntoViewAndAssert(_serverErrors, "server resources " + name + " errors");

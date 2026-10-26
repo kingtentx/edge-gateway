@@ -16,7 +16,7 @@ internal sealed class ServerUsageTrend : Control
     internal ServerUsageTrend()
     {
         DoubleBuffered = true; ResizeRedraw = true; TabStop = false;
-        Height = 72; Margin = Padding.Empty; BackColor = Color.White;
+        Height = 120; Margin = Padding.Empty; BackColor = Color.White;
         AccessibleRole = AccessibleRole.Graphic;
     }
 

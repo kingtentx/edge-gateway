@@ -20,8 +20,8 @@ public sealed partial class MainForm
     private readonly Label _serverIdentity = UiTheme.Label("服务器资源", 12, UiTheme.Ink, true);
     private readonly Label _serverCpu = UiTheme.Label("采样中", 16, UiTheme.Blue, true);
     private readonly Label _serverMemory = UiTheme.Label("采样中", 16, UiTheme.Green, true);
-    private readonly Label _serverCpuDetail = UiTheme.Label("首次采样需等待下一次刷新", 10, UiTheme.Muted);
-    private readonly Label _serverMemoryDetail = UiTheme.Label("等待物理内存读数", 10, UiTheme.Muted);
+    private readonly Label _serverCpuTitle = UiTheme.Label("CPU", 10, UiTheme.Ink, true);
+    private readonly Label _serverMemoryTitle = UiTheme.Label("内存", 10, UiTheme.Ink, true);
     private readonly ServerUsageTrend _serverCpuChart = new() { Name = "OverviewCpuTrend", AccessibleName = "整机 CPU 最近 60 秒趋势" };
     private readonly ServerUsageTrend _serverMemoryChart = new() { Name = "OverviewMemoryTrend", AccessibleName = "物理内存最近 60 秒趋势", SeriesColor = UiTheme.Green };
     private readonly TableLayoutPanel _serverDiskRows = OverviewGrid("OverviewDiskBars");
@@ -59,8 +59,7 @@ public sealed partial class MainForm
             OverviewSection("OverviewCollectionHealth", UiTheme.Green, UiTheme.Label("采集健康", 12, UiTheme.Ink, true),
                 _healthState, _onlineRate, _pointHealth, _connectionHealth),
             OverviewSection("OverviewDeliveryHealth", UiTheme.Blue, UiTheme.Label("上报与输出", 12, UiTheme.Ink, true),
-                _mqttStatus, _pendingCount, _outputHealth,
-                UiTheme.Label("消息确认后清理补传队列；输出错误请查看通信诊断。", 10, UiTheme.Muted))
+                _mqttStatus, _pendingCount, _outputHealth)
         };
         ArrangeOverviewGrid(cards, primary, 4);
         ArrangeOverviewGrid(health, healthPanels, 2);
@@ -69,10 +68,10 @@ public sealed partial class MainForm
         var resourceGrid = OverviewGrid("OverviewResourceCharts");
         var resourceRows = new[]
         {
-            OverviewResourceRow("OverviewCpuCard", UiTheme.Blue, UiTheme.Label("CPU · 整机使用率", 10, UiTheme.Ink, true),
-                _serverCpu, _serverCpuDetail, _serverCpuChart),
-            OverviewResourceRow("OverviewMemoryCard", UiTheme.Green, UiTheme.Label("内存 · 物理内存使用率", 10, UiTheme.Ink, true),
-                _serverMemory, _serverMemoryDetail, _serverMemoryChart)
+            OverviewResourceRow("OverviewCpuCard", UiTheme.Blue, _serverCpuTitle,
+                _serverCpu, _serverCpuChart),
+            OverviewResourceRow("OverviewMemoryCard", UiTheme.Green, _serverMemoryTitle,
+                _serverMemory, _serverMemoryChart)
         };
         var resourcePanels = resourceRows.Select(row => row.Panel).ToArray();
         ArrangeOverviewGrid(resourceGrid, resourcePanels, 2, 8);
@@ -119,7 +118,7 @@ public sealed partial class MainForm
         resourceGrid.SizeChanged += (_, _) => Arrange();
         cards.HandleCreated += (_, _) => Arrange();
         DpiLayoutCompleted += (_, _) => Arrange();
-        return UiTheme.PageLayout("运行总览", "设备连接、采集质量与数据输出，一屏掌握网关健康情况。", UiTheme.Toolbar(), viewport);
+        return UiTheme.PageLayout("运行总览", "", UiTheme.Toolbar(), viewport);
     }
 
     private static TableLayoutPanel OverviewGrid(string name) => new()
@@ -143,12 +142,12 @@ public sealed partial class MainForm
     }
 
     private static (TableLayoutPanel Panel, TableLayoutPanel Summary, ServerUsageTrend Chart) OverviewResourceRow(
-        string name, Color accent, Label title, Label value, Label detail, ServerUsageTrend chart)
+        string name, Color accent, Label title, Label value, ServerUsageTrend chart)
     {
         var summary = OverviewGrid(name + "Summary");
-        summary.ColumnCount = 1; summary.RowCount = 3;
+        summary.ColumnCount = 1; summary.RowCount = 2;
         summary.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        var labels = new[] { title, value, detail };
+        var labels = new[] { title, value };
         for (var i = 0; i < labels.Length; i++)
         {
             summary.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -205,14 +204,12 @@ public sealed partial class MainForm
     private void RefreshServerResources(ServerResourceSnapshot snapshot)
     {
         static string Load(double value) => $"{value:F1}% · {(value >= 85 ? "偏高" : "正常")}";
-        _serverIdentity.Text = $"服务器资源 · {snapshot.MachineName} · {snapshot.LogicalProcessors} 逻辑处理器";
+        _serverIdentity.Text = $"服务器资源 · {snapshot.MachineName}";
+        _serverCpuTitle.Text = $"CPU · {snapshot.LogicalProcessors} 逻辑处理器";
+        _serverMemoryTitle.Text = snapshot.Memory is { } totalMemory ? $"内存 · {ServerDiskBar.Capacity(totalMemory.TotalBytes)}" : "内存";
         _serverCpu.Text = snapshot.CpuUsagePercent is { } cpu ? Load(cpu) : "采样中 / 不可用";
         _serverCpu.ForeColor = snapshot.CpuUsagePercent >= 85 ? UiTheme.Warning : snapshot.CpuUsagePercent is null ? UiTheme.Muted : UiTheme.Blue;
-        _serverCpuDetail.Text = snapshot.CpuUsagePercent is null ? "等待有效采样，详情见下方提示。" : "整机平均 · 85% 起偏高";
         _serverMemory.Text = snapshot.Memory is { } memory ? Load(memory.UsedPercent) : "不可用";
-        _serverMemoryDetail.Text = snapshot.Memory is { } capacity
-            ? $"已用 {ServerDiskBar.Capacity(capacity.TotalBytes - capacity.AvailableBytes)} / 总量 {ServerDiskBar.Capacity(capacity.TotalBytes)}"
-            : "未取得有效物理内存读数";
         _serverMemory.ForeColor = snapshot.Memory?.UsedPercent >= 85 ? UiTheme.Warning : snapshot.Memory is null ? UiTheme.Muted : UiTheme.Green;
         if (snapshot.History.Count > 0)
         {
@@ -275,7 +272,6 @@ public sealed partial class MainForm
     {
         _serverCpu.Text = "整机 CPU：不可用"; _serverMemory.Text = "物理内存：不可用"; _serverDisks.Text = "磁盘容量：不可用";
         _serverCpu.ForeColor = _serverMemory.ForeColor = _serverDisks.ForeColor = UiTheme.Muted;
-        _serverCpuDetail.Text = _serverMemoryDetail.Text = "等待下一次有效采样";
         var now = DateTimeOffset.UtcNow;
         _serverCpuChart.AddReading(now, null); _serverMemoryChart.AddReading(now, null);
         foreach (var (name, bar) in _serverDiskBars) bar.UpdateUsage(new(name, null, null, error));
