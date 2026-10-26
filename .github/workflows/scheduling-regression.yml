@@ -1,0 +1,39 @@
+name: Fixed-rate scheduling regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/EdgeGateway.Service/DeviceScanPlanner.cs'
+      - 'src/EdgeGateway.Service/GatewayRuntime.cs'
+      - 'tests/EdgeGateway.Tests/RuntimeStorage/DeviceScanPlannerTests.cs'
+      - 'tests/EdgeGateway.Tests/RuntimeStorage/AcquisitionPoliciesTests.cs'
+      - '.github/workflows/scheduling-regression.yml'
+      - '.github/workflows/build.yml'
+      - '.github/workflows/database-integration.yml'
+      - '.github/workflows/phase2-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scheduling:
+    if: contains(github.event.head_commit.message, '[schedule-only]')
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run fixed-rate scheduling and adjacent runtime regressions only
+        shell: pwsh
+        run: |
+          dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --filter "FullyQualifiedName~DeviceScanPlannerTests|FullyQualifiedName~FixedRateScanningIncludesReadTime|FullyQualifiedName~PointScanRates|FullyQualifiedName~DeviceScanRateIgnoresPointOverrides|FullyQualifiedName~SharedChannelSerializes|FullyQualifiedName~IndependentChannelsAllow|FullyQualifiedName~FailureDemotion|FullyQualifiedName~RealTcpDisconnect" --logger "trx;LogFileName=scheduling-regression.trx" --results-directory artifacts/scheduling-regression
+      - name: Upload targeted regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduling-regression
+          path: artifacts/scheduling-regression/
+          if-no-files-found: warn
