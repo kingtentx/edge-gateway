@@ -5,11 +5,14 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private readonly DataGridView _telemetryDiagnosticsGrid = UiTheme.Grid();
+    private DataGridView _telemetryDiagnosticsGrid = null!;
+    private DiagnosticsPageView _diagnosticsPageView = null!;
     private readonly BindingList<DiagnosticRow> _telemetryDiagnosticRows = [];
 
     private Control BuildDiagnosticsPage()
     {
+        _diagnosticsPageView = new DiagnosticsPageView();
+        _telemetryDiagnosticsGrid = _diagnosticsPageView.DiagnosticsGrid;
         UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Item", "诊断项目", 180, 180);
         UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Value", "当前值 / 最近事件", 260, 260);
         UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Meaning", "说明", 350, 350);
@@ -19,9 +22,10 @@ public sealed partial class MainForm
             if (e.RowIndex >= 0 && _telemetryDiagnosticsGrid.Rows[e.RowIndex].DataBoundItem is DiagnosticRow row)
                 MessageBox.Show(this, row.Value + "\n\n" + row.Meaning, row.Item, MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
-        return UiTheme.PageLayout("通信诊断", "检查采集与上报链路。发送确认按平台协议判断，最终业务入库仍需在平台核对。",
-            UiTheme.Toolbar(UiTheme.Button("刷新状态", async (_, _) => await RefreshSnapshotsAsync()),
-                UiTheme.Button("导出诊断", async (_, _) => await RunBusyAsync(ExportDiagnosticsAsync))), _telemetryDiagnosticsGrid);
+        _diagnosticsPageView.ToolbarHost.Controls.Add(UiTheme.Toolbar(
+            UiTheme.Button("刷新状态", async (_, _) => await RefreshSnapshotsAsync()),
+            UiTheme.Button("导出诊断", async (_, _) => await RunBusyAsync(ExportDiagnosticsAsync))));
+        return _diagnosticsPageView;
     }
 
     private void RefreshTelemetryDiagnostics(StoreStatistics statistics)
