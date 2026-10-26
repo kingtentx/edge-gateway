@@ -21,7 +21,7 @@ public sealed partial class MainForm
     private readonly Label _tagSummary = UiTheme.Label("选择设备后查看和维护点位", 10, UiTheme.Muted);
     private readonly List<(Control Control, Func<bool> Available)> _selectionCommands = [];
     private Guid? _tagDeviceId;
-    private CommandMenuButton _deviceMore = null!, _tagMore = null!, _channelMenu = null!;
+    private CommandMenuButton _deviceMore = null!, _deviceExchange = null!, _tagMore = null!, _channelMenu = null!;
 
     private Control BuildDevicesPage()
     {
@@ -89,7 +89,8 @@ public sealed partial class MainForm
         var probeDevice = SelectionButton("连接诊断", async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(false)), () => SelectedDevice() is not null);
         _deviceMore = new CommandMenuButton("更多操作", BuildDeviceMenu, exception => ShowError(exception.Message)) { Name = "DeviceMoreActions" };
         _channelMenu = new CommandMenuButton("通道管理", BuildChannelMenu, exception => ShowError(exception.Message)) { Name = "ChannelActions" };
-        _configurationCommands.AddRange([_deviceMore, _channelMenu]);
+        _deviceExchange = new CommandMenuButton("设备导入导出", BuildDeviceExchangeMenu, exception => ShowError(exception.Message)) { Name = "DeviceExcelExchange" };
+        _configurationCommands.AddRange([_deviceMore, _deviceExchange, _channelMenu]);
         _deviceSummary.Margin = new Padding(4, 9, 0, 0);
         var content = new TableLayoutPanel { Name = "DevicesContent", ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -155,7 +156,7 @@ public sealed partial class MainForm
             filters.GetPreferredSize(new Size(Math.Max(1, content.ClientSize.Width), 0)).Height +
             MeasureTagHeaderHeight() + UiTheme.Scale(content, 300));
         return UiTheme.PageLayout("设备与点位", "选择设备维护点位；每台设备独立启停，双击设备或点击配置进入同一窗口。",
-            UiTheme.Toolbar(addDevice, probeDevice, _deviceMore, _channelMenu, _deviceSummary), viewport);
+            UiTheme.Toolbar(addDevice, probeDevice, _deviceExchange, _deviceMore, _channelMenu, _deviceSummary), viewport);
     }
 
     private Button SelectionButton(string text, EventHandler action, Func<bool> available, bool primary = false)
@@ -187,7 +188,7 @@ public sealed partial class MainForm
         return [
             new("ConfigureDevice", "配置所选设备  F2", () => id.HasValue ? ConfigureDeviceAsync(id.Value) : Task.CompletedTask, Target, "请先选择设备"),
             new("CopyDevice", "复制所选设备", () => CopyDeviceAsync(id), Target, "请先选择设备"),
-            new("ImportDevices", "追加导入设备…", () => RunBusyAsync(ImportDevicesAsync), CanEdit, SeparateBefore: true),
+            new("ImportDevices", "追加导入设备 JSON…", () => RunBusyAsync(ImportDevicesAsync), CanEdit, SeparateBefore: true),
             new("ExportConfiguration", "导出网关配置…", () => RunBusyAsync(ExportConfigurationAsync), CanEdit),
             new("ReplaceConfiguration", "替换整份配置…", () => RunBusyAsync(ImportConfigurationAsync), () => CanEdit() && !_application.IsRunning,
                 "请先停止全部设备；整份配置将替换当前设备及平台设置"),
@@ -213,9 +214,9 @@ public sealed partial class MainForm
         bool Device() => CanEdit() && deviceId.HasValue && _configuration.Devices.Any(d => d.Id == deviceId);
         bool Tag() => Device() && tagId.HasValue && _configuration.Devices.Single(d => d.Id == deviceId).Tags.Any(t => t.Id == tagId);
         return [
-            new("ImportTags", "导入当前设备点位…", () => ImportTagsAsync(deviceId), Device, "请先选择设备"),
-            new("ExportTags", "导出当前设备点位…", () => RunBusyAsync(() => ExportTagsAsync(deviceId: deviceId)), Device, "请先选择设备"),
-            new("TagTemplate", "下载点位模板…", () => RunBusyAsync(() => ExportTagsAsync(template: true)), CanEdit),
+            new("ImportTags", "导入当前设备点位 Excel…", () => ImportTagsAsync(deviceId), Device, "请先选择设备"),
+            new("ExportTags", "导出当前设备点位 Excel…", () => RunBusyAsync(() => ExportTagsAsync(deviceId: deviceId)), Device, "请先选择设备"),
+            new("TagTemplate", "下载点位 Excel 模板…", () => RunBusyAsync(() => ExportTagsAsync(template: true)), CanEdit),
             new("ClearTagSearch", "清除点位筛选", () => { _tagSearch.Clear(); return Task.CompletedTask; }, () => CanEdit() && _tagSearch.TextLength > 0, SeparateBefore: true),
             new("DeleteTag", "删除所选点位…", () => DeleteTagAsync(deviceId, tagId), Tag, "请先选择点位", SeparateBefore: true, Dangerous: true)
         ];

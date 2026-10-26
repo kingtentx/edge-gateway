@@ -152,7 +152,7 @@ public sealed class GatewayHost : IAsyncDisposable
             publisher = new MqttTelemetryPublisher();
             var databases = new ExternalDatabaseConnector();
             application = new GatewayApplication(configuration, drivers, configurations, store, publisher, log,
-                new JsonConfigurationFiles(), configurations.HasSavedConfiguration, databases, serverResources: new ServerResourceMonitor());
+                new JsonConfigurationFiles(), configurations.HasSavedConfiguration, databases, serverResources: new ServerResourceMonitor(), workbookFiles: new ExcelConfigurationFiles());
             return new(directory, application, publisher, store, configurations, log, directoryLock, enableVerificationFaults);
         }
         catch

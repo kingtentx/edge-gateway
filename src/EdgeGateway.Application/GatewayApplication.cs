@@ -16,6 +16,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
     private readonly IConfigurationStore _configurationStore;
     private readonly IGatewayStore _store;
     private readonly IConfigurationFiles _files;
+    private readonly IConfigurationWorkbookFiles? _workbooks;
     private readonly IExternalDatabaseConnector? _externalDatabases;
     private readonly IServerResourceMonitor? _serverResources;
     private readonly IDriverPluginManager? _driverPluginManager;
@@ -30,7 +31,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
         IConfigurationStore configurationStore, IGatewayStore store, ITelemetryPublisher publisher,
         IGatewayLog log, IConfigurationFiles files, bool configurationPersisted = true,
         IExternalDatabaseConnector? externalDatabases = null, IAcquisitionDataSink? dataSink = null,
-        IServerResourceMonitor? serverResources = null)
+        IServerResourceMonitor? serverResources = null, IConfigurationWorkbookFiles? workbookFiles = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(drivers);
@@ -46,6 +47,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
         _configurationStore = configurationStore;
         _store = store;
         _files = files;
+        _workbooks = workbookFiles;
         _externalDatabases = externalDatabases;
         _serverResources = serverResources;
         _driverPluginManager = drivers as IDriverPluginManager;

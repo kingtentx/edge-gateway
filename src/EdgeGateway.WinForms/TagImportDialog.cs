@@ -15,6 +15,7 @@ internal sealed class TagImportDialog : EditorDialog
     private readonly TextBox _errors;
     private readonly DataGridView _preview = UiTheme.Grid();
     private IReadOnlyList<string> _validationErrors = [];
+    internal TagCsvImportMode Mode => _mode.SelectedIndex == 1 ? TagCsvImportMode.UpdateByName : TagCsvImportMode.Append;
     internal TagCsvImportResult Result { get; private set; } = null!;
 
     public TagImportDialog(string deviceName, byte[] content, IReadOnlyList<TagConfiguration> existing,
@@ -70,7 +71,7 @@ internal sealed class TagImportDialog : EditorDialog
     private void RefreshPreview()
     {
         Result = TagCsvExchange.Import(_content, _existing,
-            _mode.SelectedIndex == 1 ? TagCsvImportMode.UpdateByName : TagCsvImportMode.Append);
+            Mode);
         _validationErrors = Result.IsValid ? _validate(Result.Tags) : Result.Errors.Select(x => x.ToString()).ToArray();
         _summary.Text = Result.IsValid && _validationErrors.Count == 0
             ? $"新增 {Result.Added} 个，更新 {Result.Updated} 个；保存后共 {Result.TotalCount} 个点位。"

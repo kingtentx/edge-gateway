@@ -63,6 +63,13 @@ public interface IGatewayApplication : IAsyncDisposable
     Task<GatewayConfiguration> ReadSavedConfigurationAsync(CancellationToken cancellationToken = default);
     Task<GatewayConfiguration> ReadConfigurationFileAsync(string path, CancellationToken cancellationToken = default);
     Task ExportConfigurationAsync(string path, CancellationToken cancellationToken = default);
+    Task<DeviceConfigurationWorkbook> ReadDeviceWorkbookAsync(string path, CancellationToken cancellationToken = default);
+    DeviceWorkbookPreview PreviewDeviceWorkbook(DeviceConfigurationWorkbook workbook, bool updateExisting);
+    Task<ConfigurationApplyResult> ImportDeviceWorkbookAsync(DeviceConfigurationWorkbook workbook, bool updateExisting, CancellationToken cancellationToken = default);
+    Task ExportDeviceWorkbookAsync(string path, Guid? deviceId = null, bool template = false, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> ImportTagFileAsync(Guid deviceId, byte[] content, TagCsvImportMode mode, CancellationToken cancellationToken = default);
+    Task<byte[]> ReadTagWorkbookAsync(string path, CancellationToken cancellationToken = default);
+    Task ExportTagWorkbookAsync(string path, Guid? deviceId = null, bool template = false, CancellationToken cancellationToken = default);
     Task StartAsync(CancellationToken cancellationToken = default);
     Task StartDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default);
     Task StopDeviceAsync(Guid deviceId);

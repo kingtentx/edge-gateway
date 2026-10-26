@@ -18,6 +18,12 @@
 |---|---|---|---|
 | FontAwesome.Sharp | 6.6.0 | Apache-2.0；内嵌 Font Awesome Free 字体按 SIL OFL 1.1，图标及代码许可见资源声明 | [组件许可](LICENSES/FontAwesome.Sharp-LICENSE.txt)、[字体与图标许可](LICENSES/FontAwesome-Free-LICENSE.txt) |
 | Microsoft.Data.Sqlite / Microsoft.Data.Sqlite.Core | 8.0.32 | MIT | [Microsoft.Data.Sqlite-LICENSE.txt](LICENSES/Microsoft.Data.Sqlite-LICENSE.txt) |
+| ClosedXML / ClosedXML.Parser | 0.105.1 / 2.0.0 | MIT | [ClosedXML](LICENSES/ClosedXML-LICENSE.txt)、[Parser](LICENSES/ClosedXML.Parser-LICENSE.txt) |
+| DocumentFormat.OpenXml / Framework | 3.1.1 | MIT | [Open XML SDK](LICENSES/Open-XML-SDK-LICENSE.txt) |
+| ExcelNumberFormat | 1.1.0 | MIT | [ExcelNumberFormat](LICENSES/ExcelNumberFormat-LICENSE.txt) |
+| RBush.Signed | 4.0.0 | MIT | [RBush](LICENSES/RBush-LICENSE.txt) |
+| SixLabors.Fonts | 1.0.0 | Apache-2.0 | [SixLabors.Fonts](LICENSES/SixLabors.Fonts-LICENSE.txt) |
+| System.IO.Packaging | 8.0.1 | MIT | [许可](LICENSES/System.IO.Packaging-LICENSE.TXT)、[附加声明](LICENSES/System.IO.Packaging-THIRD-PARTY-NOTICES.TXT) |
 | MQTTnet | 4.3.7.1207 | MIT | [MQTTnet-LICENSE.txt](LICENSES/MQTTnet-LICENSE.txt) |
 | MySqlConnector | 2.6.2 | MIT；Bradley Grainger | [MySqlConnector-LICENSE.txt](LICENSES/MySqlConnector-LICENSE.txt) |
 | Npgsql | 10.0.3 | PostgreSQL License；Npgsql contributors | [Npgsql-LICENSE.txt](LICENSES/Npgsql-LICENSE.txt) |
@@ -78,3 +84,5 @@
 ## 桌面界面图标
 
 本次界面升级使用 `FontAwesome.Sharp 6.6.0`（Copyright © Awesome Incremented 2015–2022），官方 NuGet 元数据指定源码提交 `fca9446a2476e8cb903a938b0d546b4b65c7d00f`。完整 Apache-2.0 文本取自该提交的 [LICENSE](https://github.com/awesome-inc/FontAwesome.Sharp/blob/fca9446a2476e8cb903a938b0d546b4b65c7d00f/LICENSE)。内嵌 Font Awesome Free 6.6.0 资源归属 Fonticons, Inc.；字体采用 SIL OFL 1.1，图标采用 CC BY 4.0，代码采用 MIT，原始 [LICENSE.txt](https://github.com/FortAwesome/Font-Awesome/blob/6.6.0/LICENSE.txt) 随运行包保留。程序使用其免费字体图标，不包含 Font Awesome Pro。
+
+Excel 依赖许可取自 NuGet 归属清单中的固定源码提交；ExcelNumberFormat 使用 v1.1.0 标签，System.IO.Packaging 使用包内原文。SixLabors.Fonts 的实际解析版本为 1.0.0，使用该版本 Apache-2.0 许可。

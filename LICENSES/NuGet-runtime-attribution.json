@@ -15,6 +15,69 @@
       }
     },
     {
+      "id": "ClosedXML",
+      "version": "0.105.1",
+      "authors": "Jan Havlíček, Francois Botha, Aleksei Pankratev, Manuel de Leon, Amir Ghezelbash",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "copyright": "",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/ClosedXML/ClosedXML",
+        "commit": "b4ebe47bd3ecebf8480dea7422188d16b35b9d9a"
+      }
+    },
+    {
+      "id": "ClosedXML.Parser",
+      "version": "2.0.0",
+      "authors": "Jan Havlíček",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "copyright": "",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/ClosedXML/ClosedXML.Parser",
+        "commit": "658973aeedc2fe289e0ccba2bb9959f67692ded5"
+      }
+    },
+    {
+      "id": "DocumentFormat.OpenXml",
+      "version": "3.1.1",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/Open-XML-SDK",
+        "commit": "f9e6ad7524e22b6b1f932deabc9055201b7870c0"
+      }
+    },
+    {
+      "id": "DocumentFormat.OpenXml.Framework",
+      "version": "3.1.1",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/Open-XML-SDK",
+        "commit": "f9e6ad7524e22b6b1f932deabc9055201b7870c0"
+      }
+    },
+    {
+      "id": "ExcelNumberFormat",
+      "version": "1.1.0",
+      "authors": "ExcelNumberFormat developers",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "copyright": "",
+      "repository": {
+        "url": "https://github.com/andersnm/ExcelNumberFormat"
+      }
+    },
+    {
       "id": "FontAwesome.Sharp",
       "version": "6.6.0",
       "authors": "Awesome Incremented and Contributors",
@@ -312,6 +375,20 @@
       "copyright": "Copyright © 2026, Oracle and/or its affiliates"
     },
     {
+      "id": "RBush.Signed",
+      "version": "4.0.0",
+      "authors": "viceroypenguin",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "copyright": "Copyright © 2017-2024 Turning Code, LLC (and others)",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/viceroypenguin/RBush",
+        "branch": "refs/heads/master",
+        "commit": "b8690322abac35d835baa2fdca4a3918ed77a910"
+      }
+    },
+    {
       "id": "runtime.linux-arm.runtime.native.System.IO.Ports",
       "version": "8.0.0",
       "authors": "Microsoft",
@@ -400,6 +477,19 @@
       "version": "1.0.4",
       "authors": "SimpleTCP.Core",
       "projectUrl": "https://github.com/BrandonPotter/SimpleTCP"
+    },
+    {
+      "id": "SixLabors.Fonts",
+      "version": "1.0.0",
+      "authors": "Six Labors and contributors",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://licenses.nuget.org/Apache-2.0",
+      "copyright": "Copyright © Six Labors",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/SixLabors/Fonts",
+        "commit": "32bef42997adb10268369ca149777f00e4241ce9"
+      }
     },
     {
       "id": "SQLitePCLRaw.bundle_e_sqlite3",
@@ -545,6 +635,19 @@
         "type": "git",
         "url": "https://github.com/dotnet/dotnet",
         "commit": "94ea82652cdd4e0f8046b5bd5becbd11461482ca"
+      }
+    },
+    {
+      "id": "System.IO.Packaging",
+      "version": "8.0.1",
+      "authors": "Microsoft",
+      "license": "MIT",
+      "licenseUrl": "https://licenses.nuget.org/MIT",
+      "copyright": "© Microsoft Corporation. All rights reserved.",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/runtime",
+        "commit": "81cabf2857a01351e5ab578947c7403a5b128ad1"
       }
     },
     {

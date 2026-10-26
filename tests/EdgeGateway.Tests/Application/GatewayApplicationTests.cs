@@ -10,7 +10,7 @@ using Core = EdgeGateway.Service;
 
 namespace EdgeGateway.Tests.Application;
 
-public sealed class GatewayApplicationTests
+public sealed partial class GatewayApplicationTests
 {
     [Fact]
     public async Task DriverListIncludesBundledDriversWithoutUploadedPlugins()
@@ -463,7 +463,7 @@ public sealed class GatewayApplicationTests
             var log = new Core.GatewayLog();
             IDriverRegistry registry = new Core.DriverRegistry([h.Factory], log);
             h.App = new(configuration, wrapRegistry?.Invoke(registry) ?? registry, h.Configurations,
-                h.Store, h._publisher, log, new JsonConfigurationFiles(), persisted);
+                h.Store, h._publisher, log, new JsonConfigurationFiles(), persisted, workbookFiles: new ExcelConfigurationFiles());
             return h;
         }
         public async ValueTask DisposeAsync()

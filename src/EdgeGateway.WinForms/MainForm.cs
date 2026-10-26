@@ -18,6 +18,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly bool _layoutMatrix;
     private readonly bool _databaseMappingSmoke;
     private readonly bool _serverResourcesSmoke;
+    private readonly bool _workbookSmoke;
     private readonly string? _smokeScreenshotPath;
     private readonly Panel _pageHost = new() { Dock = DockStyle.Fill };
     private readonly Dictionary<string, Control> _pages = [];
@@ -38,14 +39,15 @@ public sealed partial class MainForm : DpiAwareForm
     public MainForm(IGatewayApplication application,
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
-        bool serverResourcesSmoke = false)
+        bool serverResourcesSmoke = false, bool workbookSmoke = false)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
         _drivers = application.Drivers;
         _log = application.Log;
         _driverDirectory = Path.GetFullPath(driverDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
-        _smokeTest = smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
+        _workbookSmoke = workbookSmoke;
+        _smokeTest = workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
         _databaseMappingSmoke = databaseMappingSmoke;
         _serverResourcesSmoke = serverResourcesSmoke;
         _configurationWriteFailureForSmoke = configurationWriteFailureForSmoke;
@@ -233,6 +235,17 @@ public sealed partial class MainForm : DpiAwareForm
 
     private async void OnShown(object? sender, EventArgs e)
     {
+        if (_workbookSmoke)
+        {
+            try { await SmokeWorkbooksAsync(); }
+            catch (Exception exception)
+            {
+                SmokeTestFailed = true;
+                TrySaveSmokeFailure(this, "workbooks-failed");
+                Console.Error.WriteLine(exception);
+            }
+            _allowClose = true; Close(); return;
+        }
         if (_serverResourcesSmoke)
         {
             try { await SmokeServerResourceChartsAsync(); }

@@ -14,7 +14,8 @@ internal static class Program
         var layoutMatrix = args.Contains("--layout-matrix", StringComparer.OrdinalIgnoreCase);
         var databaseMappingSmoke = args.Contains("--smoke-database-mapping", StringComparer.OrdinalIgnoreCase);
         var serverResourcesSmoke = args.Contains("--smoke-server-resources", StringComparer.OrdinalIgnoreCase);
-        var smokeTest = layoutMatrix || databaseMappingSmoke || serverResourcesSmoke || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
+        var workbookSmoke = args.Contains("--smoke-workbooks", StringComparer.OrdinalIgnoreCase);
+        var smokeTest = workbookSmoke || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
         var screenshotIndex = Array.FindIndex(args, x => x.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
         var screenshotPath = screenshotIndex >= 0 && screenshotIndex + 1 < args.Length ? args[screenshotIndex + 1] : null;
         var runtimeRoot = smokeTest
@@ -36,7 +37,7 @@ internal static class Program
             host = GatewayHost.CreateAsync(dataDirectory, pluginDirectory: driverDirectory,
                 enableVerificationFaults: smokeTest, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
             using var window = new MainForm(host.Application, smokeTest, screenshotPath, layoutMatrix,
-                smokeTest ? host.BeginConfigurationWriteFailureForVerification : null, driverDirectory, databaseMappingSmoke, serverResourcesSmoke);
+                smokeTest ? host.BeginConfigurationWriteFailureForVerification : null, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke);
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }

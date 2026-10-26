@@ -77,6 +77,8 @@ TCP 读取按协议长度组帧，不假设一次 `ReadAsync` 得到完整报文
 
 ## 5. 保持数据与配置可靠
 
+- 设备和点位均以 `.xlsx` 为默认导入导出格式。设备按设备、通道、驱动参数、点位分表，保留稳定标识；点位独立表按名称更新保留原标识。Excel 库及文件读写留在 DataAccess，Hosting 注入 `IConfigurationWorkbookFiles`，UI 仅调用 Application。导入先预览，提交在命令锁内基于最新候选重新合并；保留未出现的设备、点位和参数，不静默覆盖共享通道。新增通道须全停；公式/错误单元格、无效类型、重复标识和关联缺失拒绝整批，大小、解压内容和行数有界。详见 [Excel 交换](../../../docs/excel-configuration-exchange.md)。
+
 - 数据库写入组新增默认名须避开全部已保存组名（忽略前后空格/大小写）；编辑按稳定 ID 排除自身。名称重复与长度错误分开提示，重名保存定位到名称输入框且保留字段映射草稿，不通过放宽唯一性约束解决默认名冲突。
 - 日志主文件使用 `yyyyMMdd.log`（UTC 写入日期），大小轮转使用 `yyyyMMdd.001.log` 等未占用序号，不再加 `gateway-` 前缀。采样文件使用扁平 JSON，仅保留一次采样时间、设备/点位身份、地址、原始值/工程值及实际质量；去掉 level/kind/sample 包装和 numericValue，空 unit/error 不写入，有错误时保留错误及失败空值。查询/导出识别精简记录，已有日志仍可查询并按保留策略清理。
 - 配置模型及 JSON 交换保持 schema 3；SQLite 结构版本为 4，按功能以强类型关系表保存，禁止整份/分组 JSON payload。网关、上报、MQTT、RPC、日志、通道、设备网络/串口/驱动参数、点位、外库连接/写入组/选点/字段映射分别落表；驱动元数据统一在 driver_registry，禁止恢复重复的 driver_plugins/driver_catalog。configuration_snapshots 仅存 current/previous 元数据，功能表带 slot，外键与完整配置在同一 WAL/FULL 事务内切换；旧数据库明确拒绝且不自动清空或迁移。详见 [关系配置表](../../../docs/sqlite-configuration-schema.md)。UTF-8 JSON 文件只作导入/导出；使用稳定 Guid、枚举名称和 `SchemaVersion`。设备、点位与导入使用独立候选，经 `IGatewayApplication` 基于最新配置提交，内部通过 `GatewayRuntime.ApplyConfigurationAsync(candidate, configurationStore, cancellationToken)` 在生命周期锁内校验、以 SQLite WAL/FULL 事务更新当前及上一份同版本配置，再应用运行时；禁止 UI 自行保存或调用仅适合全停初始化的 `Configure`。首次启动默认设备前由应用层先落盘，保持重启后的设备和点位 ID 稳定。
