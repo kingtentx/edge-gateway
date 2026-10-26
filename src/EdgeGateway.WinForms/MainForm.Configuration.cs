@@ -12,19 +12,27 @@ public sealed partial class MainForm
     private const string DeviceConfigurationColumnName = "DeviceConfiguration";
     private const string DeviceStartColumnName = "DeviceStart";
     private const string DeviceStopColumnName = "DeviceStop";
-    private readonly DataGridView _deviceGrid = UiTheme.Grid();
-    private readonly DataGridView _tagGrid = UiTheme.Grid();
+    private DataGridView _deviceGrid = null!;
+    private DataGridView _tagGrid = null!;
 
-    private readonly TextBox _tagSearch = new() { Name = "TagSearch", Width = 205, PlaceholderText = "搜索当前设备的点位 / 地址" };
-    private readonly Label _deviceSummary = UiTheme.Label("", 10, UiTheme.Muted);
-    private readonly Label _tagHeading = UiTheme.Label("请选择设备", 12, UiTheme.Ink, true);
-    private readonly Label _tagSummary = UiTheme.Label("选择设备后查看和维护点位", 10, UiTheme.Muted);
+    private TextBox _tagSearch = null!;
+    private Label _deviceSummary = null!;
+    private Label _tagHeading = null!;
+    private Label _tagSummary = null!;
     private readonly List<(Control Control, Func<bool> Available)> _selectionCommands = [];
     private Guid? _tagDeviceId;
     private CommandMenuButton _deviceMore = null!, _deviceExchange = null!, _tagMore = null!, _channelMenu = null!;
+    private DevicesPageView _devicesPageView = null!;
 
     private Control BuildDevicesPage()
     {
+        _devicesPageView = new DevicesPageView();
+        _deviceGrid = _devicesPageView.DeviceGrid;
+        _tagGrid = _devicesPageView.TagGrid;
+        _tagSearch = new TextBox { Name = "TagSearch", Width = 205, PlaceholderText = "搜索当前设备的点位 / 地址" };
+        _deviceSummary = _devicesPageView.DeviceSummary;
+        _tagHeading = _devicesPageView.TagHeading;
+        _tagSummary = _devicesPageView.TagSummary;
         _deviceGrid.Name = "DeviceList"; _tagGrid.Name = "TagList";
         UiTheme.AddColumn(_deviceGrid, "Name", "设备名称", 150, 160);
         AddDeviceActionColumn(DeviceStartColumnName, "启动", true);
@@ -92,14 +100,131 @@ public sealed partial class MainForm
         _deviceExchange = new CommandMenuButton("设备导入导出", BuildDeviceExchangeMenu, exception => ShowError(exception.Message)) { Name = "DeviceExcelExchange" };
         _configurationCommands.AddRange([_deviceMore, _deviceExchange, _channelMenu]);
         _deviceSummary.Margin = new Padding(4, 9, 0, 0);
-        var content = new TableLayoutPanel { Name = "DevicesContent", ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 43));
-        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 110));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 57));
+        var content = _devicesPageView.ContentLayout;
         var filters = BuildDeviceFilters();
-        content.Controls.Add(filters, 0, 0); content.Controls.Add(_deviceGrid, 0, 1);
+        _devicesPageView.DeviceToolbarHost.Controls.Add(
+            UiTheme.Toolbar(addDevice, probeDevice, _deviceExchange, _deviceMore, _channelMenu, _deviceSummary));
+        _devicesPageView.DeviceFiltersHost.Controls.Add(filters);
+
+        _tagMore = new CommandMenuButton("点位操作", BuildTagMenu, exception => ShowError(exception.Message)) { Name = "TagMoreActions" };
+        _configurationCommands.Add(_tagMore);
+        UiTheme.StyleInput(_tagSearch);
+        _tagSearch.TextChanged += (_, _) => BindTags();
+        var tagHeader = _devicesPageView.TagHeaderLayout;
+        _tagHeading.Dock = _tagSummary.Dock = DockStyle.Fill;
+        var tagToolbar = UiTheme.Toolbar(
+            SelectionButton("添加点位", async (_, _) => await AddTagAsync(), () => SelectedDevice() is not null, true),
+            SelectionButton("编辑点位", async (_, _) => await EditTagAsync(), () => SelectedTag() is not null),
+            SelectionButton("单点读取", async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(true)), () => SelectedTag() is not null),
+            _tagMore, _tagSearch);
+        _devicesPageView.TagToolbarHost.Controls.Add(tagToolbar);
+using EdgeGateway.Application;
+using EdgeGateway.Model;
+using System.Diagnostics;
+using System.Drawing.Drawing2D;
+using System.Text;
+using System.Text.Json;
+
+namespace EdgeGateway.WinForms;
+
+public sealed partial class MainForm
+{
+    private const string DeviceConfigurationColumnName = "DeviceConfiguration";
+    private const string DeviceStartColumnName = "DeviceStart";
+    private const string DeviceStopColumnName = "DeviceStop";
+    private DataGridView _deviceGrid = null!;
+    private DataGridView _tagGrid = null!;
+
+    private TextBox _tagSearch = null!;
+    private Label _deviceSummary = null!;
+    private Label _tagHeading = null!;
+    private Label _tagSummary = null!;
+    private readonly List<(Control Control, Func<bool> Available)> _selectionCommands = [];
+    private Guid? _tagDeviceId;
+    private CommandMenuButton _deviceMore = null!, _deviceExchange = null!, _tagMore = null!, _channelMenu = null!;
+    private DevicesPageView _devicesPageView = null!;
+
+    private Control BuildDevicesPage()
+    {
+        _devicesPageView = new DevicesPageView();
+        _deviceGrid = _devicesPageView.DeviceGrid;
+        _tagGrid = _devicesPageView.TagGrid;
+        _tagSearch = new TextBox { Name = "TagSearch", Width = 205, PlaceholderText = "搜索当前设备的点位 / 地址" };
+        _deviceSummary = _devicesPageView.DeviceSummary;
+        _tagHeading = _devicesPageView.TagHeading;
+        _tagSummary = _devicesPageView.TagSummary;
+        _deviceGrid.Name = "DeviceList"; _tagGrid.Name = "TagList";
+        UiTheme.AddColumn(_deviceGrid, "Name", "设备名称", 150, 160);
+        AddDeviceActionColumn(DeviceStartColumnName, "启动", true);
+        AddDeviceActionColumn(DeviceStopColumnName, "停止", false);
+        var configurationColumn = new DataGridViewLinkColumn
+        {
+            Name = DeviceConfigurationColumnName, HeaderText = "配置", Text = "配置",
+            UseColumnTextForLinkValue = true, TrackVisitedState = false,
+            LinkBehavior = LinkBehavior.HoverUnderline, LinkColor = UiTheme.Blue,
+            ActiveLinkColor = UiTheme.Blue, VisitedLinkColor = UiTheme.Blue,
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, MinimumWidth = 72,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
+            DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
+        };
+        configurationColumn.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        _deviceGrid.Columns.Add(configurationColumn);
+        if (_deviceGrid is DpiDataGridView dpiGrid) dpiGrid.RegisterColumn(configurationColumn, 72);
+        UiTheme.AddColumn(_deviceGrid, "State", "采集状态", 96, 96);
+        UiTheme.AddColumn(_deviceGrid, "PointCount", "点位", 72, 72);
+        UiTheme.AddColumn(_deviceGrid, "Driver", "采集驱动", 140);
+        UiTheme.AddColumn(_deviceGrid, "Channel", "通信通道", 120);
+        UiTheme.AddColumn(_deviceGrid, "Group", "分组", 100);
+        UiTheme.AddColumn(_deviceGrid, "Enabled", "启用", 72, 72);
+        UiTheme.AddColumn(_deviceGrid, "Cycle", "周期 (ms)", 96);
+        UiTheme.AddColumn(_deviceGrid, "LastSuccess", "最近成功采集", 160, 160);
+        UiTheme.AddColumn(_deviceGrid, "Failures", "连续失败", 100, 100);
+        UiTheme.AddColumn(_deviceGrid, "Error", "采集诊断", 270, 270);
+        _deviceGrid.SelectionChanged += (_, _) => { if (!_rebindingDevices) { BindTags(); UpdateSelectionCommands(); } };
+        _deviceGrid.CellContentClick += async (_, e) => await HandleDeviceGridActionAsync(e);
+        _deviceGrid.CellDoubleClick += async (_, e) => await HandleDeviceGridActionAsync(e, doubleClick: true);
+        _deviceGrid.SizeChanged += (_, _) => ArrangeDeviceColumns();
+        _deviceGrid.KeyDown += async (_, e) =>
+        {
+            if (e.KeyCode == Keys.F2) { e.Handled = true; await EditDeviceAsync(); }
+            else if (e.KeyCode == Keys.Delete) { e.Handled = true; await DeleteDeviceAsync(); }
+        };
+        UiTheme.AddColumn(_tagGrid, "Name", "点位名称", 150, 150);
+        UiTheme.AddColumn(_tagGrid, "Address", "地址", 110);
+        UiTheme.AddColumn(_tagGrid, "Type", "数据类型", 105);
+        UiTheme.AddColumn(_tagGrid, "Unit", "单位", 70);
+        UiTheme.AddColumn(_tagGrid, "Access", "读写", 86);
+        UiTheme.AddColumn(_tagGrid, "Enabled", "启用", 72);
+        UiTheme.AddColumn(_tagGrid, "Upload", "上传", 72);
+        UiTheme.AddColumn(_tagGrid, "Method", "读取方法", 180, 180);
+        UiTheme.AddColumn(_tagGrid, "Area", "寄存区", 110);
+        UiTheme.AddColumn(_tagGrid, "ByteOrder", "字节序", 85);
+        UiTheme.AddColumn(_tagGrid, "Scaling", "工程值换算", 160, 160);
+        UiTheme.AddColumn(_tagGrid, "Scan", "点位周期 (ms)", 125);
+        UiTheme.AddColumn(_tagGrid, "Deadband", "上报死区", 105);
+        _tagGrid.CellDoubleClick += async (_, e) =>
+        {
+            if (e.RowIndex >= 0 && _tagGrid.Rows[e.RowIndex].DataBoundItem is TagRow tag) await EditTagAsync(tag.Id);
+        };
+        _tagGrid.SelectionChanged += (_, _) => UpdateSelectionCommands();
+        _tagGrid.KeyDown += async (_, e) =>
+        {
+            if (e.KeyCode == Keys.F2) { e.Handled = true; await EditTagAsync(); }
+            else if (e.KeyCode == Keys.Delete) { e.Handled = true; await DeleteTagAsync(); }
+        };
+        var addDevice = ConfigurationButton("添加设备", async (_, _) => await AddDeviceAsync(), true);
+        addDevice.Name = "AddDevice";
+        var probeDevice = SelectionButton("连接诊断", async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(false)), () => SelectedDevice() is not null);
+        _deviceMore = new CommandMenuButton("更多操作", BuildDeviceMenu, exception => ShowError(exception.Message)) { Name = "DeviceMoreActions" };
+        _channelMenu = new CommandMenuButton("通道管理", BuildChannelMenu, exception => ShowError(exception.Message)) { Name = "ChannelActions" };
+        _deviceExchange = new CommandMenuButton("设备导入导出", BuildDeviceExchangeMenu, exception => ShowError(exception.Message)) { Name = "DeviceExcelExchange" };
+        _configurationCommands.AddRange([_deviceMore, _deviceExchange, _channelMenu]);
+        _deviceSummary.Margin = new Padding(4, 9, 0, 0);
+        var content = _devicesPageView.ContentLayout;
+        var filters = BuildDeviceFilters();
+        _devicesPageView.DeviceToolbarHost.Controls.Add(
+            UiTheme.Toolbar(addDevice, probeDevice, _deviceExchange, _deviceMore, _channelMenu, _deviceSummary));
+        _devicesPageView.DeviceFiltersHost.Controls.Add(filters);
 
         _tagMore = new CommandMenuButton("点位操作", BuildTagMenu, exception => ShowError(exception.Message)) { Name = "TagMoreActions" };
         _configurationCommands.Add(_tagMore);
@@ -152,11 +277,7 @@ public sealed partial class MainForm
         _tagSummary.TextChanged += (_, _) => ArrangeTagHeader();
         DpiLayoutCompleted += (_, _) => ArrangeTagHeader();
         content.Controls.Add(tagHeader, 0, 2); content.Controls.Add(_tagGrid, 0, 3);
-        var viewport = ScrollableContent(content, "DevicesViewport", () =>
-            filters.GetPreferredSize(new Size(Math.Max(1, content.ClientSize.Width), 0)).Height +
-            MeasureTagHeaderHeight() + UiTheme.Scale(content, 300));
-        return UiTheme.PageLayout("设备与点位", "选择设备维护点位；每台设备独立启停，双击设备或点击配置进入同一窗口。",
-            UiTheme.Toolbar(addDevice, probeDevice, _deviceExchange, _deviceMore, _channelMenu, _deviceSummary), viewport);
+        return _devicesPageView;
     }
 
     private Button SelectionButton(string text, EventHandler action, Func<bool> available, bool primary = false)
