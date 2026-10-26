@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using EdgeGateway.Abstractions;
@@ -367,6 +369,13 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                         if (pending.Count > 0)
                         {
                             var durable = pending[0];
+                            if (!string.Equals(durable.TargetFingerprint, TargetFingerprint(), StringComparison.Ordinal))
+                            {
+                                State.Failure(Group.Id, $"写入组 [{Group.Name}] 的持久缓冲目标配置已变化；为避免把旧数据写入新目标，已暂停自动补传。请恢复原数据库目标或人工导出处理。");
+                                _nextBatchTicks = Stopwatch.GetTimestamp() + 30 * Stopwatch.Frequency;
+                                await WaitCooldownAsync().ConfigureAwait(false);
+                                continue;
+                            }
                             await WaitCooldownAsync().ConfigureAwait(false);
                             await WriteBatchAsync(durable.Rows, durable.BatchId).ConfigureAwait(false);
                             continue;
@@ -410,7 +419,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                     {
                         try
                         {
-                            await _spool.AppendAsync(Group.Id, batch.Select(row => row.Row).ToArray(), CancellationToken.None).ConfigureAwait(false);
+                            await _spool.AppendAsync(Group.Id, batch.Select(row => row.Row).ToArray(), TargetFingerprint(), CancellationToken.None).ConfigureAwait(false);
                             persisted = true;
                         }
                         catch (Exception exception) { _log.Write(GatewayLogLevel.Error, $"写入组 [{Group.Name}] 停止时持久化批次失败：{SafeError(exception)}"); }
@@ -428,7 +437,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                     {
                         try
                         {
-                            await _spool.AppendAsync(Group.Id, remaining.Select(row => row.Row).ToArray(), CancellationToken.None).ConfigureAwait(false);
+                            await _spool.AppendAsync(Group.Id, remaining.Select(row => row.Row).ToArray(), TargetFingerprint(), CancellationToken.None).ConfigureAwait(false);
                             persisted = true;
                         }
                         catch (Exception exception) { _log.Write(GatewayLogLevel.Error, $"写入组 [{Group.Name}] 队列排空持久化失败：{SafeError(exception)}"); }
@@ -439,6 +448,20 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                 }
             }
         }
+        private string TargetFingerprint()
+        {
+            var connection = State.Configuration;
+            var target = new
+            {
+                connection.Id, connection.Provider, connection.Host, connection.Port, connection.Database,
+                connection.Username, connection.UseTls,
+                group = new { Group.Id, Group.ConnectionId, Group.Mode, Group.Schema, Group.Table,
+                    tags = Group.TagIds.OrderBy(id => id).ToArray(),
+                    columns = Group.Columns.Select(column => new { column.Column, column.Source, column.TagId, column.FieldType, column.ConstantValue }).ToArray() }
+            };
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(target))));
+        }
+
         private async Task WaitCooldownAsync()
         {
             var cooldown = TimeSpan.FromSeconds((_nextBatchTicks - Stopwatch.GetTimestamp()) / (double)Stopwatch.Frequency);
@@ -454,7 +477,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
             string? terminalReason = null;
             if (_spool is not null && spoolBatchId is null)
             {
-                try { spoolBatchId = await _spool.AppendAsync(Group.Id, rows, _token).ConfigureAwait(false); }
+                try { spoolBatchId = await _spool.AppendAsync(Group.Id, rows, TargetFingerprint(), _token).ConfigureAwait(false); }
                 catch (Exception exception) when (exception is IOException or InvalidDataException or NotSupportedException)
                 {
                     State.Drop(Group.Id, rows.Count, "持久缓冲失败，本批未发送到外部数据库：" + SafeError(exception));
