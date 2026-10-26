@@ -80,8 +80,8 @@ public sealed class SqliteAcquisitionSpoolTests
             var first = Guid.NewGuid(); var second = Guid.NewGuid(); var timestamp = DateTimeOffset.UtcNow;
             await spool.AppendAsync(first, [Row("a", 1, timestamp)]);
             await spool.AppendAsync(second, [Row("b", 2, timestamp)]);
-            Assert.Equal("a", Assert.Single(await spool.ReadPendingAsync(first)).Single().Rows.Single().EventId);
-            Assert.Equal("b", Assert.Single(await spool.ReadPendingAsync(second)).Single().Rows.Single().EventId);
+            Assert.Equal("a", Assert.Single(await spool.ReadPendingAsync(first)).Rows.Single().EventId);
+            Assert.Equal("b", Assert.Single(await spool.ReadPendingAsync(second)).Rows.Single().EventId);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
