@@ -172,6 +172,20 @@ public class GatewayWorkerClient : DispatchProxy
         { if (exception is OperationCanceledException && cancellationToken.IsCancellationRequested) throw; return false; }
     }
 
+    internal static async Task RequestWorkerShutdownAsync()
+    {
+        var root = Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar).ToUpperInvariant();
+        var pipeName = "EdgeGateway-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(root)))[..24];
+        using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        await pipe.ConnectAsync(5000).ConfigureAwait(false);
+        using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
+        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+        await writer.WriteLineAsync(JsonSerializer.Serialize(new PipeRequest("worker", "Shutdown", [], []), JsonOptions)).ConfigureAwait(false);
+        var line = await reader.ReadLineAsync().ConfigureAwait(false) ?? throw new IOException("后台采集进程未确认退出命令。");
+        var response = JsonSerializer.Deserialize<PipeResponse>(line, JsonOptions);
+        if (response?.Error is not null) throw new InvalidOperationException(response.Error);
+    }
+
     internal static async Task<int> RunWorkerAsync()
     {
         var root = Path.GetFullPath(AppContext.BaseDirectory);
@@ -196,6 +210,12 @@ public class GatewayWorkerClient : DispatchProxy
                 var request = JsonSerializer.Deserialize<PipeRequest>(line, JsonOptions)
                     ?? throw new InvalidDataException("IPC 请求为空。");
                 if (request.Contract == "health") { await writer.WriteLineAsync(JsonSerializer.Serialize(new PipeResponse("{}", null), JsonOptions)); continue; }
+                if (request.Contract == "worker" && request.Method == "Shutdown")
+                {
+                    await writer.WriteLineAsync(JsonSerializer.Serialize(new PipeResponse("{}", null), JsonOptions)).ConfigureAwait(false);
+                    shutdown.Cancel();
+                    break;
+                }
                 var target = request.Contract switch
                 {
                     "EdgeGateway.Application.IGatewayApplication" => (object)application,
