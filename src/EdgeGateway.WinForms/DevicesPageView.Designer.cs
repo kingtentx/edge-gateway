@@ -104,6 +104,8 @@ internal sealed partial class DevicesPageView
 
         deviceFiltersHost.Name = "DeviceFiltersHost";
         deviceFiltersHost.Dock = DockStyle.Fill;
+        deviceFiltersHost.AutoSize = true;
+        deviceFiltersHost.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         deviceFiltersHost.Margin = Padding.Empty;
         deviceFiltersHost.Padding = Padding.Empty;
 
