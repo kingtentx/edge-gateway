@@ -222,7 +222,7 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         ConfigureMappingGrid();
         _mappingLoadColumns = UiTheme.Button("读取 / 刷新字段", async (_, _) => await ReadColumnsAsync());
         _mappingLoadColumns.Name = "RefreshMappingColumns";
-        _switchPointMapping = UiTheme.Button("使用自定义逐点映射", (_, _) => _mode.SelectedItem = DatabaseStorageMode.PointMapping, primary: true);
+        _switchPointMapping = UiTheme.Button("自定义逐点映射", (_, _) => _mode.SelectedItem = DatabaseStorageMode.PointMapping, primary: true);
         _switchPointMapping.Name = "UsePointMapping";
         var mappingLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
         mappingLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
