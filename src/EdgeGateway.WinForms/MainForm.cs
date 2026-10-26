@@ -15,7 +15,10 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly IGatewayLog _log;
     private readonly string _driverDirectory;
     private readonly bool _smokeTest;
-    private readonly bool _leaveWorkerRunning;
+    private readonly NotifyIcon _trayIcon;
+    private readonly ContextMenuStrip _trayMenu;
+    private readonly Icon _applicationIcon;
+    private bool _exitRequested;
     private readonly bool _layoutMatrix;
     private readonly bool _databaseMappingSmoke;
     private readonly bool _serverResourcesSmoke;
@@ -40,7 +43,7 @@ public sealed partial class MainForm : DpiAwareForm
     public MainForm(IGatewayApplication application,
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
-        bool serverResourcesSmoke = false, bool workbookSmoke = false, bool leaveWorkerRunning = false)
+        bool serverResourcesSmoke = false, bool workbookSmoke = false)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
@@ -48,7 +51,6 @@ public sealed partial class MainForm : DpiAwareForm
         _log = application.Log;
         _driverDirectory = Path.GetFullPath(driverDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
         _workbookSmoke = workbookSmoke;
-        _leaveWorkerRunning = leaveWorkerRunning;
         _smokeTest = workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
         _databaseMappingSmoke = databaseMappingSmoke;
         _serverResourcesSmoke = serverResourcesSmoke;
@@ -56,6 +58,21 @@ public sealed partial class MainForm : DpiAwareForm
         _layoutMatrix = layoutMatrix;
         _smokeScreenshotPath = smokeScreenshotPath;
         Text = "Edge Gateway · 边缘采集网关";
+        _applicationIcon = TrayIconFactory.Create();
+        Icon = _applicationIcon;
+        _trayMenu = new ContextMenuStrip();
+        _trayMenu.Items.Add("打开 Edge Gateway", null, (_, _) => RestoreFromTray());
+        _trayMenu.Items.Add("查看采集状态", null, (_, _) => ShowTrayStatus());
+        _trayMenu.Items.Add(new ToolStripSeparator());
+        _trayMenu.Items.Add("退出网关", null, (_, _) => ExitFromTray());
+        _trayIcon = new NotifyIcon
+        {
+            Icon = _applicationIcon,
+            Text = "Edge Gateway · 边缘采集网关",
+            ContextMenuStrip = _trayMenu,
+            Visible = true
+        };
+        _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
         Font = new Font("Microsoft YaHei UI", 10F);
         ForeColor = UiTheme.Ink;
         BackColor = UiTheme.Background;
@@ -637,12 +654,17 @@ public sealed partial class MainForm : DpiAwareForm
     {
         if (_allowClose) return;
         e.Cancel = true;
+        if (!_smokeTest && !_exitRequested)
+        {
+            HideToTray();
+            return;
+        }
         if (_closing) return;
         if (_busy) { SetFooter("正在处理当前操作，请稍后关闭窗口。"); return; }
         if (_loggingDirty)
         {
             var answer = MessageBox.Show(this, "日志设置尚未应用，是否应用后退出？", "尚未应用的日志设置", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
-            if (answer == DialogResult.Cancel) return;
+            if (answer == DialogResult.Cancel) { _exitRequested = false; return; }
             if (answer == DialogResult.Yes) { await RunBusyAsync(ApplyLoggingSettingsAsync); if (_loggingDirty) return; }
         }
         if (_dirty)
@@ -659,21 +681,16 @@ public sealed partial class MainForm : DpiAwareForm
                     if (resumeCollection) await _application.StartAsync();
                 });
                 // Failed/cancelled application keeps the draft and window open.
-                if (_dirty) return;
+                if (_dirty) { _exitRequested = false; return; }
             }
-        }
-        if (_leaveWorkerRunning && _application.IsRunning)
-        {
-            var keepRunning = MessageBox.Show(this,
-                "关闭界面后，后台采集进程仍会继续运行。若要停止采集，请先在界面中停止设备。是否继续关闭界面？",
-                "后台采集仍在运行", MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
-            if (keepRunning != DialogResult.Yes) return;
         }
         _closing = true; _refreshTimer.Stop(); Enabled = false;
         try
         {
-            if (!_leaveWorkerRunning) await _application.StopAsync();
-            _allowClose = true; Close();
+            await _application.StopAsync();
+            _allowClose = true;
+            _trayIcon.Visible = false;
+            Close();
         }
         catch (Exception exception)
         {
@@ -681,9 +698,62 @@ public sealed partial class MainForm : DpiAwareForm
         }
     }
 
+    private void HideToTray()
+    {
+        if (!Visible) return;
+        Hide();
+        ShowInTaskbar = false;
+        _trayIcon.Visible = true;
+        _trayIcon.BalloonTipTitle = "Edge Gateway 仍在运行";
+        _trayIcon.BalloonTipText = _application.IsRunning
+            ? "窗口已隐藏，设备采集继续运行。右键托盘图标可查看状态或退出。"
+            : "窗口已隐藏，网关程序仍在运行。右键托盘图标可打开窗口或退出。";
+        _trayIcon.ShowBalloonTip(1800);
+    }
+
+    private void RestoreFromTray()
+    {
+        if (_allowClose || IsDisposed) return;
+        ShowInTaskbar = true;
+        Show();
+        if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+        Activate();
+        BringToFront();
+    }
+
+    private void ShowTrayStatus()
+    {
+        var state = _application.IsRunning ? "正在采集" : "采集已停止";
+        var message = $"Edge Gateway：{state}{Environment.NewLine}窗口隐藏不会退出程序。";
+        if (!IsDisposed) MessageBox.Show(this, message, "网关运行状态", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    private void ExitFromTray()
+    {
+        if (_exitRequested || _allowClose) return;
+        if (_application.IsRunning)
+        {
+            var answer = MessageBox.Show(this,
+                "退出网关将停止所有设备采集并关闭驱动连接。确定退出吗？",
+                "退出 Edge Gateway", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+            if (answer != DialogResult.Yes) return;
+        }
+        _exitRequested = true;
+        RestoreFromTray();
+        Close();
+    }
+
     protected override void Dispose(bool disposing)
     {
-        if (disposing) { _refreshTimer.Dispose(); _feedbackTip.Dispose(); }
+        if (disposing)
+        {
+            _refreshTimer.Dispose();
+            _feedbackTip.Dispose();
+            _trayIcon.Visible = false;
+            _trayIcon.Dispose();
+            _trayMenu.Dispose();
+            _applicationIcon.Dispose();
+        }
         base.Dispose(disposing);
     }
 
