@@ -15,8 +15,8 @@ internal static class TrayIconFactory
             graphics.Clear(Color.Transparent);
             using var background = new SolidBrush(Color.FromArgb(18, 32, 52));
             using var outline = new Pen(Color.FromArgb(64, 94, 132), 1.2f);
-            graphics.FillRoundedRectangle(background, new RectangleF(1.5f, 1.5f, 29f, 29f), 7f);
-            graphics.DrawRoundedRectangle(outline, new RectangleF(1.5f, 1.5f, 29f, 29f), 7f);
+            FillRoundedRectangle(graphics, background, new RectangleF(1.5f, 1.5f, 29f, 29f), 7f);
+            DrawRoundedRectangle(graphics, outline, new RectangleF(1.5f, 1.5f, 29f, 29f), 7f);
 
             using var link = new Pen(Color.FromArgb(75, 197, 232), 2.5f)
             { StartCap = LineCap.Round, EndCap = LineCap.Round };
@@ -47,13 +47,13 @@ internal static class TrayIconFactory
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DestroyIcon(IntPtr handle);
 
-    private static void FillRoundedRectangle(this Graphics graphics, Brush brush, RectangleF rectangle, float radius)
+    private static void FillRoundedRectangle(Graphics graphics, Brush brush, RectangleF rectangle, float radius)
     {
         using var path = RoundedPath(rectangle, radius);
         graphics.FillPath(brush, path);
     }
 
-    private static void DrawRoundedRectangle(this Graphics graphics, Pen pen, RectangleF rectangle, float radius)
+    private static void DrawRoundedRectangle(Graphics graphics, Pen pen, RectangleF rectangle, float radius)
     {
         using var path = RoundedPath(rectangle, radius);
         graphics.DrawPath(pen, path);
