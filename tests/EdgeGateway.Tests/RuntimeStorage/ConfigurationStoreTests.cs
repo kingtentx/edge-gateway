@@ -57,6 +57,9 @@ public sealed class ConfigurationStoreTests : IDisposable
     {
         var configuration = DemoConfiguration.Create();
         configuration.Logging.MaxFileSizeMb = 17;
+        configuration.Logging.SampleMaxFileSizeMb = 23;
+        configuration.Logging.SampleRetainedFileCount = 9;
+        configuration.Logging.SampleRetainedDays = 6;
         configuration.Databases.Add(new DatabaseConnectionConfiguration { Name = "生产数据", Provider = ExternalDatabaseProvider.PostgreSql });
         await using (var store = new SqliteConfigurationStore(DatabasePath))
         {
@@ -71,11 +74,15 @@ public sealed class ConfigurationStoreTests : IDisposable
         Assert.Equal("第二版配置", current.Name);
         Assert.Equal(GatewayLogLevel.Warning, current.Logging.MinimumLevel);
         Assert.Equal(17, current.Logging.MaxFileSizeMb);
+        Assert.Equal(23, current.Logging.SampleMaxFileSizeMb);
+        Assert.Equal(9, current.Logging.SampleRetainedFileCount);
+        Assert.Equal(6, current.Logging.SampleRetainedDays);
         Assert.Equal(ExternalDatabaseProvider.PostgreSql, Assert.Single(current.Databases).Provider);
         var previous = await reopened.LoadPreviousAsync();
         Assert.NotNull(previous);
         Assert.Equal("边缘采集网关", previous.Name);
         Assert.Equal(GatewayLogLevel.Information, previous.Logging.MinimumLevel);
+        Assert.Equal(23, previous.Logging.SampleMaxFileSizeMb);
         Assert.Equal(current.Devices[0].Id, previous.Devices[0].Id);
         using var check = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = DatabasePath, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
         check.Open();

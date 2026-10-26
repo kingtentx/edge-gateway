@@ -17,6 +17,9 @@ public static partial class DataRecordingConfigurationValidator
             if (logging.MaxFileSizeMb is < 1 or > 1024) errors.Add("单个日志文件大小须为 1–1024 M。");
             if (logging.RetainedFileCount is < 1 or > 1000) errors.Add("日志保留文件数须为 1–1000。");
             if (logging.RetainedDays is < 1 or > 3650) errors.Add("日志保留天数须为 1–3650。");
+            if (logging.SampleMaxFileSizeMb is < 1 or > 1024) errors.Add("采样日志单文件大小须为 1–1024 M。");
+            if (logging.SampleRetainedFileCount is < 1 or > 1000) errors.Add("采样日志保留文件数须为 1–1000。");
+            if (logging.SampleRetainedDays is < 1 or > 3650) errors.Add("采样日志保留天数须为 1–3650。");
             if (logging.MinimumFreeDiskSpaceMb is < 16 or > 1048576) errors.Add("日志磁盘保护阈值须为 16–1048576 M。");
             if (logging.DiskResumeMarginMb is < 1 or > 65536) errors.Add("日志磁盘恢复余量须为 1–65536 M。");
         }

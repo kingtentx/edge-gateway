@@ -66,6 +66,8 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         ArgumentNullException.ThrowIfNull(configuration);
         if (!Enum.IsDefined(configuration.MinimumLevel) || configuration.MaxFileSizeMb is < 1 or > 1024
             || configuration.RetainedFileCount is < 1 or > 1000 || configuration.RetainedDays is < 1 or > 3650
+            || configuration.SampleMaxFileSizeMb is < 1 or > 1024 || configuration.SampleRetainedFileCount is < 1 or > 1000
+            || configuration.SampleRetainedDays is < 1 or > 3650
             || configuration.MinimumFreeDiskSpaceMb is < 16 or > 1048576 || configuration.DiskResumeMarginMb is < 1 or > 65536)
             throw new ArgumentException("日志级别或文件策略无效；单文件 1–1024 MB，保留 1–1000 份及 1–3650 天。", nameof(configuration));
         Volatile.Write(ref _configuration, new GatewayLoggingConfiguration
@@ -75,6 +77,9 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
             MaxFileSizeMb = configuration.MaxFileSizeMb,
             RetainedFileCount = configuration.RetainedFileCount,
             RetainedDays = configuration.RetainedDays,
+            SampleMaxFileSizeMb = configuration.SampleMaxFileSizeMb,
+            SampleRetainedFileCount = configuration.SampleRetainedFileCount,
+            SampleRetainedDays = configuration.SampleRetainedDays,
             MinimumFreeDiskSpaceMb = configuration.MinimumFreeDiskSpaceMb,
             DiskResumeMarginMb = configuration.DiskResumeMarginMb
         });
@@ -100,7 +105,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
     {
         ArgumentNullException.ThrowIfNull(sample);
         var configuration = Volatile.Read(ref _configuration);
-        if (!configuration.LogAcquisitionSamples || configuration.MinimumLevel > GatewayLogLevel.Information) return;
+        if (!configuration.LogAcquisitionSamples) return;
         if (_writes is null) return;
         if (!SamplePayloadBudget.TryEstimate(sample, out var bytes))
         { Reject("单条采样超出 1 M 或结构复杂度限制，未写入采集日志。"); return; }
@@ -155,7 +160,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             if (!force && ReferenceEquals(state.AppliedPolicy, policy) && today == state.LastMaintenance) return;
             Directory.CreateDirectory(state.Directory);
-            MaintainFiles(path, policy);
+            MaintainFiles(path, policy, state == destinations[1]);
             state.AppliedPolicy = policy; state.LastMaintenance = today;
             _diskPolicy = null;
         }
@@ -202,9 +207,10 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
                             throw new InvalidDataException("排队期间采样载荷变化，超出 1 M 或结构复杂度限制。");
                         var bytes = SerializeLine(entry, work.Sample);
                         var policy = Volatile.Read(ref _configuration);
-                        var limit = (long)policy.MaxFileSizeMb * 1024 * 1024;
+                        var fileSizeMb = work.Sample is null ? policy.MaxFileSizeMb : policy.SampleMaxFileSizeMb;
+                        var limit = (long)fileSizeMb * 1024 * 1024;
                         if (bytes.LongLength > limit)
-                            throw new InvalidDataException($"单条日志超过单文件 {policy.MaxFileSizeMb} MB 上限，本条未写入。");
+                            throw new InvalidDataException($"单条日志超过单文件 {fileSizeMb} M 上限，本条未写入。");
                         var path = DailyLogPath(state.Directory, entry.Timestamp);
                         if (state.ActivePath != path)
                         {
@@ -332,14 +338,14 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
     [GeneratedRegex(@"\A[0-9]{8}(?:\.[0-9]{3,})?\.log\z", RegexOptions.CultureInvariant)]
     private static partial Regex DailyLogFileName();
 
-    private void MaintainFiles(string activePath, GatewayLoggingConfiguration configuration)
+    private void MaintainFiles(string activePath, GatewayLoggingConfiguration configuration, bool samples)
     {
-        var cutoff = DateTime.UtcNow.AddDays(-configuration.RetainedDays);
+        var cutoff = DateTime.UtcNow.AddDays(-(samples ? configuration.SampleRetainedDays : configuration.RetainedDays));
         var files = EnumerateLogFiles(Path.GetDirectoryName(activePath)!).Select(path => new FileInfo(path)).ToArray();
         foreach (var file in files.Where(file => file.FullName != activePath && file.LastWriteTimeUtc < cutoff)) file.Delete();
         var retained = files.Where(file => file.FullName != activePath && File.Exists(file.FullName))
             .OrderByDescending(file => file.LastWriteTimeUtc).ThenByDescending(file => file.Name, StringComparer.Ordinal).ToArray();
-        foreach (var file in retained.Skip(configuration.RetainedFileCount - 1)) file.Delete();
+        foreach (var file in retained.Skip((samples ? configuration.SampleRetainedFileCount : configuration.RetainedFileCount) - 1)) file.Delete();
     }
 
     private void SetFileError(string error)

@@ -39,21 +39,23 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly Label _automaticSaveState = UiTheme.Label("配置自动保存", 9, UiTheme.Muted);
     private string _activePage = "overview";
     private bool _dirty, _busy, _refreshing, _closing, _allowClose;
+    private readonly bool _loggingSmoke;
     public bool SmokeTestFailed { get; private set; }
 
     public MainForm(IGatewayApplication application,
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
-        bool serverResourcesSmoke = false, bool workbookSmoke = false, bool leaveWorkerRunning = false)
+        bool serverResourcesSmoke = false, bool workbookSmoke = false, bool leaveWorkerRunning = false, bool loggingSmoke = false)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
         _drivers = application.Drivers;
         _log = application.Log;
         _driverDirectory = Path.GetFullPath(driverDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
+        _loggingSmoke = loggingSmoke;
         _workbookSmoke = workbookSmoke;
         _leaveWorkerRunning = leaveWorkerRunning;
-        _smokeTest = workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
+        _smokeTest = loggingSmoke || workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
         _databaseMappingSmoke = databaseMappingSmoke;
         _serverResourcesSmoke = serverResourcesSmoke;
         _configurationWriteFailureForSmoke = configurationWriteFailureForSmoke;
@@ -256,6 +258,15 @@ public sealed partial class MainForm : DpiAwareForm
 
     private async void OnShown(object? sender, EventArgs e)
     {
+        if (_loggingSmoke)
+        {
+            try { await SmokeLoggingAsync(); }
+            catch (Exception exception)
+            {
+                SmokeTestFailed = true; TrySaveSmokeFailure(this, "logging-failed"); Console.Error.WriteLine(exception);
+            }
+            _allowClose = true; Close(); return;
+        }
         if (_workbookSmoke)
         {
             try { await SmokeWorkbooksAsync(); }
@@ -589,7 +600,6 @@ public sealed partial class MainForm : DpiAwareForm
         {
             if (_activePage == "overview") RefreshOverview(_application.GetOverviewSummary());
             if (_activePage == "realtime") RefreshRealtime(_application.GetLatest());
-            if (_activePage == "logs") RefreshLogs();
             if (_activePage == "database")
             {
                 BindDatabaseViews();

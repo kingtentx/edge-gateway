@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'DatabaseMapping', 'ServerResources', 'Workbooks')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -130,7 +130,8 @@ namespace EdgeGateway {
                     },
                     Attributes = attributes
                 };
-                var arguments = scenario == "Workbooks" ? " --smoke-workbooks --screenshot "
+                var arguments = scenario == "Logging" ? " --smoke-logging --screenshot "
+                    : scenario == "Workbooks" ? " --smoke-workbooks --screenshot "
                     : scenario == "DatabaseMapping" ? " --smoke-database-mapping --screenshot "
                     : scenario == "ServerResources" ? " --smoke-server-resources --screenshot " : " --smoke-test --layout-matrix --screenshot ";
                 var command = new StringBuilder(Quote(executable) + arguments
@@ -182,6 +183,14 @@ $code = [EdgeGateway.BackgroundUiSmoke]::Run($applicationPath, $repositoryRoot, 
 if ($code -ne 0) {
     Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log')
     throw "Background WinForms smoke failed: $code"
+}
+if ($Scenario -eq 'Logging') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    if ($outputText -notmatch 'Separated logging smoke passed:') { throw 'Separated logging completion marker is missing.' }
+    $screenshots = @(Get-ChildItem -LiteralPath $outputRoot -Filter 'logging-*.png' -File)
+    if ($screenshots.Count -ne 6 -or @($screenshots | Where-Object Length -eq 0).Count -ne 0) { throw 'Logging screenshots are missing or empty.' }
+    Write-Output 'Background separated logging smoke passed.'
+    return
 }
 if ($Scenario -eq 'Workbooks') {
     $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw

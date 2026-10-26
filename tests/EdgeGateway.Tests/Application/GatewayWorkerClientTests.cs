@@ -42,6 +42,20 @@ public sealed class GatewayWorkerClientTests
     }
 
     [Fact]
+    public async Task SeparatedLogQueryAndStructuredSampleSurviveWorkerIpc()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var query = new GatewayLogQuery(now.AddMinutes(-1), now) { Category = GatewayLogCategory.Samples, Device = "设备", Tag = "点位", Quality = SampleQuality.Bad };
+        var sample = new GatewayLogSample(Guid.NewGuid(), "设备", Guid.NewGuid(), "点位", "DB1.0", "", "", "", SampleQuality.Bad, "读取超时");
+        var entry = new GatewayLogFileEntry(now, GatewayLogLevel.Information, "sample", "", "data/sample.log", "{}") { Sample = sample };
+        await using var server = new PipeFixture(JsonSerializer.Serialize(new GatewayLogQueryResult(query, [entry], 20, 0, false, [])));
+        var result = await server.CreateProxy<IGatewayApplication>().QueryLogFilesAsync(query);
+        Assert.Equal(query, result.Query); Assert.Equal(sample, Assert.Single(result.Entries).Sample);
+        var arguments = (await server.Request).GetProperty("Arguments");
+        Assert.Equal((int)GatewayLogCategory.Samples, arguments[0].GetProperty("Category").GetInt32());
+    }
+
+    [Fact]
     public async Task GeneratedProxyReturnsGenericValueTaskResult()
     {
         await using var server = new PipeFixture("{\"OutboxCount\":29}");

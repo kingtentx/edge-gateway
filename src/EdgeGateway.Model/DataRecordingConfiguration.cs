@@ -7,6 +7,9 @@ public sealed class GatewayLoggingConfiguration
     public int MaxFileSizeMb { get; set; } = 10;
     public int RetainedFileCount { get; set; } = 30;
     public int RetainedDays { get; set; } = 30;
+    public int SampleMaxFileSizeMb { get; set; } = 10;
+    public int SampleRetainedFileCount { get; set; } = 30;
+    public int SampleRetainedDays { get; set; } = 30;
     public int MinimumFreeDiskSpaceMb { get; set; } = 256;
     public int DiskResumeMarginMb { get; set; } = 64;
 }

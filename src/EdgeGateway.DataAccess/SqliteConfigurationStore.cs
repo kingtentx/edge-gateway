@@ -103,7 +103,7 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
                         is_legacy INTEGER NOT NULL DEFAULT 0 CHECK(is_legacy IN (0,1)),
                         source TEXT NOT NULL DEFAULT '',
                         updated_ms INTEGER NOT NULL) STRICT;
-                    PRAGMA user_version=4;
+                    PRAGMA user_version=5;
                     """;
                 command.ExecuteNonQuery();
                 transaction.Commit();

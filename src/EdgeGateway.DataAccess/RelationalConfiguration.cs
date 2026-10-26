@@ -3,10 +3,10 @@ using Microsoft.Data.Sqlite;
 
 namespace EdgeGateway.DataAccess;
 
-/// <summary>Functional schema. JSON schema 3 is an exchange contract; SQLite layout version 4 is independent.</summary>
+/// <summary>Functional schema. JSON schema 3 is an exchange contract; SQLite layout version 5 is independent.</summary>
 internal static class RelationalConfiguration
 {
-    internal const int StorageVersion = 4;
+    internal const int StorageVersion = 5;
     private const string Slot = "slot TEXT NOT NULL";
     private const string SnapshotForeignKey = "FOREIGN KEY(slot) REFERENCES configuration_snapshots(slot) ON DELETE CASCADE ON UPDATE CASCADE";
     private const string Singleton = "PRIMARY KEY(slot), " + SnapshotForeignKey;
@@ -32,7 +32,7 @@ internal static class RelationalConfiguration
 
     private static readonly ConfigurationTable<GatewayLoggingConfiguration> Logging = new("logging_settings",
         Slot, Singleton,
-        nameof(GatewayLoggingConfiguration.MinimumLevel), nameof(GatewayLoggingConfiguration.LogAcquisitionSamples), nameof(GatewayLoggingConfiguration.MaxFileSizeMb), nameof(GatewayLoggingConfiguration.RetainedFileCount), nameof(GatewayLoggingConfiguration.RetainedDays), nameof(GatewayLoggingConfiguration.MinimumFreeDiskSpaceMb), nameof(GatewayLoggingConfiguration.DiskResumeMarginMb));
+        nameof(GatewayLoggingConfiguration.MinimumLevel), nameof(GatewayLoggingConfiguration.LogAcquisitionSamples), nameof(GatewayLoggingConfiguration.MaxFileSizeMb), nameof(GatewayLoggingConfiguration.RetainedFileCount), nameof(GatewayLoggingConfiguration.RetainedDays), nameof(GatewayLoggingConfiguration.SampleMaxFileSizeMb), nameof(GatewayLoggingConfiguration.SampleRetainedFileCount), nameof(GatewayLoggingConfiguration.SampleRetainedDays), nameof(GatewayLoggingConfiguration.MinimumFreeDiskSpaceMb), nameof(GatewayLoggingConfiguration.DiskResumeMarginMb));
 
     private static readonly ConfigurationTable<ChannelConfiguration> Channels = new("channels",
         Slot + ", position INTEGER NOT NULL CHECK(position>=0)", Ordered,

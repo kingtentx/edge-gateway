@@ -342,7 +342,7 @@ public sealed partial class MainForm
             var rejectedWhileRunning = false;
             try { await _application.ApplyDatabaseSettingsAsync([connection], [group]); } catch (InvalidOperationException) { rejectedWhileRunning = true; }
             Check(rejectedWhileRunning, "database configuration changed while acquisition was active.");
-            ShowPage("logs"); _logTabs.SelectedIndex = 1;
+            ShowPage("logs"); _logTabs.SelectedIndex = 0;
             ((NumericUpDown)_loggingFields["RetainedDays"]).Value = 17;
             ((NumericUpDown)_loggingFields["MaxFileSizeMb"]).Value = 12;
             ((NumericUpDown)_loggingFields["MinimumFreeDiskSpaceMb"]).Value = 128;
@@ -365,14 +365,14 @@ public sealed partial class MainForm
             while (!_application.GetLatest().Any(sample => sample.Timestamp > beforeSample) && timer.Elapsed < TimeSpan.FromSeconds(5)) await Task.Delay(25);
             Check(_application.GetLatest().Any(sample => sample.Timestamp > beforeSample), "device did not continue producing samples after logging apply.");
             foreach (var input in _loggingFields.Values) BringIntoViewAndAssert(input, "logging settings " + input.Name);
-            ResetScrollPositions(_pages["logs"], _navigation["overview"]); _logTabs.SelectedIndex = 1;
+            ResetScrollPositions(_pages["logs"], _navigation["overview"]); _logTabs.SelectedIndex = 0;
             SaveEditorScreenshot(this, "recording", "log-settings");
             _logTabs.SelectedIndex = 2;
-            foreach (var control in new Control[] { _archiveFrom, _archiveTo, _archiveLevel, _archiveText, _archiveSamples,
-                _archiveLimit, _archiveBudget, _archiveSearch, _archiveExport })
-                BringIntoViewAndAssert(control, "log archive " + control.Name);
-            await QueryArchiveAsync();
-            Check(_archiveResult is not null && _archiveExport.Enabled && !_archiveCancel.Enabled, "archive query did not complete through application boundary.");
+            foreach (var control in _sampleArchive.Inputs)
+                BringIntoViewAndAssert(control, "sample archive " + control.Name);
+            await _sampleArchive.QueryAsync();
+            Check(_sampleArchive.Result is not null && _sampleArchive.Export.Enabled && !_sampleArchive.Cancel.Enabled,
+                "sample query did not complete through application boundary.");
             var previewFixture = new DatabaseWritePreview(DateTimeOffset.UtcNow, true, false,
                 [new("temperature", "double", "EngineeringValue", "NULL", null, "缺少活跃采样")],
                 ["缺少活跃采样"], ["界面验证样例，不代表真实数据库验收。"]);
@@ -388,7 +388,7 @@ public sealed partial class MainForm
                 }
                 finally { previewDialog.Close(); }
             }
-            _logTabs.SelectedIndex = 1;
+            _logTabs.SelectedIndex = 0;
             await AssertSavedConfigurationForSmokeAsync("data recording configuration");
             Console.WriteLine($"Data recording configuration smoke passed: connection save failure/retry, 16 connection inputs, standard point selection, custom required/generated columns and point/type/constant bindings, history empty/source states, stopped-only database apply, and logging hot apply with retained failure drafts at actual {DeviceDpi} DPI; metadata fixtures tested UI only, no external database was contacted.");
         }

@@ -20,9 +20,8 @@ public sealed partial class MainForm
     private Button _loggingApply = null!, _loggingReset = null!;
     private bool _loggingDirty, _bindingLogging;
 
-    private Control WithLoggingSettings(Control eventsPage)
+    private Control WithLoggingSettings()
     {
-        var eventsTab = new TabPage("运行记录") { BackColor = Color.White }; eventsPage.Dock = DockStyle.Fill; eventsTab.Controls.Add(eventsPage);
         var settingsTab = new TabPage("日志设置") { BackColor = Color.White };
         var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = Padding.Empty };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); content.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -34,19 +33,23 @@ public sealed partial class MainForm
         var level = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FormattingEnabled = true }; level.Items.AddRange(Enum.GetValues<GatewayLogLevel>().Cast<object>().ToArray());
         level.Format += (_, e) => { if (e.ListItem is GatewayLogLevel value) e.Value = LogLevelText(value); }; level.SelectedIndexChanged += (_, _) => Changed();
         var samples = new CheckBox { Text = "将每个采样结果写入采样日志", AutoSize = true }; samples.CheckedChanged += (_, _) => Changed();
-        EditorDialog.Section(fields, "日志内容", "运行记录列表显示网关事件。采集结果默认写入日志文件，包含逐点数值、质量和采样时间。");
-        Add("MinimumLevel", "运行日志最低级别", level); Add("Samples", "采样日志", samples);
+        EditorDialog.Section(fields, "运行日志", "保存系统事件、设备状态、故障与操作记录；最低级别不影响采样数据。");
+        Add("MinimumLevel", "运行日志最低级别", level);
         void Number(string key, string label, int min, int max)
         { var input = new NumericUpDown { Minimum = min, Maximum = max, ThousandsSeparator = true }; input.ValueChanged += (_, _) => Changed(); Add(key, label, input); }
-        EditorDialog.Section(fields, "文件保留", "程序日志与采样日志分别轮转，各自按保留文件数和天数清理。");
         Number("MaxFileSizeMb", "单文件最大大小（M）", 1, 1024); Number("RetainedFileCount", "最多保留文件数", 1, 1000); Number("RetainedDays", "最多保留天数", 1, 3650);
+        EditorDialog.Section(fields, "采样数据", "独立记录逐点原始值、工程值、质量、时间和错误；关闭后仍可查询已保存的文件。");
+        Add("Samples", "记录采样数据", samples);
+        Number("SampleMaxFileSizeMb", "单文件最大大小（M）", 1, 1024);
+        Number("SampleRetainedFileCount", "最多保留文件数", 1, 1000);
+        Number("SampleRetainedDays", "最多保留天数", 1, 3650);
         EditorDialog.Section(fields, "磁盘保护", "低于保护阈值暂停文件写入；空间达到阈值加恢复余量后自动恢复。保护期间的日志不补写，丢弃数可见。不会删除其他业务文件。");
         Number("MinimumFreeDiskSpaceMb", "最低剩余空间（M）", 16, 1048576);
         Number("DiskResumeMarginMb", "恢复余量（M）", 1, 65536);
         var logPaths = _application.GetLoggingStatus();
         EditorDialog.Hint(fields, "程序日志：" + (logPaths.DirectoryPath ?? "未启用文件日志") + Environment.NewLine
             + "点位采样日志：" + (logPaths.SampleDirectoryPath ?? "未启用文件日志") + Environment.NewLine
-            + "采样日志用于本地追溯。需要按设备、点位查询长期数据时，请配置外部数据库的标准点行写入组。");
+            + "在“运行日志”和“采样数据”页签分别查询并导出已保存的记录。");
         var openLogs = UiTheme.Button("打开日志目录", (_, _) =>
         {
             try
@@ -72,7 +75,8 @@ public sealed partial class MainForm
         footer.Controls.Add(actions, 0, 1);
         footer.SizeChanged += (_, _) => SetWrappingWidth(_loggingState, footer.ClientSize.Width - footer.Padding.Horizontal);
         content.Controls.Add(viewport, 0, 0); content.Controls.Add(footer, 0, 1); settingsTab.Controls.Add(content);
-        _logTabs.TabPages.Add(eventsTab); _logTabs.TabPages.Add(settingsTab); _logTabs.TabPages.Add(BuildLogArchivePage());
+        _logTabs.TabPages.Add(settingsTab);
+        _logTabs.TabPages.Add(BuildLogArchivePage(false)); _logTabs.TabPages.Add(BuildLogArchivePage(true));
         return _logTabs;
     }
     private void BindLoggingFields()
@@ -84,7 +88,7 @@ public sealed partial class MainForm
             var settings = _configuration.Logging;
             ((ComboBox)_loggingFields["MinimumLevel"]).SelectedItem = settings.MinimumLevel;
             ((CheckBox)_loggingFields["Samples"]).Checked = settings.LogAcquisitionSamples;
-            foreach (var (key, value) in new[] { ("MaxFileSizeMb", settings.MaxFileSizeMb), ("RetainedFileCount", settings.RetainedFileCount), ("RetainedDays", settings.RetainedDays), ("MinimumFreeDiskSpaceMb", settings.MinimumFreeDiskSpaceMb), ("DiskResumeMarginMb", settings.DiskResumeMarginMb) })
+            foreach (var (key, value) in new[] { ("MaxFileSizeMb", settings.MaxFileSizeMb), ("RetainedFileCount", settings.RetainedFileCount), ("RetainedDays", settings.RetainedDays), ("SampleMaxFileSizeMb", settings.SampleMaxFileSizeMb), ("SampleRetainedFileCount", settings.SampleRetainedFileCount), ("SampleRetainedDays", settings.SampleRetainedDays), ("MinimumFreeDiskSpaceMb", settings.MinimumFreeDiskSpaceMb), ("DiskResumeMarginMb", settings.DiskResumeMarginMb) })
             { var input = (NumericUpDown)_loggingFields[key]; input.Value = Math.Clamp(value, (int)input.Minimum, (int)input.Maximum); }
         }
         finally { _bindingLogging = false; }
@@ -96,6 +100,9 @@ public sealed partial class MainForm
         MaxFileSizeMb = (int)((NumericUpDown)_loggingFields["MaxFileSizeMb"]).Value,
         RetainedFileCount = (int)((NumericUpDown)_loggingFields["RetainedFileCount"]).Value,
         RetainedDays = (int)((NumericUpDown)_loggingFields["RetainedDays"]).Value,
+        SampleMaxFileSizeMb = (int)((NumericUpDown)_loggingFields["SampleMaxFileSizeMb"]).Value,
+        SampleRetainedFileCount = (int)((NumericUpDown)_loggingFields["SampleRetainedFileCount"]).Value,
+        SampleRetainedDays = (int)((NumericUpDown)_loggingFields["SampleRetainedDays"]).Value,
         MinimumFreeDiskSpaceMb = (int)((NumericUpDown)_loggingFields["MinimumFreeDiskSpaceMb"]).Value,
         DiskResumeMarginMb = (int)((NumericUpDown)_loggingFields["DiskResumeMarginMb"]).Value
     };

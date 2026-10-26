@@ -14,7 +14,9 @@ public sealed partial class GatewayLog
     {
         ArgumentNullException.ThrowIfNull(query);
         if (query.From > query.To || !Enum.IsDefined(query.MinimumLevel) || query.Text is null || query.Text.Length > 256
-            || query.Limit is < 1 or > 2000 || query.ScanLimitMb is < 1 or > 64)
+            || query.Limit is < 1 or > 2000 || query.ScanLimitMb is < 1 or > 64
+            || !Enum.IsDefined(query.Category) || query.Device is null || query.Device.Length > 256
+            || query.Tag is null || query.Tag.Length > 256 || query.Quality.HasValue && !Enum.IsDefined(query.Quality.Value))
             throw new ArgumentException("日志查询要求开始时间不晚于结束时间、关键词不超过 256 字符、1–2000 行及 1–64 M 扫描上限。", nameof(query));
         // Directory enumeration, JSON parsing and sorting must not run on the WinForms thread.
         return Task.Run(() => QueryFilesAsync(query, cancellationToken), cancellationToken);
@@ -27,9 +29,10 @@ public sealed partial class GatewayLog
         long scanned = 0; var invalid = 0; var partial = false; var resultBytes = 0;
         if (_directory is null || !Directory.Exists(_directory))
             return new(query, entries, 0, 0, false, ["日志目录尚未建立，或当前宿主只保留内存运行记录。"]);
-        var directories = new List<string> { _directory };
+        var directories = new List<string>();
+        if (query.Category != GatewayLogCategory.Samples) directories.Add(_directory);
         var samples = Path.Combine(_directory, "data");
-        if (query.IncludeSamples && Directory.Exists(samples))
+        if (query.Category != GatewayLogCategory.Events && query.IncludeSamples && Directory.Exists(samples))
         {
             if ((File.GetAttributes(samples) & FileAttributes.ReparsePoint) == 0) directories.Add(samples);
             else { partial = true; warnings.Add("已跳过采样日志链接目录 data。"); }
@@ -114,6 +117,7 @@ public sealed partial class GatewayLog
             GatewayLogLevel level;
             string? kind;
             string message;
+            GatewayLogSample? sample = null;
             if (root.TryGetProperty("kind", out var kindProperty))
             {
                 // Operational events and previously recorded sample envelopes.
@@ -134,12 +138,39 @@ public sealed partial class GatewayLog
                     throw new JsonException("采样质量无效。");
                 level = GatewayLogLevel.Information; kind = "sample"; message = root.GetRawText();
             }
-            if (time < query.From || time > query.To || level < query.MinimumLevel || !query.IncludeSamples && kind == "sample"
+            if (query.Category == GatewayLogCategory.Events && kind != "event"
+                || query.Category == GatewayLogCategory.Samples && kind != "sample") return null;
+            if (kind == "sample")
+            {
+                var data = root.TryGetProperty("sample", out var nested) ? nested : root;
+                JsonElement Field(string name)
+                {
+                    if (data.TryGetProperty(name, out var value)) return value;
+                    return data.TryGetProperty(char.ToUpperInvariant(name[0]) + name[1..], out value) ? value : default;
+                }
+                string Text(string name)
+                {
+                    var value = Field(name);
+                    return value.ValueKind switch { JsonValueKind.Undefined or JsonValueKind.Null => "", JsonValueKind.String => value.GetString() ?? "", _ => value.GetRawText() };
+                }
+                var qualityField = Field("quality");
+                var quality = qualityField.ValueKind == JsonValueKind.Number ? (SampleQuality)qualityField.GetInt32()
+                    : Enum.Parse<SampleQuality>(Text("quality"));
+                if (!Enum.IsDefined(quality)) throw new JsonException("采样质量无效。");
+                sample = new(Field("deviceId").GetGuid(), Text("deviceName"), Field("tagId").GetGuid(), Text("tagName"),
+                    Text("address"), Text("rawValue"), Text("value"), Text("unit"), quality, Text("error"));
+                if (query.Device.Length > 0 && !sample.DeviceName.Contains(query.Device, StringComparison.OrdinalIgnoreCase)
+                    && !sample.DeviceId.ToString().Equals(query.Device, StringComparison.OrdinalIgnoreCase)
+                    || query.Tag.Length > 0 && !sample.TagName.Contains(query.Tag, StringComparison.OrdinalIgnoreCase)
+                    && !sample.TagId.ToString().Equals(query.Tag, StringComparison.OrdinalIgnoreCase)
+                    || query.Quality.HasValue && sample.Quality != query.Quality.Value) return null;
+            }
+            if (time < query.From || time > query.To || (query.Category != GatewayLogCategory.Samples && level < query.MinimumLevel) || !query.IncludeSamples && kind == "sample"
                 || query.Text.Length > 0 && !line.Contains(query.Text, StringComparison.OrdinalIgnoreCase)) return null;
             if (message.Length > 2000) message = message[..2000] + "…（详情及导出保留完整 JSON）";
-            return new(time, level, kind, message, fileName, line);
+            return new(time, level, kind, message, fileName, line) { Sample = sample };
         }
-        catch (Exception exception) when (exception is JsonException or KeyNotFoundException or FormatException or InvalidOperationException)
+        catch (Exception exception) when (exception is JsonException or KeyNotFoundException or FormatException or InvalidOperationException or ArgumentException)
         { invalid++; return null; }
     }
 
@@ -148,8 +179,9 @@ public sealed partial class GatewayLog
         ArgumentNullException.ThrowIfNull(result);
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var destination = Path.GetFullPath(path);
-        if (!string.Equals(Path.GetExtension(destination), ".jsonl", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("日志导出文件必须使用 .jsonl 扩展名，不能覆盖配置或运行日志。", nameof(path));
+        var csv = string.Equals(Path.GetExtension(destination), ".csv", StringComparison.OrdinalIgnoreCase);
+        if (!csv && !string.Equals(Path.GetExtension(destination), ".jsonl", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("日志导出文件必须使用 .csv 或 .jsonl 扩展名，不能覆盖配置或运行日志。", nameof(path));
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         if (_directory is not null && destination.StartsWith(TrailingSeparator(_directory), comparison))
             throw new ArgumentException("请导出到运行日志目录之外，避免影响轮转和查询。", nameof(path));
@@ -162,15 +194,24 @@ public sealed partial class GatewayLog
             {
                 await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous))
                 {
-                    await using (var writer = new StreamWriter(stream, new UTF8Encoding(false), 65536, leaveOpen: true))
+                    await using (var writer = new StreamWriter(stream, new UTF8Encoding(csv), 65536, leaveOpen: true))
                     {
+                        writer.NewLine = "\r\n";
                         var header = JsonSerializer.Serialize(new { kind = "export", query = result.Query, count = result.Entries.Count,
                             partial = result.IsPartial, scannedBytes = result.ScannedBytes, warnings = result.Warnings });
-                        await writer.WriteLineAsync(header.AsMemory(), cancellationToken).ConfigureAwait(false);
+                        await writer.WriteLineAsync((csv ? ArchiveCsvLine("查询说明", header) : header).AsMemory(), cancellationToken).ConfigureAwait(false);
+                        if (csv)
+                            await writer.WriteLineAsync(ArchiveCsvLine("时间（UTC）", "类别", "级别", "设备标识", "设备名称", "点位标识", "点位名称", "地址",
+                                "原始值", "工程值", "质量", "单位", "错误说明", "运行日志内容", "来源文件").AsMemory(), cancellationToken).ConfigureAwait(false);
                         foreach (var entry in result.Entries)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
-                            await writer.WriteLineAsync(entry.Json.AsMemory(), cancellationToken).ConfigureAwait(false);
+                            var sample = entry.Sample;
+                            var line = csv ? ArchiveCsvLine(entry.Timestamp.ToUniversalTime().ToString("O"), entry.Kind, entry.Level.ToString(),
+                                sample?.DeviceId.ToString() ?? "", sample?.DeviceName ?? "", sample?.TagId.ToString() ?? "", sample?.TagName ?? "",
+                                sample?.Address ?? "", sample?.RawValue ?? "", sample?.Value ?? "", sample?.Quality.ToString() ?? "", sample?.Unit ?? "",
+                                sample?.Error ?? "", entry.Kind == "event" ? FullEventMessage(entry) : "", entry.FileName) : entry.Json;
+                            await writer.WriteLineAsync(line.AsMemory(), cancellationToken).ConfigureAwait(false);
                         }
                         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
                     }
@@ -182,6 +223,22 @@ public sealed partial class GatewayLog
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }, cancellationToken);
     }
+
+    private static string FullEventMessage(GatewayLogFileEntry entry)
+    {
+        using var document = JsonDocument.Parse(entry.Json);
+        return document.RootElement.GetProperty("message").GetString() ?? "";
+    }
+
+    private static string ArchiveCsvLine(params string[] values) => string.Join(",", values.Select(value =>
+    {
+        // Prefix formula-like text and long integers so opening in Excel does not execute
+        // expressions or round a 64-bit counter. JSONL preserves original JSON types.
+        var trimmed = value.TrimStart();
+        if (trimmed.Length > 0 && ("=+-@".Contains(trimmed[0]) || "\t\r\n".Contains(value[0])
+            || trimmed.Length > 15 && trimmed.All(char.IsDigit))) value = "'" + value;
+        return "\"" + value.Replace("\"", "\"\"") + "\"";
+    }));
 
     private static string TrailingSeparator(string path) => Path.EndsInDirectorySeparator(path) ? path : path + Path.DirectorySeparatorChar;
 }

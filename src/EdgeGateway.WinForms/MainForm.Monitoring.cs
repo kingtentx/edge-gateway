@@ -8,7 +8,6 @@ public sealed partial class MainForm
 {
     private readonly DataGridView _realtimeGrid = UiTheme.Grid();
     private readonly DataGridView _historyGrid = UiTheme.Grid();
-    private readonly DataGridView _logGrid = UiTheme.Grid();
     private readonly ComboBox _realtimeDevice = ChoiceBox(200);
     private readonly TextBox _realtimeSearch = new() { PlaceholderText = "搜索点位名称 / 地址", Width = 220, Margin = new Padding(0, 4, 8, 0) };
     private readonly ComboBox _historyGroup = ChoiceBox(240);
@@ -17,8 +16,6 @@ public sealed partial class MainForm
     private readonly DateTimePicker _historyFrom = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "yyyy-MM-dd HH:mm:ss", Width = 190, Value = DateTime.Now.AddHours(-1), Margin = new Padding(0, 4, 8, 0) };
     private readonly DateTimePicker _historyTo = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "yyyy-MM-dd HH:mm:ss", Width = 190, Value = DateTime.Now.AddMinutes(1), Margin = new Padding(0, 4, 8, 0) };
     private readonly NumericUpDown _historyLimit = new() { Minimum = 100, Maximum = 10000, Value = 5000, Increment = 100, Width = 90, Margin = new Padding(0, 4, 8, 0) };
-    private readonly ComboBox _logLevel = ChoiceBox(150);
-    private readonly TextBox _logSearch = new() { PlaceholderText = "搜索日志内容", Width = 250, Margin = new Padding(0, 4, 8, 0) };
     private readonly TrendChart _trend = new() { Dock = DockStyle.Fill };
     private readonly Label _historySummary = UiTheme.Label("选择时间范围并查询，最多返回 10,000 条。", 9, UiTheme.Muted);
     private IReadOnlyList<TelemetrySample> _queriedHistory = [];
@@ -75,32 +72,7 @@ public sealed partial class MainForm
         return UiTheme.PageLayout("历史与趋势", "查询外部数据库的标准点行表；自定义业务表可通过各自的数据库工具查询。", toolbar, viewport);
     }
 
-    private Control BuildLogsPage()
-    {
-        UiTheme.AddColumn(_logGrid, "Time", "时间", 165, 90);
-        UiTheme.AddColumn(_logGrid, "Level", "级别", 80, 45);
-        UiTheme.AddColumn(_logGrid, "Message", "日志内容", 300, 400);
-        _logLevel.Items.AddRange(new object[] { new LogLevelChoice(null, "全部级别"),
-            new LogLevelChoice(GatewayLogLevel.Information, "信息"), new LogLevelChoice(GatewayLogLevel.Warning, "警告"),
-            new LogLevelChoice(GatewayLogLevel.Error, "错误"), new LogLevelChoice(GatewayLogLevel.Debug, "调试") });
-        _logLevel.SelectedIndex = 0;
-        _logLevel.SelectedIndexChanged += (_, _) => RefreshLogs();
-        _logSearch.TextChanged += (_, _) => RefreshLogs();
-        _logGrid.CellFormatting += (_, e) =>
-        {
-            if (e.RowIndex >= 0 && _logGrid.Rows[e.RowIndex].DataBoundItem is LogRow row)
-                e.CellStyle!.ForeColor = row.Level == "错误" ? UiTheme.Red : row.Level == "警告" ? Color.FromArgb(180, 83, 9) : UiTheme.Ink;
-        };
-        var export = UiTheme.Button("导出日志", async (_, _) => await RunBusyAsync(ExportLogsAsync));
-        export.Margin = new Padding(0, 23, 0, 6);
-        _logGrid.CellDoubleClick += (_, e) =>
-        {
-            if (e.RowIndex >= 0 && _logGrid.Rows[e.RowIndex].DataBoundItem is LogRow row)
-                MessageBox.Show(this, row.Time + "  " + row.Level + "\n\n" + row.Message, "日志详情", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        };
-        return WithLoggingSettings(UiTheme.PageLayout("运行日志", "当前列表显示最近 500 条运行事件。采集数据默认写入日志文件；文件与轮转策略在日志设置中维护。",
-            UiTheme.Toolbar(UiTheme.FilterField("日志级别", _logLevel), UiTheme.FilterField("查找内容", _logSearch), export), _logGrid));
-    }
+    private Control BuildLogsPage() => WithLoggingSettings();
 
     private static ComboBox ChoiceBox(int width)
     {
@@ -274,25 +246,6 @@ public sealed partial class MainForm
         SetFooter($"已导出 {_queriedHistory.Count:N0} 条历史记录。");
     }
 
-    private void RefreshLogs()
-    {
-        var level = (_logLevel.SelectedItem as LogLevelChoice)?.Level;
-        var search = _logSearch.Text.Trim();
-        var rows = _log.GetEntries(500).Where(x => (!level.HasValue || x.Level == level)
-            && (search.Length == 0 || x.Message.Contains(search, StringComparison.OrdinalIgnoreCase)))
-            .OrderByDescending(x => x.Timestamp).Select(x => new LogRow(x.Timestamp.ToLocalTime().ToString("MM-dd HH:mm:ss.fff"), LogLevelText(x.Level), x.Message)).ToList();
-        GridViewState.Rebind(_logGrid, rows, row => (row.Time, row.Level, row.Message));
-    }
-
-    private async Task ExportLogsAsync()
-    {
-        using var dialog = new SaveFileDialog { Filter = "日志文件 (*.txt)|*.txt", FileName = "edge-logs-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt", OverwritePrompt = true };
-        if (dialog.ShowDialog(this) != DialogResult.OK) return;
-        var lines = _log.GetEntries(500).Select(x => $"{x.Timestamp.ToLocalTime():O} [{x.Level}] {x.Message}");
-        await File.WriteAllLinesAsync(dialog.FileName, lines, new UTF8Encoding(true));
-        SetFooter("最近 500 条日志已导出。");
-    }
-
     private static string CsvLine(params string[] values) => string.Join(",", values.Select(value =>
     {
         var text = value;
@@ -307,6 +260,4 @@ public sealed partial class MainForm
             e.CellStyle!.ForeColor = row.Sample.Quality == SampleQuality.Good ? UiTheme.Green : row.Sample.Quality == SampleQuality.Bad ? UiTheme.Red : Color.FromArgb(180, 83, 9);
     }
     private sealed record SampleRow(TelemetrySample Sample, string Device, string Tag, string Address, string Value, string RawValue, string Unit, string Quality, string Time, string Error);
-    private sealed record LogLevelChoice(GatewayLogLevel? Level, string Name) { public override string ToString() => Name; }
-    private sealed record LogRow(string Time, string Level, string Message);
 }

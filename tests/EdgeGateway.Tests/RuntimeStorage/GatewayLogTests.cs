@@ -78,7 +78,7 @@ public sealed class GatewayLogTests : IDisposable
     public async Task EventsAndSamplesUseSeparateDirectoriesAndRetentionBudgets()
     {
         await using var log = new GatewayLog(_directory, availableDiskBytes: _ => long.MaxValue);
-        log.ApplyConfiguration(new() { MaxFileSizeMb = 1, RetainedFileCount = 2 });
+        log.ApplyConfiguration(new() { MaxFileSizeMb = 1, RetainedFileCount = 2, SampleMaxFileSizeMb = 1, SampleRetainedFileCount = 2 });
         var sampleDirectory = Path.Combine(_directory, "data");
         var value = new string('x', 40_000);
         for (var i = 0; i < 40; i++)
