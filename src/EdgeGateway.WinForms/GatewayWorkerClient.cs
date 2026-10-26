@@ -130,7 +130,11 @@ internal sealed class GatewayWorkerClient : DispatchProxy
             });
             if (process is null) throw new InvalidOperationException("无法启动后台采集进程。");
         }
-        catch (InvalidOperationException) when (await CanConnectAsync(cancellationToken).ConfigureAwait(false)) { return; }
+        catch (InvalidOperationException)
+        {
+            if (await CanConnectAsync(cancellationToken).ConfigureAwait(false)) return;
+            throw;
+        }
         var deadline = Stopwatch.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(15))
         {
