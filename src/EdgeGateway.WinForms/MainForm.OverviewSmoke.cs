@@ -17,8 +17,13 @@ public sealed partial class MainForm
             if (_deviceCount.Text != "12" || _onlineCount.Text != "7" || _abnormalCount.Text != "2"
                 || _stoppedCount.Text != "3" || _healthState.Text != "采集需要关注")
                 throw new InvalidOperationException("Overview did not render device and quality summaries.");
+            if (Descendants(_pages["overview"]).OfType<Control>().Any(control => control.Name is "OverviewPointHealth" or "OverviewConnectionHealth")
+                || _outputHealth.Text.Contains("日志：", StringComparison.Ordinal))
+                throw new InvalidOperationException("Overview still shows removed collection or log status details.");
             RefreshServerResources(new(DateTimeOffset.UtcNow, "resource-fixture", 8, 95,
                 new(16L << 30, 1L << 30), [new("C:\\", 100L << 30, 5L << 30)], []));
+            if (_serverCpu.Text != "95.0%" || !_serverMemory.Text.EndsWith('%') || _serverMemory.Text.Contains("正常", StringComparison.Ordinal))
+                throw new InvalidOperationException("CPU and memory values must contain percentages without status suffixes.");
             if (_serverCpu.ForeColor != UiTheme.Warning || _serverMemory.ForeColor != UiTheme.Warning
                 || _serverDisks.ForeColor != UiTheme.Warning || !_serverDisks.Text.Contains("空间偏紧"))
                 throw new InvalidOperationException("Overview did not identify high resource usage.");

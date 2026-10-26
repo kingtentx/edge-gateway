@@ -12,8 +12,6 @@ public sealed partial class MainForm
     private readonly Label _overviewDeviceSummary = UiTheme.Label("等待设备状态", 10, UiTheme.Muted);
     private readonly Label _healthState = UiTheme.Label("等待采集", 18, UiTheme.Muted, true);
     private readonly Label _onlineRate = UiTheme.Label("在线率 —", 10, UiTheme.Muted);
-    private readonly Label _pointHealth = UiTheme.Label("等待采样状态", 10, UiTheme.Muted);
-    private readonly Label _connectionHealth = UiTheme.Label("连接中 0 · 重连中 0 · 故障 0", 10, UiTheme.Muted);
     private readonly Label _pendingCount = UiTheme.Label("待补传 0 条", 14, UiTheme.Ink, true);
     private readonly Label _mqttStatus = UiTheme.Label("平台未启用", 18, UiTheme.Muted, true);
     private readonly Label _outputHealth = UiTheme.Label("等待输出状态", 10, UiTheme.Muted);
@@ -53,11 +51,11 @@ public sealed partial class MainForm
             primary.Add(card);
         }
         var health = OverviewGrid("OverviewHealthPanels");
-        _healthState.Name = "OverviewHealthState"; _pointHealth.Name = "OverviewPointHealth";
+        _healthState.Name = "OverviewHealthState";
         var healthPanels = new[]
         {
             OverviewSection("OverviewCollectionHealth", UiTheme.Green, UiTheme.Label("采集健康", 12, UiTheme.Ink, true),
-                _healthState, _onlineRate, _pointHealth, _connectionHealth),
+                _healthState, _onlineRate),
             OverviewSection("OverviewDeliveryHealth", UiTheme.Blue, UiTheme.Label("上报与输出", 12, UiTheme.Ink, true),
                 _mqttStatus, _pendingCount, _outputHealth)
         };
@@ -193,19 +191,17 @@ public sealed partial class MainForm
             : summary.WaitingPoints > 0 ? "部分点位等待采集" : summary.EnabledPoints == 0 ? "尚无启用点位" : "采集运行正常";
         _healthState.ForeColor = attention ? UiTheme.Red : summary.OnlineDevices > 0 ? UiTheme.Green : UiTheme.Muted;
         _onlineRate.Text = summary.OnlinePercent is { } rate ? $"在线率 {rate:F1}%（在线 / 启用设备）" : "在线率 —（尚无启用设备）";
-        _pointHealth.Text = $"正常 {summary.GoodPoints:N0} · 异常 {summary.BadPoints:N0} · 不确定 {summary.UncertainPoints:N0}\n待采集 {summary.WaitingPoints:N0}（含停止设备点位）";
-        _connectionHealth.Text = $"连接中 {summary.ConnectingDevices} · 重连中 {summary.ReconnectingDevices} · 故障 {summary.FaultedDevices}";
         _mqttStatus.Text = !_configuration.Mqtt.Enabled ? "平台未启用" : _application.IsMqttConnected ? "平台已连接" : "平台未连接";
         _mqttStatus.ForeColor = _application.IsMqttConnected ? UiTheme.Green : UiTheme.Muted;
-        var databases = _application.GetDatabaseStatuses(); var logging = _application.GetLoggingStatus();
+        var databases = _application.GetDatabaseStatuses();
         var failures = databases.Count(database => database.Enabled && database.Error is not null);
-        _outputHealth.Text = $"数据库：启用 {databases.Count(database => database.Enabled)} · 异常 {failures}\n日志：{(logging.FileError is null ? "无写入错误" : "写入异常，请查看运行日志")}";
-        _outputHealth.ForeColor = failures > 0 || logging.FileError is not null ? UiTheme.Red : UiTheme.Muted;
+        _outputHealth.Text = $"数据库：启用 {databases.Count(database => database.Enabled)} · 异常 {failures}";
+        _outputHealth.ForeColor = failures > 0 ? UiTheme.Red : UiTheme.Muted;
     }
 
     private void RefreshServerResources(ServerResourceSnapshot snapshot)
     {
-        static string Load(double value) => $"{value:F1}% · {(value >= 85 ? "偏高" : "正常")}";
+        static string Load(double value) => $"{value:F1}%";
         _serverIdentity.Text = $"服务器资源 · {snapshot.MachineName}";
         _serverCpuTitle.Text = $"CPU · {snapshot.LogicalProcessors} 逻辑处理器";
         _serverMemoryTitle.Text = snapshot.Memory is { } totalMemory ? $"内存 · {ServerDiskBar.Capacity(totalMemory.TotalBytes)}" : "内存";
