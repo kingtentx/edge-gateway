@@ -219,7 +219,7 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
         "long" => long.Parse(value!, CultureInfo.InvariantCulture), "ulong" => ulong.Parse(value!, CultureInfo.InvariantCulture),
         "decimal" => decimal.Parse(value!, CultureInfo.InvariantCulture), "double" => double.Parse(value!, CultureInfo.InvariantCulture),
         "float" => float.Parse(value!, CultureInfo.InvariantCulture), "guid" => Guid.Parse(value!),
-        "datetimeoffset" => DateTimeOffset.Parse(value!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+        "datetimeoffset" => DateTimeOffset.Parse(value!, CultureInfo.InvariantCulture, DateTimeStyles.None),
         "datetime" => DateTime.Parse(value!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
         "bytes" => Convert.FromBase64String(value!), _ => throw new InvalidDataException("持久缓冲中包含未知的数据类型：" + type)
     };
