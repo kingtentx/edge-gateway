@@ -489,7 +489,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                     _nextBatchTicks = 0;
                     if (_spool is not null && spoolBatchId is not null)
                         await _spool.AcknowledgeAsync(Group.Id, spoolBatchId, _token).ConfigureAwait(false);
-                    State.Success(Group.Id, rows.Length); return;
+                    State.Success(Group.Id, rows.Count); return;
                 }
                 catch (OperationCanceledException) when (_token.IsCancellationRequested) { throw; }
                 catch (Exception exception)
@@ -512,7 +512,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                 State.Failure(Group.Id, $"写入组 [{Group.Name}] {terminalReason ?? "已达最大尝试次数"}；{rows.Length} 行已保留在本地持久缓冲，等待恢复补传。");
                 _nextBatchTicks = Stopwatch.GetTimestamp() + 5 * Stopwatch.Frequency;
             }
-            else State.Drop(Group.Id, rows.Length, $"写入组 [{Group.Name}] {terminalReason ?? "已达最大尝试次数"}，本批 {rows.Length} 行未获入库确认。");
+            else State.Drop(Group.Id, rows.Count, $"写入组 [{Group.Name}] {terminalReason ?? "已达最大尝试次数"}，本批 {rows.Length} 行未获入库确认。");
         }
         private string SafeError(Exception exception)
         {
