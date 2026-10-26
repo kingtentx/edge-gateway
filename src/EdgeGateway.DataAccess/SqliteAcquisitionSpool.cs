@@ -64,7 +64,8 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
         if (groupId == Guid.Empty) throw new ArgumentException("写入组标识不能为空。", nameof(groupId));
         ArgumentNullException.ThrowIfNull(rows);
         if (rows.Count == 0) throw new ArgumentException("持久缓冲批次不能为空。", nameof(rows));
-        var batchId = Guid.NewGuid().ToString("N");
+        var identity = groupId.ToString("N") + "|" + string.Join("|", rows.Select(row => row.EventId));
+        var batchId = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
         var created = DateTimeOffset.UtcNow;
         var payload = JsonSerializer.Serialize(rows.Select(EncodeRow).ToArray());
         var bytes = System.Text.Encoding.UTF8.GetByteCount(payload);
@@ -74,6 +75,13 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
             ThrowIfDisposed();
             using var connection = Open();
             using var transaction = connection.BeginTransaction();
+            using (var exists = connection.CreateCommand())
+            {
+                exists.Transaction = transaction;
+                exists.CommandText = "SELECT 1 FROM acquisition_spool_batches WHERE batch_id=$batch";
+                exists.Parameters.AddWithValue("$batch", batchId);
+                if (exists.ExecuteScalar() is not null) { transaction.Commit(); return batchId; }
+            }
             using (var usage = connection.CreateCommand())
             {
                 usage.Transaction = transaction;
@@ -93,7 +101,7 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
             using (var insert = connection.CreateCommand())
             {
                 insert.Transaction = transaction;
-                insert.CommandText = "INSERT INTO acquisition_spool_batches(batch_id,group_id,created_ms,payload,payload_bytes,row_count) VALUES($batch,$group,$created,$payload,$bytes,$rows)";
+                insert.CommandText = "INSERT OR IGNORE INTO acquisition_spool_batches(batch_id,group_id,created_ms,payload,payload_bytes,row_count) VALUES($batch,$group,$created,$payload,$bytes,$rows)";
                 insert.Parameters.AddWithValue("$batch", batchId);
                 insert.Parameters.AddWithValue("$group", groupId.ToString("D"));
                 insert.Parameters.AddWithValue("$created", created.ToUnixTimeMilliseconds());
