@@ -105,15 +105,15 @@ public sealed partial class MainForm
         _configurationCommands.AddRange([_deviceMore, _deviceExchange, _channelMenu]);
         _deviceSummary.Margin = new Padding(4, 9, 0, 0);
         var filters = BuildDeviceFilters();
-        _devicesPageView.DeviceToolbarHost.Controls.Add(
-            UiTheme.Toolbar(addDevice, probeDevice, _deviceExchange, _deviceMore, _channelMenu, _deviceSummary));
+        // Keep the Designer-owned buttons in their existing flow host. A second
+        // autosized flow panel reparents them and measures at an unconstrained width.
+        _devicesPageView.DeviceToolbarHost.Controls.AddRange([_deviceExchange, _deviceMore, _channelMenu, _deviceSummary]);
         _devicesPageView.DeviceFiltersHost.Controls.Add(filters);
 
         _tagMore = new CommandMenuButton("点位操作", BuildTagMenu, exception => ShowError(exception.Message)) { Name = "TagMoreActions" };
         _configurationCommands.Add(_tagMore);
         UiTheme.StyleInput(_tagSearch);
         _tagSearch.TextChanged += (_, _) => BindTags();
-        var tagHeader = _devicesPageView.TagHeaderLayout;
         _tagHeading.Dock = _tagSummary.Dock = DockStyle.Fill;
         var addTag = _devicesPageView.AddTagButton;
         addTag.Click += async (_, _) => await AddTagAsync();
@@ -127,8 +127,8 @@ public sealed partial class MainForm
         singlePointRead.Click += async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(true));
         _configurationCommands.Add(singlePointRead);
         _selectionCommands.Add((singlePointRead, () => SelectedTag() is not null));
-        var tagToolbar = UiTheme.Toolbar(addTag, editTag, singlePointRead, _tagMore, _tagSearch);
-        _devicesPageView.TagToolbarHost.Controls.Add(tagToolbar);
+        _devicesPageView.TagToolbarHost.Controls.Add(_tagMore);
+        _devicesPageView.TagToolbarHost.Controls.SetChildIndex(_tagMore, 3);
 
         return _devicesPageView;
     }
