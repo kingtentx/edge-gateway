@@ -2,11 +2,11 @@
 
 ## 当前版本的存储边界
 
-本版本按开发环境重新定义存储，不保留旧 SQLite 采集历史，不提供旧数据库、旧配置版本的迁移或兼容层。配置只接受 **schema 3**；导入 JSON 和 SQLite 中的配置内容都必须显式声明 `schemaVersion: 3`，缺少版本字段同样明确拒绝，不按模型默认值接纳。开发部署请使用新的空数据目录；旧 `gateway.db`、`gateway.json` 不再作为应用数据源读取。
+本版本按开发环境重新定义存储，不保留旧 SQLite 采集历史，不提供旧数据库、旧配置版本的迁移或兼容层。配置只接受 **schema 3**；导入 JSON 必须显式声明 `schemaVersion: 3`；SQLite 快照元数据使用 `schema_version=3`，物理表结构使用独立的 `PRAGMA user_version=4`。缺少版本同样明确拒绝，不按模型默认值接纳。开发部署请使用新的空数据目录；旧 `gateway.db`、`gateway.json` 不再作为应用数据源读取。
 
 | 内容 | 当前存放位置 | 说明 |
 |---|---|---|
-| 网关、通道、设备、点位、MQTT、日志、数据库及字段映射配置，以及驱动元数据 | `AppData/gateway.config.db` | `configuration_versions` 保存当前与上一份同版本配置，`driver_plugins` / `driver_catalog` 保存插件登记和可用驱动清单；配置版本在一个事务内更新 |
+| 网关、通道、设备、点位、MQTT、日志、数据库及字段映射配置，以及驱动元数据 | `AppData/gateway.config.db` | [17 张关系表](sqlite-configuration-schema.md)按功能保存强类型字段，当前/上一份在同一事务内更新；驱动登记和清单合并至 `driver_registry`，不保存 JSON payload |
 | 程序运行事件 | `logs/yyyyMMdd.log` | JSON Lines 滚动日志 |
 | 采集数据的默认输出 | `logs/data/yyyyMMdd.log` | 精简 JSON Lines 滚动日志，默认开启；不创建 SQLite 采样表 |
 | 启用后的业务采集记录 | 用户配置的 MySQL / PostgreSQL / Oracle | 支持标准点表与自定义字段映射；默认没有启用的外部连接或写入组 |

@@ -84,7 +84,10 @@ public sealed class ConfigurationStoreTests : IDisposable
         using var reader = command.ExecuteReader();
         var tables = new List<string>();
         while (reader.Read()) tables.Add(reader.GetString(0));
-        Assert.Equal(["configuration_versions", "driver_catalog", "driver_plugins"], tables);
+        Assert.Equal(new[] { "channels", "configuration_snapshots", "database_column_mappings", "database_connections",
+            "database_write_group_tags", "database_write_groups", "device_network_settings", "device_properties",
+            "device_serial_settings", "devices", "driver_registry", "gateway_settings", "logging_settings", "mqtt_settings",
+            "rpc_settings", "tags", "telemetry_settings" }, tables);
     }
 
 
@@ -181,9 +184,9 @@ public sealed class ConfigurationStoreTests : IDisposable
             "EdgeGateway.Driver.Modbus", "1.0.0.0", new string('A', 64), "bundled");
         await store.ReplaceDriverInventoryAsync([driver]);
 
-        // The duplicate primary key fails after DELETE/INSERT inside the transaction.
+        // A duplicate inventory ID fails after reset/insert inside the transaction.
         var duplicate = driver with { Id = "duplicate" };
-        await Assert.ThrowsAsync<SqliteException>(() => store.ReplaceDriverInventoryAsync([duplicate, duplicate]));
+        await Assert.ThrowsAsync<ArgumentException>(() => store.ReplaceDriverInventoryAsync([duplicate, duplicate]));
         Assert.Equal(driver, Assert.Single(await store.GetDriverInventoryAsync()));
         Assert.Equal(configuration.Name, (await store.LoadAsync()).Name);
         Assert.Null(await store.LoadPreviousAsync());
@@ -196,7 +199,7 @@ public sealed class ConfigurationStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task SerializationFailureAndCancellationPreserveBothVersions()
+    public async Task InvalidScalarAndCancellationPreserveBothVersions()
     {
         await using var store = new SqliteConfigurationStore(DatabasePath);
         var config = DemoConfiguration.Create();
@@ -245,15 +248,22 @@ public sealed class ConfigurationStoreTests : IDisposable
     [Theory]
     [InlineData("current")]
     [InlineData("previous")]
-    public async Task MissingPersistedSchemaIsRejectedWithoutDefaultingOrChangingEitherVersion(string slot)
+    public async Task InvalidPersistedSchemaIsRejectedWithoutDefaultingOrChangingEitherVersion(string slot)
     {
         await using (var store = new SqliteConfigurationStore(DatabasePath))
         {
             await store.SaveAsync(new GatewayConfiguration { Name = "有效上一份配置" });
             await store.SaveAsync(new GatewayConfiguration { Name = "有效当前配置" });
         }
-        ReplaceSavedPayload(slot, "{\"name\":\"未声明版本的配置\"}");
-        var before = ReadSavedPayloads();
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = DatabasePath, Pooling = false }.ToString()))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA ignore_check_constraints=ON; UPDATE configuration_snapshots SET schema_version=99 WHERE slot=$slot";
+            command.Parameters.AddWithValue("$slot", slot);
+            command.ExecuteNonQuery();
+        }
+        var before = ReadSavedHeaders();
         var factoryCalled = false;
         await using var reopened = new SqliteConfigurationStore(DatabasePath,
             () => { factoryCalled = true; return DemoConfiguration.Create(); });
@@ -262,11 +272,11 @@ public sealed class ConfigurationStoreTests : IDisposable
             ? await Assert.ThrowsAsync<InvalidDataException>(() => reopened.LoadAsync())
             : await Assert.ThrowsAsync<InvalidDataException>(() => reopened.LoadPreviousAsync());
 
-        Assert.Contains("缺少 schemaVersion", error.Message);
+        Assert.Contains("配置快照版本无效", error.Message);
         Assert.False(factoryCalled);
         if (slot == "current") Assert.Equal("有效上一份配置", (await reopened.LoadPreviousAsync())!.Name);
         else Assert.Equal("有效当前配置", (await reopened.LoadAsync()).Name);
-        var after = ReadSavedPayloads();
+        var after = ReadSavedHeaders();
         Assert.Equal(before["current"], after["current"]);
         Assert.Equal(before["previous"], after["previous"]);
     }
@@ -275,7 +285,7 @@ public sealed class ConfigurationStoreTests : IDisposable
     [InlineData("schemaVersion")]
     [InlineData("SchemaVersion")]
     [InlineData("SCHEMAVERSION")]
-    public async Task ExplicitSchemaUsesSharedCaseInsensitiveNamesForFilesAndStoredPayloads(string propertyName)
+    public async Task ExplicitJsonSchemaNamesImportIntoRelationalStorage(string propertyName)
     {
         Directory.CreateDirectory(_directory);
         var path = Path.Combine(_directory, "explicit-schema.json");
@@ -286,7 +296,6 @@ public sealed class ConfigurationStoreTests : IDisposable
         Assert.Equal("明确的新版本配置", imported.Name);
 
         await using (var store = new SqliteConfigurationStore(DatabasePath)) await store.SaveAsync(imported);
-        ReplaceSavedPayload("current", payload);
         await using var reopened = new SqliteConfigurationStore(DatabasePath);
         var restored = await reopened.LoadAsync();
         Assert.Equal(3, restored.SchemaVersion);
@@ -311,14 +320,14 @@ public sealed class ConfigurationStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task CorruptSavedPayloadNeverFallsBackToDefaults()
+    public async Task MissingRequiredSettingsNeverFallsBackToDefaults()
     {
         await using (var store = new SqliteConfigurationStore(DatabasePath)) await store.SaveAsync(DemoConfiguration.Create());
         using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = DatabasePath, Pooling = false }.ToString()))
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE configuration_versions SET payload='{broken' WHERE slot='current'";
+            command.CommandText = "DELETE FROM mqtt_settings WHERE slot='current'";
             command.ExecuteNonQuery();
         }
         var factoryCalled = false;
@@ -327,24 +336,13 @@ public sealed class ConfigurationStoreTests : IDisposable
         Assert.False(factoryCalled);
     }
 
-    private void ReplaceSavedPayload(string slot, string payload)
-    {
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = DatabasePath, Pooling = false }.ToString());
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE configuration_versions SET payload=$payload WHERE slot=$slot";
-        command.Parameters.AddWithValue("$payload", payload);
-        command.Parameters.AddWithValue("$slot", slot);
-        Assert.Equal(1, command.ExecuteNonQuery());
-    }
-
-    private Dictionary<string, string> ReadSavedPayloads()
+    private Dictionary<string, string> ReadSavedHeaders()
     {
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
             { DataSource = DatabasePath, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
         connection.Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT slot,payload FROM configuration_versions";
+        command.CommandText = "SELECT slot, CAST(schema_version AS TEXT) FROM configuration_snapshots";
         using var reader = command.ExecuteReader();
         var result = new Dictionary<string, string>();
         while (reader.Read()) result.Add(reader.GetString(0), reader.GetString(1));

@@ -23,6 +23,8 @@
 
 ## SQLite 的职责
 
+2026-10-26 起，数据库结构版本为 4，按功能存储 17 张强类型关系表，配置模型/JSON 交换仍为 schema 3。移除整包 JSON 配置表，驱动登记与可用目录合并至 `driver_registry`；旧数据库明确拒绝且不自动清空或迁移。详见 [SQLite 配置结构](sqlite-configuration-schema.md)。
+
 gateway.config.db 保存网关配置快照（设备、点位、通信参数、日志策略、外部数据库连接及写入映射）、上一版本配置、已安装插件元数据和本次启动发现的完整驱动目录清单。数据库不保存采集历史数据，也不把 DLL 二进制写入 SQLite。
 
 drivers/ 中的 DLL 是可执行代码文件；SQLite 保存驱动 ID、名称、版本、程序集名、SHA-256、来源及状态。上传安装插件时先把 DLL 安装到版本化目录，校验通过后才登记。启动时重新校验文件哈希，并刷新 SQLite 中的可用驱动目录。driver-plugin.json 决定当前激活修订或停用状态；SQLite 提供驱动目录索引，重启时根据清单重新校验并同步。安装、更新、卸载的失败处理见 [插件管理](driver-plugin-management.md)。

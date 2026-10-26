@@ -1,4 +1,3 @@
-using System.Text.Json;
 using EdgeGateway.Abstractions;
 using EdgeGateway.Model;
 using Microsoft.Data.Sqlite;
@@ -26,11 +25,11 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            var current = await Task.Run(() => ReadSlot(OpenCore(), "current"), cancellationToken).ConfigureAwait(false);
+            var current = await Task.Run(() => ReadConfiguration(OpenCore(), "current"), cancellationToken).ConfigureAwait(false);
             if (current is not null)
             {
                 _hasSavedConfiguration = true;
-                return Parse(current);
+                return current;
             }
             _hasSavedConfiguration = false;
             return defaultFactory?.Invoke() ?? new GatewayConfiguration();
@@ -44,8 +43,8 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            var payload = await Task.Run(() => ReadSlot(OpenCore(), "previous"), cancellationToken).ConfigureAwait(false);
-            return payload is null ? null : Parse(payload);
+            var payload = await Task.Run(() => ReadConfiguration(OpenCore(), "previous"), cancellationToken).ConfigureAwait(false);
+            return payload;
         }
         finally { _gate.Release(); }
     }
@@ -54,13 +53,13 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
     {
         ArgumentNullException.ThrowIfNull(configuration);
         if (configuration.SchemaVersion != 3) throw new InvalidDataException("仅支持配置版本 3。");
-        // Serialization and validation failures happen before opening or changing the database.
-        var payload = JsonSerializer.Serialize(configuration, GatewayJson.Options);
+        // Capture and scalar validation happen before opening or changing the database.
+        var rows = RelationalConfiguration.Capture(configuration);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            await Task.Run(() => SaveCore(OpenCore(), payload, cancellationToken), cancellationToken).ConfigureAwait(false);
+            await Task.Run(() => RelationalConfiguration.Save(OpenCore(), rows, cancellationToken), cancellationToken).ConfigureAwait(false);
             _hasSavedConfiguration = true;
         }
         finally { _gate.Release(); }
@@ -78,39 +77,38 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
             using var command = connection.CreateCommand();
             command.CommandText = "PRAGMA user_version";
             var version = Convert.ToInt32(command.ExecuteScalar());
-            if (version is not (0 or 3))
-                throw new InvalidDataException($"配置数据库版本 {version} 不受支持；请使用当前版本的配置数据库。");
-            command.CommandText = """
-                PRAGMA journal_mode=WAL;
-                PRAGMA synchronous=FULL;
-                PRAGMA busy_timeout=5000;
-                CREATE TABLE IF NOT EXISTS configuration_versions (
-                    slot TEXT PRIMARY KEY NOT NULL CHECK(slot IN ('current','previous')),
-                    schema_version INTEGER NOT NULL,
-                    payload TEXT NOT NULL,
-                    saved_ms INTEGER NOT NULL);
-                CREATE TABLE IF NOT EXISTS driver_plugins (
-                    driver_id TEXT PRIMARY KEY NOT NULL,
-                    name TEXT NOT NULL,
-                    version TEXT NOT NULL,
-                    assembly_name TEXT NOT NULL,
-                    sha256 TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    updated_ms INTEGER NOT NULL);
-                CREATE TABLE IF NOT EXISTS driver_catalog (
-                    driver_id TEXT PRIMARY KEY NOT NULL,
-                    name TEXT NOT NULL,
-                    description TEXT NOT NULL,
-                    supports_write INTEGER NOT NULL,
-                    is_legacy INTEGER NOT NULL,
-                    assembly_name TEXT NOT NULL,
-                    version TEXT NOT NULL,
-                    sha256 TEXT NOT NULL,
-                    source TEXT NOT NULL,
-                    updated_ms INTEGER NOT NULL);
-                PRAGMA user_version=3;
-                """;
+            if (version != 0 && version != RelationalConfiguration.StorageVersion)
+                throw new InvalidDataException($"配置数据库结构版本 {version} 不受支持；当前需要版本 {RelationalConfiguration.StorageVersion}。旧库不会自动迁移或清空，请使用新的空数据目录。");
+            command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";
+            var tableCount = Convert.ToInt32(command.ExecuteScalar());
+            if (version == 0 && tableCount != 0)
+                throw new InvalidDataException("配置数据库未声明结构版本且包含已有表；不会覆盖或清空原库。");
+            command.CommandText = "PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;";
             command.ExecuteNonQuery();
+            if (version == 0)
+            {
+                using var transaction = connection.BeginTransaction();
+                command.Transaction = transaction;
+                command.CommandText = RelationalConfiguration.CreateSql + """
+                    CREATE TABLE driver_registry (
+                        driver_id TEXT PRIMARY KEY NOT NULL COLLATE NOCASE,
+                        name TEXT NOT NULL,
+                        version TEXT NOT NULL,
+                        assembly_name TEXT NOT NULL,
+                        sha256 TEXT NOT NULL,
+                        plugin_status TEXT,
+                        listed INTEGER NOT NULL DEFAULT 0 CHECK(listed IN (0,1)),
+                        description TEXT NOT NULL DEFAULT '',
+                        supports_write INTEGER NOT NULL DEFAULT 0 CHECK(supports_write IN (0,1)),
+                        is_legacy INTEGER NOT NULL DEFAULT 0 CHECK(is_legacy IN (0,1)),
+                        source TEXT NOT NULL DEFAULT '',
+                        updated_ms INTEGER NOT NULL) STRICT;
+                    PRAGMA user_version=4;
+                    """;
+                command.ExecuteNonQuery();
+                transaction.Commit();
+                command.Transaction = null;
+            }
             return _connection = connection;
         }
         catch { connection.Dispose(); throw; }
@@ -131,11 +129,11 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
             {
                 using var command = OpenCore().CreateCommand();
                 command.CommandText = """
-                    INSERT INTO driver_plugins(driver_id,name,version,assembly_name,sha256,status,updated_ms)
+                    INSERT INTO driver_registry(driver_id,name,version,assembly_name,sha256,plugin_status,updated_ms)
                     VALUES($id,$name,$version,$assembly,$sha256,$status,$time)
                     ON CONFLICT(driver_id) DO UPDATE SET
                         name=excluded.name,version=excluded.version,assembly_name=excluded.assembly_name,
-                        sha256=excluded.sha256,status=excluded.status,updated_ms=excluded.updated_ms;
+                        sha256=excluded.sha256,plugin_status=excluded.plugin_status,updated_ms=excluded.updated_ms;
                     """;
                 command.Parameters.AddWithValue("$id", plugin.Id);
                 command.Parameters.AddWithValue("$name", plugin.Name);
@@ -165,7 +163,7 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
                 {
                     using var delete = connection.CreateCommand();
                     delete.Transaction = transaction;
-                    delete.CommandText = "DELETE FROM driver_plugins WHERE driver_id=$id COLLATE NOCASE; DELETE FROM driver_catalog WHERE driver_id=$id COLLATE NOCASE;";
+                    delete.CommandText = "DELETE FROM driver_registry WHERE driver_id=$id COLLATE NOCASE;";
                     delete.Parameters.AddWithValue("$id", id);
                     delete.ExecuteNonQuery();
                 }
@@ -173,7 +171,7 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
                 {
                     using var insert = connection.CreateCommand();
                     insert.Transaction = transaction;
-                    insert.CommandText = "INSERT INTO driver_plugins(driver_id,name,version,assembly_name,sha256,status,updated_ms) VALUES($id,$name,$version,$assembly,$hash,$status,$time);";
+                    insert.CommandText = "INSERT INTO driver_registry(driver_id,name,version,assembly_name,sha256,plugin_status,updated_ms) VALUES($id,$name,$version,$assembly,$hash,$status,$time);";
                     insert.Parameters.AddWithValue("$id", plugin.Id);
                     insert.Parameters.AddWithValue("$name", plugin.Name);
                     insert.Parameters.AddWithValue("$version", plugin.Version);
@@ -198,7 +196,7 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
             return await Task.Run<IReadOnlyList<DriverPluginInfo>>(() =>
             {
                 using var command = OpenCore().CreateCommand();
-                command.CommandText = "SELECT driver_id,name,version,assembly_name,sha256,status FROM driver_plugins ORDER BY driver_id";
+                command.CommandText = "SELECT driver_id,name,version,assembly_name,sha256,plugin_status FROM driver_registry WHERE plugin_status IS NOT NULL ORDER BY driver_id";
                 using var reader = command.ExecuteReader();
                 var plugins = new List<DriverPluginInfo>();
                 while (reader.Read())
@@ -229,17 +227,23 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
                 using (var delete = connection.CreateCommand())
                 {
                     delete.Transaction = transaction;
-                    delete.CommandText = "DELETE FROM driver_catalog";
+                    delete.CommandText = "UPDATE driver_registry SET listed=0,description='',supports_write=0,is_legacy=0,source=''; DELETE FROM driver_registry WHERE plugin_status IS NULL";
                     delete.ExecuteNonQuery();
                 }
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var driver in drivers)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (!seen.Add(driver.Id)) throw new ArgumentException("驱动清单包含重复标识。", nameof(drivers));
                     using var command = connection.CreateCommand();
                     command.Transaction = transaction;
                     command.CommandText = """
-                        INSERT INTO driver_catalog(driver_id,name,description,supports_write,is_legacy,assembly_name,version,sha256,source,updated_ms)
-                        VALUES($id,$name,$description,$write,$legacy,$assembly,$version,$sha256,$source,$time);
+                        INSERT INTO driver_registry(driver_id,name,description,supports_write,is_legacy,assembly_name,version,sha256,source,updated_ms,listed)
+                        VALUES($id,$name,$description,$write,$legacy,$assembly,$version,$sha256,$source,$time,1)
+                        ON CONFLICT(driver_id) DO UPDATE SET
+                            name=excluded.name,description=excluded.description,supports_write=excluded.supports_write,
+                            is_legacy=excluded.is_legacy,assembly_name=excluded.assembly_name,version=excluded.version,
+                            sha256=excluded.sha256,source=excluded.source,updated_ms=excluded.updated_ms,listed=1;
                         """;
                     command.Parameters.AddWithValue("$id", driver.Id);
                     command.Parameters.AddWithValue("$name", driver.Name);
@@ -268,7 +272,7 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
             return await Task.Run<IReadOnlyList<DriverInventoryRecord>>(() =>
             {
                 using var command = OpenCore().CreateCommand();
-                command.CommandText = "SELECT driver_id,name,description,supports_write,is_legacy,assembly_name,version,sha256,source FROM driver_catalog ORDER BY driver_id";
+                command.CommandText = "SELECT driver_id,name,description,supports_write,is_legacy,assembly_name,version,sha256,source FROM driver_registry WHERE listed=1 ORDER BY driver_id";
                 using var reader = command.ExecuteReader();
                 var records = new List<DriverInventoryRecord>();
                 while (reader.Read())
@@ -281,42 +285,13 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
         finally { _gate.Release(); }
     }
 
-    private static string? ReadSlot(SqliteConnection connection, string slot)
+    private static GatewayConfiguration? ReadConfiguration(SqliteConnection connection, string slot)
     {
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT payload FROM configuration_versions WHERE slot=$slot";
-        command.Parameters.AddWithValue("$slot", slot);
-        return command.ExecuteScalar() as string;
-    }
-
-    private static void SaveCore(SqliteConnection connection, string payload, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            DELETE FROM configuration_versions WHERE slot='previous';
-            INSERT INTO configuration_versions(slot,schema_version,payload,saved_ms)
-                SELECT 'previous',schema_version,payload,saved_ms FROM configuration_versions WHERE slot='current';
-            INSERT INTO configuration_versions(slot,schema_version,payload,saved_ms) VALUES('current',3,$payload,$time)
-                ON CONFLICT(slot) DO UPDATE SET schema_version=3,payload=excluded.payload,saved_ms=excluded.saved_ms;
-            """;
-        command.Parameters.AddWithValue("$payload", payload);
-        command.Parameters.AddWithValue("$time", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-        command.ExecuteNonQuery();
-        cancellationToken.ThrowIfCancellationRequested();
-        transaction.Commit(); // After commit, cancellation cannot report an uncommitted configuration.
-    }
-
-    private static GatewayConfiguration Parse(string payload)
-    {
-        try
+        try { return RelationalConfiguration.Read(connection, slot); }
+        catch (Exception exception) when (exception is SqliteException or FormatException or ArgumentException or OverflowException)
         {
-            using var document = JsonDocument.Parse(payload);
-            return ConfigurationJson.Deserialize(document.RootElement);
+            throw new InvalidDataException("配置数据库的表结构或字段已损坏；当前及上一份配置未修改。", exception);
         }
-        catch (JsonException exception) { throw new InvalidDataException("配置数据库中的 JSON 已损坏；当前及上一版本未修改。", exception); }
     }
 
     public async ValueTask DisposeAsync()
