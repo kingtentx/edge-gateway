@@ -15,6 +15,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly IGatewayLog _log;
     private readonly string _driverDirectory;
     private readonly bool _smokeTest;
+    private readonly bool _leaveWorkerRunning;
     private readonly NotifyIcon _trayIcon;
     private readonly ContextMenuStrip _trayMenu;
     private readonly Icon _applicationIcon;
@@ -43,7 +44,7 @@ public sealed partial class MainForm : DpiAwareForm
     public MainForm(IGatewayApplication application,
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
-        bool serverResourcesSmoke = false, bool workbookSmoke = false)
+        bool serverResourcesSmoke = false, bool workbookSmoke = false, bool leaveWorkerRunning = false)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
@@ -51,6 +52,7 @@ public sealed partial class MainForm : DpiAwareForm
         _log = application.Log;
         _driverDirectory = Path.GetFullPath(driverDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
         _workbookSmoke = workbookSmoke;
+        _leaveWorkerRunning = leaveWorkerRunning;
         _smokeTest = workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
         _databaseMappingSmoke = databaseMappingSmoke;
         _serverResourcesSmoke = serverResourcesSmoke;
@@ -687,7 +689,10 @@ public sealed partial class MainForm : DpiAwareForm
         _closing = true; _refreshTimer.Stop(); Enabled = false;
         try
         {
-            await _application.StopAsync();
+            if (_leaveWorkerRunning)
+                await GatewayWorkerClient.RequestWorkerShutdownAsync();
+            else
+                await _application.StopAsync();
             _allowClose = true;
             _trayIcon.Visible = false;
             Close();
