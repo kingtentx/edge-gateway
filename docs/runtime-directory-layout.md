@@ -33,7 +33,7 @@ drivers/ 中的 DLL 是可执行代码文件；SQLite 保存驱动 ID、名称�
 
 ## 初始化与权限
 
-- 首次启动创建 AppData、drivers、logs、logs/data、messaging/outbox、messaging/rpc，并将默认配置立即保存到 SQLite。
+- 首次启动创建 AppData、drivers、logs、logs/data、messaging/outbox、messaging/rpc，读取驱动及停用清单后，仅为可用驱动生成默认设备，完整校验后保存到 SQLite。
 - 正式部署应将整个程序目录放在网关服务账户可写的专用目录（例如 C:\\EdgeGateway），不建议安装到受保护的 Program Files 后仍以普通用户运行。
 - AppData 与 drivers 是明确指定的子目录；日志、消息队列与进程锁位于程序根目录。用户通过文件对话框导出的文件保存在用户指定的位置。
 - 本项目不导入旧 SQLite 历史数据，也不自动搬迁之前 LocalApplicationData 中的旧配置；新部署按当前目录初始化，避免意外覆盖或误用旧配置。

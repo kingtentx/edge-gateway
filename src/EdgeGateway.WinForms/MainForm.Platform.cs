@@ -118,7 +118,7 @@ public sealed partial class MainForm
         TextField("gatewayId", "网关标识", x => CloudDraft.GatewayId = x);
         TextField("name", "网关名称", x => CloudDraft.Name = x);
         CheckField("autoStart", "程序启动后自动采集", x => CloudDraft.AutoStart = x);
-        Section("驱动插件", "查看全部驱动及引用设备；内置与上传驱动均支持详情、更新 DLL 和删除，也可新增驱动。");
+        Section("驱动插件", "查看全部驱动及引用设备；内置与上传驱动均支持详情、更新 DLL 和卸载；卸载保留驱动文件，也可新增驱动。");
         var manageDrivers = UiTheme.Button("驱动插件管理", (_, _) =>
         {
             using var dialog = new DriverPluginDialog(_application, _driverDirectory);

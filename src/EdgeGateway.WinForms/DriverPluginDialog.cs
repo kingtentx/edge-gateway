@@ -53,7 +53,7 @@ internal sealed class DriverPluginDialog : DpiAwareForm
         var close = UiTheme.Button("关闭", (_, _) => Close());
         _details = UiTheme.Button("查看详情", async (_, _) => await ShowDetailsAsync());
         _update = UiTheme.Button("更新 DLL", async (_, _) => await InstallAsync(true));
-        _uninstall = UiTheme.Button("删除驱动", async (_, _) => await UninstallAsync());
+        _uninstall = UiTheme.Button("卸载驱动", async (_, _) => await UninstallAsync());
         _details.Name = "DriverDetails";
         _update.Name = "UpdateDriverDll";
         _uninstall.Name = "UninstallDriverPlugin";
@@ -130,10 +130,10 @@ internal sealed class DriverPluginDialog : DpiAwareForm
         if (_busy || SelectedDriver is not { } selected) return;
         var related = await ReadDetailsAsync(selected.Id);
         if (related is null) return;
-        if (MessageBox.Show(this, $"删除 {selected.Name} ({selected.Id})，版本 {selected.Version}？" + Environment.NewLine +
+        if (MessageBox.Show(this, $"卸载 {selected.Name} ({selected.Id})，版本 {selected.Version}？" + Environment.NewLine +
             "同 DLL 受影响驱动：" + string.Join("、", related.RelatedDriverIds) + Environment.NewLine +
-            "任何设备仍引用这些驱动时不能删除，请先删除设备或更换驱动。删除后重启也不会重新加载。",
-            "确认删除驱动", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            "任何设备仍引用这些驱动时不能卸载，请先移除设备引用或更换驱动。卸载会移除注册记录，保留 drivers 中的 DLL，重启后不会自动加载。",
+            "确认卸载驱动", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
         await RunMutationAsync(() => _application.UninstallDriverPluginAsync(selected.Id));
     }
 

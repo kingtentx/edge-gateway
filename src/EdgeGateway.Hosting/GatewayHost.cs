@@ -40,8 +40,13 @@ public sealed class GatewayHost : IAsyncDisposable
     public string DataDirectory { get; }
     public IGatewayApplication Application { get; }
 
-    public static async Task<GatewayHost> CreateAsync(string dataDirectory, string? pluginDirectory = null,
-        CancellationToken cancellationToken = default, bool enableVerificationFaults = false, string? runtimeDirectory = null)
+    public static Task<GatewayHost> CreateAsync(string dataDirectory, string? pluginDirectory = null,
+        CancellationToken cancellationToken = default, bool enableVerificationFaults = false, string? runtimeDirectory = null) =>
+        CreateCoreAsync(dataDirectory, pluginDirectory, cancellationToken, enableVerificationFaults, runtimeDirectory,
+            Path.Combine(AppContext.BaseDirectory, "drivers"));
+
+    internal static async Task<GatewayHost> CreateCoreAsync(string dataDirectory, string? pluginDirectory,
+        CancellationToken cancellationToken, bool enableVerificationFaults, string? runtimeDirectory, string packagedDriverDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dataDirectory);
         cancellationToken.ThrowIfCancellationRequested();
@@ -68,17 +73,12 @@ public sealed class GatewayHost : IAsyncDisposable
             var configurationPath = Path.Combine(directory, "gateway.config.db");
             configurations = new SqliteConfigurationStore(configurationPath, Service.DemoConfiguration.Create);
             var configuration = await configurations.LoadAsync(cancellationToken).ConfigureAwait(false);
-            if (!configurations.HasSavedConfiguration)
-            {
-                // First launch writes the complete default configuration to SQLite immediately,
-                // so a restart never depends on transient in-memory defaults.
-                await configurations.SaveAsync(configuration, cancellationToken).ConfigureAwait(false);
-            }
+            var initializeDefaults = !configurations.HasSavedConfiguration;
             store = new FileGatewayStore(Path.Combine(runtimeRoot, "messaging"));
             await store.InitializeAsync(cancellationToken).ConfigureAwait(false);
             log = new GatewayLog(Path.Combine(runtimeRoot, "logs"));
             log.ApplyConfiguration(configuration.Logging);
-            var packagedDriversDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "drivers"));
+            var packagedDriversDirectory = Path.GetFullPath(packagedDriverDirectory);
             var driversDirectory = Path.GetFullPath(pluginDirectory ?? packagedDriversDirectory);
             Directory.CreateDirectory(packagedDriversDirectory);
             Directory.CreateDirectory(driversDirectory);
@@ -99,6 +99,21 @@ public sealed class GatewayHost : IAsyncDisposable
                 OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                 drivers.LoadPlugins(driversDirectory);
             foreach (var factory in IotGatewayDriverCatalog.CreateFactories(log, drivers.ManagedDriverIds)) drivers.Register(factory);
+            if (initializeDefaults)
+            {
+                // A fresh SQLite database can coexist with an earlier driver uninstall. Never
+                // reintroduce a default device whose driver is unavailable, or reactivate its DLL.
+                var available = drivers.Drivers.Select(driver => driver.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                foreach (var device in configuration.Devices.Where(device => !available.Contains(device.DriverId)).ToArray())
+                {
+                    configuration.Devices.Remove(device);
+                    log.Write(Model.GatewayLogLevel.Warning, $"初始化默认配置时跳过设备 [{device.Name}]：驱动 {device.DriverId} 未安装或已卸载。");
+                }
+                var errors = Service.ConfigurationValidator.Validate(configuration, drivers);
+                if (errors.Count > 0)
+                    throw new InvalidDataException("默认配置检查未通过，未保存初始化配置：" + Environment.NewLine + string.Join(Environment.NewLine, errors));
+                await configurations.SaveAsync(configuration, cancellationToken).ConfigureAwait(false);
+            }
             var installedRoot = Path.GetFullPath(Path.Combine(driversDirectory, "installed")) + Path.DirectorySeparatorChar;
             var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
             var uploadedPlugins = drivers.GetInstalledPlugins().Where(plugin => plugin.Status == "已加载")

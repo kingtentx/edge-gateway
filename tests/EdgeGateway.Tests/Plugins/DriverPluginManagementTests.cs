@@ -92,6 +92,8 @@ public sealed class DriverPluginManagementTests
     {
         await using var h = new Harness();
         h.Registry.InstallPlugin(V1);
+        var installedDll = Directory.GetFiles(h.Plugins, "*.dll", SearchOption.AllDirectories).Single();
+        var originalBytes = await File.ReadAllBytesAsync(installedDll);
         var installed = Assert.Single(h.Registry.GetInstalledPlugins());
         h.Registry.UninstallPlugin(Id);
         Assert.Empty(h.Registry.GetInstalledPlugins());
@@ -100,6 +102,7 @@ public sealed class DriverPluginManagementTests
         // Simulate stopping after the durable tombstone but before SQLite metadata cleanup.
         await h.Sqlite.SaveDriverPluginAsync(installed);
         Assert.Empty(h.Restart().GetInstalledPlugins());
+        Assert.Equal(originalBytes, await File.ReadAllBytesAsync(installedDll));
         Assert.Empty(await h.Sqlite.GetDriverPluginsAsync());
         Assert.Contains(h.Registry.Drivers, driver => driver.Id == "simulator");
         await h.Sqlite.SaveAsync(new());

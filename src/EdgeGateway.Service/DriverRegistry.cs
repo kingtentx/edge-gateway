@@ -162,7 +162,6 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 {
                     _pluginStore?.ReplaceDriverPluginsAsync(ids, []).GetAwaiter().GetResult();
                     foreach (var id in ids) _plugins.Remove(id);
-                    if (manifest.Bundled) TryDeleteBundledBaseline(ManifestAssembly(manifest));
                     continue;
                 }
                 foreach (var id in ids)
@@ -283,7 +282,6 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 _contexts.Add(context);
                 committed = true;
                 TryDeleteAssembly(manifestPath, oldManifest, destination);
-                if (bundled) TryDeleteBundledBaseline(simpleName);
                 _log.Write(GatewayLogLevel.Information, $"驱动插件{(driverId is null ? "安装" : "更新")}：{id}，版本 {version}，SHA-256 {hash}");
                 return $"驱动 {factory.Descriptor.Name} ({id}) 版本 {version} 已{(driverId is null ? "安装并立即注册" : "更新并生效")}。";
             }
@@ -309,7 +307,6 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 var key = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(ids[0].ToUpperInvariant())));
                 path = Path.Combine(_pluginDirectory, "installed", key, "driver-plugin.json");
             }
-            var old = ReadManifestForCleanup(path);
             var inactive = new PluginManifest("", plugin.Sha256, ids[0], plugin.Name, plugin.Version, false, ids, plugin.AssemblyName, IsBundledDriver(driverId));
             CommitManifest(path, inactive, () => _pluginStore?.ReplaceDriverPluginsAsync(ids, []).GetAwaiter().GetResult());
             foreach (var id in ids)
@@ -321,10 +318,9 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 _managedIds.Add(id);
                 ReleasePluginContext(id);
             }
-            TryDeleteAssembly(path, old);
-            if (IsBundledDriver(driverId)) TryDeleteBundledBaseline(plugin.AssemblyName);
-            _log.Write(GatewayLogLevel.Information, "驱动已删除：" + string.Join("、", ids));
-            return "驱动已删除，重启后不会重新加载：" + string.Join("、", ids);
+            // Uninstall removes registrations, not DLLs. The durable inactive manifest suppresses discovery.
+            _log.Write(GatewayLogLevel.Information, "驱动已卸载，DLL 文件保留：" + string.Join("、", ids));
+            return "驱动已卸载，DLL 文件保留，重启后不会自动加载：" + string.Join("、", ids);
         }
     }
 
@@ -347,12 +343,6 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
         if (_pluginContexts.Values.Contains(context)) return;
         _contexts.Remove(context);
         context.Unload(); // Existing references control actual reclamation; never force GC on the UI path.
-    }
-
-    private void TryDeleteBundledBaseline(string assemblyName)
-    {
-        if (string.IsNullOrWhiteSpace(assemblyName) || assemblyName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return;
-        foreach (var directory in _directories) TryDeleteFile(Path.Combine(directory, assemblyName + ".dll"));
     }
 
     private static void CommitManifest(string path, PluginManifest manifest, Action persist)
@@ -468,7 +458,6 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 }
                 _contexts.Add(context);
                 registered = true;
-                if (manifest?.Bundled == true) TryDeleteBundledBaseline(ManifestAssembly(manifest));
             }
         }
         catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"驱动 {Path.GetFileName(path)} 加载失败：{SafeMessage(ex)}"); }
