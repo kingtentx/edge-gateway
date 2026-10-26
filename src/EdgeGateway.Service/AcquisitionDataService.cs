@@ -9,10 +9,16 @@ namespace EdgeGateway.Service;
 /// <summary>
 /// Acquisition produces log entries and optional external rows without waiting for database I/O.
 /// Each write group owns a worker; all groups on a connection share row and byte budgets.
-/// The queues are deliberately volatile. No samples are stored in local SQLite.
+/// Each completed write batch is journaled in a separate SQLite spool before external I/O; this is
+/// distinct from the configuration database. Standard event IDs make crash recovery idempotent.
 /// </summary>
-public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector, IGatewayLog log) : IAcquisitionDataSink
+public sealed class AcquisitionDataService : IAcquisitionDataSink
 {
+    private readonly IExternalDatabaseConnector? connector;
+    private readonly IGatewayLog log;
+    private readonly IAcquisitionSpool? _spool;
+    public AcquisitionDataService(IExternalDatabaseConnector? connector, IGatewayLog log, IAcquisitionSpool? spool = null)
+    { this.connector = connector; this.log = log; _spool = spool; }
     private readonly object _sync = new();
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private GatewayConfiguration _configuration = new();
@@ -90,7 +96,7 @@ public sealed class AcquisitionDataService(IExternalDatabaseConnector? connector
                 _latest.Clear(); _versions.Clear(); _latestSizes.Clear(); _latestBytes = 0; _activeDevices.Clear();
                 _connections = _configuration.Databases.ToDictionary(connection => connection.Id, connection => new ConnectionState(connection, log));
                 _workers = _configuration.DatabaseWriteGroups.Where(group => group.Enabled && _connections[group.ConnectionId].Configuration.Enabled)
-                    .Select(group => new GroupWorker(group, _connections[group.ConnectionId], connector!, _shutdown.Token)).ToArray();
+                    .Select(group => new GroupWorker(group, _connections[group.ConnectionId], connector!, _shutdown.Token, _spool, log)).ToArray();
                 _mappedTags = _workers.SelectMany(worker => worker.RequiredTags).ToHashSet();
                 _running = true;
                 foreach (var worker in _workers) worker.Start();
