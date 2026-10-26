@@ -103,6 +103,7 @@ public sealed partial class MainForm
                 ArrangeOverviewGrid(cards, primary, width >= UiTheme.Scale(cards, 840) ? 4 : width >= UiTheme.Scale(cards, 400) ? 2 : 1);
                 ArrangeOverviewGrid(health, healthPanels, width >= UiTheme.Scale(health, 620) ? 2 : 1);
                 ArrangeOverviewGrid(resourceGrid, resourcePanels, width >= UiTheme.Scale(resourceGrid, 680) ? 2 : 1, 8);
+                ArrangeDiskGrid();
                 foreach (var panel in primary.Concat(healthPanels).Concat(resourceRows.Select(row => row.Summary)).Append(resources))
                     foreach (var label in panel.Controls.OfType<Label>())
                         SetWrappingWidth(label, Math.Max(1, panel.ClientSize.Width - panel.Padding.Horizontal));
@@ -116,6 +117,7 @@ public sealed partial class MainForm
         health.SizeChanged += (_, _) => Arrange();
         resources.SizeChanged += (_, _) => Arrange();
         resourceGrid.SizeChanged += (_, _) => Arrange();
+        _serverDiskRows.SizeChanged += (_, _) => Arrange();
         cards.HandleCreated += (_, _) => Arrange();
         DpiLayoutCompleted += (_, _) => Arrange();
         return UiTheme.PageLayout("运行总览", "", UiTheme.Toolbar(), viewport);
@@ -236,36 +238,53 @@ public sealed partial class MainForm
     private void RefreshServerDiskBars(IReadOnlyList<ServerDiskUsage> disks)
     {
         var names = disks.Select(disk => disk.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var changed = !_serverDiskBars.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(names);
         _serverDiskRows.SuspendLayout();
         try
         {
-            if (changed)
+            foreach (var name in _serverDiskBars.Keys.Where(name => !names.Contains(name)).ToArray())
             {
-                foreach (var name in _serverDiskBars.Keys.Where(name => !names.Contains(name)).ToArray())
-                {
-                    var removed = _serverDiskBars[name];
-                    _serverDiskRows.Controls.Remove(removed); removed.Dispose(); _serverDiskBars.Remove(name);
-                }
-                _serverDiskRows.RowStyles.Clear(); _serverDiskRows.RowCount = disks.Count;
+                var removed = _serverDiskBars[name];
+                _serverDiskRows.Controls.Remove(removed); removed.Dispose(); _serverDiskBars.Remove(name);
             }
-            var row = 0;
-            foreach (var disk in disks.OrderBy(disk => disk.Name, StringComparer.OrdinalIgnoreCase))
+            foreach (var disk in disks)
             {
                 if (!_serverDiskBars.TryGetValue(disk.Name, out var bar))
                 {
                     bar = new ServerDiskBar(disk) { Name = "OverviewDisk_" + disk.Name, Dock = DockStyle.Top };
-                    _serverDiskBars.Add(disk.Name, bar); _serverDiskRows.Controls.Add(bar, 0, row);
+                    _serverDiskBars.Add(disk.Name, bar);
                 }
-                if (changed)
-                {
-                    _serverDiskRows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                    _serverDiskRows.SetCellPosition(bar, new TableLayoutPanelCellPosition(0, row));
-                }
-                bar.UpdateUsage(disk); row++;
+                bar.UpdateUsage(disk);
             }
+            ArrangeDiskGrid();
         }
         finally { _serverDiskRows.ResumeLayout(true); }
+    }
+
+    private void ArrangeDiskGrid()
+    {
+        var width = _serverDiskRows.ClientSize.Width;
+        var columns = width >= UiTheme.Scale(_serverDiskRows, 1120) ? 4
+            : width >= UiTheme.Scale(_serverDiskRows, 600) ? 2 : 1;
+        var bars = _serverDiskBars.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).Select(pair => pair.Value).ToArray();
+        var rebuild = _serverDiskRows.ColumnCount != columns || _serverDiskRows.ColumnStyles.Count != columns
+            || _serverDiskRows.Controls.Count != bars.Length || bars.Where((bar, index) =>
+                bar.Parent != _serverDiskRows || _serverDiskRows.GetColumn(bar) != index % columns
+                    || _serverDiskRows.GetRow(bar) != index / columns).Any();
+        if (rebuild)
+        {
+            _serverDiskRows.SuspendLayout();
+            try
+            {
+                _serverDiskRows.Controls.Clear(); _serverDiskRows.ColumnStyles.Clear(); _serverDiskRows.RowStyles.Clear();
+                _serverDiskRows.ColumnCount = columns; _serverDiskRows.RowCount = (bars.Length + columns - 1) / columns;
+                for (var column = 0; column < columns; column++) _serverDiskRows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / columns));
+                for (var row = 0; row < _serverDiskRows.RowCount; row++) _serverDiskRows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                for (var index = 0; index < bars.Length; index++) _serverDiskRows.Controls.Add(bars[index], index % columns, index / columns);
+            }
+            finally { _serverDiskRows.ResumeLayout(true); }
+        }
+        for (var index = 0; index < bars.Length; index++)
+            bars[index].Margin = UiTheme.Scale(_serverDiskRows, new Padding(0, 0, index % columns == columns - 1 ? 0 : 10, 8));
     }
 
     private void ShowServerResourceFailure(string error)

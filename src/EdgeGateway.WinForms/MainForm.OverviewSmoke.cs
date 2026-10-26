@@ -67,13 +67,15 @@ public sealed partial class MainForm
             now.AddSeconds(second), 45 + 25 * Math.Sin(second / 6d), 55 + second / 20d)).ToArray();
         ShowServerResourceFailure("示例：界面连接暂时中断");
         RefreshServerResources(new(now, "图表验证示例", 8, 45, new(16L << 30, 7L << 30),
-            [new("C:\\", 100L << 30, 5L << 30), new("D:\\", 500L << 30, 300L << 30), new("E:\\", null, null, "示例：磁盘暂不可用")], []) { History = recoveredHistory });
+            [new("C:\\", 100L << 30, 5L << 30), new("D:\\", 500L << 30, 300L << 30), new("E:\\", null, null, "示例：磁盘暂不可用"),
+                new("F:\\", 3000L << 30, 1728L << 30)], []) { History = recoveredHistory });
         if (_serverCpuChart.Readings.Count != 61 || _serverCpuChart.Readings.Any(reading => reading.Percent is null))
             throw new InvalidOperationException("Real worker history did not repair a temporary UI refresh gap.");
-        if (_serverDiskBars.Count != 3 || _serverDiskBars["E:\\"].UsedPercent is not null || !_serverErrors.Text.Contains("磁盘暂不可用"))
+        if (_serverDiskBars.Count != 4 || _serverDiskBars["E:\\"].UsedPercent is not null || !_serverErrors.Text.Contains("磁盘暂不可用"))
             throw new InvalidOperationException("Partial disk failure was hidden or replaced by a numeric reading.");
         var retained = _serverDiskBars["D:\\"];
-        RefreshServerDiskBars([new("D:\\", 500L << 30, 250L << 30), new("C:\\", 100L << 30, 5L << 30), new("E:\\", null, null, "示例：磁盘暂不可用")]);
+        RefreshServerDiskBars([new("D:\\", 500L << 30, 250L << 30), new("C:\\", 100L << 30, 5L << 30),
+            new("E:\\", null, null, "示例：磁盘暂不可用"), new("F:\\", 3000L << 30, 1728L << 30)]);
         if (!ReferenceEquals(retained, _serverDiskBars["D:\\"]) || _serverDiskBars["D:\\"].UsedPercent != 50)
             throw new InvalidOperationException("Disk refresh lost stable drive identity.");
         var originalBounds = Bounds; var originalMinimum = MinimumSize; var originalMaximum = MaximumSize;
@@ -103,7 +105,19 @@ public sealed partial class MainForm
                     BringIntoViewAndAssert(chart, "server resources " + name + " trend");
                 }
                 SaveSmokeScreenshot(this, Path.Combine(directory, $"server-resources-{name}-trends.png"));
-                foreach (var bar in _serverDiskBars.Values) BringIntoViewAndAssert(bar, "server resources " + name + " disk");
+                if (name == "wide" && _serverDiskRows.ColumnCount < 2)
+                    throw new InvalidOperationException("Wide disk capacity cards must use multiple columns.");
+                if (name == "narrow" && _serverDiskRows.ColumnCount != 1)
+                    throw new InvalidOperationException("Narrow disk capacity cards must wrap to one column.");
+                var diskCards = _serverDiskBars.Values.ToArray();
+                foreach (var bar in diskCards)
+                {
+                    BringIntoViewAndAssert(bar, "server resources " + name + " disk");
+                    if (name == "wide" && bar.Width > _serverDiskRows.ClientSize.Width * 0.6)
+                        throw new InvalidOperationException("A disk capacity bar still stretches across the resource area.");
+                    foreach (var other in diskCards.Where(other => !ReferenceEquals(other, bar)))
+                        if (bar.Bounds.IntersectsWith(other.Bounds)) throw new InvalidOperationException("Disk capacity cards overlap.");
+                }
                 BringIntoViewAndAssert(_serverErrors, "server resources " + name + " errors");
                 SaveSmokeScreenshot(this, Path.Combine(directory, $"server-resources-{name}-disks.png"));
                 var resourcePanel = Descendants(_pages["overview"]).Single(control => control.Name == "OverviewServerResources");

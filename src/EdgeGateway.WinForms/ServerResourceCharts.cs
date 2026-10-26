@@ -116,7 +116,7 @@ internal sealed class ServerUsageTrend : Control
     internal sealed record Reading(DateTimeOffset Timestamp, double? Percent);
 }
 
-/// <summary>A disk's capacity usage, independent of disk I/O activity.</summary>
+/// <summary>A compact disk capacity card, independent of disk I/O activity.</summary>
 internal sealed class ServerDiskBar : Control
 {
     private ServerDiskUsage _disk;
@@ -148,10 +148,21 @@ internal sealed class ServerDiskBar : Control
     private void MeasureRow()
     {
         // Reserve only the lines actually needed at the current width/font/DPI.
-        var details = TextRenderer.MeasureText(CapacityDetails, Font, new Size(Math.Max(1, ClientSize.Width), int.MaxValue),
+        var details = TextRenderer.MeasureText(CapacityDetails, Font, new Size(Math.Max(1, ClientSize.Width - UiTheme.Scale(this, 24)), int.MaxValue),
             TextFormatFlags.NoPadding | TextFormatFlags.WordBreak);
-        var height = Font.Height + details.Height + UiTheme.Scale(this, 22);
+        var height = Font.Height + details.Height + UiTheme.Scale(this, 40);
         if (Height != height) Height = height;
+    }
+
+    protected override void OnPaintBackground(PaintEventArgs e)
+    {
+        var graphics = e.Graphics;
+        graphics.Clear(Parent?.BackColor ?? Color.White);
+        graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        using var path = ModernButton.RoundedPath(new RectangleF(1, 1, Math.Max(1, Width - 2), Math.Max(1, Height - 2)), UiTheme.Scale(this, 8));
+        using var background = new SolidBrush(Color.FromArgb(248, 250, 253));
+        using var border = new Pen(UiTheme.Border, Math.Max(1, DeviceDpi / 96f));
+        graphics.FillPath(background, path); graphics.DrawPath(border, path);
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -162,17 +173,19 @@ internal sealed class ServerDiskBar : Control
         var color = percent >= 90 ? UiTheme.Warning : percent is null ? UiTheme.Muted : UiTheme.Blue;
         var value = percent is { } used ? $"{used:F1}%{(used >= 90 ? " · 空间偏紧" : " 已用")}" : "不可用";
         var valueWidth = TextRenderer.MeasureText(value, Font).Width;
-        TextRenderer.DrawText(g, _disk.Name, Font, new Rectangle(0, 0, Math.Max(0, Width - valueWidth - UiTheme.Scale(this, 8)), Font.Height),
+        var left = UiTheme.Scale(this, 12); var top = UiTheme.Scale(this, 10);
+        var contentWidth = Math.Max(0, Width - left * 2);
+        TextRenderer.DrawText(g, _disk.Name, Font, new Rectangle(left, top, Math.Max(0, contentWidth - valueWidth - UiTheme.Scale(this, 8)), Font.Height),
             UiTheme.Ink, TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
-        TextRenderer.DrawText(g, value, Font, new Rectangle(0, 0, Width, Font.Height), color,
+        TextRenderer.DrawText(g, value, Font, new Rectangle(left, top, contentWidth, Font.Height), color,
             TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.Right);
-        var bar = new Rectangle(0, Font.Height + UiTheme.Scale(this, 4), Width, UiTheme.Scale(this, 6));
-        using var background = new SolidBrush(UiTheme.Background);
+        var bar = new Rectangle(left, top + Font.Height + UiTheme.Scale(this, 6), contentWidth, UiTheme.Scale(this, 6));
+        using var background = new SolidBrush(UiTheme.Border);
         using var fill = new SolidBrush(color);
         g.FillRectangle(background, bar);
         if (percent is { } fraction)
             g.FillRectangle(fill, bar.X, bar.Y, (float)(bar.Width * Math.Clamp(fraction, 0, 100) / 100), bar.Height);
-        TextRenderer.DrawText(g, CapacityDetails, Font, new Rectangle(0, bar.Bottom + UiTheme.Scale(this, 4), Width, Math.Max(0, Height - bar.Bottom - UiTheme.Scale(this, 8))),
+        TextRenderer.DrawText(g, CapacityDetails, Font, new Rectangle(left, bar.Bottom + UiTheme.Scale(this, 6), contentWidth, Math.Max(0, Height - bar.Bottom - UiTheme.Scale(this, 16))),
             UiTheme.Muted, TextFormatFlags.NoPadding | TextFormatFlags.WordBreak);
     }
 
