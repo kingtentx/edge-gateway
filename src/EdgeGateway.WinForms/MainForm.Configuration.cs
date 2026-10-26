@@ -29,7 +29,7 @@ public sealed partial class MainForm
         _devicesPageView = new DevicesPageView();
         _deviceGrid = _devicesPageView.DeviceGrid;
         _tagGrid = _devicesPageView.TagGrid;
-        _tagSearch = new TextBox { Name = "TagSearch", Width = 205, PlaceholderText = "搜索当前设备的点位 / 地址" };
+        _tagSearch = _devicesPageView.TagSearch;
         _deviceSummary = _devicesPageView.DeviceSummary;
         _tagHeading = _devicesPageView.TagHeading;
         _tagSummary = _devicesPageView.TagSummary;
@@ -100,7 +100,6 @@ public sealed partial class MainForm
         _deviceExchange = new CommandMenuButton("设备导入导出", BuildDeviceExchangeMenu, exception => ShowError(exception.Message)) { Name = "DeviceExcelExchange" };
         _configurationCommands.AddRange([_deviceMore, _deviceExchange, _channelMenu]);
         _deviceSummary.Margin = new Padding(4, 9, 0, 0);
-        var content = _devicesPageView.ContentLayout;
         var filters = BuildDeviceFilters();
         _devicesPageView.DeviceToolbarHost.Controls.Add(
             UiTheme.Toolbar(addDevice, probeDevice, _deviceExchange, _deviceMore, _channelMenu, _deviceSummary));
@@ -110,7 +109,6 @@ public sealed partial class MainForm
         _configurationCommands.Add(_tagMore);
         UiTheme.StyleInput(_tagSearch);
         _tagSearch.TextChanged += (_, _) => BindTags();
-        var tagHeader = _devicesPageView.TagHeaderLayout;
         _tagHeading.Dock = _tagSummary.Dock = DockStyle.Fill;
         var tagToolbar = UiTheme.Toolbar(
             SelectionButton("添加点位", async (_, _) => await AddTagAsync(), () => SelectedDevice() is not null, true),
