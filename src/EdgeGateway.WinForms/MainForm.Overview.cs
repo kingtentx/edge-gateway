@@ -75,7 +75,7 @@ public sealed partial class MainForm
                 _serverMemory, _serverMemoryDetail, _serverMemoryChart)
         };
         var resourcePanels = resourceRows.Select(row => row.Panel).ToArray();
-        ArrangeOverviewGrid(resourceGrid, resourcePanels, 1, 6);
+        ArrangeOverviewGrid(resourceGrid, resourcePanels, 2, 8);
         _serverDiskRows.ColumnCount = 1; _serverDiskRows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         var resources = OverviewSection("OverviewServerResources", UiTheme.Border,
             _serverIdentity, resourceGrid, _serverDisks, _serverDiskRows, _serverErrors);
@@ -103,9 +103,7 @@ public sealed partial class MainForm
                 var width = content.ClientSize.Width;
                 ArrangeOverviewGrid(cards, primary, width >= UiTheme.Scale(cards, 840) ? 4 : width >= UiTheme.Scale(cards, 400) ? 2 : 1);
                 ArrangeOverviewGrid(health, healthPanels, width >= UiTheme.Scale(health, 620) ? 2 : 1);
-                ArrangeOverviewGrid(resourceGrid, resourcePanels, 1, 6);
-                foreach (var (panel, summary, chart) in resourceRows)
-                    ArrangeResourceRow(panel, summary, chart);
+                ArrangeOverviewGrid(resourceGrid, resourcePanels, width >= UiTheme.Scale(resourceGrid, 680) ? 2 : 1, 8);
                 foreach (var panel in primary.Concat(healthPanels).Concat(resourceRows.Select(row => row.Summary)).Append(resources))
                     foreach (var label in panel.Controls.OfType<Label>())
                         SetWrappingWidth(label, Math.Max(1, panel.ClientSize.Width - panel.Padding.Horizontal));
@@ -160,30 +158,12 @@ public sealed partial class MainForm
         var panel = UiTheme.Card(accent);
         panel.Name = name; panel.Dock = DockStyle.Fill; panel.AutoSize = true; panel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         panel.Padding = new Padding(28, 6, 10, 6); panel.Margin = new Padding(0, 0, 0, 6);
-        panel.ColumnCount = 2; panel.RowCount = 1;
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40)); panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
-        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        chart.Dock = DockStyle.Top; chart.Margin = new Padding(8, 0, 0, 0);
-        panel.Controls.Add(summary, 0, 0); panel.Controls.Add(chart, 1, 0);
+        panel.ColumnCount = 1; panel.RowCount = 2;
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        chart.Dock = DockStyle.Top; chart.Margin = new Padding(0, 4, 0, 0);
+        panel.Controls.Add(summary, 0, 0); panel.Controls.Add(chart, 0, 1);
         return (panel, summary, chart);
-    }
-
-    private static void ArrangeResourceRow(TableLayoutPanel panel, TableLayoutPanel summary, ServerUsageTrend chart)
-    {
-        var columns = panel.ClientSize.Width >= UiTheme.Scale(panel, 360) ? 2 : 1;
-        if (panel.ColumnCount == columns) return;
-        panel.SuspendLayout();
-        try
-        {
-            panel.Controls.Clear(); panel.ColumnStyles.Clear(); panel.RowStyles.Clear();
-            panel.ColumnCount = columns; panel.RowCount = columns == 2 ? 1 : 2;
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, columns == 2 ? 40 : 100));
-            if (columns == 2) panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
-            for (var row = 0; row < panel.RowCount; row++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            chart.Margin = UiTheme.Scale(panel, columns == 2 ? new Padding(8, 0, 0, 0) : new Padding(0, 4, 0, 0));
-            panel.Controls.Add(summary, 0, 0); panel.Controls.Add(chart, columns == 2 ? 1 : 0, columns == 2 ? 0 : 1);
-        }
-        finally { panel.ResumeLayout(true); }
     }
 
     private static void ArrangeOverviewGrid(TableLayoutPanel grid, IReadOnlyList<TableLayoutPanel> panels, int columns, int gap = 12)
@@ -234,8 +214,17 @@ public sealed partial class MainForm
             ? $"已用 {ServerDiskBar.Capacity(capacity.TotalBytes - capacity.AvailableBytes)} / 总量 {ServerDiskBar.Capacity(capacity.TotalBytes)}"
             : "未取得有效物理内存读数";
         _serverMemory.ForeColor = snapshot.Memory?.UsedPercent >= 85 ? UiTheme.Warning : snapshot.Memory is null ? UiTheme.Muted : UiTheme.Green;
-        _serverCpuChart.AddReading(snapshot.Timestamp, snapshot.CpuUsagePercent);
-        _serverMemoryChart.AddReading(snapshot.Timestamp, snapshot.Memory?.UsedPercent);
+        if (snapshot.History.Count > 0)
+        {
+            // The worker's history is authoritative, including samples taken while another page was open.
+            _serverCpuChart.ReplaceReadings(snapshot.History.Select(reading => new ServerUsageTrend.Reading(reading.Timestamp, reading.CpuUsagePercent)));
+            _serverMemoryChart.ReplaceReadings(snapshot.History.Select(reading => new ServerUsageTrend.Reading(reading.Timestamp, reading.MemoryUsagePercent)));
+        }
+        else
+        {
+            _serverCpuChart.AddReading(snapshot.Timestamp, snapshot.CpuUsagePercent);
+            _serverMemoryChart.AddReading(snapshot.Timestamp, snapshot.Memory?.UsedPercent);
+        }
         var tightDisks = snapshot.Disks.Count(disk => disk.UsedPercent >= 90 && disk.Error is null);
         _serverDisks.Text = snapshot.Disks.Count == 0 ? "磁盘容量 · 暂无可用的本地固定磁盘读数"
             : $"磁盘容量 · {snapshot.Disks.Count} 个固定磁盘{(tightDisks > 0 ? $" · {tightDisks} 个空间偏紧" : "")}";

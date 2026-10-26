@@ -38,19 +38,32 @@ public sealed partial class MainForm
         await SmokeOverviewAsync();
         var directory = Path.GetDirectoryName(Path.GetFullPath(_smokeScreenshotPath ?? "ui-smoke.png"))!;
         using var focusDiagnostics = StartSmokeFocusDiagnostics(directory);
+        var beforePageSwitch = await _application.GetServerResourcesAsync();
+        ShowPage("devices");
+        await Task.Delay(3200);
+        var afterPageSwitch = await _application.GetServerResourcesAsync();
+        ShowPage("overview");
+        if (afterPageSwitch.History.Count(reading => reading.Timestamp > beforePageSwitch.Timestamp) < 2)
+            throw new InvalidOperationException("Worker did not keep sampling while the overview was hidden.");
+        RefreshServerResources(afterPageSwitch);
         var now = DateTimeOffset.UtcNow;
         _serverCpuChart.ClearHistory(); _serverMemoryChart.ClearHistory();
         for (var second = -90; second <= 0; second++)
         {
             var timestamp = now.AddSeconds(second);
-            _serverCpuChart.AddReading(timestamp, second is >= -20 and <= -16 ? null : 45 + 25 * Math.Sin(second / 6d));
+            _serverCpuChart.AddReading(timestamp, 45 + 25 * Math.Sin(second / 6d));
             _serverMemoryChart.AddReading(timestamp, 55 + second / 20d);
         }
         if (_serverCpuChart.Readings.Count != 61 || _serverCpuChart.Readings[0].Timestamp != now.AddSeconds(-60)
-            || _serverCpuChart.Readings.Count(reading => reading.Percent is null) != 5)
-            throw new InvalidOperationException("Resource trend did not retain the exact time window and missing-reading gaps.");
+            || _serverCpuChart.Readings.Any(reading => reading.Percent is null))
+            throw new InvalidOperationException("Resource trend did not retain the exact continuous time window.");
+        var recoveredHistory = Enumerable.Range(-60, 61).Select(second => new ServerResourceReading(
+            now.AddSeconds(second), 45 + 25 * Math.Sin(second / 6d), 55 + second / 20d)).ToArray();
+        ShowServerResourceFailure("示例：界面连接暂时中断");
         RefreshServerResources(new(now, "图表验证示例", 8, 45, new(16L << 30, 7L << 30),
-            [new("C:\\", 100L << 30, 5L << 30), new("D:\\", 500L << 30, 300L << 30), new("E:\\", null, null, "示例：磁盘暂不可用")], []));
+            [new("C:\\", 100L << 30, 5L << 30), new("D:\\", 500L << 30, 300L << 30), new("E:\\", null, null, "示例：磁盘暂不可用")], []) { History = recoveredHistory });
+        if (_serverCpuChart.Readings.Count != 61 || _serverCpuChart.Readings.Any(reading => reading.Percent is null))
+            throw new InvalidOperationException("Real worker history did not repair a temporary UI refresh gap.");
         if (_serverDiskBars.Count != 3 || _serverDiskBars["E:\\"].UsedPercent is not null || !_serverErrors.Text.Contains("磁盘暂不可用"))
             throw new InvalidOperationException("Partial disk failure was hidden or replaced by a numeric reading.");
         var retained = _serverDiskBars["D:\\"];
@@ -70,6 +83,14 @@ public sealed partial class MainForm
                 FitToWorkingArea(testWorkArea: area);
                 await Task.Yield(); PerformLayoutRecursively(this);
                 VerifyOverviewCards("server resources " + name);
+                var cpuPanel = _serverCpuChart.Parent!;
+                var memoryPanel = _serverMemoryChart.Parent!;
+                var resourceGrid = (TableLayoutPanel)cpuPanel.Parent!;
+                if (name == "wide" && (resourceGrid.GetColumn(cpuPanel) != 0 || resourceGrid.GetColumn(memoryPanel) != 1
+                    || resourceGrid.GetRow(cpuPanel) != resourceGrid.GetRow(memoryPanel)))
+                    throw new InvalidOperationException("Wide resource cards must display CPU on the left and memory on the right.");
+                if (name == "narrow" && resourceGrid.ColumnCount != 1)
+                    throw new InvalidOperationException("Narrow resource cards must remain readable in one column.");
                 foreach (var chart in new Control[] { _serverCpuChart, _serverMemoryChart })
                     BringIntoViewAndAssert(chart, "server resources " + name + " trend");
                 SaveSmokeScreenshot(this, Path.Combine(directory, $"server-resources-{name}-trends.png"));
@@ -93,6 +114,6 @@ public sealed partial class MainForm
             FitToWorkingArea(); _serverCpuChart.ClearHistory(); _serverMemoryChart.ClearHistory();
             RefreshServerResources(await _application.GetServerResourcesAsync());
         }
-        Console.WriteLine("Server resource charts smoke passed: real host wiring; 60-second history and gaps; disk identity/removal; partial/total failure; wide/narrow reachability and four screenshots. Layout sizes are simulated at the host's actual DPI.");
+        Console.WriteLine("Server resource charts smoke passed: real host wiring; background sampling across page changes; continuous 60-second history and refresh-gap recovery; disk identity/removal; partial/total failure; wide/narrow reachability and four screenshots. Layout sizes are simulated at the host's actual DPI.");
     }
 }

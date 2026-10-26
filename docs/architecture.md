@@ -150,7 +150,7 @@ OPC UA 仅保留南向 `OPC.UaClient`；对外服务端工程、字段、依赖�
 
 ## 数据记录的资源所有权
 
-首页设备健康汇总由 Application 调用 Service 的 `OverviewSummaryBuilder` 构建，过滤不再配置、未启用及已停止设备的旧采样。服务器资源契约 `IServerResourceMonitor` 位于 Abstractions，快照位于 Model；Hosting 的 `ServerResourceMonitor` 实现 Windows 整机 CPU、物理内存及固定磁盘容量读取，通过 Application 返回。系统调用和磁盘查询在后台任务执行，无额外轮询线程；UI 定时触发读取并单独跟踪在途任务，避免辅助资源查询阻塞设备汇总刷新。首次 CPU 采样或读取失败显示采样中/不可用，不返回伪造零值。
+首页设备健康汇总由 Application 调用 Service 的 `OverviewSummaryBuilder` 构建，过滤不再配置、未启用及已停止设备的旧采样。服务器资源契约 `IServerResourceMonitor` 位于 Abstractions，快照位于 Model；Hosting 的 `ServerResourceMonitor` 实现 Windows 整机 CPU、物理内存及固定磁盘容量读取，通过 Application 返回。宿主通过 ServerResourceSampler 每秒持续读取系统资源，任务独立于页面和 IPC 请求，持有最近 60 秒有界 CPU/内存历史。Application 返回最新缓存快照及 History；UI 定时获取并恢复真实曲线，切页或短暂刷新延迟不会丢失后台读数。单个客户端取消不停止采样，宿主统一取消并等待任务释放。首次 CPU 采样或读取失败显示采样中/不可用，不返回伪造零值。
 
 `GatewayHost` 持有 SQLite 配置存储、文件协议状态存储、日志与 MQTT 发布器。`GatewayApplication` 创建运行时及 `AcquisitionDataService`，运行时负责采集输出器的启动、停止、设备活跃世代和释放；应用停止后宿主再关闭其他资源。数据库连接器按操作借用连接池连接并释放。
 

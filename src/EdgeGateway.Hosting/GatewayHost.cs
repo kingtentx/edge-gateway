@@ -20,13 +20,14 @@ public sealed class GatewayHost : IAsyncDisposable
     private readonly SqliteConfigurationStore _configurations;
     private readonly GatewayLog _log;
     private readonly SqliteAcquisitionSpool _acquisitionSpool;
+    private readonly ServerResourceSampler _serverResources;
     private readonly bool _verificationFaultsEnabled;
     private readonly FileStream _directoryLock;
     private readonly object _disposeLock = new();
     private Task? _disposeTask;
 
     private GatewayHost(string directory, IGatewayApplication application, ITelemetryPublisher publisher,
-        IGatewayStore store, SqliteConfigurationStore configurations, GatewayLog log, SqliteAcquisitionSpool acquisitionSpool, FileStream directoryLock, bool verificationFaultsEnabled)
+        IGatewayStore store, SqliteConfigurationStore configurations, GatewayLog log, SqliteAcquisitionSpool acquisitionSpool, ServerResourceSampler serverResources, FileStream directoryLock, bool verificationFaultsEnabled)
     {
         DataDirectory = directory;
         Application = application;
@@ -35,6 +36,7 @@ public sealed class GatewayHost : IAsyncDisposable
         _configurations = configurations;
         _log = log;
         _acquisitionSpool = acquisitionSpool;
+        _serverResources = serverResources;
         _verificationFaultsEnabled = verificationFaultsEnabled;
         _directoryLock = directoryLock;
     }
@@ -61,6 +63,7 @@ public sealed class GatewayHost : IAsyncDisposable
         SqliteAcquisitionSpool? acquisitionSpool = null;
         MqttTelemetryPublisher? publisher = null;
         GatewayApplication? application = null;
+        ServerResourceSampler? serverResources = null;
         try
         {
             Directory.CreateDirectory(directory);
@@ -155,17 +158,19 @@ public sealed class GatewayHost : IAsyncDisposable
             cancellationToken.ThrowIfCancellationRequested();
             publisher = new MqttTelemetryPublisher();
             var databases = new ExternalDatabaseConnector();
+            serverResources = new ServerResourceSampler(new ServerResourceMonitor());
             application = new GatewayApplication(configuration, drivers, configurations, store, publisher, log,
                 new JsonConfigurationFiles(), configurations.HasSavedConfiguration, databases,
                 dataSink: new AcquisitionDataService(databases, log, acquisitionSpool),
-                serverResources: new ServerResourceMonitor(), workbookFiles: new ExcelConfigurationFiles(),
+                serverResources: serverResources, workbookFiles: new ExcelConfigurationFiles(),
                 acquisitionSpool: acquisitionSpool);
-            return new(directory, application, publisher, store, configurations, log, acquisitionSpool, directoryLock, enableVerificationFaults);
+            return new(directory, application, publisher, store, configurations, log, acquisitionSpool, serverResources, directoryLock, enableVerificationFaults);
         }
         catch
         {
             // Preserve the startup error, but release every resource already acquired so
             // correcting an invalid configuration does not require killing the process.
+            if (serverResources is not null) { try { await serverResources.DisposeAsync().ConfigureAwait(false); } catch { } }
             if (application is not null) { try { await application.DisposeAsync().ConfigureAwait(false); } catch { } }
             if (publisher is not null) { try { await publisher.DisposeAsync().ConfigureAwait(false); } catch { } }
             if (store is not null) { try { await store.DisposeAsync().ConfigureAwait(false); } catch { } }
@@ -193,6 +198,7 @@ public sealed class GatewayHost : IAsyncDisposable
     {
         List<Exception> errors = [];
         try { await Application.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
+        try { await _serverResources.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
         try { await _publisher.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
         try { await _store.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
         try { await _acquisitionSpool.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }

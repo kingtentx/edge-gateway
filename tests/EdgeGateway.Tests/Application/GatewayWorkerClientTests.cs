@@ -28,6 +28,20 @@ public sealed class GatewayWorkerClientTests
     }
 
     [Fact]
+    public async Task ResourceHistorySurvivesWorkerIpcRoundTrip()
+    {
+        var timestamp = DateTimeOffset.UtcNow;
+        var snapshot = new ServerResourceSnapshot(timestamp, "host", 8, 12, new(1000, 500), [], [])
+        {
+            History = [new(timestamp.AddSeconds(-1), 10, 49), new(timestamp, 12, 50)]
+        };
+        await using var server = new PipeFixture(JsonSerializer.Serialize(snapshot));
+        var result = await server.CreateProxy<IGatewayApplication>().GetServerResourcesAsync();
+        Assert.Equal(snapshot.History, result.History);
+        Assert.Equal(snapshot.Timestamp, result.Timestamp);
+    }
+
+    [Fact]
     public async Task GeneratedProxyReturnsGenericValueTaskResult()
     {
         await using var server = new PipeFixture("{\"OutboxCount\":29}");

@@ -12,7 +12,12 @@ public sealed record ServerDiskUsage(string Name, long? TotalBytes, long? FreeBy
 }
 
 public sealed record ServerResourceSnapshot(DateTimeOffset Timestamp, string MachineName, int LogicalProcessors,
-    double? CpuUsagePercent, ServerMemoryUsage? Memory, IReadOnlyList<ServerDiskUsage> Disks, IReadOnlyList<string> Errors);
+    double? CpuUsagePercent, ServerMemoryUsage? Memory, IReadOnlyList<ServerDiskUsage> Disks, IReadOnlyList<string> Errors)
+{
+    public IReadOnlyList<ServerResourceReading> History { get; init; } = [];
+}
+
+public sealed record ServerResourceReading(DateTimeOffset Timestamp, double? CpuUsagePercent, double? MemoryUsagePercent);
 
 public sealed record GatewayOverviewSummary(int TotalDevices, int EnabledDevices, int OnlineDevices,
     int AbnormalDevices, int StoppedDevices, int ConnectingDevices, int ReconnectingDevices, int FaultedDevices,

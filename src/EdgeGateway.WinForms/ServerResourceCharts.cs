@@ -32,6 +32,13 @@ internal sealed class ServerUsageTrend : Control
         Invalidate();
     }
 
+    internal void ReplaceReadings(IEnumerable<Reading> readings)
+    {
+        _readings.Clear();
+        foreach (var reading in readings) AddReading(reading.Timestamp, reading.Percent);
+        Invalidate();
+    }
+
     internal void ClearHistory() { _readings.Clear(); Invalidate(); }
 
     private Rectangle PlotBounds()
