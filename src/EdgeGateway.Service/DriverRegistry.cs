@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -14,7 +15,7 @@ namespace EdgeGateway.Service;
 public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
 {
     private readonly object _sync = new();
-    private readonly Dictionary<string, IDriverFactory> _factories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, IDriverFactory> _factories = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<AssemblyLoadContext> _contexts = [];
     private readonly Dictionary<string, DriverPluginInfo> _plugins = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _manifestPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -56,12 +57,12 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
 
     public IReadOnlyList<DriverDescriptor> Drivers
     {
-        get { lock (_sync) return _factories.Values.Select(f => f.Descriptor).OrderBy(d => d.Id).ToArray(); }
+        get => _factories.Values.Select(f => f.Descriptor).OrderBy(d => d.Id, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     public IDriverFactory GetFactory(string driverId)
     {
-        lock (_sync) return _factories.TryGetValue(driverId, out var factory) ? factory :
+        return _factories.TryGetValue(driverId, out var factory) ? factory :
             throw new InvalidOperationException($"未安装驱动：{driverId}");
     }
 
@@ -140,7 +141,7 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
         _pluginDirectory = Path.GetFullPath(directory);
         Directory.CreateDirectory(_pluginDirectory);
         PrepareManagedPlugins(directory);
-        foreach (var id in _managedIds.Where(id => !_pluginContexts.ContainsKey(id))) _factories.Remove(id);
+        foreach (var id in _managedIds.Where(id => !_pluginContexts.ContainsKey(id))) _factories.TryRemove(id, out _);
         var installed = Path.Combine(_pluginDirectory, "installed");
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         foreach (var file in Directory.EnumerateFiles(_pluginDirectory, "EdgeGateway.Driver.*.dll", SearchOption.AllDirectories)
@@ -448,7 +449,7 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
                 }
                 foreach (var factory in loaded)
                 {
-                    _factories.Add(factory.Descriptor.Id, factory);
+                    if (!_factories.TryAdd(factory.Descriptor.Id, factory)) throw new InvalidOperationException($"驱动标识重复：{factory.Descriptor.Id}");
                     if (manifest is null)
                     {
                         _bundledAssemblies[factory.Descriptor.Id] = assembly.GetName().Name!;
