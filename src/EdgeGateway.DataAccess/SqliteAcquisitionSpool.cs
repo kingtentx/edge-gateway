@@ -216,14 +216,14 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
         "bytes" => Convert.FromBase64String(value!), _ => throw new InvalidDataException("持久缓冲中包含未知的数据类型：" + type)
     };
 
-    private static void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(false, typeof(SqliteAcquisitionSpool));
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
     private sealed record StoredRow(string EventId, DateTimeOffset RecordedAt, StoredValue[] Values);
     private sealed record StoredValue(string Name, string Type, string? Value);
     public ValueTask DisposeAsync()
     {
         _disposed = true;
+        SqliteConnection.ClearAllPools();
         _gate.Dispose();
-        SqliteConnection.ClearPool(new SqliteConnection(_connectionString));
         return ValueTask.CompletedTask;
     }
 }
