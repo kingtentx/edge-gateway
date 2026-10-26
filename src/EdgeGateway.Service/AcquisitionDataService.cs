@@ -319,6 +319,8 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
     {
         private readonly IExternalDatabaseConnector _connector;
         private readonly CancellationToken _token;
+        private readonly IAcquisitionSpool? _spool;
+        private readonly IGatewayLog _log;
         private readonly Channel<QueuedRow> _queue;
         private readonly HashSet<Guid> _selected;
         private long _nextBatchTicks;
@@ -328,9 +330,10 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
         public long NextSnapshotTicks;
         public long LastSnapshotVersion;
         public Task Task { get; private set; } = Task.CompletedTask;
-        public GroupWorker(DatabaseWriteGroupConfiguration group, ConnectionState state, IExternalDatabaseConnector databaseConnector, CancellationToken token)
+        public GroupWorker(DatabaseWriteGroupConfiguration group, ConnectionState state, IExternalDatabaseConnector databaseConnector,
+            CancellationToken token, IAcquisitionSpool? spool, IGatewayLog logger)
         {
-            Group = group; State = state; _connector = databaseConnector; _token = token;
+            Group = group; State = state; _connector = databaseConnector; _token = token; _spool = spool; _log = logger;
             _selected = group.TagIds.ToHashSet();
             RequiredTags = group.Mode == DatabaseStorageMode.ColumnMapping
                 ? group.Columns.Where(column => column.Source is not (DatabaseValueSource.Constant or DatabaseValueSource.RecordTime or DatabaseValueSource.EventId))
@@ -353,12 +356,24 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
             List<QueuedRow> batch = [];
             try
             {
-                while (await _queue.Reader.WaitToReadAsync(_token).ConfigureAwait(false))
+                while (true)
                 {
-                    // A permanently invalid table/credential must not hammer the database
-                    // once per newly arriving batch. Keep only this group's worker in cooldown.
-                    var cooldown = TimeSpan.FromSeconds((_nextBatchTicks - Stopwatch.GetTimestamp()) / (double)Stopwatch.Frequency);
-                    if (cooldown > TimeSpan.Zero) await System.Threading.Tasks.Task.Delay(cooldown, _token).ConfigureAwait(false);
+                    _token.ThrowIfCancellationRequested();
+                    // Replay the oldest durable batch before consuming new in-memory rows. A failed
+                    // batch remains on disk and is retried after bounded cooldown, preserving order.
+                    if (_spool is not null)
+                    {
+                        var pending = await _spool.ReadPendingAsync(Group.Id, 1, _token).ConfigureAwait(false);
+                        if (pending.Count > 0)
+                        {
+                            var durable = pending[0];
+                            await WaitCooldownAsync().ConfigureAwait(false);
+                            await WriteBatchAsync(durable.Rows, durable.BatchId).ConfigureAwait(false);
+                            continue;
+                        }
+                    }
+                    if (!await _queue.Reader.WaitToReadAsync(_token).ConfigureAwait(false)) break;
+                    await WaitCooldownAsync().ConfigureAwait(false);
                     batch.Clear();
                     if (!_queue.Reader.TryRead(out var first)) continue;
                     batch.Add(first);
@@ -392,10 +407,29 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                 if (dropped > 0) State.Drop(Group.Id, checked((int)dropped), "停止时仍未写入的队列记录已丢弃。");
             }
         }
-        private async Task WriteBatchAsync(IReadOnlyList<QueuedRow> batch)
+        private async Task WaitCooldownAsync()
         {
-            var rows = batch.Select(item => item.Row).ToArray();
+            var cooldown = TimeSpan.FromSeconds((_nextBatchTicks - Stopwatch.GetTimestamp()) / (double)Stopwatch.Frequency);
+            if (cooldown > TimeSpan.Zero) await System.Threading.Tasks.Task.Delay(cooldown, _token).ConfigureAwait(false);
+        }
+
+        private async Task WriteBatchAsync(IReadOnlyList<QueuedRow> batch) =>
+            await WriteBatchAsync(batch.Select(item => item.Row).ToArray(), null).ConfigureAwait(false);
+
+        private async Task WriteBatchAsync(IReadOnlyList<DatabaseWriteRow> rows, string? existingBatchId)
+        {
+            string? spoolBatchId = existingBatchId;
             string? terminalReason = null;
+            if (_spool is not null && spoolBatchId is null)
+            {
+                try { spoolBatchId = await _spool.AppendAsync(Group.Id, rows, _token).ConfigureAwait(false); }
+                catch (Exception exception) when (exception is IOException or InvalidDataException or NotSupportedException)
+                {
+                    State.Drop(Group.Id, rows.Count, "持久缓冲失败，本批未发送到外部数据库：" + SafeError(exception));
+                    _nextBatchTicks = Stopwatch.GetTimestamp() + Stopwatch.Frequency;
+                    return;
+                }
+            }
             for (var attempt = 1; attempt <= State.Configuration.MaxRetryAttempts; attempt++)
             {
                 _token.ThrowIfCancellationRequested();
@@ -421,6 +455,8 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                         await operation.ConfigureAwait(false);
                     }
                     _nextBatchTicks = 0;
+                    if (_spool is not null && spoolBatchId is not null)
+                        await _spool.AcknowledgeAsync(Group.Id, spoolBatchId, _token).ConfigureAwait(false);
                     State.Success(Group.Id, rows.Length); return;
                 }
                 catch (OperationCanceledException) when (_token.IsCancellationRequested) { throw; }
@@ -439,7 +475,12 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                 await System.Threading.Tasks.Task.Delay(TimeSpan.FromMilliseconds(delay * (0.8 + 0.2 * Random.Shared.NextDouble())), _token).ConfigureAwait(false);
             }
             _nextBatchTicks = Stopwatch.GetTimestamp() + (terminalReason is null ? 1 : 5) * Stopwatch.Frequency;
-            State.Drop(Group.Id, rows.Length, $"写入组 [{Group.Name}] {terminalReason ?? "已达最大尝试次数"}，本批 {rows.Length} 行未获入库确认。");
+            if (_spool is not null && spoolBatchId is not null)
+            {
+                State.Failure(Group.Id, $"写入组 [{Group.Name}] {terminalReason ?? "已达最大尝试次数"}；{rows.Length} 行已保留在本地持久缓冲，等待恢复补传。");
+                _nextBatchTicks = Stopwatch.GetTimestamp() + 5 * Stopwatch.Frequency;
+            }
+            else State.Drop(Group.Id, rows.Length, $"写入组 [{Group.Name}] {terminalReason ?? "已达最大尝试次数"}，本批 {rows.Length} 行未获入库确认。");
         }
         private string SafeError(Exception exception)
         {
