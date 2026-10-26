@@ -13,7 +13,6 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly IDriverCatalog _drivers;
     private readonly IGatewayApplication _application;
     private readonly IGatewayLog _log;
-    private readonly string _dataDirectory;
     private readonly string _driverDirectory;
     private readonly bool _smokeTest;
     private readonly bool _layoutMatrix;
@@ -36,7 +35,7 @@ public sealed partial class MainForm : DpiAwareForm
     private bool _dirty, _busy, _refreshing, _closing, _allowClose;
     public bool SmokeTestFailed { get; private set; }
 
-    public MainForm(IGatewayApplication application, string dataDirectory,
+    public MainForm(IGatewayApplication application,
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
         bool serverResourcesSmoke = false)
@@ -45,7 +44,6 @@ public sealed partial class MainForm : DpiAwareForm
         _configuration = application.GetConfiguration();
         _drivers = application.Drivers;
         _log = application.Log;
-        _dataDirectory = dataDirectory;
         _driverDirectory = Path.GetFullPath(driverDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
         _smokeTest = smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
         _databaseMappingSmoke = databaseMappingSmoke;

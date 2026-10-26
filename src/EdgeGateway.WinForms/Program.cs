@@ -35,7 +35,7 @@ internal static class Program
         {
             host = GatewayHost.CreateAsync(dataDirectory, pluginDirectory: driverDirectory,
                 enableVerificationFaults: smokeTest, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
-            using var window = new MainForm(host.Application, host.DataDirectory, smokeTest, screenshotPath, layoutMatrix,
+            using var window = new MainForm(host.Application, smokeTest, screenshotPath, layoutMatrix,
                 smokeTest ? host.BeginConfigurationWriteFailureForVerification : null, driverDirectory, databaseMappingSmoke, serverResourcesSmoke);
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
