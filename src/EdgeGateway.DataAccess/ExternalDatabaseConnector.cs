@@ -14,8 +14,8 @@ using Oracle.ManagedDataAccess.Client;
 namespace EdgeGateway.DataAccess;
 
 /// <summary>
-/// External acquisition storage. Missing default point tables are created before writing.
-/// Other tables require the explicit EnsurePointTable action; existing tables are never altered.
+/// External acquisition storage. All table creation requires the explicit EnsurePointTable action.
+/// Connection tests and writes never create tables; existing tables are never altered.
 /// UTC instants are stored as PostgreSQL timestamptz, MySQL datetime(6), and Oracle timestamp(6).
 /// Standard point rows deduplicate immutable event_id values; custom mappings use ordinary INSERT semantics.
 /// </summary>
@@ -31,17 +31,28 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
 
     public async Task<DatabaseConnectionTestResult> TestConnectionAsync(DatabaseConnectionConfiguration connection, CancellationToken cancellationToken = default)
     {
+        var connected = false;
+        string? serverVersion = null;
         try
         {
             return await WithConnectionAsync(connection, async (database, token) =>
             {
                 await using var command = Command(database, connection, connection.Provider == ExternalDatabaseProvider.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1");
                 await command.ExecuteScalarAsync(token).ConfigureAwait(false);
-                return new DatabaseConnectionTestResult(true, "数据库连接成功。", database.ServerVersion);
+                connected = true;
+                serverVersion = database.ServerVersion;
+                var columns = await ReadColumnsAsync(database, connection, new DatabaseTableInfo("", "gateway_point"), token).ConfigureAwait(false);
+                var message = columns.Count > 0
+                    ? "数据库连接成功。当前默认 Schema 中已找到 gateway_point；写入前仍会校验字段和约束。"
+                    : "数据库连接成功。当前默认 Schema 中未找到可访问的 gateway_point 表。请保存连接，在数据库写入组中选择“标准点行（每点一行）”，核对 Schema 和表名后点击“创建数据表”。采集写入不会自动建表。";
+                return new DatabaseConnectionTestResult(true, message, serverVersion);
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-        catch (Exception exception) { return new(false, exception.Message); }
+        catch (Exception exception)
+        {
+            return new(false, (connected ? "数据库连接成功，但默认表 gateway_point 检查失败；未执行建表。" : "") + exception.Message, serverVersion);
+        }
     }
 
     public Task<IReadOnlyList<DatabaseTableInfo>> GetTablesAsync(DatabaseConnectionConfiguration connection, CancellationToken cancellationToken = default) =>
@@ -85,7 +96,7 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
     private async Task<IReadOnlyList<DatabaseColumnInfo>> EnsurePointTableCoreAsync(DbConnection database,
         DatabaseConnectionConfiguration connection, DatabaseTableInfo table, CancellationToken token)
     {
-        // Serialize the rare creation path, including explicit creation, across write groups.
+        // Serialize explicit creation across write groups.
         // Re-read inside the gate; normal writes continue to use the metadata cache.
         await _tableCreationGate.WaitAsync(token).ConfigureAwait(false);
         try
@@ -218,10 +229,7 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
     {
         if (_validatedTables.TryGetValue(cacheKey, out var cached) && cached.ExpiresAt > Environment.TickCount64) return cached.Columns;
         var metadata = await ReadColumnsAsync(database, connection, Table(group), token).ConfigureAwait(false);
-        if (metadata.Count == 0 && group.Mode == DatabaseStorageMode.PointRows
-            && string.Equals(group.Table, "gateway_point", StringComparison.Ordinal))
-            metadata = await EnsurePointTableCoreAsync(database, connection, Table(group), token).ConfigureAwait(false);
-        if (metadata.Count == 0) throw new ConnectorConfigurationException("目标数据表不存在或当前账户无权访问。请先选择已有表，或显式创建标准点表。");
+        if (metadata.Count == 0) throw new ConnectorConfigurationException("目标数据表不存在或当前账户无权访问。请先选择已有表；标准点行模式可点击“创建数据表”手动创建，采集写入不会自动建表。");
         if (group.Mode == DatabaseStorageMode.PointRows) await ValidatePointTableAsync(database, connection, Table(group), metadata, token).ConfigureAwait(false);
         else ValidateMappedColumns(columns, metadata);
         if (connection.Provider == ExternalDatabaseProvider.MySql) await RequireTransactionalMySqlTableAsync(database, connection, Table(group), token).ConfigureAwait(false);

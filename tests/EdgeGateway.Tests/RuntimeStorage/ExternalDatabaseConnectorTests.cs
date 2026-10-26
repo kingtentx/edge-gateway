@@ -78,6 +78,49 @@ public sealed class ExternalDatabaseConnectorTests
         Assert.DoesNotContain("Password=", result.Message);
     }
 
+    [Theory]
+    [InlineData(ExternalDatabaseProvider.MySql, false)]
+    [InlineData(ExternalDatabaseProvider.MySql, true)]
+    [InlineData(ExternalDatabaseProvider.PostgreSql, false)]
+    [InlineData(ExternalDatabaseProvider.PostgreSql, true)]
+    [InlineData(ExternalDatabaseProvider.Oracle, false)]
+    [InlineData(ExternalDatabaseProvider.Oracle, true)]
+    public async Task ConnectionTestChecksDefaultTableAndNeverCreatesIt(ExternalDatabaseProvider provider, bool exists)
+    {
+        var database = new RecordingConnection { MetadataMode = exists ? "normal" : "missing" };
+        var configuration = Configuration(); configuration.Provider = provider;
+        var result = await new ExternalDatabaseConnector(_ => database).TestConnectionAsync(configuration);
+        Assert.True(result.Success);
+        Assert.Equal("test", result.ServerVersion);
+        Assert.Contains(exists ? "已找到 gateway_point" : "未找到可访问的 gateway_point", result.Message);
+        if (!exists) Assert.Contains("创建数据表", result.Message);
+        var metadata = Assert.Single(database.Commands, command => command.Values.ContainsKey("eg_table_name"));
+        Assert.Equal("gateway_point", metadata.Values["eg_table_name"]);
+        Assert.Equal(DBNull.Value, metadata.Values["eg_schema"]);
+        Assert.True(database.Commands.FindIndex(command => command.Sql.StartsWith("SELECT 1"))
+            < database.Commands.IndexOf(metadata));
+        Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("CREATE ") || command.Sql.StartsWith("INSERT "));
+        Assert.Equal(0, database.CommitCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConnectionAndTableCheckFailuresAreDistinctAndRedacted(bool metadataFailure)
+    {
+        var database = new RecordingConnection { MetadataFailure = metadataFailure, ProbeFailure = !metadataFailure };
+        var result = await new ExternalDatabaseConnector(_ => database).TestConnectionAsync(Configuration());
+        Assert.False(result.Success);
+        Assert.DoesNotContain("provider-secret", result.Message);
+        if (metadataFailure) Assert.Contains("数据库连接成功，但默认表 gateway_point 检查失败", result.Message);
+        else
+        {
+            Assert.DoesNotContain("数据库连接成功", result.Message);
+            Assert.DoesNotContain(database.Commands, command => command.Values.ContainsKey("eg_table_name"));
+        }
+        Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("CREATE "));
+    }
+
     [Fact]
     public void OracleDescriptorCannotBeInjectedThroughStructuredFields()
     {
@@ -363,13 +406,14 @@ public sealed class ExternalDatabaseConnectorTests
     }
 
     [Fact]
-    public async Task MissingDefaultPointTableIsCreatedWithIndexesBeforeWritingAndReused()
+    public async Task ExplicitCreationBuildsIndexesBeforeWritingAndReusesTheTable()
     {
         var database = new RecordingConnection { MetadataMode = "missing" };
         var connector = new ExternalDatabaseConnector(_ => database);
+        await connector.EnsurePointTableAsync(Configuration(), new("", "gateway_point"));
         await connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]);
         await connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]);
-        var create = Assert.Single(database.Commands.Where(command => command.Sql.StartsWith("CREATE TABLE ")));
+        var create = Assert.Single(database.Commands, command => command.Sql.StartsWith("CREATE TABLE "));
         Assert.Contains("\"gateway_point\"", create.Sql);
         Assert.False(create.InTransaction);
         var indexes = database.Commands.Where(command => command.Sql.StartsWith("CREATE INDEX ")).ToArray();
@@ -382,12 +426,12 @@ public sealed class ExternalDatabaseConnectorTests
     }
 
     [Fact]
-    public async Task AutoCreationPermissionFailureDoesNotWriteAndRemainsRedacted()
+    public async Task ExplicitCreationPermissionFailureDoesNotWriteAndRemainsRedacted()
     {
         var database = new RecordingConnection { MetadataMode = "missing", CreateFailure = "42501" };
         var connector = new ExternalDatabaseConnector(_ => database);
         var error = await Assert.ThrowsAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
-            connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]));
+            connector.EnsurePointTableAsync(Configuration(), new("", "gateway_point")));
         Assert.Contains("42501", error.Message);
         Assert.DoesNotContain("provider-secret", error.Message);
         Assert.False(error.IsTransient);
@@ -398,12 +442,12 @@ public sealed class ExternalDatabaseConnectorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ConcurrentCreatorTableIsValidatedBeforeWriting(bool incompatible)
+    public async Task ExplicitCreationChecksAConcurrentCreatorsTable(bool incompatible)
     {
         var database = new RecordingConnection
         { MetadataMode = "missing", CreateFailure = "42P07", ConcurrentTableIncompatible = incompatible };
         var connector = new ExternalDatabaseConnector(_ => database);
-        var write = connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]);
+        var write = connector.EnsurePointTableAsync(Configuration(), new("", "gateway_point"));
         if (incompatible)
         {
             await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() => write);
@@ -412,6 +456,7 @@ public sealed class ExternalDatabaseConnectorTests
         else
         {
             await write;
+            await connector.WriteRowsAsync(Configuration(), new(), [StandardRow()]);
             Assert.Equal(1, database.CommitCount);
         }
         Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("CREATE INDEX ") || command.Sql.StartsWith("ALTER TABLE "));
@@ -428,13 +473,15 @@ public sealed class ExternalDatabaseConnectorTests
             || command.Sql.StartsWith("ALTER ") || command.Sql.StartsWith("INSERT "));
     }
 
-    [Fact]
-    public async Task MissingNonDefaultPointTableRequiresExplicitCreation()
+    [Theory]
+    [InlineData("gateway_point")]
+    [InlineData("business_points")]
+    public async Task MissingPointTableRequiresExplicitCreation(string table)
     {
         var database = new RecordingConnection { MetadataMode = "missing" };
         var connector = new ExternalDatabaseConnector(_ => database);
         await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
-            connector.WriteRowsAsync(Configuration(), new() { Table = "business_points" }, [StandardRow()]));
+            connector.WriteRowsAsync(Configuration(), new() { Table = table }, [StandardRow()]));
         Assert.Single(database.Commands);
         Assert.DoesNotContain(database.Commands, command => command.Sql.StartsWith("CREATE "));
     }
@@ -451,7 +498,7 @@ public sealed class ExternalDatabaseConnectorTests
         Assert.DoesNotContain("event_id", insert.Sql);
         Assert.True(insert.InTransaction);
         var missing = new RecordingConnection { MetadataMode = "missing" };
-        group.Table = "gateway_point"; // Auto-creation applies only to the standard schema mode.
+        group.Table = "gateway_point"; // Default naming never authorizes creation.
         await Assert.ThrowsAnyAsync<EdgeGateway.Abstractions.DatabaseWriteException>(() =>
             new ExternalDatabaseConnector(_ => missing).WriteRowsAsync(Configuration(), group, [Row("value")]));
         Assert.DoesNotContain(missing.Commands, command => command.Sql.StartsWith("CREATE ") || command.Sql.StartsWith("INSERT "));
@@ -525,6 +572,8 @@ public sealed class ExternalDatabaseConnectorTests
         public bool History { get; init; }
         public string MetadataMode { get; init; } = "normal";
         public string? CreateFailure { get; init; }
+        public bool MetadataFailure { get; init; }
+        public bool ProbeFailure { get; init; }
         public bool ConcurrentTableIncompatible { get; init; }
         private bool _standardTableCreated;
         private bool _incompatibleTableCreated;
@@ -565,9 +614,18 @@ public sealed class ExternalDatabaseConnectorTests
             return 1;
         }
 
+        public object Scalar(RecordingCommand command)
+        {
+            Capture(command);
+            if (ProbeFailure) throw new PostgresException("provider-secret", "ERROR", "ERROR", "08006");
+            if (command.CommandText is not ("SELECT 1" or "SELECT 1 FROM DUAL")) throw new NotSupportedException();
+            return 1;
+        }
+
         public DbDataReader Read(RecordingCommand command)
         {
             Capture(command);
+            if (MetadataFailure) throw new PostgresException("provider-secret", "ERROR", "ERROR", "42501");
             var table = new DataTable();
             if (_standardTableCreated && command.CommandText.Contains("information_schema.table_constraints"))
             {
@@ -620,6 +678,11 @@ public sealed class ExternalDatabaseConnectorTests
         protected override DbParameter CreateDbParameter() => new NpgsqlParameter();
         public override int ExecuteNonQuery() => throw new NotSupportedException();
         public override object ExecuteScalar() => throw new NotSupportedException();
+        public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<object?>(database.Scalar(this));
+        }
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => database.Read(this);
         public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken) => database.NonQuery(this, cancellationToken);
         protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)

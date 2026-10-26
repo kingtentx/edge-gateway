@@ -49,7 +49,7 @@ internal sealed class DatabaseConnectionDialog : EditorDialog
     private readonly ComboBox _provider;
     private readonly CheckBox _enabled, _tls;
     private readonly NumericUpDown _port, _connectTimeout, _commandTimeout, _batch, _flush, _capacity, _capacityMb, _retryAttempts;
-    private readonly Label _testResult = EditorLayout.WrappingLabel("连接测试使用当前输入，不保存配置。", color: UiTheme.Muted);
+    private readonly Label _testResult = EditorLayout.WrappingLabel("连接测试使用当前输入，成功后检查默认 gateway_point 表；不保存配置、不自动建表。", color: UiTheme.Muted);
     private bool _testing;
     internal DatabaseConnectionConfiguration Value { get; private set; } = null!;
     internal IEnumerable<Control> SmokeInputs => new Control[] { _name, _enabled, _provider, _host, _port, _database, _username, _password, _tls, _connectTimeout, _commandTimeout, _batch, _flush, _capacity, _capacityMb, _retryAttempts };
@@ -108,7 +108,7 @@ internal sealed class DatabaseConnectionDialog : EditorDialog
         try
         {
             var connection = CaptureConnectionDraft(); _testing = true; Tabs.Enabled = false; UseWaitCursor = true;
-            _testResult.Text = "正在连接…"; _testResult.ForeColor = UiTheme.Muted;
+            _testResult.Text = "正在测试连接并检查默认数据表…"; _testResult.ForeColor = UiTheme.Muted;
             var result = await _application.TestDatabaseConnectionAsync(connection);
             _testResult.Text = result.Message + (string.IsNullOrWhiteSpace(result.ServerVersion) ? "" : "\n服务器版本：" + result.ServerVersion);
             _testResult.ForeColor = result.Success ? UiTheme.Green : UiTheme.Red;
@@ -188,7 +188,7 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         })); listTables.Name = "ReadDatabaseTables";
         Span(fields, listTables); Field(fields, "已有数据表", _tables);
         _loadColumns = UiTheme.Button("读取表字段并映射", async (_, _) => await ReadColumnsAsync()); _loadColumns.Name = "ReadDatabaseColumns";
-        _createTable = UiTheme.Button("创建标准点行表", async (_, _) => await CreateTableAsync()); _createTable.Name = "CreateDatabasePointTable";
+        _createTable = UiTheme.Button("创建数据表", async (_, _) => await CreateTableAsync()); _createTable.Name = "CreateDatabasePointTable";
         var preview = UiTheme.Button("检查与预览", async (_, _) =>
         {
             try
@@ -500,7 +500,7 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         try
         {
             var connection = CurrentConnection(); var table = CurrentTable();
-            if (MessageBox.Show(this, $"在数据库“{connection.Name}”中创建标准点行表 {table}？\n此操作会执行建表。已存在的表不会自动替换或修改；请核对目标与账号权限。", "确认创建标准表", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+            if (MessageBox.Show(this, $"在数据库“{connection.Name}”中创建数据表 {table}？\n将使用标准点行结构。已存在的表不会自动替换或修改；请核对目标与账号权限。", "确认创建数据表", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
             await InspectAsync(async () => { await _application.CreateDatabasePointTableAsync(connection, table); _status.Text = "标准点行表已准备就绪。保存并启用写入组后开始写入。"; });
         }
         catch (Exception exception) { _status.Text = exception.Message; _status.ForeColor = UiTheme.Red; }
