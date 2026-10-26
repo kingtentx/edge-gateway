@@ -19,7 +19,11 @@ public class GatewayWorkerClient : DispatchProxy
 {
     private string _executable = "";
     private string _pipeName = "";
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new UntypedObjectConverter() }
+    };
     private static readonly SemaphoreSlim IpcGate = new(1, 1);
 
     public static IGatewayApplication ConnectOrStart()
@@ -254,4 +258,36 @@ public class GatewayWorkerClient : DispatchProxy
 
     private sealed record PipeRequest(string Contract, string Method, string[] ParameterTypes, JsonElement[] Arguments);
     private sealed record PipeResponse(string? Payload, string? Error);
+
+    /// <summary>Preserves primitive runtime types in TelemetrySample object-valued fields across IPC.</summary>
+    private sealed class UntypedObjectConverter : System.Text.Json.Serialization.JsonConverter<object>
+    {
+        public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            using var document = JsonDocument.ParseValue(ref reader);
+            return ConvertElement(document.RootElement);
+        }
+
+        private static object? ConvertElement(JsonElement element) => element.ValueKind switch
+        {
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number when element.TryGetInt64(out var signed) => signed,
+            JsonValueKind.Number when element.TryGetUInt64(out var unsigned) => unsigned,
+            JsonValueKind.Number when element.TryGetDecimal(out var decimalValue) => decimalValue,
+            JsonValueKind.Number => element.GetDouble(),
+            JsonValueKind.Array => element.EnumerateArray().Select(ConvertElement).ToArray(),
+            JsonValueKind.Object => element.EnumerateObject().ToDictionary(property => property.Name,
+                property => ConvertElement(property.Value), StringComparer.OrdinalIgnoreCase),
+            _ => element.GetRawText()
+        };
+
+        public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
+        {
+            if (value is JsonElement element) element.WriteTo(writer);
+            else JsonSerializer.Serialize(writer, value, value.GetType(), options);
+        }
+    }
 }
