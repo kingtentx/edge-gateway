@@ -8,35 +8,25 @@ public sealed partial class MainForm
     private readonly Dictionary<string, Control> _cloudFields = [];
     private GatewayConfiguration? _cloudDraft;
     private bool _binding;
-    private readonly TabControl _cloudTabs = new EditorLayout.EditorTabs { Name = "PlatformTabs", Dock = DockStyle.Fill, Multiline = true, Margin = Padding.Empty };
-    private readonly Label _cloudApplyState = UiTheme.Label("设置已应用", 10, UiTheme.Muted);
-    private Button _cloudApply = null!, _cloudReset = null!;
+    private TabControl _cloudTabs = null!;
+    private Label _cloudApplyState = null!;
+    private AntdUI.Button _cloudApply = null!, _cloudReset = null!;
+    private PlatformPageView _platformPageView = null!;
     private Control BuildCloudPage()
     {
-        var content = new TableLayoutPanel
+        _platformPageView = new PlatformPageView();
+        _cloudTabs = _platformPageView.PlatformTabs;
+        _cloudApplyState = _platformPageView.DraftState;
+        _cloudApply = _platformPageView.ApplyButton;
+        _cloudReset = _platformPageView.ResetButton;
+        var tables = new Dictionary<string, TableLayoutPanel>(StringComparer.Ordinal)
         {
-            Name = "PlatformContent", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
-            BackColor = Color.White, Margin = Padding.Empty
+            ["connection"] = _platformPageView.ConnectionFields,
+            ["reporting"] = _platformPageView.ReportingFields,
+            ["rpc"] = _platformPageView.RpcFields,
+            ["gateway"] = _platformPageView.GatewayFields
         };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var tables = new Dictionary<string, TableLayoutPanel>();
-        TableLayoutPanel Page(string key, string title)
-        {
-            var tab = new TabPage(title) { Name = "PlatformTab_" + key, BackColor = Color.White };
-            // Static page fields inherit the main form's DPI. A plain scroll panel
-            // avoids ContainerControl active-child scrolling fighting the page viewport.
-            var viewport = new Panel
-            {
-                Name = "PlatformFields_" + key, Dock = DockStyle.Fill, AutoScroll = true,
-                BackColor = Color.White, Padding = new Padding(12), Margin = Padding.Empty
-            };
-            var table = EditorLayout.Fields(); table.Name = "PlatformTable_" + key;
-            viewport.Controls.Add(table); tab.Controls.Add(viewport); _cloudTabs.TabPages.Add(tab);
-            tables.Add(key, table);
-            return table;
-        }
+        TableLayoutPanel Page(string key, string title) => tables[key];
         var fields = Page("connection", "平台连接");
         void Section(string title, string? help = null) => EditorDialog.Section(fields, title, help);
         void Note(string text) => EditorLayout.FieldNote(fields, text);
@@ -128,29 +118,17 @@ public sealed partial class MainForm
         manageDrivers.Name = "ManageDriverPlugins";
         DatabaseConnectionDialog.Span(fields, manageDrivers);
 
-        _cloudApply = ConfigurationButton("应用设置", async (_, _) => await RunBusyAsync(ApplyCloudSettingsAsync), true);
-        _cloudApply.Name = "ApplyCloudSettings"; _stoppedConfigurationCommands.Add(_cloudApply);
-        _cloudReset = ConfigurationButton("重置修改", (_, _) =>
+        _cloudApply.Click += async (_, _) => await RunBusyAsync(ApplyCloudSettingsAsync);
+        _cloudReset.Click += (_, _) =>
         {
             if (!CanEdit()) return;
             ResetCloudDraft(); BindCloudFields(); UpdateCommands();
             SetFooter("平台设置已恢复为上次保存的内容。");
-        });
-        _cloudReset.Name = "ResetCloudSettings";
-        var footer = new TableLayoutPanel
-        {
-            Name = "PlatformApplyBar", Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 1, RowCount = 2, BackColor = Color.White, Padding = new Padding(14, 8, 8, 4), Margin = Padding.Empty
         };
-        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        footer.RowStyles.Add(new RowStyle(SizeType.AutoSize)); footer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _cloudApplyState.Name = "PlatformDraftState"; _cloudApplyState.Dock = DockStyle.Fill;
-        footer.Controls.Add(_cloudApplyState, 0, 0);
-        var actions = UiTheme.Toolbar(_cloudApply, _cloudReset); actions.Padding = Padding.Empty;
-        footer.Controls.Add(actions, 0, 1);
-        footer.SizeChanged += (_, _) => SetWrappingWidth(_cloudApplyState, footer.ClientSize.Width - footer.Padding.Horizontal);
-        content.Controls.Add(_cloudTabs, 0, 0); content.Controls.Add(footer, 0, 1);
-        return UiTheme.PageLayout("平台与系统", "分组维护连接、上报、远程控制和网关设置；编辑完成后统一应用。", UiTheme.Toolbar(), content);
+        _configurationCommands.AddRange([_cloudApply, _cloudReset]);
+        _stoppedConfigurationCommands.Add(_cloudApply);
+        _platformPageView.SizeChanged += (_, _) => SetWrappingWidth(_cloudApplyState, Math.Max(1, _platformPageView.ClientSize.Width - 32));
+        return _platformPageView;
     }
 
     private void UpdatePlatformCommands()
