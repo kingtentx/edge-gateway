@@ -372,9 +372,8 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                             if (!string.Equals(durable.TargetFingerprint, TargetFingerprint(), StringComparison.Ordinal))
                             {
                                 State.Failure(Group.Id, $"写入组 [{Group.Name}] 的持久缓冲目标配置已变化；为避免把旧数据写入新目标，已暂停自动补传。请恢复原数据库目标或人工导出处理。");
-                                _nextBatchTicks = Stopwatch.GetTimestamp() + 30 * Stopwatch.Frequency;
-                                await WaitCooldownAsync().ConfigureAwait(false);
-                                continue;
+                                _nextBatchTicks = long.MaxValue;
+                                break; // Pause this write group; never redirect old rows to a changed target.
                             }
                             await WaitCooldownAsync().ConfigureAwait(false);
                             await WriteBatchAsync(durable.Rows, durable.BatchId).ConfigureAwait(false);
