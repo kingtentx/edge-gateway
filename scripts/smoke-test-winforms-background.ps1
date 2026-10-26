@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'DatabaseMapping')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'DatabaseMapping', 'ServerResources')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -95,7 +95,7 @@ namespace EdgeGateway {
             if (handle == new IntPtr(-1)) throw new Win32Exception(Marshal.GetLastWin32Error());
             return handle;
         }
-        public static uint Run(string executable, string directory, string output, int timeout, bool databaseMapping) {
+        public static uint Run(string executable, string directory, string output, int timeout, string scenario) {
             // Do not call SwitchDesktop, activate the input desktop, or use SendInput.
             // All real HWND/focus checks stay on this private, non-visible desktop.
             var name = "EdgeGateway.Validation." + Guid.NewGuid().ToString("N");
@@ -130,7 +130,9 @@ namespace EdgeGateway {
                     },
                     Attributes = attributes
                 };
-                var command = new StringBuilder(Quote(executable) + (databaseMapping ? " --smoke-database-mapping --screenshot " : " --smoke-test --layout-matrix --screenshot ")
+                var arguments = scenario == "DatabaseMapping" ? " --smoke-database-mapping --screenshot "
+                    : scenario == "ServerResources" ? " --smoke-server-resources --screenshot " : " --smoke-test --layout-matrix --screenshot ";
+                var command = new StringBuilder(Quote(executable) + arguments
                     + Quote(Path.Combine(output, "ui-smoke.png")));
                 if (!CreateProcessW(executable, command, IntPtr.Zero, IntPtr.Zero, true, 0x08080000,
                     IntPtr.Zero, directory, ref startup, out process))
@@ -175,10 +177,18 @@ namespace EdgeGateway {
 }
 '@
 }
-$code = [EdgeGateway.BackgroundUiSmoke]::Run($applicationPath, $repositoryRoot, $outputRoot, $TimeoutSeconds, ($Scenario -eq 'DatabaseMapping'))
+$code = [EdgeGateway.BackgroundUiSmoke]::Run($applicationPath, $repositoryRoot, $outputRoot, $TimeoutSeconds, $Scenario)
 if ($code -ne 0) {
     Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log')
     throw "Background WinForms smoke failed: $code"
+}
+if ($Scenario -eq 'ServerResources') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    if ($outputText -notmatch 'Server resource charts smoke passed:') { throw 'Server resource charts completion marker is missing.' }
+    $screenshots = @(Get-ChildItem -LiteralPath $outputRoot -Filter '*server-resources-*.png' -File)
+    if ($screenshots.Count -ne 4 -or @($screenshots | Where-Object Length -eq 0).Count -ne 0) { throw 'Server resource chart screenshots are missing or empty.' }
+    Write-Output 'Background server resource charts smoke passed.'
+    return
 }
 if ($Scenario -eq 'DatabaseMapping') {
     $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw

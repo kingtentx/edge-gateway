@@ -17,9 +17,15 @@ public sealed partial class MainForm
     private readonly Label _pendingCount = UiTheme.Label("待补传 0 条", 14, UiTheme.Ink, true);
     private readonly Label _mqttStatus = UiTheme.Label("平台未启用", 18, UiTheme.Muted, true);
     private readonly Label _outputHealth = UiTheme.Label("等待输出状态", 10, UiTheme.Muted);
-    private readonly Label _serverIdentity = UiTheme.Label("服务器资源 · 辅助信息", 10, UiTheme.Muted, true);
-    private readonly Label _serverCpu = UiTheme.Label("CPU：采样中", 10, UiTheme.Muted);
-    private readonly Label _serverMemory = UiTheme.Label("内存：采样中", 10, UiTheme.Muted);
+    private readonly Label _serverIdentity = UiTheme.Label("服务器资源", 12, UiTheme.Ink, true);
+    private readonly Label _serverCpu = UiTheme.Label("采样中", 22, UiTheme.Blue, true);
+    private readonly Label _serverMemory = UiTheme.Label("采样中", 22, UiTheme.Green, true);
+    private readonly Label _serverCpuDetail = UiTheme.Label("首次采样需等待下一次刷新", 10, UiTheme.Muted);
+    private readonly Label _serverMemoryDetail = UiTheme.Label("等待物理内存读数", 10, UiTheme.Muted);
+    private readonly ServerUsageTrend _serverCpuChart = new() { Name = "OverviewCpuTrend", AccessibleName = "整机 CPU 最近 60 秒趋势" };
+    private readonly ServerUsageTrend _serverMemoryChart = new() { Name = "OverviewMemoryTrend", AccessibleName = "物理内存最近 60 秒趋势", SeriesColor = UiTheme.Green };
+    private readonly TableLayoutPanel _serverDiskRows = OverviewGrid("OverviewDiskBars");
+    private readonly Dictionary<string, ServerDiskBar> _serverDiskBars = new(StringComparer.OrdinalIgnoreCase);
     private readonly Label _serverDisks = UiTheme.Label("磁盘容量：采样中", 10, UiTheme.Muted);
     private readonly Label _serverErrors = UiTheme.Label("CPU 首次采样需等待下一次刷新；磁盘为容量使用率。", 10, UiTheme.Muted);
 
@@ -60,9 +66,19 @@ public sealed partial class MainForm
         ArrangeOverviewGrid(health, healthPanels, 2);
         _serverCpu.Name = "OverviewServerCpu"; _serverMemory.Name = "OverviewServerMemory";
         _serverDisks.Name = "OverviewServerDisks"; _serverErrors.Name = "OverviewServerErrors";
+        var resourceGrid = OverviewGrid("OverviewResourceCharts");
+        var resourcePanels = new[]
+        {
+            OverviewSection("OverviewCpuCard", UiTheme.Blue, UiTheme.Label("CPU · 整机使用率", 10, UiTheme.Ink, true),
+                _serverCpu, _serverCpuDetail, _serverCpuChart),
+            OverviewSection("OverviewMemoryCard", UiTheme.Green, UiTheme.Label("内存 · 物理内存使用率", 10, UiTheme.Ink, true),
+                _serverMemory, _serverMemoryDetail, _serverMemoryChart)
+        };
+        ArrangeOverviewGrid(resourceGrid, resourcePanels, 2);
+        _serverDiskRows.ColumnCount = 1; _serverDiskRows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         var resources = OverviewSection("OverviewServerResources", UiTheme.Border,
-            _serverIdentity, _serverCpu, _serverMemory, _serverDisks, _serverErrors);
-        resources.BackColor = Color.FromArgb(247, 249, 252);
+            _serverIdentity, UiTheme.Label("最近 60 秒趋势 · 每秒刷新 · 鼠标移到曲线上查看读数", 10, UiTheme.Muted),
+            resourceGrid, _serverDisks, _serverDiskRows, _serverErrors);
         var links = UiTheme.Toolbar(
             UiTheme.Button("设备与点位", (_, _) => ShowPage("devices")),
             UiTheme.Button("实时监控", (_, _) => ShowPage("realtime")),
@@ -84,7 +100,8 @@ public sealed partial class MainForm
                 var width = content.ClientSize.Width;
                 ArrangeOverviewGrid(cards, primary, width >= UiTheme.Scale(cards, 840) ? 4 : width >= UiTheme.Scale(cards, 400) ? 2 : 1);
                 ArrangeOverviewGrid(health, healthPanels, width >= UiTheme.Scale(health, 620) ? 2 : 1);
-                foreach (var panel in primary.Concat(healthPanels).Append(resources))
+                ArrangeOverviewGrid(resourceGrid, resourcePanels, resources.ClientSize.Width >= UiTheme.Scale(resources, 720) ? 2 : 1);
+                foreach (var panel in primary.Concat(healthPanels).Concat(resourcePanels).Append(resources))
                     foreach (var label in panel.Controls.OfType<Label>())
                         SetWrappingWidth(label, Math.Max(1, panel.ClientSize.Width - panel.Padding.Horizontal));
                 SetWrappingWidth(_overviewDeviceSummary, Math.Max(1, width));
@@ -96,6 +113,7 @@ public sealed partial class MainForm
         cards.SizeChanged += (_, _) => Arrange();
         health.SizeChanged += (_, _) => Arrange();
         resources.SizeChanged += (_, _) => Arrange();
+        resourceGrid.SizeChanged += (_, _) => Arrange();
         cards.HandleCreated += (_, _) => Arrange();
         DpiLayoutCompleted += (_, _) => Arrange();
         return UiTheme.PageLayout("运行总览", "设备连接、采集质量与数据输出，一屏掌握网关健康情况。", UiTheme.Toolbar(), viewport);
@@ -104,19 +122,19 @@ public sealed partial class MainForm
     private static TableLayoutPanel OverviewGrid(string name) => new()
     { Name = name, Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = Padding.Empty };
 
-    private static TableLayoutPanel OverviewSection(string name, Color accent, params Label[] labels)
+    private static TableLayoutPanel OverviewSection(string name, Color accent, params Control[] controls)
     {
         var panel = UiTheme.Card(accent);
         panel.Name = name; panel.Dock = DockStyle.Fill; panel.AutoSize = true;
         panel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         panel.Padding = new Padding(20, 12, 16, 12); panel.Margin = new Padding(0, 0, 0, 12);
-        panel.ColumnCount = 1; panel.RowCount = labels.Length;
+        panel.ColumnCount = 1; panel.RowCount = controls.Length;
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        for (var i = 0; i < labels.Length; i++)
+        for (var i = 0; i < controls.Length; i++)
         {
             panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            labels[i].Dock = DockStyle.Fill;
-            panel.Controls.Add(labels[i], 0, i);
+            controls[i].Dock = DockStyle.Fill;
+            panel.Controls.Add(controls[i], 0, i);
         }
         return panel;
     }
@@ -159,27 +177,72 @@ public sealed partial class MainForm
 
     private void RefreshServerResources(ServerResourceSnapshot snapshot)
     {
-        static string Capacity(long value) => $"{value / 1073741824d:F1} GiB";
-        static string Load(double value) => $"{value:F1}%{(value >= 85 ? " · 偏高" : "")}";
+        static string Load(double value) => $"{value:F1}% · {(value >= 85 ? "偏高" : "正常")}";
         _serverIdentity.Text = $"服务器资源 · {snapshot.MachineName} · {snapshot.LogicalProcessors} 逻辑处理器";
-        _serverCpu.Text = snapshot.CpuUsagePercent is { } cpu ? "整机 CPU：" + Load(cpu) : "整机 CPU：采样中或不可用";
-        _serverCpu.ForeColor = snapshot.CpuUsagePercent >= 85 ? UiTheme.Warning : UiTheme.Muted;
-        _serverMemory.Text = snapshot.Memory is { } memory
-            ? $"物理内存：{Load(memory.UsedPercent)} · 已用 {Capacity(memory.TotalBytes - memory.AvailableBytes)} / {Capacity(memory.TotalBytes)}" : "物理内存：不可用";
-        _serverMemory.ForeColor = snapshot.Memory?.UsedPercent >= 85 ? UiTheme.Warning : UiTheme.Muted;
-        _serverDisks.Text = snapshot.Disks.Count == 0 ? "磁盘容量：暂无可用的本地固定磁盘读数"
-            : "磁盘容量：" + string.Join("\n", snapshot.Disks.Select(disk => disk.UsedPercent is { } used
-                ? $"{disk.Name} 已用 {used:F1}% · 可用 {Capacity(disk.FreeBytes!.Value)} / {Capacity(disk.TotalBytes!.Value)}{(used >= 90 ? " · 空间偏紧" : "")}"
-                : $"{disk.Name} 不可用：{disk.Error}"));
+        _serverCpu.Text = snapshot.CpuUsagePercent is { } cpu ? Load(cpu) : "采样中 / 不可用";
+        _serverCpu.ForeColor = snapshot.CpuUsagePercent >= 85 ? UiTheme.Warning : snapshot.CpuUsagePercent is null ? UiTheme.Muted : UiTheme.Blue;
+        _serverCpuDetail.Text = snapshot.CpuUsagePercent is null ? "需相邻两次有效采样；失败原因见下方提示。" : "整机区间平均负载 · 85% 起提示偏高";
+        _serverMemory.Text = snapshot.Memory is { } memory ? Load(memory.UsedPercent) : "不可用";
+        _serverMemoryDetail.Text = snapshot.Memory is { } capacity
+            ? $"已用 {ServerDiskBar.Capacity(capacity.TotalBytes - capacity.AvailableBytes)} / 总量 {ServerDiskBar.Capacity(capacity.TotalBytes)}"
+            : "未取得有效物理内存读数";
+        _serverMemory.ForeColor = snapshot.Memory?.UsedPercent >= 85 ? UiTheme.Warning : snapshot.Memory is null ? UiTheme.Muted : UiTheme.Green;
+        _serverCpuChart.AddReading(snapshot.Timestamp, snapshot.CpuUsagePercent);
+        _serverMemoryChart.AddReading(snapshot.Timestamp, snapshot.Memory?.UsedPercent);
+        var tightDisks = snapshot.Disks.Count(disk => disk.UsedPercent >= 90 && disk.Error is null);
+        _serverDisks.Text = snapshot.Disks.Count == 0 ? "磁盘容量 · 暂无可用的本地固定磁盘读数"
+            : $"磁盘容量 · {snapshot.Disks.Count} 个固定磁盘{(tightDisks > 0 ? $" · {tightDisks} 个空间偏紧" : "")}";
         _serverDisks.ForeColor = snapshot.Disks.Any(disk => disk.UsedPercent >= 90 || disk.Error is not null) ? UiTheme.Warning : UiTheme.Muted;
-        _serverErrors.Text = snapshot.Errors.Count > 0 ? string.Join("；", snapshot.Errors)
-            : $"更新于 {snapshot.Timestamp.ToLocalTime():HH:mm:ss} · 磁盘为容量使用率，非 I/O 忙碌率。";
-        _serverErrors.ForeColor = snapshot.Errors.Count > 0 ? UiTheme.Warning : UiTheme.Muted;
+        RefreshServerDiskBars(snapshot.Disks);
+        var errors = snapshot.Errors.Concat(snapshot.Disks.Where(disk => disk.Error is not null).Select(disk => $"{disk.Name}：{disk.Error}")).ToArray();
+        _serverErrors.Text = $"更新于 {snapshot.Timestamp.ToLocalTime():HH:mm:ss} · 磁盘显示容量使用率，90% 起提示空间偏紧。"
+            + (errors.Length > 0 ? "\n" + string.Join("；", errors) : "");
+        _serverErrors.ForeColor = errors.Length > 0 ? UiTheme.Warning : UiTheme.Muted;
+    }
+
+    private void RefreshServerDiskBars(IReadOnlyList<ServerDiskUsage> disks)
+    {
+        var names = disks.Select(disk => disk.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var changed = !_serverDiskBars.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(names);
+        _serverDiskRows.SuspendLayout();
+        try
+        {
+            if (changed)
+            {
+                foreach (var name in _serverDiskBars.Keys.Where(name => !names.Contains(name)).ToArray())
+                {
+                    var removed = _serverDiskBars[name];
+                    _serverDiskRows.Controls.Remove(removed); removed.Dispose(); _serverDiskBars.Remove(name);
+                }
+                _serverDiskRows.RowStyles.Clear(); _serverDiskRows.RowCount = disks.Count;
+            }
+            var row = 0;
+            foreach (var disk in disks.OrderBy(disk => disk.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                if (!_serverDiskBars.TryGetValue(disk.Name, out var bar))
+                {
+                    bar = new ServerDiskBar(disk) { Name = "OverviewDisk_" + disk.Name, Dock = DockStyle.Top };
+                    _serverDiskBars.Add(disk.Name, bar); _serverDiskRows.Controls.Add(bar, 0, row);
+                }
+                if (changed)
+                {
+                    _serverDiskRows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                    _serverDiskRows.SetCellPosition(bar, new TableLayoutPanelCellPosition(0, row));
+                }
+                bar.UpdateUsage(disk); row++;
+            }
+        }
+        finally { _serverDiskRows.ResumeLayout(true); }
     }
 
     private void ShowServerResourceFailure(string error)
     {
         _serverCpu.Text = "整机 CPU：不可用"; _serverMemory.Text = "物理内存：不可用"; _serverDisks.Text = "磁盘容量：不可用";
+        _serverCpu.ForeColor = _serverMemory.ForeColor = _serverDisks.ForeColor = UiTheme.Muted;
+        _serverCpuDetail.Text = _serverMemoryDetail.Text = "等待下一次有效采样";
+        var now = DateTimeOffset.UtcNow;
+        _serverCpuChart.AddReading(now, null); _serverMemoryChart.AddReading(now, null);
+        foreach (var (name, bar) in _serverDiskBars) bar.UpdateUsage(new(name, null, null, error));
         _serverErrors.Text = "资源读取失败：" + error; _serverErrors.ForeColor = UiTheme.Warning;
     }
 

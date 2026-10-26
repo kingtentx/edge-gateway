@@ -360,7 +360,7 @@ public sealed partial class MainForm
             foreach (var label in cards[i].Controls.OfType<Label>())
                 BringIntoViewAndAssert(label, context + " card text");
         }
-        foreach (var name in new[] { "OverviewCollectionHealth", "OverviewDeliveryHealth", "OverviewServerResources" })
+        foreach (var name in new[] { "OverviewCollectionHealth", "OverviewDeliveryHealth", "OverviewServerResources", "OverviewCpuCard", "OverviewMemoryCard" })
         {
             var panel = Descendants(_pages["overview"]).Single(control => control.Name == name);
             foreach (var label in panel.Controls.OfType<Label>()) BringIntoViewAndAssert(label, context + " " + name);
