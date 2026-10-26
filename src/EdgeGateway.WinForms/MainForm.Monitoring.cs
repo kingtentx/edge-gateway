@@ -6,27 +6,33 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private readonly DataGridView _realtimeGrid = UiTheme.Grid();
-    private readonly DataGridView _historyGrid = UiTheme.Grid();
-    private readonly ComboBox _realtimeDevice = ChoiceBox(200);
-    private readonly TextBox _realtimeSearch = new() { PlaceholderText = "搜索点位名称 / 地址", Width = 220, Margin = new Padding(0, 4, 8, 0) };
-    private readonly ComboBox _historyGroup = ChoiceBox(240);
-    private readonly ComboBox _historyDevice = ChoiceBox(180);
-    private readonly ComboBox _historyTag = ChoiceBox(220);
-    private readonly DateTimePicker _historyFrom = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "yyyy-MM-dd HH:mm:ss", Width = 190, Value = DateTime.Now.AddHours(-1), Margin = new Padding(0, 4, 8, 0) };
-    private readonly DateTimePicker _historyTo = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "yyyy-MM-dd HH:mm:ss", Width = 190, Value = DateTime.Now.AddMinutes(1), Margin = new Padding(0, 4, 8, 0) };
-    private readonly NumericUpDown _historyLimit = new() { Minimum = 100, Maximum = 10000, Value = 5000, Increment = 100, Width = 90, Margin = new Padding(0, 4, 8, 0) };
-    private readonly TrendChart _trend = new() { Dock = DockStyle.Fill };
-    private readonly Label _historySummary = UiTheme.Label("选择时间范围并查询，最多返回 10,000 条。", 9, UiTheme.Muted);
+    private DataGridView _realtimeGrid = null!;
+    private DataGridView _historyGrid = null!;
+    private ComboBox _realtimeDevice = null!;
+    private TextBox _realtimeSearch = null!;
+    private ComboBox _historyGroup = null!;
+    private ComboBox _historyDevice = null!;
+    private ComboBox _historyTag = null!;
+    private DateTimePicker _historyFrom = null!;
+    private DateTimePicker _historyTo = null!;
+    private NumericUpDown _historyLimit = null!;
+    private TrendChart _trend = null!;
+    private Label _historySummary = null!;
     private IReadOnlyList<TelemetrySample> _queriedHistory = [];
     private Button _writeButton = null!, _historyExport = null!, _historyQuery = null!;
     private HistoryQuery? _executedHistoryQuery;
     private Guid? _executedHistoryGroupId;
     private string _executedHistorySummary = "";
     private bool _historyConditionsChanged;
+    private RealtimePageView _realtimePageView = null!;
+    private HistoryPageView _historyPageView = null!;
 
     private Control BuildRealtimePage()
     {
+        _realtimePageView = new RealtimePageView();
+        _realtimeGrid = _realtimePageView.RealtimeGrid;
+        _realtimeDevice = _realtimePageView.DeviceSelector;
+        _realtimeSearch = _realtimePageView.PointSearch;
         ConfigureSampleColumns(_realtimeGrid, includeRaw: true);
         _realtimeGrid.CellFormatting += SampleCellFormatting;
         _realtimeGrid.SelectionChanged += (_, _) => UpdateWriteButton();
@@ -37,11 +43,22 @@ public sealed partial class MainForm
         _writeButton.Margin = new Padding(0, 23, 0, 6);
         var toolbar = UiTheme.Toolbar(UiTheme.FilterField("采集设备", _realtimeDevice),
             UiTheme.FilterField("查找点位", _realtimeSearch), _writeButton);
-        return UiTheme.PageLayout("实时监控", "显示最新工程值、原始值和采样质量；只有配置为可写的点位才能手动写入。", toolbar, _realtimeGrid);
+        _realtimePageView.ToolbarHost.Controls.Add(toolbar);
+        return _realtimePageView;
     }
 
     private Control BuildHistoryPage()
     {
+        _historyPageView = new HistoryPageView();
+        _historyGrid = _historyPageView.HistoryGrid;
+        _historyGroup = _historyPageView.GroupSelector;
+        _historyDevice = _historyPageView.DeviceSelector;
+        _historyTag = _historyPageView.PointSelector;
+        _historyFrom = _historyPageView.FromTime;
+        _historyTo = _historyPageView.ToTime;
+        _historyLimit = _historyPageView.ResultLimit;
+        _historySummary = _historyPageView.QuerySummary;
+        _trend = _historyPageView.TrendChart;
         ConfigureSampleColumns(_historyGrid, includeRaw: true);
         _historyGrid.CellFormatting += SampleCellFormatting;
         _historyDevice.SelectedIndexChanged += (_, _) => BindHistoryTags();
@@ -58,18 +75,20 @@ public sealed partial class MainForm
         _historyFrom.ValueChanged += (_, _) => UpdateHistoryQueryState();
         _historyTo.ValueChanged += (_, _) => UpdateHistoryQueryState();
         _historyLimit.ValueChanged += (_, _) => UpdateHistoryQueryState();
-        var content = new TableLayoutPanel { Name = "HistoryContent", ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
-        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        _trend.Name = "HistoryTrend"; _trend.Visible = false; _historySummary.Dock = DockStyle.Fill;
-        content.Controls.Add(_trend, 0, 0); content.Controls.Add(_historySummary, 0, 1); content.Controls.Add(_historyGrid, 0, 2);
-        void ArrangeSummary() { if (IsDpiLayoutReady) SetWrappingWidth(_historySummary, content.ClientSize.Width); }
-        content.SizeChanged += (_, _) => ArrangeSummary();
-        DpiLayoutCompleted += (_, _) => ArrangeSummary();
-        var viewport = ScrollableContent(content, "HistoryViewport", () => UiTheme.Scale(content, _trend.Visible ? 385 : 190) + _historySummary.PreferredHeight);
-        return UiTheme.PageLayout("历史与趋势", "查询外部数据库的标准点行表；自定义业务表可通过各自的数据库工具查询。", toolbar, viewport);
+        _historyPageView.ToolbarHost.Controls.Add(toolbar);
+        _trend.Visible = false;
+        void ArrangeHistoryLayout()
+        {
+            if (!IsDpiLayoutReady) return;
+            var layout = _historyPageView.ContentLayout;
+            var height = _trend.Visible ? UiTheme.Scale(layout, 220) : 0;
+            if (layout.RowStyles[4].Height != height) layout.RowStyles[4].Height = height;
+            SetWrappingWidth(_historySummary, Math.Max(1, layout.ClientSize.Width));
+        }
+        _historyPageView.ContentLayout.SizeChanged += (_, _) => ArrangeHistoryLayout();
+        _trend.VisibleChanged += (_, _) => ArrangeHistoryLayout();
+        DpiLayoutCompleted += (_, _) => ArrangeHistoryLayout();
+        return _historyPageView;
     }
 
     private Control BuildLogsPage() => WithLoggingSettings();
