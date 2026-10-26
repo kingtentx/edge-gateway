@@ -654,6 +654,13 @@ public sealed partial class MainForm : DpiAwareForm
                 if (_dirty) return;
             }
         }
+        if (_leaveWorkerRunning && _application.IsRunning)
+        {
+            var keepRunning = MessageBox.Show(this,
+                "关闭界面后，后台采集进程仍会继续运行。若要停止采集，请先在界面中停止设备。是否继续关闭界面？",
+                "后台采集仍在运行", MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+            if (keepRunning != DialogResult.Yes) return;
+        }
         _closing = true; _refreshTimer.Stop(); Enabled = false;
         try
         {
