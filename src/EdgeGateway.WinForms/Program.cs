@@ -31,13 +31,26 @@ internal static class Program
             return 0;
         }
 
+        if (args.Contains("--worker", StringComparer.OrdinalIgnoreCase))
+            return GatewayWorkerClient.RunWorkerAsync().GetAwaiter().GetResult();
+
         GatewayHost? host = null;
         try
         {
+            if (!smokeTest)
+            {
+                // Production UI talks to the independent worker process; disposing or crashing
+                // the WinForms client does not dispose the acquisition runtime.
+                var remoteApplication = GatewayWorkerClient.ConnectOrStart();
+                using var remoteWindow = new MainForm(remoteApplication, driverDirectory: driverDirectory, leaveWorkerRunning: true);
+                System.Windows.Forms.Application.Run(remoteWindow);
+                return remoteWindow.SmokeTestFailed ? 1 : 0;
+            }
+
             host = GatewayHost.CreateAsync(dataDirectory, pluginDirectory: driverDirectory,
-                enableVerificationFaults: smokeTest, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
+                enableVerificationFaults: true, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
             using var window = new MainForm(host.Application, smokeTest, screenshotPath, layoutMatrix,
-                smokeTest ? host.BeginConfigurationWriteFailureForVerification : null, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke);
+                host.BeginConfigurationWriteFailureForVerification, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke);
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }
