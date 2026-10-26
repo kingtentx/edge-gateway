@@ -65,6 +65,7 @@ internal sealed partial class HistoryPageView
         contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         querySummary.Name = "HistoryQuerySummary";
