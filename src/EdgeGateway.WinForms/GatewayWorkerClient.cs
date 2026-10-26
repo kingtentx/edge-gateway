@@ -51,11 +51,11 @@ public class GatewayWorkerClient : DispatchProxy
         var returnType = targetMethod.ReturnType;
         if (returnType == typeof(Task)) return InvokeTaskAsync(contract, targetMethod, args);
         if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
-            return GetType().GetMethod(nameof(InvokeTaskOfTAsync), BindingFlags.Instance | BindingFlags.NonPublic)!
+            return typeof(GatewayWorkerClient).GetMethod(nameof(InvokeTaskOfTAsync), BindingFlags.Instance | BindingFlags.NonPublic)!
                 .MakeGenericMethod(returnType.GetGenericArguments()[0]).Invoke(this, [contract, targetMethod, args]);
         if (returnType == typeof(ValueTask)) return new ValueTask(InvokeTaskAsync(contract, targetMethod, args));
         if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(ValueTask<>))
-            return GetType().GetMethod(nameof(InvokeValueTaskOfTAsync), BindingFlags.Instance | BindingFlags.NonPublic)!
+            return typeof(GatewayWorkerClient).GetMethod(nameof(InvokeValueTaskOfTAsync), BindingFlags.Instance | BindingFlags.NonPublic)!
                 .MakeGenericMethod(returnType.GetGenericArguments()[0]).Invoke(this, [contract, targetMethod, args]);
         if (returnType.IsInterface && returnType == typeof(IDriverCatalog))
             return CreateChild<IDriverCatalog>();

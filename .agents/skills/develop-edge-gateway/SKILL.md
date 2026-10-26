@@ -37,6 +37,8 @@ description: 为 .NET 8 WinForms 工业采集网关实现和审查分层架构�
 
 保持一个标准 `.sln`，依赖单向。由 `GatewayHost` 组装并持有资源，`IGatewayApplication` 承接桌面用例，`GatewayRuntime` 保留采集生命周期与设备/通道互斥。应用层命令串行构建最新候选，不复制运行时锁。通过传递引用能访问某个实现不代表窗体可以越过应用边界。新增协议建立独立驱动工程；接口变更同步更新实现、UI、测试和文档。
 
+桌面通过 `GatewayWorkerClient` 的 `DispatchProxy` 调用后台时，泛型异步桥接的基类私有方法必须从 `typeof(GatewayWorkerClient)` 查找，不从运行时生成的代理子类 `GetType()` 查找。代理回归应经过实际生成代理和本地命名管道，覆盖异步结果、错误及取消，不能只测试进程内应用实现。见 [启动空引用修复](../../../docs/worker-proxy-startup-fix.md)。
+
 ## 3. 以完整数据链实现功能
 
 按“配置校验 → 驱动连接 → 原始采样 → 工程量转换 → 质量与报警 → 默认采集日志 / 可选外部数据库 → 遥测文件落盘 → MQTT 确认 → 清理已发送记录”实现闭环。

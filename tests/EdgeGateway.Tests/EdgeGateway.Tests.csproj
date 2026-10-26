@@ -32,6 +32,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/EdgeGateway.WinForms/DpiLayoutMath.cs" Link="DpiLayoutMath.cs" />
+    <Compile Include="../../src/EdgeGateway.WinForms/GatewayWorkerClient.cs" Link="GatewayWorkerClient.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../docs/driver-migration-manifest.json" Link="driver-migration-manifest.json" CopyToOutputDirectory="PreserveNewest" />
