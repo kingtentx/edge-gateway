@@ -654,7 +654,7 @@ public sealed partial class MainForm : DpiAwareForm
     {
         if (_allowClose) return;
         e.Cancel = true;
-        if (!_smokeTest && !_exitRequested)
+        if (!_smokeTest && !_exitRequested && e.CloseReason == CloseReason.UserClosing)
         {
             HideToTray();
             return;
