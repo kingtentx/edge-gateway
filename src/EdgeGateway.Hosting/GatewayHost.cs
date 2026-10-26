@@ -158,7 +158,8 @@ public sealed class GatewayHost : IAsyncDisposable
             application = new GatewayApplication(configuration, drivers, configurations, store, publisher, log,
                 new JsonConfigurationFiles(), configurations.HasSavedConfiguration, databases,
                 dataSink: new AcquisitionDataService(databases, log, acquisitionSpool),
-                serverResources: new ServerResourceMonitor(), workbookFiles: new ExcelConfigurationFiles());
+                serverResources: new ServerResourceMonitor(), workbookFiles: new ExcelConfigurationFiles(),
+                acquisitionSpool: acquisitionSpool);
             return new(directory, application, publisher, store, configurations, log, acquisitionSpool, directoryLock, enableVerificationFaults);
         }
         catch
