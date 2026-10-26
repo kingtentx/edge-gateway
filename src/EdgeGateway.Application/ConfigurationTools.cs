@@ -8,6 +8,12 @@ public static class ConfigurationValidator
     public static IReadOnlyList<string> Validate(GatewayConfiguration candidate, IDriverCatalog catalog) => catalog.ValidateConfiguration(candidate);
 }
 
+public static class DatabaseMappingTools
+{
+    public static DatabaseFieldType InferFieldType(string databaseType) => Service.DatabaseMappingRules.InferFieldType(databaseType);
+    public static string? ValidateValue(DatabaseColumnMapping mapping) => Service.DatabaseMappingRules.ValidateValue(mapping);
+}
+
 public static class NumericExpression
 {
     public const int MaximumLength = Service.NumericExpression.MaximumLength;

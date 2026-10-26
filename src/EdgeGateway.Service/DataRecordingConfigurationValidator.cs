@@ -74,12 +74,7 @@ public static partial class DataRecordingConfigurationValidator
                 if (group.Mode == DatabaseStorageMode.PointMapping && mapping.TagId.HasValue)
                     errors.Add($"{label} 字段 [{mapping.Column}] 的自定义逐点映射应使用当前采样点，不能固定关联其他点位。");
                 if (mapping.ConstantValue is null || mapping.ConstantValue.Length > 4000) errors.Add($"{label} 字段 [{mapping.Column}] 常量须少于 4001 字符。");
-                if (mapping.Source == DatabaseValueSource.Constant)
-                {
-                    try { _ = DatabaseRowMapper.ConvertField(mapping.ConstantValue, mapping.FieldType); }
-                    catch (Exception exception) when (exception is FormatException or OverflowException or InvalidCastException or ArgumentException)
-                    { errors.Add($"{label} 字段 [{mapping.Column}] 的常量不符合所选类型：{exception.Message}"); }
-                }
+                if (DatabaseMappingRules.ValidateValue(mapping) is { } valueError) errors.Add($"{label} {valueError}");
             }
             if (!boundTag) errors.Add(group.Mode == DatabaseStorageMode.PointMapping
                 ? $"{label} 的自定义逐点映射须至少包含一个采样来源字段。"

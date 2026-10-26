@@ -146,6 +146,26 @@ public sealed class AcquisitionDataServiceTests
     }
 
     [Fact]
+    public async Task CustomPointMappingWritesManualIntegerStatusIndependentOfSampleQuality()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration);
+        var group = AddPointMappedGroup(configuration, connection); group.RequireGoodQuality = false;
+        var quality = group.Columns.Single(column => column.Column == "_QUALITY");
+        quality.Source = DatabaseValueSource.Quality;
+        Assert.Contains(DataRecordingConfigurationValidator.Validate(configuration), error => error.Contains("Good / Bad / Uncertain"));
+        quality.Source = DatabaseValueSource.Constant; quality.ConstantValue = "192";
+        quality.FieldType = DatabaseMappingRules.InferFieldType("int");
+        Assert.Empty(DataRecordingConfigurationValidator.Validate(configuration));
+        var connector = new Connector();
+        await using var sink = await Start(configuration, connector);
+        await sink.AppendAsync([Sample(configuration, 0, 12L), Sample(configuration, 1, null, SampleQuality.Bad)]);
+        await sink.StopAsync();
+        var rows = connector.Writes.SelectMany(write => write.Rows).ToArray();
+        Assert.Equal(2, rows.Length);
+        Assert.All(rows, row => Assert.Equal(192L, Assert.IsType<long>(row.Values["_QUALITY"])));
+    }
+
+    [Fact]
     public void CustomPointMappingConfigurationRoundTripsAndRejectsFixedBindingsAndInvalidIntegerConstants()
     {
         var configuration = Configuration(); var connection = AddConnection(configuration);

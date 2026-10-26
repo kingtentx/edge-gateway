@@ -39,19 +39,25 @@ public sealed partial class MainForm
             Check(rejected, "unread metadata was accepted.");
             DatabaseColumnInfo[] columns = [new("id", "bigint", false, IsGenerated: true),
                 new("_NAME", "varchar", true), new("_NUMERICID", "varchar", true), new("_VALUE", "varchar", true),
-                new("_TIMESTAMP", "timestamp", true), new("_QUALITY", "int", true)];
+                new("_TIMESTAMP", "timestamp", true), new("_QUALITY", "int", true), new("optional_note", "varchar", true, HasDefault: true)];
             editor.LoadColumnsForSmoke(columns);
             var grid = editor.SmokeMapping;
             Check(!grid.Columns["Point"].Visible, "point mode still asks each field for a fixed point binding.");
             var generated = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "id"));
             Check(generated.ReadOnly && generated.Cells["Include"].Value is false, "auto-increment id is writable.");
+            var optional = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "optional_note"));
+            Check(optional.Cells["Include"].Value is false && !optional.Cells["Constant"].ReadOnly,
+                "an initially unchecked optional field cannot accept a manual constant.");
+            optional.Cells["Constant"].Value = "line-A";
+            Check(Equals(optional.Cells["Source"].Value, DatabaseValueSource.Constant), "typing an unchecked constant did not include the column.");
+            optional.Cells["Source"].Value = (DatabaseValueSource)(-1);
             var choices = new[]
             {
                 ("_NAME", DatabaseValueSource.TagName, DatabaseFieldType.Text),
                 ("_NUMERICID", DatabaseValueSource.DeviceName, DatabaseFieldType.Text),
                 ("_VALUE", DatabaseValueSource.EngineeringValue, DatabaseFieldType.Text),
                 ("_TIMESTAMP", DatabaseValueSource.SampleTime, DatabaseFieldType.Timestamp),
-                ("_QUALITY", DatabaseValueSource.Constant, DatabaseFieldType.Int64)
+                ("_QUALITY", DatabaseValueSource.Quality, DatabaseFieldType.Auto)
             };
             foreach (var (column, source, type) in choices)
             {
@@ -66,21 +72,43 @@ public sealed partial class MainForm
                     grid.NotifyCurrentCellDirty(true); grid.CommitEdit(DataGridViewDataErrorContexts.Commit); grid.EndEdit();
                     Check(Equals(row.Cells[name].Value, value), "mapping dropdown value was not retained.");
                 }
-                if (source == DatabaseValueSource.Constant)
-                {
-                    grid.CurrentCell = row.Cells["Constant"];
-                    Check(grid.BeginEdit(true) && grid.EditingControl is TextBox, "constant editor cannot be opened.");
-                    ((TextBox)grid.EditingControl!).Text = "7";
-                    grid.EndEdit();
-                }
             }
+            var quality = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
+            rejected = false;
+            try { editor.CommitForSmoke(); } catch (EditorValidationException exception) { rejected = exception.Message.Contains("Good / Bad / Uncertain"); }
+            Check(rejected, "quality text was allowed into an integer database column.");
+            grid.EndEdit(); quality.Cells["Include"].Value = false;
+            Check(Equals(quality.Cells["Source"].Value, DatabaseValueSource.Constant) && !quality.Cells["Constant"].ReadOnly,
+                "unchecking sampling did not enable the constant source/editor.");
+            grid.CurrentCell = quality.Cells["Constant"];
+            FocusForSmoke(grid, grid, editor, "manual quality constant");
+            Check(grid.BeginEdit(true) && grid.EditingControl is TextBox, "manual constant cannot enter edit mode.");
+            ((TextBox)grid.EditingControl!).Text = "192"; grid.EndEdit();
+            quality.Cells["Include"].Value = true;
+            Check(Equals(quality.Cells["Source"].Value, DatabaseValueSource.Quality) && Equals(quality.Cells["Constant"].Value, "192"),
+                "switching back to sampling lost the original source or constant draft.");
+            quality.Cells["Include"].Value = false;
+            quality.Cells["Constant"].Value = "Good"; rejected = false;
+            try { editor.CommitForSmoke(); } catch (EditorValidationException exception) { rejected = exception.Message.Contains("常量"); }
+            Check(rejected, "invalid integer constant was not rejected before save.");
+            grid.EndEdit(); quality.Cells["Constant"].Value = "192";
+            Check(DatabaseUiText.Source(DatabaseValueSource.RawValue) == "raw_value [原始值]"
+                && DatabaseUiText.Source(DatabaseValueSource.SampleTime) == "timestamp [采样时间]", "source labels do not show real standard column names.");
             var valueBeforeRefresh = editor.CommitForSmoke();
             Check(valueBeforeRefresh.Mode == DatabaseStorageMode.PointMapping && valueBeforeRefresh.TagIds.SequenceEqual(group.TagIds)
                 && valueBeforeRefresh.Columns.Count == 5 && valueBeforeRefresh.Columns.All(mapping => mapping.TagId is null)
-                && valueBeforeRefresh.Columns.Single(mapping => mapping.Column == "_QUALITY").ConstantValue == "7",
+                && valueBeforeRefresh.Columns.Single(mapping => mapping.Column == "_QUALITY") is { Source: DatabaseValueSource.Constant, FieldType: DatabaseFieldType.Int64, ConstantValue: "192" },
                 "point selection, field sources, or typed constant did not round-trip.");
             editor.LoadColumnsForSmoke(columns);
             Check(RecordingSmokeJson(valueBeforeRefresh) == RecordingSmokeJson(editor.CommitForSmoke()), "refresh lost mapping drafts.");
+            quality = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
+            Check(quality.Cells["Include"].Value is false && !quality.Cells["Constant"].ReadOnly,
+                "refresh re-enabled sampling or disabled an unchecked constant.");
+            using (var reopened = new DatabaseWriteGroupDialog(valueBeforeRefresh, [connection], [device], _application))
+            {
+                reopened.LoadColumnsForSmoke(columns);
+                Check(RecordingSmokeJson(valueBeforeRefresh) == RecordingSmokeJson(reopened.CommitForSmoke()), "reopening lost the manual constant or omitted columns.");
+            }
             var nameInput = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DatabaseGroupName");
             nameInput.Text = "  " + original.Name + "  ";
             editor.ShowMappingForSmoke();
@@ -110,10 +138,27 @@ public sealed partial class MainForm
                 Check(full.Width > 0 && full == grid.GetCellDisplayRectangle(column.Index, rowForLayout.Index, true),
                     "mapping cell is clipped: " + column.Name);
             }
-            grid.EndEdit(); grid.CurrentCell = grid.Rows[1].Cells["Column"]; grid.HorizontalScrollingOffset = 0;
-            SaveEditorScreenshot(editor, "recording", "custom-point-mapping");
+            grid.EndEdit();
+            var savedDraft = editor.CommitForSmoke();
+            editor.Close();
+            using (var reopened = new DatabaseWriteGroupDialog(savedDraft, [connection], [device], _application))
+            {
+                reopened.Show(this); reopened.LoadColumnsForSmoke(columns); reopened.ShowMappingForSmoke();
+                VerifyEditorLayout(reopened, "reopened manual mapping");
+                var manualRow = reopened.SmokeMapping.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
+                foreach (var column in new[] { "Include", "Source", "Constant" })
+                {
+                    reopened.SmokeMapping.CurrentCell = manualRow.Cells[column];
+                    FocusForSmoke(reopened.SmokeMapping, reopened.SmokeMapping, reopened, "reopened manual " + column);
+                    reopened.SmokeMapping.FirstDisplayedScrollingColumnIndex = manualRow.Cells[column].ColumnIndex;
+                    Check(reopened.SmokeMapping.GetCellDisplayRectangle(manualRow.Cells[column].ColumnIndex, manualRow.Index, false)
+                        == reopened.SmokeMapping.GetCellDisplayRectangle(manualRow.Cells[column].ColumnIndex, manualRow.Index, true), "reopened manual cell is clipped: " + column);
+                }
+                reopened.SmokeMapping.EndEdit(); reopened.SmokeMapping.HorizontalScrollingOffset = 0;
+                SaveEditorScreenshot(reopened, "recording", "custom-point-mapping"); reopened.Close();
+            }
             AssertRecordingSmokeUnchanged(before, group, "custom point mapping source isolation");
-            Console.WriteLine($"Custom point mapping smoke passed: unique new names, editing identity, duplicate-name focus and draft retention, mode switch, field metadata fixture, generated id, editable sources/types/constant, selected points, refresh and target invalidation at actual {DeviceDpi} DPI; no external database contacted.");
+            Console.WriteLine($"Custom point mapping smoke passed: unchecked sampling writes manual 192 as Int64; quality/integer and invalid-constant rejection; real column source labels; omitted/default and generated columns; refresh/reopen/toggle drafts; unique names, focus and target invalidation at actual {DeviceDpi} DPI; no external database contacted.");
         }
         finally { editor.Close(); }
     }
@@ -258,7 +303,7 @@ public sealed partial class MainForm
                     VerifyDatabaseMappingForSmoke(editor, "custom column mapping");
                     VerifyDatabaseOptionBindingsForSmoke(editor, device.Tags[0].Id);
                     var temperature = editor.SmokeMapping.Rows.Cast<DataGridViewRow>().Single(row => (string)row.Cells["Column"].Value == "temperature");
-                    temperature.Cells["Include"].Value = false; rejected = false;
+                    temperature.Cells["Source"].Value = (DatabaseValueSource)(-1); rejected = false;
                     try { editor.CommitForSmoke(); } catch (EditorValidationException) { rejected = true; }
                     Check(rejected, "custom mapping accepted an omitted non-null, non-default field.");
                     temperature.Cells["Include"].Value = true; temperature.Cells["Point"].Value = Guid.Empty; rejected = false;
@@ -369,6 +414,7 @@ public sealed partial class MainForm
                 throw new InvalidOperationException("Database mapping option is absent from its actual dropdown: " + value);
             grid.NotifyCurrentCellDirty(true); grid.CommitEdit(DataGridViewDataErrorContexts.Commit); grid.EndEdit();
         }
+        Select(temperature, "FieldType", DatabaseFieldType.Text);
         foreach (var source in Enum.GetValues<DatabaseValueSource>())
         {
             Select(temperature, "Source", source);
@@ -384,7 +430,8 @@ public sealed partial class MainForm
             temperature.Cells["Constant"].Value = type switch
             { DatabaseFieldType.Boolean => "true", DatabaseFieldType.Timestamp => "2026-10-24T12:00:00Z", DatabaseFieldType.Decimal or DatabaseFieldType.Double => "12.5", _ => "12" };
             var captured = editor.CommitForSmoke().Columns.Single(column => column.Column == "temperature");
-            if (captured.FieldType != type || captured.ConstantValue != (string)temperature.Cells["Constant"].Value)
+            var expectedType = type == DatabaseFieldType.Auto ? DatabaseFieldType.Double : type;
+            if (captured.FieldType != expectedType || captured.ConstantValue != (string)temperature.Cells["Constant"].Value)
                 throw new InvalidOperationException("Database conversion/constant binding did not round-trip: " + type);
         }
         Select(temperature, "Source", DatabaseValueSource.EngineeringValue); Select(temperature, "Point", pointId);
