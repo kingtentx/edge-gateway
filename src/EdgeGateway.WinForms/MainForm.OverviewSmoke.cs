@@ -76,7 +76,8 @@ public sealed partial class MainForm
                 foreach (var bar in _serverDiskBars.Values) BringIntoViewAndAssert(bar, "server resources " + name + " disk");
                 BringIntoViewAndAssert(_serverErrors, "server resources " + name + " errors");
                 SaveSmokeScreenshot(this, Path.Combine(directory, $"server-resources-{name}-disks.png"));
-                Console.WriteLine($"Resource viewport passed: {name}; logical work area {logical}; actual DPI {DeviceDpi}; actual bounds {Bounds}.");
+                var resourcePanel = Descendants(_pages["overview"]).Single(control => control.Name == "OverviewServerResources");
+                Console.WriteLine($"Resource viewport passed: {name}; logical work area {logical}; actual DPI {DeviceDpi}; actual bounds {Bounds}; resource area height {resourcePanel.Height * 96d / DeviceDpi:F1} logical pixels.");
             }
             ShowServerResourceFailure("示例：采样失败");
             if (_serverCpuChart.Readings[^1].Percent is not null || _serverMemoryChart.Readings[^1].Percent is not null

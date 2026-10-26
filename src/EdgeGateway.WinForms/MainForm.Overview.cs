@@ -18,8 +18,8 @@ public sealed partial class MainForm
     private readonly Label _mqttStatus = UiTheme.Label("平台未启用", 18, UiTheme.Muted, true);
     private readonly Label _outputHealth = UiTheme.Label("等待输出状态", 10, UiTheme.Muted);
     private readonly Label _serverIdentity = UiTheme.Label("服务器资源", 12, UiTheme.Ink, true);
-    private readonly Label _serverCpu = UiTheme.Label("采样中", 22, UiTheme.Blue, true);
-    private readonly Label _serverMemory = UiTheme.Label("采样中", 22, UiTheme.Green, true);
+    private readonly Label _serverCpu = UiTheme.Label("采样中", 16, UiTheme.Blue, true);
+    private readonly Label _serverMemory = UiTheme.Label("采样中", 16, UiTheme.Green, true);
     private readonly Label _serverCpuDetail = UiTheme.Label("首次采样需等待下一次刷新", 10, UiTheme.Muted);
     private readonly Label _serverMemoryDetail = UiTheme.Label("等待物理内存读数", 10, UiTheme.Muted);
     private readonly ServerUsageTrend _serverCpuChart = new() { Name = "OverviewCpuTrend", AccessibleName = "整机 CPU 最近 60 秒趋势" };
@@ -67,18 +67,21 @@ public sealed partial class MainForm
         _serverCpu.Name = "OverviewServerCpu"; _serverMemory.Name = "OverviewServerMemory";
         _serverDisks.Name = "OverviewServerDisks"; _serverErrors.Name = "OverviewServerErrors";
         var resourceGrid = OverviewGrid("OverviewResourceCharts");
-        var resourcePanels = new[]
+        var resourceRows = new[]
         {
-            OverviewSection("OverviewCpuCard", UiTheme.Blue, UiTheme.Label("CPU · 整机使用率", 10, UiTheme.Ink, true),
+            OverviewResourceRow("OverviewCpuCard", UiTheme.Blue, UiTheme.Label("CPU · 整机使用率", 10, UiTheme.Ink, true),
                 _serverCpu, _serverCpuDetail, _serverCpuChart),
-            OverviewSection("OverviewMemoryCard", UiTheme.Green, UiTheme.Label("内存 · 物理内存使用率", 10, UiTheme.Ink, true),
+            OverviewResourceRow("OverviewMemoryCard", UiTheme.Green, UiTheme.Label("内存 · 物理内存使用率", 10, UiTheme.Ink, true),
                 _serverMemory, _serverMemoryDetail, _serverMemoryChart)
         };
-        ArrangeOverviewGrid(resourceGrid, resourcePanels, 2);
+        var resourcePanels = resourceRows.Select(row => row.Panel).ToArray();
+        ArrangeOverviewGrid(resourceGrid, resourcePanels, 1, 6);
         _serverDiskRows.ColumnCount = 1; _serverDiskRows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         var resources = OverviewSection("OverviewServerResources", UiTheme.Border,
-            _serverIdentity, UiTheme.Label("最近 60 秒趋势 · 每秒刷新 · 鼠标移到曲线上查看读数", 10, UiTheme.Muted),
-            resourceGrid, _serverDisks, _serverDiskRows, _serverErrors);
+            _serverIdentity, resourceGrid, _serverDisks, _serverDiskRows, _serverErrors);
+        resources.Padding = new Padding(24, 8, 12, 8);
+        foreach (var label in resources.Controls.OfType<Label>()) label.Margin = new Padding(0, 2, 0, 2);
+        _feedbackTip.SetToolTip(_serverIdentity, "最近 60 秒趋势，每秒刷新；鼠标移到曲线上查看读数。磁盘显示容量使用率。");
         var links = UiTheme.Toolbar(
             UiTheme.Button("设备与点位", (_, _) => ShowPage("devices")),
             UiTheme.Button("实时监控", (_, _) => ShowPage("realtime")),
@@ -100,8 +103,10 @@ public sealed partial class MainForm
                 var width = content.ClientSize.Width;
                 ArrangeOverviewGrid(cards, primary, width >= UiTheme.Scale(cards, 840) ? 4 : width >= UiTheme.Scale(cards, 400) ? 2 : 1);
                 ArrangeOverviewGrid(health, healthPanels, width >= UiTheme.Scale(health, 620) ? 2 : 1);
-                ArrangeOverviewGrid(resourceGrid, resourcePanels, resources.ClientSize.Width >= UiTheme.Scale(resources, 720) ? 2 : 1);
-                foreach (var panel in primary.Concat(healthPanels).Concat(resourcePanels).Append(resources))
+                ArrangeOverviewGrid(resourceGrid, resourcePanels, 1, 6);
+                foreach (var (panel, summary, chart) in resourceRows)
+                    ArrangeResourceRow(panel, summary, chart);
+                foreach (var panel in primary.Concat(healthPanels).Concat(resourceRows.Select(row => row.Summary)).Append(resources))
                     foreach (var label in panel.Controls.OfType<Label>())
                         SetWrappingWidth(label, Math.Max(1, panel.ClientSize.Width - panel.Padding.Horizontal));
                 SetWrappingWidth(_overviewDeviceSummary, Math.Max(1, width));
@@ -139,7 +144,49 @@ public sealed partial class MainForm
         return panel;
     }
 
-    private static void ArrangeOverviewGrid(TableLayoutPanel grid, IReadOnlyList<TableLayoutPanel> panels, int columns)
+    private static (TableLayoutPanel Panel, TableLayoutPanel Summary, ServerUsageTrend Chart) OverviewResourceRow(
+        string name, Color accent, Label title, Label value, Label detail, ServerUsageTrend chart)
+    {
+        var summary = OverviewGrid(name + "Summary");
+        summary.ColumnCount = 1; summary.RowCount = 3;
+        summary.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        var labels = new[] { title, value, detail };
+        for (var i = 0; i < labels.Length; i++)
+        {
+            summary.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            labels[i].Dock = DockStyle.Fill; labels[i].Margin = new Padding(0, 1, 0, 1);
+            summary.Controls.Add(labels[i], 0, i);
+        }
+        var panel = UiTheme.Card(accent);
+        panel.Name = name; panel.Dock = DockStyle.Fill; panel.AutoSize = true; panel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        panel.Padding = new Padding(28, 6, 10, 6); panel.Margin = new Padding(0, 0, 0, 6);
+        panel.ColumnCount = 2; panel.RowCount = 1;
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40)); panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        chart.Dock = DockStyle.Top; chart.Margin = new Padding(8, 0, 0, 0);
+        panel.Controls.Add(summary, 0, 0); panel.Controls.Add(chart, 1, 0);
+        return (panel, summary, chart);
+    }
+
+    private static void ArrangeResourceRow(TableLayoutPanel panel, TableLayoutPanel summary, ServerUsageTrend chart)
+    {
+        var columns = panel.ClientSize.Width >= UiTheme.Scale(panel, 360) ? 2 : 1;
+        if (panel.ColumnCount == columns) return;
+        panel.SuspendLayout();
+        try
+        {
+            panel.Controls.Clear(); panel.ColumnStyles.Clear(); panel.RowStyles.Clear();
+            panel.ColumnCount = columns; panel.RowCount = columns == 2 ? 1 : 2;
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, columns == 2 ? 40 : 100));
+            if (columns == 2) panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
+            for (var row = 0; row < panel.RowCount; row++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            chart.Margin = UiTheme.Scale(panel, columns == 2 ? new Padding(8, 0, 0, 0) : new Padding(0, 4, 0, 0));
+            panel.Controls.Add(summary, 0, 0); panel.Controls.Add(chart, columns == 2 ? 1 : 0, columns == 2 ? 0 : 1);
+        }
+        finally { panel.ResumeLayout(true); }
+    }
+
+    private static void ArrangeOverviewGrid(TableLayoutPanel grid, IReadOnlyList<TableLayoutPanel> panels, int columns, int gap = 12)
     {
         if (grid.ColumnCount != columns || grid.Controls.Count != panels.Count || grid.ColumnStyles.Count != columns)
         {
@@ -151,7 +198,7 @@ public sealed partial class MainForm
             grid.ResumeLayout(true);
         }
         for (var i = 0; i < panels.Count; i++)
-            panels[i].Margin = UiTheme.Scale(grid, new Padding(0, 0, i % columns == columns - 1 ? 0 : 12, 12));
+            panels[i].Margin = UiTheme.Scale(grid, new Padding(0, 0, i % columns == columns - 1 ? 0 : gap, gap));
     }
 
     private void RefreshOverview(GatewayOverviewSummary summary)
@@ -181,7 +228,7 @@ public sealed partial class MainForm
         _serverIdentity.Text = $"服务器资源 · {snapshot.MachineName} · {snapshot.LogicalProcessors} 逻辑处理器";
         _serverCpu.Text = snapshot.CpuUsagePercent is { } cpu ? Load(cpu) : "采样中 / 不可用";
         _serverCpu.ForeColor = snapshot.CpuUsagePercent >= 85 ? UiTheme.Warning : snapshot.CpuUsagePercent is null ? UiTheme.Muted : UiTheme.Blue;
-        _serverCpuDetail.Text = snapshot.CpuUsagePercent is null ? "需相邻两次有效采样；失败原因见下方提示。" : "整机区间平均负载 · 85% 起提示偏高";
+        _serverCpuDetail.Text = snapshot.CpuUsagePercent is null ? "等待有效采样，详情见下方提示。" : "整机平均 · 85% 起偏高";
         _serverMemory.Text = snapshot.Memory is { } memory ? Load(memory.UsedPercent) : "不可用";
         _serverMemoryDetail.Text = snapshot.Memory is { } capacity
             ? $"已用 {ServerDiskBar.Capacity(capacity.TotalBytes - capacity.AvailableBytes)} / 总量 {ServerDiskBar.Capacity(capacity.TotalBytes)}"
@@ -195,7 +242,7 @@ public sealed partial class MainForm
         _serverDisks.ForeColor = snapshot.Disks.Any(disk => disk.UsedPercent >= 90 || disk.Error is not null) ? UiTheme.Warning : UiTheme.Muted;
         RefreshServerDiskBars(snapshot.Disks);
         var errors = snapshot.Errors.Concat(snapshot.Disks.Where(disk => disk.Error is not null).Select(disk => $"{disk.Name}：{disk.Error}")).ToArray();
-        _serverErrors.Text = $"更新于 {snapshot.Timestamp.ToLocalTime():HH:mm:ss} · 磁盘显示容量使用率，90% 起提示空间偏紧。"
+        _serverErrors.Text = $"更新于 {snapshot.Timestamp.ToLocalTime():HH:mm:ss} · 最近 60 秒趋势 · 磁盘 90% 起提示空间偏紧。"
             + (errors.Length > 0 ? "\n" + string.Join("；", errors) : "");
         _serverErrors.ForeColor = errors.Length > 0 ? UiTheme.Warning : UiTheme.Muted;
     }

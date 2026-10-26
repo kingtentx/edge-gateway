@@ -16,7 +16,7 @@ internal sealed class ServerUsageTrend : Control
     internal ServerUsageTrend()
     {
         DoubleBuffered = true; ResizeRedraw = true; TabStop = false;
-        Height = 132; Margin = Padding.Empty; BackColor = Color.White;
+        Height = 72; Margin = Padding.Empty; BackColor = Color.White;
         AccessibleRole = AccessibleRole.Graphic;
     }
 
@@ -39,7 +39,7 @@ internal sealed class ServerUsageTrend : Control
         var labelWidth = TextRenderer.MeasureText("100%", Font).Width;
         var lineHeight = Font.Height;
         return new Rectangle(labelWidth + UiTheme.Scale(this, 6), lineHeight / 2,
-            Math.Max(0, Width - labelWidth - UiTheme.Scale(this, 12)), Math.Max(0, Height - lineHeight * 2 - UiTheme.Scale(this, 10)));
+            Math.Max(0, Width - labelWidth - UiTheme.Scale(this, 12)), Math.Max(0, Height - lineHeight * 3 / 2 - UiTheme.Scale(this, 6)));
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -128,11 +128,24 @@ internal sealed class ServerDiskBar : Control
         AccessibleName = $"磁盘 {disk.Name}";
         AccessibleDescription = UsedPercent is { } used
             ? $"已用 {used:F1}%，可用 {Capacity(disk.FreeBytes!.Value)}，总量 {Capacity(disk.TotalBytes!.Value)}{(used >= 90 ? "，空间偏紧" : "")}" : "不可用：" + disk.Error;
-        Height = Font.Height * 3 + UiTheme.Scale(this, 30);
+        MeasureRow();
         Invalidate();
     }
 
     internal static string Capacity(long bytes) => $"{bytes / 1048576d:N0} M";
+
+    private string CapacityDetails => UsedPercent is not null
+        ? $"可用 {Capacity(_disk.FreeBytes!.Value)} / 总量 {Capacity(_disk.TotalBytes!.Value)}"
+        : "未取得有效容量，请查看下方提示。";
+
+    private void MeasureRow()
+    {
+        // Reserve only the lines actually needed at the current width/font/DPI.
+        var details = TextRenderer.MeasureText(CapacityDetails, Font, new Size(Math.Max(1, ClientSize.Width), int.MaxValue),
+            TextFormatFlags.NoPadding | TextFormatFlags.WordBreak);
+        var height = Font.Height + details.Height + UiTheme.Scale(this, 22);
+        if (Height != height) Height = height;
+    }
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -146,19 +159,17 @@ internal sealed class ServerDiskBar : Control
             UiTheme.Ink, TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
         TextRenderer.DrawText(g, value, Font, new Rectangle(0, 0, Width, Font.Height), color,
             TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.Right);
-        var bar = new Rectangle(0, Font.Height + UiTheme.Scale(this, 7), Width, UiTheme.Scale(this, 10));
+        var bar = new Rectangle(0, Font.Height + UiTheme.Scale(this, 4), Width, UiTheme.Scale(this, 6));
         using var background = new SolidBrush(UiTheme.Background);
         using var fill = new SolidBrush(color);
         g.FillRectangle(background, bar);
         if (percent is { } fraction)
             g.FillRectangle(fill, bar.X, bar.Y, (float)(bar.Width * Math.Clamp(fraction, 0, 100) / 100), bar.Height);
-        var details = percent is not null
-            ? $"可用 {Capacity(_disk.FreeBytes!.Value)} / 总量 {Capacity(_disk.TotalBytes!.Value)}"
-            : "未取得有效容量，请查看下方提示。";
-        TextRenderer.DrawText(g, details, Font, new Rectangle(0, bar.Bottom + UiTheme.Scale(this, 6), Width, Font.Height * 2),
+        TextRenderer.DrawText(g, CapacityDetails, Font, new Rectangle(0, bar.Bottom + UiTheme.Scale(this, 4), Width, Math.Max(0, Height - bar.Bottom - UiTheme.Scale(this, 8))),
             UiTheme.Muted, TextFormatFlags.NoPadding | TextFormatFlags.WordBreak);
     }
 
+    protected override void OnSizeChanged(EventArgs e) { base.OnSizeChanged(e); if (_disk is not null) MeasureRow(); }
     protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); UpdateUsage(_disk); }
     protected override void OnFontChanged(EventArgs e) { base.OnFontChanged(e); if (_disk is not null) UpdateUsage(_disk); }
 }

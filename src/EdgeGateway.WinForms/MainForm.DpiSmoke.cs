@@ -363,7 +363,9 @@ public sealed partial class MainForm
         foreach (var name in new[] { "OverviewCollectionHealth", "OverviewDeliveryHealth", "OverviewServerResources", "OverviewCpuCard", "OverviewMemoryCard" })
         {
             var panel = Descendants(_pages["overview"]).Single(control => control.Name == name);
-            foreach (var label in panel.Controls.OfType<Label>()) BringIntoViewAndAssert(label, context + " " + name);
+            var labels = name is "OverviewCpuCard" or "OverviewMemoryCard"
+                ? Descendants(panel).OfType<Label>() : panel.Controls.OfType<Label>();
+            foreach (var label in labels) BringIntoViewAndAssert(label, context + " " + name);
         }
     }
 
