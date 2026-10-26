@@ -15,6 +15,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly IGatewayLog _log;
     private readonly string _driverDirectory;
     private readonly bool _smokeTest;
+    private readonly bool _leaveWorkerRunning;
     private readonly bool _layoutMatrix;
     private readonly bool _databaseMappingSmoke;
     private readonly bool _serverResourcesSmoke;
@@ -39,7 +40,7 @@ public sealed partial class MainForm : DpiAwareForm
     public MainForm(IGatewayApplication application,
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
-        bool serverResourcesSmoke = false, bool workbookSmoke = false)
+        bool serverResourcesSmoke = false, bool workbookSmoke = false, bool leaveWorkerRunning = false)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
@@ -47,6 +48,7 @@ public sealed partial class MainForm : DpiAwareForm
         _log = application.Log;
         _driverDirectory = Path.GetFullPath(driverDirectory ?? Path.Combine(AppContext.BaseDirectory, "drivers"));
         _workbookSmoke = workbookSmoke;
+        _leaveWorkerRunning = leaveWorkerRunning;
         _smokeTest = workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
         _databaseMappingSmoke = databaseMappingSmoke;
         _serverResourcesSmoke = serverResourcesSmoke;
@@ -643,8 +645,10 @@ public sealed partial class MainForm : DpiAwareForm
             {
                 await RunBusyAsync(async () =>
                 {
+                    var resumeCollection = _application.IsRunning;
                     await _application.StopAsync();
                     await ApplyCloudSettingsAsync();
+                    if (resumeCollection) await _application.StartAsync();
                 });
                 // Failed/cancelled application keeps the draft and window open.
                 if (_dirty) return;
@@ -653,7 +657,7 @@ public sealed partial class MainForm : DpiAwareForm
         _closing = true; _refreshTimer.Stop(); Enabled = false;
         try
         {
-            await _application.StopAsync();
+            if (!_leaveWorkerRunning) await _application.StopAsync();
             _allowClose = true; Close();
         }
         catch (Exception exception)
