@@ -1,0 +1,69 @@
+name: UI refactor build and targeted verification
+
+# Opt-in only: the user authorizes this scope before a [ui-verify] commit.
+# Normal pushes retain the existing full verification workflows.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-ui:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ui-verify]')
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Record revision and SDK
+        run: |
+          New-Item -ItemType Directory -Force artifacts/ui-regression | Out-Null
+          git rev-parse HEAD | Set-Content artifacts/ui-regression/SOURCE_COMMIT.txt
+          dotnet --info | Tee-Object artifacts/ui-regression/sdk.log
+      - name: Verify architecture boundaries
+        run: |
+          python scripts/verify-architecture.py 2>&1 | Tee-Object artifacts/ui-regression/architecture.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Restore solution
+        id: restore
+        run: |
+          dotnet restore EdgeGateway.sln 2>&1 | Tee-Object artifacts/ui-regression/restore.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build Release solution
+        id: build
+        run: |
+          dotnet build EdgeGateway.sln -c Release --no-restore -bl:artifacts/ui-regression/build.binlog 2>&1 | Tee-Object artifacts/ui-regression/build.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Application, worker, DPI, platform and logging regressions
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          $filter = 'FullyQualifiedName~DpiLayoutTests|FullyQualifiedName~GatewayApplicationTests|FullyQualifiedName~GatewayApplicationWorkbookTests|FullyQualifiedName~GatewayWorkerClientTests|FullyQualifiedName~PlatformAdapterTests|FullyQualifiedName~PlatformSwitchTests|FullyQualifiedName~SeparatedLoggingTests|FullyQualifiedName~RecordingDiagnosticsTests'
+          $filter | Set-Content artifacts/ui-regression/test-filter.txt
+          dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-build --filter $filter --logger 'trx;LogFileName=ui-related.trx' --results-directory artifacts/ui-regression/tests 2>&1 | Tee-Object artifacts/ui-regression/tests.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          [xml]$trx = Get-Content artifacts/ui-regression/tests/ui-related.trx
+          $counts = $trx.TestRun.ResultSummary.Counters
+          if ([int]$counts.total -le 0 -or [int]$counts.failed -ne 0 -or [int]$counts.notExecuted -ne 0 -or [int]$counts.passed -ne [int]$counts.total) { throw 'No tests selected, or a selected regression did not pass.' }
+          $counts | Format-List | Out-String | Add-Content $env:GITHUB_STEP_SUMMARY
+      - name: Existing WinForms smoke at runner DPI (no layout matrix)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: ./scripts/test-ui-refactor.ps1 -Mode General
+      - name: Separate event and sample log UI regression
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: ./scripts/test-ui-refactor.ps1 -Mode Logging
+      - name: Upload build, test and UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-regression-windows-2022
+          path: artifacts/ui-regression/
+          if-no-files-found: error
+          retention-days: 7
