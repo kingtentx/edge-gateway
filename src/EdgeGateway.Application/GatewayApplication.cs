@@ -20,6 +20,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
     private readonly IExternalDatabaseConnector? _externalDatabases;
     private readonly IServerResourceMonitor? _serverResources;
     private readonly IDriverPluginManager? _driverPluginManager;
+    private readonly IAcquisitionSpool? _acquisitionSpool;
     private readonly SemaphoreSlim _commands = new(1, 1);
     private readonly Dictionary<Guid, ConfirmationGrant> _confirmations = [];
     private volatile GatewayConfiguration _configuration;
@@ -31,7 +32,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
         IConfigurationStore configurationStore, IGatewayStore store, ITelemetryPublisher publisher,
         IGatewayLog log, IConfigurationFiles files, bool configurationPersisted = true,
         IExternalDatabaseConnector? externalDatabases = null, IAcquisitionDataSink? dataSink = null,
-        IServerResourceMonitor? serverResources = null, IConfigurationWorkbookFiles? workbookFiles = null)
+        IServerResourceMonitor? serverResources = null, IConfigurationWorkbookFiles? workbookFiles = null, IAcquisitionSpool? acquisitionSpool = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(drivers);
@@ -50,6 +51,7 @@ public sealed partial class GatewayApplication : IGatewayApplication
         _workbooks = workbookFiles;
         _externalDatabases = externalDatabases;
         _serverResources = serverResources;
+        _acquisitionSpool = acquisitionSpool;
         _driverPluginManager = drivers as IDriverPluginManager;
         Log = log;
         _configurationPersisted = configurationPersisted;
