@@ -312,7 +312,7 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
             CommitManifest(path, inactive, () => _pluginStore?.ReplaceDriverPluginsAsync(ids, []).GetAwaiter().GetResult());
             foreach (var id in ids)
             {
-                _factories.Remove(id);
+                _factories.TryRemove(id, out _);
                 _plugins.Remove(id);
                 _manifestPaths[id] = path;
                 _groups[id] = ids;
