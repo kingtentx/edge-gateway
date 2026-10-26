@@ -19,6 +19,7 @@ public sealed class GatewayHost : IAsyncDisposable
     private readonly IGatewayStore _store;
     private readonly SqliteConfigurationStore _configurations;
     private readonly GatewayLog _log;
+    private readonly SqliteAcquisitionSpool _acquisitionSpool;
     private readonly bool _verificationFaultsEnabled;
     private readonly FileStream _directoryLock;
     private readonly object _disposeLock = new();
@@ -33,6 +34,7 @@ public sealed class GatewayHost : IAsyncDisposable
         _store = store;
         _configurations = configurations;
         _log = log;
+        _acquisitionSpool = acquisitionSpool;
         _verificationFaultsEnabled = verificationFaultsEnabled;
         _directoryLock = directoryLock;
     }
@@ -56,6 +58,7 @@ public sealed class GatewayHost : IAsyncDisposable
         FileGatewayStore? store = null;
         SqliteConfigurationStore? configurations = null;
         GatewayLog? log = null;
+        SqliteAcquisitionSpool? acquisitionSpool = null;
         MqttTelemetryPublisher? publisher = null;
         GatewayApplication? application = null;
         try
@@ -78,6 +81,7 @@ public sealed class GatewayHost : IAsyncDisposable
             await store.InitializeAsync(cancellationToken).ConfigureAwait(false);
             log = new GatewayLog(Path.Combine(runtimeRoot, "logs"));
             log.ApplyConfiguration(configuration.Logging);
+            acquisitionSpool = new SqliteAcquisitionSpool(Path.Combine(runtimeRoot, "messaging", "acquisition-spool.db"));
             var packagedDriversDirectory = Path.GetFullPath(packagedDriverDirectory);
             var driversDirectory = Path.GetFullPath(pluginDirectory ?? packagedDriversDirectory);
             Directory.CreateDirectory(packagedDriversDirectory);
@@ -152,8 +156,10 @@ public sealed class GatewayHost : IAsyncDisposable
             publisher = new MqttTelemetryPublisher();
             var databases = new ExternalDatabaseConnector();
             application = new GatewayApplication(configuration, drivers, configurations, store, publisher, log,
-                new JsonConfigurationFiles(), configurations.HasSavedConfiguration, databases, serverResources: new ServerResourceMonitor(), workbookFiles: new ExcelConfigurationFiles());
-            return new(directory, application, publisher, store, configurations, log, directoryLock, enableVerificationFaults);
+                new JsonConfigurationFiles(), configurations.HasSavedConfiguration, databases,
+                dataSink: new AcquisitionDataService(databases, log, acquisitionSpool),
+                serverResources: new ServerResourceMonitor(), workbookFiles: new ExcelConfigurationFiles());
+            return new(directory, application, publisher, store, configurations, log, acquisitionSpool, directoryLock, enableVerificationFaults);
         }
         catch
         {
@@ -162,6 +168,7 @@ public sealed class GatewayHost : IAsyncDisposable
             if (application is not null) { try { await application.DisposeAsync().ConfigureAwait(false); } catch { } }
             if (publisher is not null) { try { await publisher.DisposeAsync().ConfigureAwait(false); } catch { } }
             if (store is not null) { try { await store.DisposeAsync().ConfigureAwait(false); } catch { } }
+            if (acquisitionSpool is not null) { try { await acquisitionSpool.DisposeAsync().ConfigureAwait(false); } catch { } }
             if (configurations is not null) { try { await configurations.DisposeAsync().ConfigureAwait(false); } catch { } }
             if (log is not null) { try { await log.DisposeAsync().ConfigureAwait(false); } catch { } }
             try { directoryLock?.Dispose(); } catch { }
@@ -187,6 +194,7 @@ public sealed class GatewayHost : IAsyncDisposable
         try { await Application.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
         try { await _publisher.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
         try { await _store.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
+        try { await _acquisitionSpool.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
         try { await _configurations.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
         try { await _log.DisposeAsync().ConfigureAwait(false); } catch (Exception exception) { errors.Add(exception); }
         try { _directoryLock.Dispose(); } catch (Exception exception) { errors.Add(exception); }
