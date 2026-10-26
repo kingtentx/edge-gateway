@@ -4,15 +4,8 @@ using System.Globalization;
 
 namespace EdgeGateway.WinForms;
 
-internal abstract class EditorDialog : DpiAwareForm
+internal abstract partial class EditorDialog : DpiAwareForm
 {
-    protected readonly TabControl Tabs = new EditorLayout.EditorTabs() { Name = "EditorTabs", Dock = DockStyle.Fill, Multiline = true, Margin = Padding.Empty };
-    private readonly Button _confirm, _cancel;
-    private readonly TableLayoutPanel _layout, _heading, _titleRow;
-    private readonly FlowLayoutPanel _buttons;
-    private readonly Label _title, _description;
-    private readonly LinkLabel _help;
-    private readonly EditorFeedback _feedback = new("EditorValidation");
     private readonly List<EditorLayout.FieldViewport> _fieldViewports = [];
     private bool _arranging;
     private bool? _compactMode;
@@ -27,66 +20,29 @@ internal abstract class EditorDialog : DpiAwareForm
     internal IReadOnlyList<Control> SmokeCommands => _readOnlyView ? new Control[] { _cancel } : new Control[] { _confirm, _cancel };
     protected EditorDialog(string title, string hint)
     {
-        Text = title; Font = new Font("Microsoft YaHei UI", 10F); BackColor = UiTheme.Background;
-        ForeColor = UiTheme.Ink; StartPosition = FormStartPosition.CenterParent;
+        Text = title;
+        Font = new Font("Microsoft YaHei UI", 10F);
+        BackColor = UiTheme.Background;
+        ForeColor = UiTheme.Ink;
+        StartPosition = FormStartPosition.CenterParent;
         ConfigureWindow(new Size(724, 611), new Size(604, 481));
-        MaximizeBox = false; MinimizeBox = false; ShowInTaskbar = false;
-        var layout = new TableLayoutPanel { Name = "EditorLayout", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(20), Margin = Padding.Empty };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var heading = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 1, RowCount = 2, Margin = Padding.Empty, Padding = new Padding(0, 0, 0, 14)
-        };
-        heading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        heading.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        heading.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        // A spanning description in the title/help table can give its preferred width
-        // to the AutoSize help column and squeeze the title down to one character.
-        // Keep that text in its own full-width row, outside the two-column title row.
-        var titleRow = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 2, RowCount = 1, Margin = Padding.Empty, Padding = Padding.Empty
-        };
-        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        titleRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _title = EditorLayout.WrappingLabel(title, 20, UiTheme.Ink, true);
-        _title.Name = "EditorHeadingTitle";
-        titleRow.Controls.Add(_title, 0, 0);
-        _description = EditorLayout.WrappingLabel(hint, 10, UiTheme.Muted);
-        _description.Name = "EditorHeadingDescription";
-        heading.Controls.Add(titleRow, 0, 0);
-        heading.Controls.Add(_description, 0, 1);
-        _help = new LinkLabel
-        {
-            Text = "查看说明", AutoSize = true, Visible = false, TabStop = true,
-            LinkColor = UiTheme.Blue, ActiveLinkColor = UiTheme.Blue,
-            LinkBehavior = LinkBehavior.HoverUnderline, Anchor = AnchorStyles.Right,
-            Margin = new Padding(12, 8, 0, 0), AccessibleDescription = hint
-        };
+        MaximizeBox = false;
+        MinimizeBox = false;
+        ShowInTaskbar = false;
+
+        InitializeComponent();
+        _title.Text = title;
+        _description.Text = hint;
+        _help.AccessibleDescription = hint;
         _help.LinkClicked += (_, _) => MessageBox.Show(this, _description.Text, "配置说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        titleRow.Controls.Add(_help, 1, 0);
-        var save = UiTheme.Button("保存配置", async (_, _) =>
+        _confirm.Click += async (_, _) =>
         {
             if (_applying) return;
             try { await ApplyAndAcceptAsync(); }
             catch { /* The same apply path has already retained the draft and shown inline feedback. */ }
-        }, true);
-        save.Name = "EditorConfirm";
-        var cancel = UiTheme.Button("取消"); cancel.Name = "EditorCancel"; cancel.DialogResult = DialogResult.Cancel;
-        _confirm = save; _cancel = cancel;
-        var buttons = UiTheme.Toolbar(save, cancel); buttons.FlowDirection = FlowDirection.RightToLeft; buttons.WrapContents = false;
-        buttons.Name = "EditorActions"; buttons.BackColor = Color.White; buttons.Padding = new Padding(12, 14, 4, 4);
-        buttons.Paint += (_, e) => { using var pen = new Pen(UiTheme.Border); e.Graphics.DrawLine(pen, 0, 0, buttons.Width, 0); };
-        layout.Controls.Add(heading, 0, 0); layout.Controls.Add(Tabs, 0, 1); layout.Controls.Add(_feedback, 0, 2); layout.Controls.Add(buttons, 0, 3);
-        _layout = layout; _heading = heading; _titleRow = titleRow; _buttons = buttons;
-        Controls.Add(layout); AcceptButton = save; CancelButton = cancel;
+        };
+        AcceptButton = _confirm;
+        CancelButton = _cancel;
     }
 
     internal void VerifyHeadingForSmoke(string context)
