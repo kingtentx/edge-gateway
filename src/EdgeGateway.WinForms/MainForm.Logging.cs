@@ -5,28 +5,27 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private readonly TabControl _logTabs = new EditorLayout.EditorTabs { Name = "LoggingTabs", Dock = DockStyle.Fill, Multiline = true };
+    private TabControl _logTabs = null!;
     private readonly Dictionary<string, Control> _loggingFields = [];
-    private readonly Label _loggingState = UiTheme.Label("日志设置已保存。", 10, UiTheme.Muted);
+    private Label _loggingState = null!;
     // Keep the status scrollable instead of an unbounded wrapping label: at the
     // smallest supported work area the settings viewport is only 58 logical pixels high.
-    private readonly TextBox _loggingFileState = new()
-    {
-        Multiline = true, ReadOnly = true, AutoSize = false, Height = 48,
-        ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Top,
-        BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White, ForeColor = UiTheme.Muted,
-        AccessibleName = "日志文件状态，可滚动查看并复制完整内容"
-    };
-    private Button _loggingApply = null!, _loggingReset = null!;
+    private TextBox _loggingFileState = null!;
+    private AntdUI.Button _loggingApply = null!, _loggingReset = null!;
+    private LoggingPageView _loggingPageView = null!;
     private bool _loggingDirty, _bindingLogging;
 
     private Control WithLoggingSettings()
     {
-        var settingsTab = new TabPage("日志设置") { BackColor = Color.White };
-        var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = Padding.Empty };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); content.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var viewport = new Panel { Name = "LoggingFieldsViewport", Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(12), Margin = Padding.Empty };
-        var fields = EditorLayout.Fields(); viewport.Controls.Add(fields);
+        _loggingPageView = new LoggingPageView();
+        _logTabs = _loggingPageView.LogTabs;
+        _loggingState = _loggingPageView.SettingsState;
+        _loggingApply = _loggingPageView.ApplyButton;
+        _loggingReset = _loggingPageView.ResetButton;
+        _loggingFileState = _loggingPageView.FileState;
+        var viewport = _loggingPageView.SettingsFieldsHost;
+        var fields = EditorLayout.Fields();
+        viewport.Controls.Add(fields);
         void Add(string key, string label, Control control)
         { control.Name = "Logging_" + key; EditorDialog.Field(fields, label, control); _loggingFields.Add(key, control); _configurationCommands.Add(control); }
         void Changed() { if (_bindingLogging) return; _loggingDirty = true; UpdateCommands(); }
@@ -61,23 +60,15 @@ public sealed partial class MainForm
             }
             catch (Exception exception) { ShowError(exception.Message); }
         });
-        _loggingFileState.Name = "LoggingFileStatus"; DatabaseConnectionDialog.Span(fields, _loggingFileState);
+        DatabaseConnectionDialog.Span(fields, _loggingFileState);
         openLogs.Name = "OpenLogDirectory"; DatabaseConnectionDialog.Span(fields, openLogs);
-        _loggingApply = UiTheme.Button("应用日志设置", async (_, _) => await RunBusyAsync(ApplyLoggingSettingsAsync), true); _loggingApply.Name = "ApplyLoggingSettings";
-        _loggingReset = UiTheme.Button("重置日志设置", (_, _) => { _loggingDirty = false; BindLoggingFields(); UpdateCommands(); }); _loggingReset.Name = "ResetLoggingSettings";
-        // A GrowOnly AutoSize footer retains its default 100-pixel height and can
-        // squeeze the field viewport below one full button on short work areas.
-        var footer = new TableLayoutPanel { Name = "LoggingApplyBar", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
-            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(12, 8, 8, 4), Margin = Padding.Empty };
-        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); footer.RowStyles.Add(new RowStyle(SizeType.AutoSize)); footer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _loggingState.Name = "LoggingDraftState"; _loggingState.Dock = DockStyle.Fill; footer.Controls.Add(_loggingState, 0, 0);
-        var actions = UiTheme.Toolbar(_loggingApply, _loggingReset); actions.Padding = Padding.Empty;
-        footer.Controls.Add(actions, 0, 1);
-        footer.SizeChanged += (_, _) => SetWrappingWidth(_loggingState, footer.ClientSize.Width - footer.Padding.Horizontal);
-        content.Controls.Add(viewport, 0, 0); content.Controls.Add(footer, 0, 1); settingsTab.Controls.Add(content);
-        _logTabs.TabPages.Add(settingsTab);
-        _logTabs.TabPages.Add(BuildLogArchivePage(false)); _logTabs.TabPages.Add(BuildLogArchivePage(true));
-        return _logTabs;
+        _loggingApply.Click += async (_, _) => await RunBusyAsync(ApplyLoggingSettingsAsync);
+        _loggingReset.Click += (_, _) => { _loggingDirty = false; BindLoggingFields(); UpdateCommands(); };
+        _configurationCommands.AddRange([_loggingApply, _loggingReset]);
+        _loggingPageView.SizeChanged += (_, _) => SetWrappingWidth(_loggingState, Math.Max(1, _loggingPageView.ClientSize.Width - 32));
+        _ = BuildLogArchivePage(false);
+        _ = BuildLogArchivePage(true);
+        return _loggingPageView;
     }
     private void BindLoggingFields()
     {
