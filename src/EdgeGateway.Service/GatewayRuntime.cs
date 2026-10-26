@@ -332,9 +332,14 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
                     }
                     finally { session.Gate.Release(); }
                 }
-                planner.Complete(tags, clock.ElapsedMilliseconds);
-                if (!failed) delay = planner.DelayUntilNext(clock.ElapsedMilliseconds);
                 if (samples.Count > 0) await _acquisitionChannel!.Writer.WriteAsync(samples, cancellationToken).ConfigureAwait(false);
+                // Include device/channel waits, the read and output backpressure in this cycle.
+                // Advancing before WriteAsync would use a stale delay after a blocked enqueue,
+                // and could leave an already missed deadline ready for a catch-up read.
+                planner.Complete(tags, clock.ElapsedMilliseconds);
+                // Communication failures retain their existing reconnect/demotion backoff.
+                // Healthy scans wait only until the next planned tick, not another full interval.
+                if (!failed) delay = planner.DelayUntilNext(clock.ElapsedMilliseconds);
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }

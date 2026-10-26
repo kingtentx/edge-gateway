@@ -174,12 +174,41 @@ public sealed partial class RuntimeTests
         Assert.Contains(completed, read => read.TagIds.Length == 1 && read.TagIds[0] == fast.Id);
         Assert.True(harness.Factory.ReadsOf(fast.Id) >= harness.Factory.ReadsOf(slow.Id) * 2);
         var slowReads = completed.Where(read => read.TagIds.Contains(slow.Id)).OrderBy(read => read.Started).ToArray();
+        // Fixed-rate scanning includes the preceding read in its period. Completion-to-start
+        // gaps no longer equal the configured period; deterministic deadline/overrun assertions
+        // live in DeviceScanPlannerTests. Keep the real worker's non-overlap assertion here.
         foreach (var pair in slowReads.Zip(slowReads.Skip(1)))
-            Assert.True(Stopwatch.GetElapsedTime(pair.First.Completed, pair.Second.Started).TotalMilliseconds >= 480);
+            Assert.True(pair.Second.Started >= pair.First.Completed);
+        Assert.Equal(1, harness.Factory.MaximumConcurrency);
     }
 
     [Fact]
-    public async Task DeviceScanRateIgnoresPointOverridesAndPreservesLegacyCycleBehavior()
+    public async Task FixedRateScanningIncludesReadTimeInsteadOfSleepingAFullPeriodAfterEachRead()
+    {
+        await using var harness = new PolicyHarness();
+        var device = harness.Configuration.Devices[0];
+        device.PollIntervalMs = 1000;
+        device.TimeoutMs = 3000;
+        harness.Factory.ReadDelayMs = 600;
+        harness.Runtime.Configure(harness.Configuration);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Factory.Completed.Count >= 4, 10000);
+        await harness.Runtime.StopAsync();
+
+        var reads = harness.Factory.Completed.Where(read => read.Success)
+            .OrderBy(read => read.Started).Take(4).ToArray();
+        Assert.Equal(4, reads.Length);
+        Assert.Equal(1, harness.Factory.MaximumConcurrency);
+        foreach (var pair in reads.Zip(reads.Skip(1)))
+            Assert.True(pair.Second.Started >= pair.First.Completed);
+        // Four planned starts span 3 seconds. Allow 1.2 seconds of scheduler jitter;
+        // the old completion-relative loop needs at least 4.8 seconds for these starts.
+        var span = Stopwatch.GetElapsedTime(reads[0].Started, reads[^1].Started).TotalMilliseconds;
+        Assert.True(span < 4200, $"Fixed-rate scans drifted by read duration: four starts span {span:F0} ms.");
+    }
+
+    [Fact]
+    public async Task DeviceScanRateIgnoresPointOverridesAndReadsTheWholeEnabledSubset()
     {
         await using var harness = new PolicyHarness();
         var device = harness.Configuration.Devices[0];
@@ -304,6 +333,7 @@ public sealed partial class RuntimeTests
         public ConcurrentDictionary<Guid, int> Creations { get; } = new();
         public ConcurrentDictionary<Guid, bool> FailingDevices { get; } = new();
         public bool HoldReads;
+        public int ReadDelayMs = 20;
         public int MaximumConcurrency;
         private int _active;
         public TaskCompletionSource<bool> ReleaseReads { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -331,7 +361,7 @@ public sealed partial class RuntimeTests
                 try
                 {
                     if (owner.HoldReads) await owner.ReleaseReads.Task.WaitAsync(cancellationToken);
-                    await Task.Delay(20, cancellationToken);
+                    await Task.Delay(owner.ReadDelayMs, cancellationToken);
                     if (owner.FailingDevices.ContainsKey(deviceId)) throw new IOException("测试通信失败");
                     success = true;
                     return tags.Select(tag => new TagReadResult(tag.Id, 2d)).ToArray();
