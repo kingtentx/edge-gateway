@@ -23,6 +23,9 @@ internal static class Program
             : AppContext.BaseDirectory;
         var dataDirectory = Path.Combine(runtimeRoot, "AppData");
         var driverDirectory = Path.Combine(runtimeRoot, "drivers");
+        if (args.Contains("--worker", StringComparer.OrdinalIgnoreCase))
+            return GatewayWorkerClient.RunWorkerAsync().GetAwaiter().GetResult();
+
         var mutexKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(dataDirectory)))[..24];
         using var instanceLock = new Mutex(true, "Local\\EdgeGateway." + mutexKey, out var ownsLock);
         if (!ownsLock)
@@ -30,9 +33,6 @@ internal static class Program
             MessageBox.Show("采集网关已在当前用户会话中运行，请切换到已打开的窗口。", "采集网关", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return 0;
         }
-
-        if (args.Contains("--worker", StringComparer.OrdinalIgnoreCase))
-            return GatewayWorkerClient.RunWorkerAsync().GetAwaiter().GetResult();
 
         GatewayHost? host = null;
         try
