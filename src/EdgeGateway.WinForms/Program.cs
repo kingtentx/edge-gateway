@@ -23,23 +23,6 @@ internal static class Program
             : AppContext.BaseDirectory;
         var dataDirectory = Path.Combine(runtimeRoot, "AppData");
         var driverDirectory = Path.Combine(runtimeRoot, "drivers");
-        if (args.Contains("--worker", StringComparer.OrdinalIgnoreCase))
-        {
-            try { return GatewayWorkerClient.RunWorkerAsync().GetAwaiter().GetResult(); }
-            catch (Exception exception)
-            {
-                try
-                {
-                    var workerLogDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
-                    Directory.CreateDirectory(workerLogDirectory);
-                    File.AppendAllText(Path.Combine(workerLogDirectory, "worker-startup-errors.log"),
-                        $"[{DateTimeOffset.Now:O}] {exception}{Environment.NewLine}{Environment.NewLine}", Encoding.UTF8);
-                }
-                catch { /* Keep the original startup failure. */ }
-                return 1;
-            }
-        }
-
         var mutexKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(dataDirectory)))[..24];
         using var instanceLock = new Mutex(true, "Local\\EdgeGateway." + mutexKey, out var ownsLock);
         if (!ownsLock)
@@ -51,20 +34,13 @@ internal static class Program
         GatewayHost? host = null;
         try
         {
-            if (!smokeTest)
-            {
-                // Production UI talks to the independent worker process; disposing or crashing
-                // the WinForms client does not dispose the acquisition runtime.
-                var remoteApplication = GatewayWorkerClient.ConnectOrStart();
-                using var remoteWindow = new MainForm(remoteApplication, driverDirectory: driverDirectory, leaveWorkerRunning: true);
-                System.Windows.Forms.Application.Run(remoteWindow);
-                return remoteWindow.SmokeTestFailed ? 1 : 0;
-            }
-
+            // Keep the lightweight single-process WinForms architecture. Closing the window
+            // hides it to the notification area; only the tray Exit command stops acquisition.
             host = GatewayHost.CreateAsync(dataDirectory, pluginDirectory: driverDirectory,
-                enableVerificationFaults: true, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
+                enableVerificationFaults: smokeTest, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
             using var window = new MainForm(host.Application, smokeTest, screenshotPath, layoutMatrix,
-                host.BeginConfigurationWriteFailureForVerification, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke);
+                smokeTest ? host.BeginConfigurationWriteFailureForVerification : null,
+                driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke);
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }
