@@ -26,7 +26,7 @@ public sealed class GatewayHost : IAsyncDisposable
     private Task? _disposeTask;
 
     private GatewayHost(string directory, IGatewayApplication application, ITelemetryPublisher publisher,
-        IGatewayStore store, SqliteConfigurationStore configurations, GatewayLog log, FileStream directoryLock, bool verificationFaultsEnabled)
+        IGatewayStore store, SqliteConfigurationStore configurations, GatewayLog log, SqliteAcquisitionSpool acquisitionSpool, FileStream directoryLock, bool verificationFaultsEnabled)
     {
         DataDirectory = directory;
         Application = application;
