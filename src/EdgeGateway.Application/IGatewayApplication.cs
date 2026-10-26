@@ -100,4 +100,5 @@ public interface IGatewayApplication : IAsyncDisposable
     Task<GatewayLogQueryResult> QueryLogFilesAsync(GatewayLogQuery query, CancellationToken cancellationToken = default);
     Task ExportLogQueryAsync(GatewayLogQueryResult result, string path, CancellationToken cancellationToken = default);
     Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
+    Task<AcquisitionSpoolStatistics> GetAcquisitionSpoolStatisticsAsync(CancellationToken cancellationToken = default);
 }
