@@ -17,6 +17,8 @@ internal sealed partial class DevicesPageView
     private Label tagSummaryLabel = null!;
     private FlowLayoutPanel tagToolbarHost = null!;
     private TextBox tagSearch = null!;
+    private AntdUI.Button addDeviceButton = null!, probeDeviceButton = null!;
+    private AntdUI.Button addTagButton = null!, editTagButton = null!, singlePointReadButton = null!;
     private DpiDataGridView tagGrid = null!;
 
     internal TableLayoutPanel ContentLayout => contentLayout;
@@ -26,6 +28,11 @@ internal sealed partial class DevicesPageView
     internal TableLayoutPanel TagHeaderLayout => tagHeaderLayout;
     internal Control TagToolbarHost => tagToolbarHost;
     internal TextBox TagSearch => tagSearch;
+    internal AntdUI.Button AddDeviceButton => addDeviceButton;
+    internal AntdUI.Button ProbeDeviceButton => probeDeviceButton;
+    internal AntdUI.Button AddTagButton => addTagButton;
+    internal AntdUI.Button EditTagButton => editTagButton;
+    internal AntdUI.Button SinglePointReadButton => singlePointReadButton;
     internal DataGridView TagGrid => tagGrid;
     internal Label DeviceSummary => deviceSummaryLabel;
     internal Label TagHeading => tagHeadingLabel;
@@ -52,6 +59,11 @@ internal sealed partial class DevicesPageView
         tagSummaryLabel = new Label();
         tagToolbarHost = new FlowLayoutPanel();
         tagSearch = new TextBox { Name = "TagSearch", Width = 205, PlaceholderText = "搜索当前设备的点位 / 地址" };
+        addDeviceButton = CreateActionButton("添加设备", "AddDevice", true);
+        probeDeviceButton = CreateActionButton("连接诊断", "ProbeDevice", false);
+        addTagButton = CreateActionButton("添加点位", "AddTag", true);
+        editTagButton = CreateActionButton("编辑点位", "EditTag", false);
+        singlePointReadButton = CreateActionButton("单点读取", "ProbeTag", false);
         tagGrid = UiTheme.Grid() as DpiDataGridView ?? new DpiDataGridView();
         deviceSummaryLabel = UiTheme.Label("", 10, UiTheme.Muted);
 
@@ -101,6 +113,8 @@ internal sealed partial class DevicesPageView
         deviceToolbarHost.FlowDirection = FlowDirection.LeftToRight;
         deviceToolbarHost.Margin = Padding.Empty;
         deviceToolbarHost.Padding = new Padding(0, 4, 0, 2);
+        deviceToolbarHost.Controls.Add(addDeviceButton);
+        deviceToolbarHost.Controls.Add(probeDeviceButton);
 
         deviceFiltersHost.Name = "DeviceFiltersHost";
         deviceFiltersHost.Dock = DockStyle.Fill;
@@ -148,6 +162,10 @@ internal sealed partial class DevicesPageView
         tagToolbarHost.FlowDirection = FlowDirection.LeftToRight;
         tagToolbarHost.Margin = Padding.Empty;
         tagToolbarHost.Padding = Padding.Empty;
+        tagToolbarHost.Controls.Add(addTagButton);
+        tagToolbarHost.Controls.Add(editTagButton);
+        tagToolbarHost.Controls.Add(singlePointReadButton);
+        tagToolbarHost.Controls.Add(tagSearch);
 
         tagGrid.Name = "TagList";
         tagGrid.Dock = DockStyle.Fill;
@@ -171,6 +189,15 @@ internal sealed partial class DevicesPageView
         contentLayout.PerformLayout();
         ResumeLayout(false);
     }
+
+    private static AntdUI.Button CreateActionButton(string text, string name, bool primary) => new()
+    {
+        Name = name, Text = text, AutoSize = true, MinimumSize = new Size(100, 38), Height = 38,
+        Padding = new Padding(13, 6, 13, 6), Radius = 6,
+        BackColor = primary ? UiTheme.Blue : Color.White,
+        ForeColor = primary ? Color.White : UiTheme.Ink,
+        Margin = new Padding(0, 0, 8, 6), Cursor = Cursors.Hand
+    };
 
     protected override void Dispose(bool disposing)
     {
