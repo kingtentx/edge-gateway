@@ -20,6 +20,7 @@ internal sealed class GatewayWorkerClient : DispatchProxy
     private string _executable = "";
     private string _pipeName = "";
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly SemaphoreSlim IpcGate = new(1, 1);
 
     public static IGatewayApplication ConnectOrStart()
     {
@@ -89,6 +90,9 @@ internal sealed class GatewayWorkerClient : DispatchProxy
 
     private async Task<string?> SendAsync(string contract, MethodInfo method, object?[] args, CancellationToken cancellationToken)
     {
+        await IpcGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
         await EnsureWorkerAvailableAsync(cancellationToken).ConfigureAwait(false);
         var parameters = method.GetParameters();
         var serializedArguments = new JsonElement[parameters.Length];
@@ -117,6 +121,8 @@ internal sealed class GatewayWorkerClient : DispatchProxy
         {
             throw new InvalidOperationException("无法连接后台采集服务。请检查 EdgeGateway.Worker 日志及程序目录权限。", exception);
         }
+        }
+        finally { IpcGate.Release(); }
     }
 
     private async Task EnsureWorkerAvailableAsync(CancellationToken cancellationToken)
