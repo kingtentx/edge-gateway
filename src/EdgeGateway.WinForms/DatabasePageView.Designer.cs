@@ -15,6 +15,8 @@ internal sealed partial class DatabasePageView
     private TabPage writeGroupsTab = null!;
     private FlowLayoutPanel connectionsToolbarHost = null!;
     private FlowLayoutPanel groupsToolbarHost = null!;
+    private TableLayoutPanel connectionsContent = null!;
+    private TableLayoutPanel groupsContent = null!;
     private DpiDataGridView connectionsGrid = null!;
     private DpiDataGridView groupsGrid = null!;
 
@@ -37,6 +39,8 @@ internal sealed partial class DatabasePageView
         writeGroupsTab = new TabPage("采集写入组") { Name = "DatabaseWriteGroupsTab", BackColor = Color.White };
         connectionsToolbarHost = new FlowLayoutPanel { Name = "DatabaseConnectionsToolbarHost", Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Margin = Padding.Empty, Padding = new Padding(0, 4, 0, 4) };
         groupsToolbarHost = new FlowLayoutPanel { Name = "DatabaseWriteGroupsToolbarHost", Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Margin = Padding.Empty, Padding = new Padding(0, 4, 0, 4) };
+        connectionsContent = new TableLayoutPanel { Name = "DatabaseConnectionsContent", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = Padding.Empty };
+        groupsContent = new TableLayoutPanel { Name = "DatabaseWriteGroupsContent", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = Padding.Empty };
         connectionsGrid = UiTheme.Grid() as DpiDataGridView ?? new DpiDataGridView();
         groupsGrid = UiTheme.Grid() as DpiDataGridView ?? new DpiDataGridView();
         connectionsGrid.Name = "DatabaseConnections";
@@ -46,6 +50,8 @@ internal sealed partial class DatabasePageView
         contentLayout.SuspendLayout();
         connectionsTab.SuspendLayout();
         writeGroupsTab.SuspendLayout();
+        connectionsContent.SuspendLayout();
+        groupsContent.SuspendLayout();
         SuspendLayout();
         Name = "DatabasePageView";
         Dock = DockStyle.Fill;
@@ -54,17 +60,28 @@ internal sealed partial class DatabasePageView
         contentLayout.Name = "DatabaseContent";
         contentLayout.Dock = DockStyle.Fill;
         contentLayout.ColumnCount = 1;
-        contentLayout.RowCount = 3;
+        contentLayout.RowCount = 4;
         contentLayout.Margin = Padding.Empty;
         contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         databaseStateLabel.Name = "DatabaseConfigurationState";
         databaseStateLabel.Dock = DockStyle.Fill;
         databaseStateLabel.Margin = new Padding(8, 4, 8, 8);
-        connectionsTab.Controls.Add(connectionsGrid);
-        writeGroupsTab.Controls.Add(groupsGrid);
+        connectionsContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        connectionsContent.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        connectionsContent.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        connectionsContent.Controls.Add(connectionsToolbarHost, 0, 0);
+        connectionsContent.Controls.Add(connectionsGrid, 0, 1);
+        groupsContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        groupsContent.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        groupsContent.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        groupsContent.Controls.Add(groupsToolbarHost, 0, 0);
+        groupsContent.Controls.Add(groupsGrid, 0, 1);
+        connectionsTab.Controls.Add(connectionsContent);
+        writeGroupsTab.Controls.Add(groupsContent);
         databaseTabs.TabPages.Add(connectionsTab);
         databaseTabs.TabPages.Add(writeGroupsTab);
         contentLayout.Controls.Add(titleLabel, 0, 0);
@@ -72,6 +89,8 @@ internal sealed partial class DatabasePageView
         contentLayout.Controls.Add(databaseStateLabel, 0, 2);
         contentLayout.Controls.Add(databaseTabs, 0, 3);
         Controls.Add(contentLayout);
+        connectionsContent.ResumeLayout(false);
+        groupsContent.ResumeLayout(false);
         connectionsTab.ResumeLayout(false);
         writeGroupsTab.ResumeLayout(false);
         contentLayout.ResumeLayout(false);
