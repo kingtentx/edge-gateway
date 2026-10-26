@@ -15,7 +15,7 @@ namespace EdgeGateway.WinForms;
 /// the WinForms process only sends application commands and renders returned snapshots.
 /// The pipe is restricted to the current Windows user.
 /// </summary>
-internal sealed class GatewayWorkerClient : DispatchProxy
+internal class GatewayWorkerClient : DispatchProxy
 {
     private string _executable = "";
     private string _pipeName = "";
