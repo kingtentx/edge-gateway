@@ -518,6 +518,45 @@ public sealed class AcquisitionDataServiceTests
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
 
+
+    [Fact]
+    public async Task DurableBacklogIsNotReplayedToAChangedDatabaseTarget()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "edge-spool-target-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var spoolPath = Path.Combine(root, "acquisition-spool.db");
+        var configuration = Configuration();
+        var connection = AddConnection(configuration);
+        var group = AddPointGroup(configuration, connection);
+        connection.MaxRetryAttempts = 1;
+        try
+        {
+            await using (var spool = new SqliteAcquisitionSpool(spoolPath))
+            {
+                var failing = new Connector { OnWrite = (_, _, _, _) => Task.FromException(new IOException("database unavailable")) };
+                await using var sink = new AcquisitionDataService(failing, new SampleLog(), spool);
+                sink.UpdateConfiguration(configuration); await sink.StartAsync();
+                foreach (var device in configuration.Devices) sink.SetDeviceActive(device.Id, true);
+                await sink.AppendAsync([Sample(configuration, 0, 456L)]);
+                await Until(async () => (await spool.GetStatisticsAsync()).PendingRows == 1);
+                await sink.StopAsync();
+            }
+
+            group.Table = "different_table";
+            await using (var spool = new SqliteAcquisitionSpool(spoolPath))
+            {
+                var connector = new Connector();
+                await using var sink = new AcquisitionDataService(connector, new SampleLog(), spool);
+                sink.UpdateConfiguration(configuration); await sink.StartAsync();
+                await Until(() => Task.FromResult(sink.GetStatuses().Single().Error?.Contains("目标配置已变化", StringComparison.Ordinal) == true));
+                Assert.Empty(connector.Writes);
+                Assert.Equal(1, (await spool.GetStatisticsAsync()).PendingRows);
+                await sink.StopAsync();
+            }
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
     private static DatabaseConnectionConfiguration AddConnection(GatewayConfiguration configuration, string name = "database", int capacity = 100)
     {
         var connection = new DatabaseConnectionConfiguration { Name = name, Enabled = true, BatchSize = 1, FlushIntervalMs = 50, QueueCapacityRows = capacity };
