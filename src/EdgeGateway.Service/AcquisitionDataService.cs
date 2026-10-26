@@ -398,13 +398,45 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
             catch (Exception exception) { State.Failure(Group.Id, $"写入组 [{Group.Name}] 工作任务异常：{SafeError(exception)}"); }
             finally
             {
-                // Unexpected worker failure must also stop future producers from reserving
-                // rows in a channel that no longer has a reader.
+                // Stop and timeout paths write any remaining in-memory rows to the durable journal
+                // before releasing queue reservations. The stable batch identity makes this safe
+                // even when WriteBatchAsync already persisted the same batch.
                 _queue.Writer.TryComplete();
-                if (batch.Count > 0) { State.Release(batch.Count, batch.Sum(row => row.Bytes)); State.Drop(Group.Id, batch.Count, "停止宽限期内未完成的批次已丢弃；采集数据队列不落本地 SQLite。"); }
-                long dropped = 0;
-                while (_queue.Reader.TryRead(out var row)) { State.Release(1, row.Bytes); dropped++; }
-                if (dropped > 0) State.Drop(Group.Id, checked((int)dropped), "停止时仍未写入的队列记录已丢弃。");
+                if (batch.Count > 0)
+                {
+                    var bytes = batch.Sum(row => row.Bytes);
+                    var persisted = false;
+                    if (_spool is not null)
+                    {
+                        try
+                        {
+                            await _spool.AppendAsync(Group.Id, batch.Select(row => row.Row).ToArray(), CancellationToken.None).ConfigureAwait(false);
+                            persisted = true;
+                        }
+                        catch (Exception exception) { _log.Write(GatewayLogLevel.Error, $"写入组 [{Group.Name}] 停止时持久化批次失败：{SafeError(exception)}"); }
+                    }
+                    State.Release(batch.Count, bytes);
+                    if (!persisted) State.Drop(Group.Id, batch.Count, "停止时未完成批次无法持久化，记录未获数据库确认。");
+                    else _log.Write(GatewayLogLevel.Warning, $"写入组 [{Group.Name}] 有 {batch.Count} 行已保存到本地持久缓冲，等待后续补传。");
+                }
+                var remaining = new List<QueuedRow>();
+                while (_queue.Reader.TryRead(out var row)) remaining.Add(row);
+                if (remaining.Count > 0)
+                {
+                    var persisted = false;
+                    if (_spool is not null)
+                    {
+                        try
+                        {
+                            await _spool.AppendAsync(Group.Id, remaining.Select(row => row.Row).ToArray(), CancellationToken.None).ConfigureAwait(false);
+                            persisted = true;
+                        }
+                        catch (Exception exception) { _log.Write(GatewayLogLevel.Error, $"写入组 [{Group.Name}] 队列排空持久化失败：{SafeError(exception)}"); }
+                    }
+                    State.Release(remaining.Count, remaining.Sum(row => row.Bytes));
+                    if (!persisted) State.Drop(Group.Id, remaining.Count, "停止时队列无法持久化，记录未获数据库确认。");
+                    else _log.Write(GatewayLogLevel.Warning, $"写入组 [{Group.Name}] 有 {remaining.Count} 行已保存到本地持久缓冲，等待后续补传。");
+                }
             }
         }
         private async Task WaitCooldownAsync()
