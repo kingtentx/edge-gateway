@@ -5,7 +5,6 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private System.ComponentModel.IContainer? components;
     private TableLayoutPanel applicationShell = null!;
     private Panel navigationViewportPanel = null!;
     private TableLayoutPanel navigationContentPanel = null!;
@@ -27,7 +26,6 @@ public sealed partial class MainForm
 
     private void InitializeComponent()
     {
-        components = new System.ComponentModel.Container();
         applicationShell = new TableLayoutPanel { Name = "ApplicationShell", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty, Padding = Padding.Empty };
         navigationViewportPanel = new Panel { Name = "NavigationViewport", Dock = DockStyle.Fill, AutoScroll = true, BackColor = UiTheme.Navy, Margin = Padding.Empty };
         navigationContentPanel = new TableLayoutPanel { Name = "NavigationContent", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = UiTheme.Navy, Padding = new Padding(12, 18, 10, 16), ColumnCount = 1, RowCount = 10, Margin = Padding.Empty };
@@ -144,9 +142,4 @@ public sealed partial class MainForm
         Radius = 6
     };
 
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing) components?.Dispose();
-        base.Dispose(disposing);
-    }
 }
