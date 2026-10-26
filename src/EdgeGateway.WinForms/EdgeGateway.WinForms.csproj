@@ -11,6 +11,7 @@
     <RootNamespace>EdgeGateway.WinForms</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="AntdUI" Version="2.4.16" />
     <!-- 分部类资源按文件名命名，避免从 MainForm 类型推断出与主窗体相同的资源名。 -->
     <EmbeddedResource Update="MainForm.Monitoring.resx">
       <ManifestResourceName>$(RootNamespace).MainForm.Monitoring</ManifestResourceName>
