@@ -8,7 +8,8 @@ public sealed partial class MainForm
 
     private TabPage BuildLogArchivePage(bool samples)
     {
-        var view = new LogArchiveView(this, samples);
+        var page = samples ? _loggingPageView.SampleLogsTab : _loggingPageView.EventLogsTab;
+        var view = new LogArchiveView(this, samples, page);
         if (samples) _sampleArchive = view; else _eventArchive = view;
         return view.Page;
     }
@@ -36,11 +37,12 @@ public sealed partial class MainForm
         private bool _changed;
         internal IReadOnlyList<Control> Inputs { get; }
 
-        internal LogArchiveView(MainForm owner, bool samples)
+        internal LogArchiveView(MainForm owner, bool samples, TabPage page)
         {
             _owner = owner; _samples = samples;
             var prefix = samples ? "SampleArchive" : "EventArchive";
-            Page = new TabPage(samples ? "采样数据" : "运行日志") { Name = prefix, BackColor = Color.White };
+            Page = page;
+            Page.Name = prefix; Page.BackColor = Color.White;
             Grid.Name = prefix + "Results";
             UiTheme.AddColumn(Grid, "Timestamp", "时间", 180, 180);
             if (samples)
