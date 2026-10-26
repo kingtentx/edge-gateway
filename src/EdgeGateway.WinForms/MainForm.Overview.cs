@@ -5,6 +5,7 @@ namespace EdgeGateway.WinForms;
 public sealed partial class MainForm
 {
     private Task? _serverResourceRefresh;
+    private OverviewPageView _overviewPageView = null!;
     private readonly Label _deviceCount = UiTheme.Label("0", 26, UiTheme.Ink, true);
     private readonly Label _onlineCount = UiTheme.Label("0", 26, UiTheme.Green, true);
     private readonly Label _abnormalCount = UiTheme.Label("0", 26, UiTheme.Red, true);
@@ -29,6 +30,7 @@ public sealed partial class MainForm
 
     private Control BuildOverviewPage()
     {
+        _overviewPageView = new OverviewPageView();
         var content = new TableLayoutPanel { Name = "OverviewContent", ColumnCount = 1, RowCount = 6, Margin = Padding.Empty };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         for (var i = 0; i < 5; i++) content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -118,7 +120,8 @@ public sealed partial class MainForm
         _serverDiskRows.SizeChanged += (_, _) => Arrange();
         cards.HandleCreated += (_, _) => Arrange();
         DpiLayoutCompleted += (_, _) => Arrange();
-        return UiTheme.PageLayout("运行总览", "", UiTheme.Toolbar(), viewport);
+        _overviewPageView.DashboardHost.Controls.Add(viewport);
+        return _overviewPageView;
     }
 
     private static TableLayoutPanel OverviewGrid(string name) => new()
