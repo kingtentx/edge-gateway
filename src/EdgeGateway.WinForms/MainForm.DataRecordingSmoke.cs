@@ -83,6 +83,8 @@ public sealed partial class MainForm
             grid.CurrentCell = quality.Cells["Constant"];
             FocusForSmoke(grid, grid, editor, "manual quality constant");
             Check(grid.BeginEdit(true) && grid.EditingControl is TextBox, "manual constant cannot enter edit mode.");
+            Check(((TextBox)grid.EditingControl!).BorderStyle == BorderStyle.FixedSingle
+                && ((TextBox)grid.EditingControl!).PlaceholderText == "请输入常量", "manual constant editor has no visible input border or placeholder.");
             ((TextBox)grid.EditingControl!).Text = "192"; grid.EndEdit();
             quality.Cells["Include"].Value = true;
             Check(Equals(quality.Cells["Source"].Value, DatabaseValueSource.Quality) && Equals(quality.Cells["Constant"].Value, "192"),
@@ -155,6 +157,10 @@ public sealed partial class MainForm
                         == reopened.SmokeMapping.GetCellDisplayRectangle(manualRow.Cells[column].ColumnIndex, manualRow.Index, true), "reopened manual cell is clipped: " + column);
                 }
                 reopened.SmokeMapping.EndEdit(); reopened.SmokeMapping.HorizontalScrollingOffset = 0;
+                manualRow.Cells["Constant"].Value = "";
+                reopened.SmokeMapping.CurrentCell = manualRow.Cells["Column"];
+                SaveEditorScreenshot(reopened, "recording", "manual-constant-empty");
+                manualRow.Cells["Constant"].Value = "192";
                 SaveEditorScreenshot(reopened, "recording", "custom-point-mapping"); reopened.Close();
             }
             AssertRecordingSmokeUnchanged(before, group, "custom point mapping source isolation");

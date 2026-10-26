@@ -315,10 +315,18 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
             foreach (DataGridViewColumn column in _mapping.Columns) dpiGrid.RegisterColumn(column, column.MinimumWidth);
         _mapping.Columns["Include"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
         _mapping.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+        _mapping.CellPainting += PaintConstantInput;
         _mapping.EditingControlShowing += (_, e) =>
         {
             if (e.Control is ComboBox combo)
                 combo.DropDownWidth = Math.Min(Screen.FromControl(this).WorkingArea.Width, Math.Max(combo.Width, UiTheme.Scale(this, 360)));
+            if (e.Control is TextBox text && _mapping.CurrentCell?.OwningColumn.Name == "Constant")
+            {
+                text.BorderStyle = BorderStyle.FixedSingle;
+                text.BackColor = UiTheme.InputBackground;
+                text.ForeColor = UiTheme.Ink;
+                text.PlaceholderText = "请输入常量";
+            }
         };
         _mapping.CurrentCellDirtyStateChanged += (_, _) => { if (_mapping.IsCurrentCellDirty) _mapping.CommitEdit(DataGridViewDataErrorContexts.Commit); };
         _mapping.CellValueChanged += (_, e) =>
@@ -346,7 +354,48 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
                 UpdateMappingRow(row);
             }
             finally { _updatingMapping = false; }
+            if (_mapping.ContainsFocus && _mapping.CurrentRow == row
+                && _mapping.Columns[e.ColumnIndex].Name is "Include" or "Source"
+                && row.Cells["Source"].Value is DatabaseValueSource.Constant)
+                BeginInvoke((Action)(() =>
+                {
+                    // Finish the checkbox/dropdown notification before moving the editor.
+                    // Do not steal focus if the operator has already moved elsewhere.
+                    if (IsDisposed || _mapping.IsDisposed || !_mapping.ContainsFocus || row.DataGridView != _mapping
+                        || _mapping.CurrentRow != row || _mapping.CurrentCell?.OwningColumn.Name is not ("Include" or "Source")
+                        || row.Cells["Source"].Value is not DatabaseValueSource.Constant || row.Cells["Constant"].ReadOnly) return;
+                    _mapping.EndEdit(); _mapping.CurrentCell = row.Cells["Constant"]; _mapping.BeginEdit(true);
+                }));
         };
+    }
+
+    private void PaintConstantInput(object? sender, DataGridViewCellPaintingEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.ColumnIndex != _mapping.Columns["Constant"].Index
+            || _mapping.Rows[e.RowIndex].Cells[e.ColumnIndex].ReadOnly
+            || e.Graphics is not { } graphics || e.CellStyle is not { } style) return;
+        e.Paint(e.ClipBounds, e.PaintParts & ~(DataGridViewPaintParts.ContentForeground | DataGridViewPaintParts.Focus));
+        var inset = UiTheme.Scale(_mapping, 4);
+        var frame = Rectangle.Inflate(e.CellBounds, -inset, -inset);
+        if (frame.Width > 0 && frame.Height > 0)
+        {
+            var saved = graphics.Save();
+            try
+            {
+                graphics.SetClip(Rectangle.Intersect(e.ClipBounds, e.CellBounds), System.Drawing.Drawing2D.CombineMode.Intersect);
+                using var fill = new SolidBrush(UiTheme.InputBackground);
+                var focused = _mapping.ContainsFocus && _mapping.CurrentCell == _mapping.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                using var border = new Pen(focused ? UiTheme.Blue : Color.FromArgb(153, 170, 192), Math.Max(1, _mapping.DeviceDpi / 96f));
+                graphics.FillRectangle(fill, frame); graphics.DrawRectangle(border, frame);
+                var value = e.FormattedValue?.ToString() ?? "";
+                var textBounds = Rectangle.Inflate(frame, -UiTheme.Scale(_mapping, 6), 0);
+                TextRenderer.DrawText(graphics, value.Length == 0 ? "请输入常量" : value, style.Font ?? _mapping.Font,
+                    textBounds, value.Length == 0 ? UiTheme.Muted : UiTheme.Ink,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
+            }
+            finally { graphics.Restore(saved); }
+        }
+        e.Handled = true;
     }
 
     private void BindMappingRows(IReadOnlyList<DatabaseColumnMapping> mappings, IReadOnlyList<DatabaseColumnInfo> columns)
@@ -386,6 +435,7 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
             : "取消勾选“使用采样”后可填写常量。";
         row.Cells["Point"].Style.BackColor = row.Cells["Point"].ReadOnly ? UiTheme.Background : Color.White;
         row.Cells["Constant"].Style.BackColor = row.Cells["Constant"].ReadOnly ? UiTheme.Background : Color.White;
+        _mapping.InvalidateCell(row.Cells["Constant"]);
     }
 
     private IReadOnlyList<DatabaseColumnMapping> CaptureMappings(bool validate)
