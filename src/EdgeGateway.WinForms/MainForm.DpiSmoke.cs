@@ -478,6 +478,10 @@ public sealed partial class MainForm
             if (parent is TabPage page && page.Parent is TabControl owner) tabs.Add((owner, page));
         foreach (var (owner, page) in tabs.AsEnumerable().Reverse()) owner.SelectedTab = page;
         var form = control.FindForm() ?? throw new InvalidOperationException(context + ": control has no window.");
+        // Tab selection changes effective visibility only after the WinForms layout pass.
+        // Run it before focusing/asserting controls so the smoke test observes the same
+        // settled layout that a real operator sees after switching tabs.
+        PerformLayoutRecursively(form);
         Control? stableFocus = form switch
         {
             EditorDialog editor => editor.SmokeCommands.Last(),
