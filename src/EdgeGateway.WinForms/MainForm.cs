@@ -25,18 +25,18 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly bool _serverResourcesSmoke;
     private readonly bool _workbookSmoke;
     private readonly string? _smokeScreenshotPath;
-    private readonly Panel _pageHost = new() { Dock = DockStyle.Fill };
+    private Panel _pageHost = null!;
     private readonly Dictionary<string, Control> _pages = [];
-    private readonly Dictionary<string, Button> _navigation = [];
+    private readonly Dictionary<string, AntdUI.Button> _navigation = [];
     private readonly List<Control> _configurationCommands = [];
     private readonly List<Control> _stoppedConfigurationCommands = [];
     private readonly System.Windows.Forms.Timer _refreshTimer = new() { Interval = 1000 };
-    private readonly Label _runState = UiTheme.Label("已停止", 10, UiTheme.Muted, true);
-    private readonly Label _savedState = UiTheme.Label("配置已保存", 9, UiTheme.Muted);
-    private readonly Label _footer = UiTheme.Label("就绪", 10, UiTheme.Muted);
+    private Label _runState = null!;
+    private Label _savedState = null!;
+    private Label _footer = null!;
     private readonly ToolTip _feedbackTip = new() { AutoPopDelay = 30000, InitialDelay = 350, ReshowDelay = 100 };
     private string _lastFeedback = "就绪";
-    private readonly Label _automaticSaveState = UiTheme.Label("配置自动保存", 9, UiTheme.Muted);
+    private Label _automaticSaveState = null!;
     private string _activePage = "overview";
     private bool _dirty, _busy, _refreshing, _closing, _allowClose;
     private readonly bool _loggingSmoke;
@@ -92,87 +92,32 @@ public sealed partial class MainForm : DpiAwareForm
 
     private void BuildShell()
     {
-        var shell = new TableLayoutPanel { Name = "ApplicationShell", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0), Padding = new Padding(0) };
-        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 206));
-        shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        shell.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        var navigationViewport = new Panel { Name = "NavigationViewport", Dock = DockStyle.Fill, AutoScroll = true, BackColor = UiTheme.Navy, Margin = new Padding(0) };
-        var sidebar = new TableLayoutPanel
-        {
-            Name = "NavigationContent", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = UiTheme.Navy, Padding = new Padding(12, 18, 10, 16), ColumnCount = 1, RowCount = 10, Margin = new Padding(0)
-        };
-        sidebar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        sidebar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var brand = new FlowLayoutPanel
-        {
-            Name = "NavigationBrand", Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, 0, 20)
-        };
-        var brandTitle = UiTheme.Label("EDGE GATEWAY", 13, Color.White, true);
-        var brandCaption = UiTheme.Label("工业数据 · 本地连接", 10, Color.FromArgb(160, 178, 203));
-        brand.Controls.Add(brandTitle); brand.Controls.Add(brandCaption);
-        sidebar.Controls.Add(brand, 0, 0);
-        var entries = new[] { ("overview", "运行总览"), ("devices", "设备与点位"), ("realtime", "实时监控"), ("history", "历史与趋势"), ("diagnostics", "通信诊断"), ("database", "数据库"), ("cloud", "平台与系统"), ("logs", "运行日志") };
-        for (var i = 0; i < entries.Length; i++)
-        {
-            var entry = entries[i];
-            sidebar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            var button = UiTheme.NavigationButton(entry.Item2, entry.Item1);
-            button.Name = "Navigation_" + entry.Item1; button.Dock = DockStyle.Fill;
-            button.AutoSize = true; button.MinimumSize = new Size(0, 48);
-            button.Margin = new Padding(0, 0, 0, 6);
-            button.Click += (_, _) => ShowPage(entry.Item1);
-            _navigation[entry.Item1] = button;
-            sidebar.Controls.Add(button, 0, i + 1);
-        }
-        sidebar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var edition = UiTheme.Label("边缘数据工作台\n本地采集 / 可靠上报", 10, Color.FromArgb(142, 162, 190));
-        edition.Name = "NavigationEdition"; edition.Dock = DockStyle.Fill; edition.Margin = new Padding(0, 20, 0, 0);
-        sidebar.Controls.Add(edition, 0, entries.Length + 1);
-        navigationViewport.Controls.Add(sidebar);
+        InitializeComponent();
 
-        var body = new TableLayoutPanel { Name = "ApplicationBody", Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = new Padding(0) };
-        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        body.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-        var header = new TableLayoutPanel
+        var shell = applicationShell;
+        var navigationViewport = navigationViewportPanel;
+        var sidebar = navigationContentPanel;
+        var body = applicationBody;
+        var header = applicationHeader;
+        var status = headerStatusPanel;
+        var headerInfo = headerSaveStatusPanel;
+        var brandTitle = brandTitleLabel;
+        var brandCaption = brandCaptionLabel;
+        var edition = navigationEditionLabel;
+
+        _navigation.Add("overview", navigationOverviewButton);
+        _navigation.Add("devices", navigationDevicesButton);
+        _navigation.Add("realtime", navigationRealtimeButton);
+        _navigation.Add("history", navigationHistoryButton);
+        _navigation.Add("diagnostics", navigationDiagnosticsButton);
+        _navigation.Add("database", navigationDatabaseButton);
+        _navigation.Add("cloud", navigationCloudButton);
+        _navigation.Add("logs", navigationLogsButton);
+        foreach (var item in _navigation)
         {
-            Name = "ApplicationHeader", Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
-            BackColor = Color.White, Padding = new Padding(18, 8, 12, 8), AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0)
-        };
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var status = new FlowLayoutPanel
-        {
-            Name = "HeaderStatus", Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            FlowDirection = FlowDirection.LeftToRight, WrapContents = true, Margin = new Padding(0)
-        };
-        status.Controls.Add(_runState); status.Controls.Add(_savedState);
-        // The header reports aggregate state; device commands live on their own rows.
-        var headerInfo = new FlowLayoutPanel
-        {
-            Name = "HeaderSaveStatus", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            WrapContents = false, FlowDirection = FlowDirection.LeftToRight,
-            Anchor = AnchorStyles.Top | AnchorStyles.Right, Dock = DockStyle.None,
-            Margin = new Padding(12, 0, 0, 0), Padding = new Padding(0)
-        };
-        _automaticSaveState.Name = "AutomaticSaveState";
-        headerInfo.Controls.Add(_automaticSaveState);
-        header.Controls.Add(status, 0, 0); header.Controls.Add(headerInfo, 1, 0);
-        body.Controls.Add(header, 0, 0); body.Controls.Add(_pageHost, 0, 1);
-        _footer.Name = "OperationFeedback"; _footer.Dock = DockStyle.Fill;
-        _footer.Padding = new Padding(16, 0, 12, 0); _footer.AutoEllipsis = true;
-        _footer.BackColor = Color.White; _footer.Cursor = Cursors.Hand;
-        _footer.TextAlign = ContentAlignment.MiddleLeft;
-        _footer.AccessibleName = "最近操作结果，点击查看完整说明";
-        _footer.Click += (_, _) => MessageBox.Show(this, _lastFeedback, "最近操作结果", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        body.Controls.Add(_footer, 0, 2);
-        shell.Controls.Add(navigationViewport, 0, 0); shell.Controls.Add(body, 1, 0);
-        Controls.Add(shell);
+            var key = item.Key;
+            item.Value.Click += (_, _) => ShowPage(key);
+        }
 
         bool arranging = false;
         bool? compactHeader = null;
