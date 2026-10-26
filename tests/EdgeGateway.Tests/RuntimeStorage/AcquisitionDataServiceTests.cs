@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
 using EdgeGateway.Abstractions;
+using EdgeGateway.DataAccess;
 using EdgeGateway.Model;
 using EdgeGateway.Service;
 
