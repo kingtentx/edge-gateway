@@ -34,7 +34,7 @@ public sealed class RelationalConfigurationTests : IDisposable
         Assert.True(JsonNode.DeepEquals(JsonSerializer.SerializeToNode(configuration, GatewayJson.Options),
             JsonSerializer.SerializeToNode(await reopened.LoadAsync(), GatewayJson.Options)));
         using var connection = Open();
-        Assert.Equal(4L, Scalar(connection, "PRAGMA user_version"));
+        Assert.Equal(5L, Scalar(connection, "PRAGMA user_version"));
         Assert.Equal(2L, Scalar(connection, "SELECT COUNT(*) FROM configuration_snapshots"));
         Assert.Equal(0L, Scalar(connection, "SELECT COUNT(*) FROM pragma_foreign_key_check"));
         Assert.Equal("integer", Scalar(connection, "SELECT typeof(poll_interval_ms) FROM devices LIMIT 1"));

@@ -40,3 +40,9 @@ CSV 或 JSONL 导出均绑定已执行的查询快照，首行包含时间、类
 证据在 `artifacts/separated-logging-20261026/`：`build.log` 保留首次失败；`build-repair1.log`、`build-repair2.log`、`build-final.log`；`tests/logging.trx`（66 项）；`tests-final/logging-final.trx`（7 项）；`architecture.log`；`ui/` 保留首次失败；`ui-repair1/` 包含六张截图、焦点和输出证据、样例导出。
 
 未连接现场 PLC 或业务数据库，未执行全量回归，未修改现有运行数据库，未打断当前 Debug 采集。
+
+## Debug 配置库启动故障处置（2026-10-26）
+
+旧 Debug `gateway.config.db` 仍为物理结构版本 4，导致新版后台在打开库时退出，界面此前只显示 15 秒启动超时。先用 SQLite 在线备份保留原库，再在独立副本中补齐三个采样日志策略列并设置物理结构版本 5；确认完整性、外键和配置行数后，替换当前 Debug 库。原始版本 4 库及备份均保存在 Debug `AppData/backups`。这是对当前开发机的一次性人工恢复，程序仍不会自动迁移旧库。
+
+`GatewayWorkerClient` 现在会在所启动的后台进程提前退出时读取本次新增的启动错误记录；遇到结构版本不匹配，直接向界面显示具体版本号和备份提示，其他异常引导查看后台错误日志。定向验证中，Debug/Release 构建成功；代理、关系配置与默认库初始化共 25 项测试通过（首轮发现并修正旧版本号断言）；架构检查通过；当前 Debug 后台通过实际命名管道健康检查并正常退出。配置的启动后自动采集处于关闭状态，检查没有连接现场 PLC。未运行完整 WinForms 界面烟测或全量回归。

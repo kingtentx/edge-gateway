@@ -132,27 +132,58 @@ public class GatewayWorkerClient : DispatchProxy
     private async Task EnsureWorkerAvailableAsync(CancellationToken cancellationToken)
     {
         if (await CanConnectAsync(cancellationToken).ConfigureAwait(false)) return;
+        var startupLog = Path.Combine(AppContext.BaseDirectory, "logs", "worker-startup-errors.log");
+        var logOffset = File.Exists(startupLog) ? new FileInfo(startupLog).Length : 0;
+        Process? launched = null;
         try
         {
-            using var process = Process.Start(new ProcessStartInfo(_executable, "--worker")
+            launched = Process.Start(new ProcessStartInfo(_executable, "--worker")
             {
                 UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = AppContext.BaseDirectory
             });
-            if (process is null) throw new InvalidOperationException("无法启动后台采集进程。");
+            if (launched is null) throw new InvalidOperationException("无法启动后台采集进程。");
         }
         catch (InvalidOperationException)
         {
             if (await CanConnectAsync(cancellationToken).ConfigureAwait(false)) return;
             throw;
         }
-        var deadline = Stopwatch.StartNew();
-        while (deadline.Elapsed < TimeSpan.FromSeconds(15))
+        using (launched)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (await CanConnectAsync(cancellationToken).ConfigureAwait(false)) return;
-            await Task.Delay(150, cancellationToken).ConfigureAwait(false);
+            var deadline = Stopwatch.StartNew();
+            while (deadline.Elapsed < TimeSpan.FromSeconds(15))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (await CanConnectAsync(cancellationToken).ConfigureAwait(false)) return;
+                if (launched.HasExited)
+                {
+                    // Another window may have won the startup race; check the pipe once more.
+                    if (await CanConnectAsync(cancellationToken).ConfigureAwait(false)) return;
+                    throw new InvalidOperationException(WorkerExitMessage(startupLog, logOffset));
+                }
+                await Task.Delay(150, cancellationToken).ConfigureAwait(false);
+            }
         }
         throw new TimeoutException("后台采集服务启动超时。");
+    }
+
+    internal static string WorkerExitMessage(string path, long offset)
+    {
+        const string fallback = "后台采集服务启动后退出；请查看 logs/worker-startup-errors.log。";
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (stream.Length <= offset || stream.Length - offset > 64 * 1024) return fallback;
+            stream.Seek(offset, SeekOrigin.Begin);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            var line = reader.ReadLine();
+            const string marker = "System.IO.InvalidDataException: 配置数据库结构版本 ";
+            var index = line?.IndexOf(marker, StringComparison.Ordinal) ?? -1;
+            if (index >= 0)
+                return line![(index + "System.IO.InvalidDataException: ".Length)..] + " 请先备份原库，再使用匹配版本的程序或新数据目录。";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        return fallback;
     }
 
     private async Task<bool> CanConnectAsync(CancellationToken cancellationToken)

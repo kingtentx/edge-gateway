@@ -96,6 +96,24 @@ public sealed class GatewayWorkerClientTests
         }
     }
 
+    [Fact]
+    public void EarlyWorkerExitReportsOnlyNewSchemaFailure()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "edge-worker-error-" + Guid.NewGuid().ToString("N") + ".log");
+        try
+        {
+            File.WriteAllText(path, "[old] System.IO.InvalidDataException: 配置数据库结构版本 3 不受支持\n");
+            var offset = new FileInfo(path).Length;
+            File.AppendAllText(path, "[new] System.IO.InvalidDataException: 配置数据库结构版本 4 不受支持；当前需要版本 5。\n");
+            var message = GatewayWorkerClient.WorkerExitMessage(path, offset);
+            Assert.Contains("版本 4", message);
+            Assert.Contains("版本 5", message);
+            Assert.DoesNotContain("版本 3", message);
+            Assert.Contains("请先备份原库", message);
+        }
+        finally { File.Delete(path); }
+    }
+
     private static T CreateProxy<T>(string pipeName) where T : class
     {
         var proxy = DispatchProxy.Create<T, GatewayWorkerClient>();
