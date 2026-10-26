@@ -92,9 +92,13 @@ public sealed partial class MainForm
             if (e.KeyCode == Keys.F2) { e.Handled = true; await EditTagAsync(); }
             else if (e.KeyCode == Keys.Delete) { e.Handled = true; await DeleteTagAsync(); }
         };
-        var addDevice = ConfigurationButton("添加设备", async (_, _) => await AddDeviceAsync(), true);
-        addDevice.Name = "AddDevice";
-        var probeDevice = SelectionButton("连接诊断", async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(false)), () => SelectedDevice() is not null);
+        var addDevice = _devicesPageView.AddDeviceButton;
+        addDevice.Click += async (_, _) => await AddDeviceAsync();
+        _configurationCommands.Add(addDevice);
+        var probeDevice = _devicesPageView.ProbeDeviceButton;
+        probeDevice.Click += async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(false));
+        _configurationCommands.Add(probeDevice);
+        _selectionCommands.Add((probeDevice, () => SelectedDevice() is not null));
         _deviceMore = new CommandMenuButton("更多操作", BuildDeviceMenu, exception => ShowError(exception.Message)) { Name = "DeviceMoreActions" };
         _channelMenu = new CommandMenuButton("通道管理", BuildChannelMenu, exception => ShowError(exception.Message)) { Name = "ChannelActions" };
         _deviceExchange = new CommandMenuButton("设备导入导出", BuildDeviceExchangeMenu, exception => ShowError(exception.Message)) { Name = "DeviceExcelExchange" };
@@ -111,11 +115,19 @@ public sealed partial class MainForm
         _tagSearch.TextChanged += (_, _) => BindTags();
         var tagHeader = _devicesPageView.TagHeaderLayout;
         _tagHeading.Dock = _tagSummary.Dock = DockStyle.Fill;
-        var tagToolbar = UiTheme.Toolbar(
-            SelectionButton("添加点位", async (_, _) => await AddTagAsync(), () => SelectedDevice() is not null, true),
-            SelectionButton("编辑点位", async (_, _) => await EditTagAsync(), () => SelectedTag() is not null),
-            SelectionButton("单点读取", async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(true)), () => SelectedTag() is not null),
-            _tagMore, _tagSearch);
+        var addTag = _devicesPageView.AddTagButton;
+        addTag.Click += async (_, _) => await AddTagAsync();
+        _configurationCommands.Add(addTag);
+        _selectionCommands.Add((addTag, () => SelectedDevice() is not null));
+        var editTag = _devicesPageView.EditTagButton;
+        editTag.Click += async (_, _) => await EditTagAsync();
+        _configurationCommands.Add(editTag);
+        _selectionCommands.Add((editTag, () => SelectedTag() is not null));
+        var singlePointRead = _devicesPageView.SinglePointReadButton;
+        singlePointRead.Click += async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(true));
+        _configurationCommands.Add(singlePointRead);
+        _selectionCommands.Add((singlePointRead, () => SelectedTag() is not null));
+        var tagToolbar = UiTheme.Toolbar(addTag, editTag, singlePointRead, _tagMore, _tagSearch);
         _devicesPageView.TagToolbarHost.Controls.Add(tagToolbar);
 
         return _devicesPageView;
