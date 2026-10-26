@@ -571,7 +571,15 @@ public sealed partial class MainForm : DpiAwareForm
             if (_activePage == "overview") RefreshOverview(_application.GetOverviewSummary());
             if (_activePage == "realtime") RefreshRealtime(_application.GetLatest());
             if (_activePage == "logs") RefreshLogs();
-            if (_activePage == "database") BindDatabaseViews();
+            if (_activePage == "database")
+            {
+                BindDatabaseViews();
+                var spool = await _application.GetAcquisitionSpoolStatisticsAsync();
+                _databaseState.Text += Environment.NewLine
+                    + $"本地持久缓冲：{spool.PendingRows:N0} 行 / {spool.PendingBatches:N0} 批 / {spool.PendingBytes / 1024d / 1024d:N1} MiB；"
+                    + $"已确认批次 {spool.AcknowledgedBatches:N0}，容量拒绝 {spool.CapacityRejectedBatches:N0}。"
+                    + (spool.LastError is null ? "" : Environment.NewLine + "缓冲异常：" + spool.LastError);
+            }
             var statistics = await _application.GetStatisticsAsync();
             if (!IsDisposed)
             {
