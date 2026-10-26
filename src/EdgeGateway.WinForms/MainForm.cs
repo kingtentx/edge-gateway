@@ -660,7 +660,7 @@ public sealed partial class MainForm : DpiAwareForm
             return;
         }
         if (_closing) return;
-        if (_busy) { SetFooter("正在处理当前操作，请稍后关闭窗口。"); return; }
+        if (_busy) { _exitRequested = false; SetFooter("正在处理当前操作，请稍后关闭窗口。"); return; }
         if (_loggingDirty)
         {
             var answer = MessageBox.Show(this, "日志设置尚未应用，是否应用后退出？", "尚未应用的日志设置", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
@@ -670,7 +670,7 @@ public sealed partial class MainForm : DpiAwareForm
         if (_dirty)
         {
             var answer = MessageBox.Show(this, "平台设置尚未应用，是否应用后退出？" + (_application.IsRunning ? "\n选择“是”将停止全部设备，然后应用并退出。" : ""), "尚未应用的设置", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
-            if (answer == DialogResult.Cancel) return;
+            if (answer == DialogResult.Cancel) { _exitRequested = false; return; }
             if (answer == DialogResult.Yes)
             {
                 await RunBusyAsync(async () =>
@@ -694,6 +694,7 @@ public sealed partial class MainForm : DpiAwareForm
         }
         catch (Exception exception)
         {
+            _exitRequested = false;
             _closing = false; Enabled = true; _refreshTimer.Start(); ShowError("停止采集失败：" + exception.Message);
         }
     }
