@@ -36,7 +36,7 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         _connectionString = new SqliteConnectionStringBuilder
         {
-            DataSource = _path, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = true,
+            DataSource = _path, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false,
             DefaultTimeout = 10, Cache = SqliteCacheMode.Shared
         }.ToString();
         using var connection = Open();
@@ -222,7 +222,6 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
     public ValueTask DisposeAsync()
     {
         _disposed = true;
-        SqliteConnection.ClearAllPools();
         _gate.Dispose();
         return ValueTask.CompletedTask;
     }
