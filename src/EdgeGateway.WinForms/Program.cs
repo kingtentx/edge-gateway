@@ -24,7 +24,21 @@ internal static class Program
         var dataDirectory = Path.Combine(runtimeRoot, "AppData");
         var driverDirectory = Path.Combine(runtimeRoot, "drivers");
         if (args.Contains("--worker", StringComparer.OrdinalIgnoreCase))
-            return GatewayWorkerClient.RunWorkerAsync().GetAwaiter().GetResult();
+        {
+            try { return GatewayWorkerClient.RunWorkerAsync().GetAwaiter().GetResult(); }
+            catch (Exception exception)
+            {
+                try
+                {
+                    var workerLogDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+                    Directory.CreateDirectory(workerLogDirectory);
+                    File.AppendAllText(Path.Combine(workerLogDirectory, "worker-startup-errors.log"),
+                        $"[{DateTimeOffset.Now:O}] {exception}{Environment.NewLine}{Environment.NewLine}", Encoding.UTF8);
+                }
+                catch { /* Keep the original startup failure. */ }
+                return 1;
+            }
+        }
 
         var mutexKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(dataDirectory)))[..24];
         using var instanceLock = new Mutex(true, "Local\\EdgeGateway." + mutexKey, out var ownsLock);
