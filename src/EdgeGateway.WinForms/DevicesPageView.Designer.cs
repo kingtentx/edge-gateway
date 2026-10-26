@@ -16,6 +16,7 @@ internal sealed partial class DevicesPageView
     private Label tagHeadingLabel = null!;
     private Label tagSummaryLabel = null!;
     private FlowLayoutPanel tagToolbarHost = null!;
+    private TextBox tagSearch = null!;
     private DpiDataGridView tagGrid = null!;
 
     internal TableLayoutPanel ContentLayout => contentLayout;
@@ -24,6 +25,7 @@ internal sealed partial class DevicesPageView
     internal DataGridView DeviceGrid => deviceGrid;
     internal TableLayoutPanel TagHeaderLayout => tagHeaderLayout;
     internal Control TagToolbarHost => tagToolbarHost;
+    internal TextBox TagSearch => tagSearch;
     internal DataGridView TagGrid => tagGrid;
     internal Label DeviceSummary => deviceSummaryLabel;
     internal Label TagHeading => tagHeadingLabel;
@@ -49,6 +51,7 @@ internal sealed partial class DevicesPageView
         tagHeadingLabel = new Label();
         tagSummaryLabel = new Label();
         tagToolbarHost = new FlowLayoutPanel();
+        tagSearch = new TextBox { Name = "TagSearch", Width = 205, PlaceholderText = "搜索当前设备的点位 / 地址" };
         tagGrid = UiTheme.Grid() as DpiDataGridView ?? new DpiDataGridView();
         deviceSummaryLabel = UiTheme.Label("", 10, UiTheme.Muted);
 
