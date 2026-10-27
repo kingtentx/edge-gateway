@@ -8,7 +8,8 @@ internal sealed partial class InputFrame
         Radius = 6;
         BorderWidth = 1F;
         BorderColor = UiTheme.Border;
-        BackColor = Color.White;
+        BackColor = Color.Transparent;
+        Back = Color.Transparent;
         TabStop = false;
     }
 

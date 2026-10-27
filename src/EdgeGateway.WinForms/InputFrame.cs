@@ -1,6 +1,6 @@
 namespace EdgeGateway.WinForms;
 
-/// <summary>A button-height surface around a native, font-height editor.</summary>
+/// <summary>A button-height layout host; AntdUI editors paint their own field surface.</summary>
 internal sealed partial class InputFrame : AntdUI.Panel
 {
     private Control? _editor;
@@ -68,7 +68,9 @@ internal sealed partial class InputFrame : AntdUI.Panel
     private void UpdateSurface()
     {
         if (_editor is null) return;
+        // Panel.Back is the painted fill; BackColor alone does not remove its default white card.
         BackColor = _editor is AntdUI.Input ? Color.Transparent : _editor.BackColor;
+        Back = _editor is AntdUI.Input ? Color.Transparent : _editor.BackColor;
         BorderColor = _editor.ContainsFocus ? UiTheme.Blue : UiTheme.Border;
         Invalidate();
     }

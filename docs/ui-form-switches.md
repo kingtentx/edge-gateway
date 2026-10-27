@@ -6,11 +6,19 @@
 
 数字输入统一关闭 ThousandsSeparator，包括固定 Designer 字段、公共数值控件和驱动动态参数。数字、端口、周期及容量以 `12345` 形式显示；文本输入保留原始字符串，不插入千分位，也不删除用户文本中本来存在的逗号。界面摘要和统计文本的 N0/N1 改为 F0/F1，保留原小数位数，存储和业务计算不变。
 
-设备、点位、数据库、平台、日志和写入核对的 Boolean 表单字段使用 GatewaySwitch：组合内为真正的 AntdUI.Switch 和独立说明 Label，均由 GatewaySwitch.Designer.cs 创建；各表单固定字段仍由各自 Designer 创建。蓝色圆角轨道、白色滑块表示开启，关闭为灰色。保留 Checked/CheckedChanged、禁用、键盘焦点、鼠标/空格操作及原有保存绑定；说明文字可点击切换。
+设备、点位、数据库、平台、日志和写入核对的 Boolean 表单字段使用 GatewaySwitch：内部为真正的 AntdUI.Switch，由 GatewaySwitch.Designer.cs 创建；各表单固定字段仍由各自 Designer 创建。蓝色圆角轨道、白色滑块表示开启，关闭为灰色。保留 Checked/CheckedChanged、禁用、键盘焦点、鼠标/空格操作及原有保存绑定。按用户后续要求，删除右侧说明 Label，保留左侧字段名；Text 仅保留为无障碍说明。
 
-动态驱动 Boolean 参数及虚拟点位选择行复用相同控件。数据库映射表“使用采样”列使用开关外观，继承 DataGridViewCheckBoxCell 的提交和键盘语义；关闭仍表示写入手动常量，“不写入”仍由原来源选项控制，不改变字段映射规则。
+动态驱动 Boolean 参数及虚拟点位选择行复用相同控件。点位列表名称放在左侧，开关放在右侧，保留名称点击与键盘选择；“全部启用点位”使用 Designer 中独立的左侧标签和右侧开关。数据库映射表“使用采样”列使用开关外观，继承 DataGridViewCheckBoxCell 的提交和键盘语义；关闭仍表示写入手动常量，“不写入”仍由原来源选项控制，不改变字段映射规则。
 
-## 验证记录
+## 输入容器与无文字开关（2026-10-27 后续调整）
+
+对照 [AntdUI Demo Input](https://github.com/AntdUI/AntdUI-Demo/blob/0a66f848f1e218ca975c69c3b9a4312c6316db6f/Views/InputDemo.Designer.cs)、SelectDemo 和 SwitchDemo 的基础控件。原 InputFrame 仅设置透明 BackColor，但 AntdUI.Panel 的 Back 默认仍会绘制白色圆角底块，导致输入框外围出现第二层白底。现在统一设置透明 Back 和 BackColor，AntdUI 编辑器继续负责自身的白色输入面、细边框与焦点反馈；固定和动态单行输入均复用这一修复。表单不重新组装，原 Designer 控件树保持可编辑。
+
+本轮证据位于 `artifacts/form-surfaces-20261027`：`build-1.log` Release 编译通过，0 错误、420 条既有警告（新输出目录触发全部引用工程构建）。`ui-1` 八页面/编辑器定向检查通过，72 张截图；覆盖动态驱动参数、固定表单、点位选择、平台草稿与保存失败输入保留。公共布局检查确认开关没有可见说明 Label，AntdUI 输入外层填充透明且没有重复边框。人工复核设备筛选、设备配置、平台、日志、历史与数据库点位选择截图。
+
+`mapping-1` 同一程序的开关鼠标/Space 单次事件、Boolean 保存、数字/文本无千分位及数据库映射草稿检查通过。两次应用和脚本退出码均为 0、stderr 为空；实际 192 DPI，ProcessWindowVerified=true、InputDesktopSwitch=false。本轮沿用已授权定向范围，未执行全量核心回归、完整 DPI 矩阵、设计器往返或现场联调，没有连接外部数据库。
+
+## 首轮开关迁移验证记录（历史）
 
 沿用已获准的 Release 编译、隔离后台八页面/编辑器定向检查，不运行全量核心回归或完整 DPI 矩阵。证据根目录为 `artifacts/form-switches-20261027`，失败日志和截图保留。
 

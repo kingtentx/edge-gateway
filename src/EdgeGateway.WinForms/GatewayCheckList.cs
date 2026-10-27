@@ -6,6 +6,7 @@ namespace EdgeGateway.WinForms;
 public sealed class GatewayCheckList : ScrollableControl
 {
     private readonly List<GatewaySwitch> _rows = [];
+    private readonly List<Label> _names = [];
     private bool _arranging;
     private int _selectedIndex = -1;
     public GatewayCheckList()
@@ -69,6 +70,15 @@ public sealed class GatewayCheckList : ScrollableControl
             while (_rows.Count < count)
             {
                 var row = new GatewaySwitch { AutoSize = false, TabStop = false };
+                var name = new Label { AutoSize = false, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false };
+                name.Click += (_, _) =>
+                {
+                    if (row.Tag is not int index || !Enabled) return;
+                    _selectedIndex = index;
+                    if (CheckOnClick) SetItemChecked(index, !Items.Checked[index]);
+                    else RenderRows();
+                    row.Focus();
+                };
                 row.KeyDown += (_, e) => { if (e.KeyCode is Keys.Up or Keys.Down) OnKeyDown(e); };
                 row.CheckedChanged += (_, _) =>
                 {
@@ -76,15 +86,24 @@ public sealed class GatewayCheckList : ScrollableControl
                     { _selectedIndex = index; SetItemChecked(index, row.Checked); }
                 };
                 _rows.Add(row); Controls.Add(row);
+                _names.Add(name); Controls.Add(name);
             }
             for (var i = 0; i < _rows.Count; i++)
             {
                 var row = _rows[i]; row.Visible = i < count;
+                var name = _names[i]; name.Visible = i < count;
                 if (i >= count) continue;
                 var index = first + i;
                 row.Tag = index; row.Text = Items[index].ToString() ?? "";
-                row.Checked = Items.Checked[index]; row.Bounds = GetItemRectangle(index);
+                var bounds = GetItemRectangle(index);
+                var switchWidth = UiTheme.Scale(this, 56);
+                row.Checked = Items.Checked[index];
+                row.Bounds = new Rectangle(Math.Max(0, bounds.Right - switchWidth), bounds.Top, switchWidth, bounds.Height);
                 row.BackColor = index == SelectedIndex ? UiTheme.BlueSoft : Color.White;
+                name.Text = row.Text;
+                name.AccessibleName = row.Text;
+                name.Bounds = new Rectangle(bounds.Left, bounds.Top, Math.Max(0, bounds.Width - switchWidth), bounds.Height);
+                name.BackColor = row.BackColor;
             }
         }
         finally { _arranging = false; }

@@ -510,19 +510,15 @@ public sealed partial class MainForm
         if (control is GatewaySwitch toggle)
         {
             AssertVisibleBounds(toggle.SwitchControl, context + " switch track");
-            var caption = toggle.Controls.OfType<Label>().Single();
-            if (!string.IsNullOrEmpty(toggle.Text))
-            {
-                AssertVisibleBounds(caption, context + " switch caption");
-                var needed = caption.GetPreferredSize(new Size(caption.Width, int.MaxValue));
-                if (needed.Height > caption.Height)
-                    throw new InvalidOperationException(context + ": switch caption is clipped: " + toggle.Name);
-            }
+            if (toggle.Controls.OfType<Label>().Any(label => label.Visible))
+                throw new InvalidOperationException(context + ": switch has a redundant caption: " + toggle.Name);
         }
         if (control is not (TextBox { Multiline: false } or ComboBox or NumericUpDown or DateTimePicker)) return;
         if (control.Parent is not InputFrame surface)
             throw new InvalidOperationException(context + ": single-line editor is missing its button-height surface: " + control.Name);
         AssertVisibleBounds(surface, context + " input surface");
+        if (control is AntdUI.Input && (surface.Back != Color.Transparent || surface.BorderWidth != 0))
+            throw new InvalidOperationException(context + ": input surface paints duplicate chrome: " + control.Name);
         var expected = Math.Max(UiTheme.Scale(control, UiTheme.ActionHeight),
             TextRenderer.MeasureText("确定", control.Font, Size.Empty, TextFormatFlags.SingleLine | TextFormatFlags.NoPadding).Height
             + UiTheme.Scale(control, 14));
