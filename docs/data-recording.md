@@ -41,14 +41,14 @@ flowchart TD
 | 两类各自保留文件数 | 各 30 | 包括当前文件；超过数量时先删除较旧文件 |
 | 两类各自保留天数 | 各 30 | 按文件时间清理；数量和天数同时生效，不能把它理解为保证保存 30 天 |
 
-程序日志保存到程序根目录 `logs`，采样日志保存到 `logs/data`，两类文件独立轮转和保留。当天主文件名为 `yyyyMMdd.log`（沿用 UTC 写入日期），不再添加 `gateway-` 前缀；达到大小上限后归档为 `yyyyMMdd.001.log`、`yyyyMMdd.002.log` 等未占用的序号文件，继续写入当天主文件。已有 `gateway-*.log` 仍参与查询和保留策略，不重写历史内容。
+程序日志保存到程序根目录 `logs`，采样日志保存到 `logs/data`，两类文件独立轮转和保留。当天主文件名为 `yyyyMMdd.log`（按采集服务器当地写入日期），不再添加 `gateway-` 前缀；达到大小上限后归档为 `yyyyMMdd.001.log`、`yyyyMMdd.002.log` 等未占用的序号文件，继续写入当天主文件。已有 `gateway-*.log` 仍参与查询和保留策略，不重写历史内容。
 
-采样日志为一条样本一行扁平 JSON，保留 `timestamp`（UTC 采样时间）、`deviceId`、`deviceName`、`tagId`、`tagName`、`address`、`rawValue`、`value`、`quality`。不再写入重复的外层时间、`sample` 包装、`level`、`kind` 和可计算的 `numericValue`；`unit`、`error` 仅在有内容时输出。失败采样保留实际质量、错误以及为 null 的原始值/工程值，不能省略故障语义。字符串/64 位整数/结构值按原类型序列化，日志不会把所有值强制转为 double。程序事件仍保留等级、类别和消息。
+采样日志为一条样本一行扁平 JSON，保留 `timestamp`（采集服务器当地采样时间，带时区偏移）、`deviceId`、`deviceName`、`tagId`、`tagName`、`address`、`rawValue`、`value`、`quality`。不再写入重复的外层时间、`sample` 包装、`level`、`kind` 和可计算的 `numericValue`；`unit`、`error` 仅在有内容时输出。失败采样保留实际质量、错误以及为 null 的原始值/工程值，不能省略故障语义。字符串/64 位整数/结构值按原类型序列化，日志不会把所有值强制转为 double。程序事件仍保留等级、类别和消息。
 
 “采样数据”页独立按采样时间、设备、点位和质量查询，不受运行事件级别影响。CSV 导出分列值与完整消息，JSONL 保留原始 JSON 行；两类查询均绑定已执行快照。详见 [日志分离及验证](separated-logging.md)。示例（测试标识）：
 
 ```json
-{"timestamp":"2026-10-26T00:00:00+00:00","deviceId":"00000000-0000-0000-0000-000000000001","deviceName":"测试设备","tagId":"00000000-0000-0000-0000-000000000002","tagName":"温度","address":"0","rawValue":250,"value":25,"quality":"Good","unit":"℃"}
+{"timestamp":"2026-10-26T08:00:00+08:00","deviceId":"00000000-0000-0000-0000-000000000001","deviceName":"测试设备","tagId":"00000000-0000-0000-0000-000000000002","tagName":"温度","address":"0","rawValue":250,"value":25,"quality":"Good","unit":"℃"}
 ```
 
 2026-10-26 文件命名及采样格式调整：经用户确认，后台 WinForms Release 编译通过（0 错误、419 条现有迁移驱动警告），26 项日志定向测试全部通过（0 失败、0 跳过）。覆盖精简字段、64 位整数精度、失败采样与 UTC 时间、新文件命名和轮转保留、磁盘保护、新旧记录查询及原文导出。测试项目编译另有 1 条原有 xUnit2031 警告（ExternalDatabaseConnectorTests.cs:372）。证据：`artifacts/compact-logs-20261026/build.log`、`tests.log`、`compact-logs.trx`。未运行全量测试、界面或外部数据库验证。
@@ -96,10 +96,10 @@ Oracle 的“数据库”填写 **Service Name**，不是连接字符串或任�
 | `address` | varchar(128) | 点位地址 |
 | `raw_value` | varchar(128) | 原始值的 JSON 文本，保留类型和精度 |
 | `value_text` | varchar(128) | 工程值的 JSON 文本，保留类型和精度 |
-| `timestamp` | UTC 时间，非空 | 源采样时间 |
+| `timestamp` | 采集服务器时间，非空 | 源采样时间 |
 | `quality` | varchar(16)，非空 | Good / Uncertain / Bad |
 
-标准表只保留上述 10 列，不保存 `numeric_value`、`unit`、`error`；错误详情仍记录在日志中，历史趋势从工程值计算数值。读取失败也形成记录，`quality=Bad`，值为空，不把上一次成功值补成新值。数据库 `timestamp` 使用 PostgreSQL timestamptz、MySQL datetime(6)、Oracle timestamp(6)，后两者按 UTC 约定保存。Oracle 字符列使用 VARCHAR2，128 字符列显式使用 `VARCHAR2(128 CHAR)`。
+标准表只保留上述 10 列，不保存 `numeric_value`、`unit`、`error`；错误详情仍记录在日志中，历史趋势从工程值计算数值。读取失败也形成记录，`quality=Bad`，值为空，不把上一次成功值补成新值。数据库 `timestamp` 使用 PostgreSQL timestamptz、MySQL datetime(6)、Oracle timestamp(6)，后两者按采集服务器当地时间保存；PostgreSQL 连接使用采集服务器时区。Oracle 字符列使用 VARCHAR2，128 字符列显式使用 `VARCHAR2(128 CHAR)`。
 
 128 字符限制对序列化后实际写入的文本生效，JSON 引号与转义也占长度。超长名称、地址或值在连接数据库前拒绝整批写入并显示失败，不静默截断；较大的结构数据请使用自定义字段映射及足够长的业务字段。
 
@@ -142,7 +142,7 @@ Oracle 标准字段使用大写列名，例如 `EVENT_ID`；通过界面读取�
 | `_NAME` | 点位名称 | 文本 | 当前采样的点位名称 |
 | `_NUMERICID` | 设备名称或设备标识 | 文本 | 根据业务所需手动选择 |
 | `_VALUE` | 工程值或原始值 | 文本 | 根据业务所需手动选择，保留整数精度 |
-| `_TIMESTAMP` | 采样时间 | 时间 | 当前采样时间，数据库会话按 UTC 保存 |
+| `_TIMESTAMP` | 采样时间 | 时间 | 当前采样时间，数据库会话按采集服务器时区保存 |
 | `_QUALITY` | Constant [手动常量] | 自动 / 整数 | 取消“使用采样”并填写业务状态值，如 `192`；不自动推断状态码 |
 
 常量状态值是业务数据，不代表采样真实质量；默认仅允许 Good 采样写入，关闭此条件后允许 Bad/Uncertain 的实际空值和对应数据。停止、旧会话、过期或源时间超前的采样被跳过。一个点位转换失败只丢弃该行并记录原因，其他点位继续写入。自定义模式不自动创建或修改业务表；读取字段时自动识别并禁用自增/生成列。

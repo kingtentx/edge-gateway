@@ -55,7 +55,7 @@ public sealed class ExternalDatabaseConnectorTests
             var mysql = new MySqlConnectionStringBuilder(ExternalDatabaseConnector.BuildConnectionString(configuration));
             Assert.Equal(secret, mysql.Password);
             Assert.Equal(MySqlSslMode.VerifyFull, mysql.SslMode);
-            Assert.Equal(MySqlDateTimeKind.Utc, mysql.DateTimeKind);
+            Assert.Equal(MySqlDateTimeKind.Unspecified, mysql.DateTimeKind);
             Assert.False(mysql.AllowLoadLocalInfile);
             Assert.False(mysql.AllowPublicKeyRetrieval);
             configuration.Provider = ExternalDatabaseProvider.Oracle;
@@ -134,28 +134,55 @@ public sealed class ExternalDatabaseConnectorTests
     }
 
     [Fact]
-    public void TimestampBindingsKeepTheSameUtcInstantAcrossProviders()
+    public void TimestampBindingsUseServerClockAndPreserveZonedInstants()
     {
+        var zone = TimeZoneInfo.CreateCustomTimeZone("AcquisitionServer", TimeSpan.FromHours(8), "Server", "Server");
         var source = new DateTimeOffset(2026, 10, 24, 14, 32, 10, TimeSpan.FromHours(8)).AddTicks(1234560);
         using var pg = new NpgsqlCommand();
         var zoned = (NpgsqlParameter)ExternalDatabaseConnector.AddValueParameter(pg, ExternalDatabaseProvider.PostgreSql, "a", source, databaseType: "timestamp with time zone");
         Assert.Equal(NpgsqlDbType.TimestampTz, zoned.NpgsqlDbType);
         Assert.Equal(source.UtcDateTime, zoned.Value);
         Assert.Equal(DateTimeKind.Utc, ((DateTime)zoned.Value!).Kind);
-        var unzoned = (NpgsqlParameter)ExternalDatabaseConnector.AddValueParameter(pg, ExternalDatabaseProvider.PostgreSql, "b", source, databaseType: "timestamp without time zone");
+        var unzoned = (NpgsqlParameter)ExternalDatabaseConnector.AddValueParameter(pg, ExternalDatabaseProvider.PostgreSql, "b", source, databaseType: "timestamp without time zone", serverTimeZone: zone);
         Assert.Equal(NpgsqlDbType.Timestamp, unzoned.NpgsqlDbType);
-        Assert.Equal(source.UtcDateTime.Ticks, ((DateTime)unzoned.Value!).Ticks);
+        Assert.Equal(source.DateTime.Ticks, ((DateTime)unzoned.Value!).Ticks);
         Assert.Equal(DateTimeKind.Unspecified, ((DateTime)unzoned.Value!).Kind);
         using var mysql = new MySqlCommand();
-        Assert.Equal(source.UtcDateTime, ExternalDatabaseConnector.AddValueParameter(mysql, ExternalDatabaseProvider.MySql, "a", source).Value);
+        Assert.Equal(source.DateTime, ExternalDatabaseConnector.AddValueParameter(mysql, ExternalDatabaseProvider.MySql, "a", source, serverTimeZone: zone).Value);
         using var oracle = new OracleCommand();
-        var oracleUtc = (OracleParameter)ExternalDatabaseConnector.AddValueParameter(oracle, ExternalDatabaseProvider.Oracle, "a", source, databaseType: "TIMESTAMP(6)");
+        var oracleUtc = (OracleParameter)ExternalDatabaseConnector.AddValueParameter(oracle, ExternalDatabaseProvider.Oracle, "a", source, databaseType: "TIMESTAMP(6)", serverTimeZone: zone);
         Assert.Equal(OracleDbType.TimeStamp, oracleUtc.OracleDbType);
-        Assert.Equal(source.UtcDateTime.Ticks, ((DateTime)oracleUtc.Value).Ticks);
-        var oracleZoned = (OracleParameter)ExternalDatabaseConnector.AddValueParameter(oracle, ExternalDatabaseProvider.Oracle, "b", source, databaseType: "TIMESTAMP(6) WITH TIME ZONE");
+        Assert.Equal(source.DateTime.Ticks, ((DateTime)oracleUtc.Value).Ticks);
+        var oracleZoned = (OracleParameter)ExternalDatabaseConnector.AddValueParameter(oracle, ExternalDatabaseProvider.Oracle, "b", source, databaseType: "TIMESTAMP(6) WITH TIME ZONE", serverTimeZone: zone);
         Assert.Equal(OracleDbType.TimeStampTZ, oracleZoned.OracleDbType);
-        Assert.Equal("+00:00", ((OracleTimeStampTZ)oracleZoned.Value).TimeZone);
+        Assert.Equal("+08:00", ((OracleTimeStampTZ)oracleZoned.Value).TimeZone);
         Assert.True(oracle.BindByName);
+    }
+
+    [Theory]
+    [InlineData(480, "+08:00")]
+    [InlineData(330, "+05:30")]
+    [InlineData(-210, "-03:30")]
+    public void SessionAndHistoryFollowAcquisitionServerInsteadOfSourceOffset(int minutes, string offset)
+    {
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Server", TimeSpan.FromMinutes(minutes), "Server", "Server");
+        var source = new DateTimeOffset(2026, 10, 26, 23, 30, 0, TimeSpan.Zero);
+        var local = TimeZoneInfo.ConvertTime(source, zone);
+        foreach (var provider in new[] { ExternalDatabaseProvider.MySql, ExternalDatabaseProvider.Oracle })
+        {
+            Assert.Contains("'" + offset + "'", ExternalDatabaseConnector.SessionTimeSql(provider, zone, source));
+            var restored = ExternalDatabaseConnector.ReadPointTimestamp(local.DateTime, provider, zone);
+            Assert.True(local.EqualsExact(restored));
+        }
+        Assert.True(local.EqualsExact(ExternalDatabaseConnector.ReadPointTimestamp(source.UtcDateTime, ExternalDatabaseProvider.PostgreSql, zone)));
+        using var mysql = new MySqlCommand();
+        var parameter = ExternalDatabaseConnector.AddValueParameter(mysql, ExternalDatabaseProvider.MySql, "time", source,
+            databaseType: "datetime", serverTimeZone: zone);
+        Assert.Equal(local.DateTime, parameter.Value);
+        Assert.Equal(DateTimeKind.Unspecified, ((DateTime)parameter.Value!).Kind);
+        var unspecified = ExternalDatabaseConnector.AddValueParameter(mysql, ExternalDatabaseProvider.MySql, "local", local.DateTime,
+            databaseType: "datetime", serverTimeZone: zone);
+        Assert.Equal(local.DateTime, unspecified.Value);
     }
 
     [Theory]
@@ -368,7 +395,7 @@ public sealed class ExternalDatabaseConnectorTests
         var result = Assert.Single(await connector.QueryPointHistoryAsync(Configuration(), new() { Table = "samples" }, query));
         Assert.Equal(long.MaxValue, result.RawValue);
         Assert.Equal(42, Assert.IsType<JsonElement>(result.Value).GetProperty("v").GetInt32());
-        Assert.Equal(TimeSpan.Zero, result.Timestamp.Offset);
+        Assert.Equal(instant.ToLocalTime().Offset, result.Timestamp.Offset);
         var command = Assert.Single(database.Commands);
         Assert.Equal(10000, command.Values["row_limit"]);
         Assert.Equal(instant.AddHours(-1).UtcDateTime, command.Values["from_time"]);

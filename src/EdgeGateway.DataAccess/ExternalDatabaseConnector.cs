@@ -16,7 +16,8 @@ namespace EdgeGateway.DataAccess;
 /// <summary>
 /// External acquisition storage. All table creation requires the explicit EnsurePointTable action.
 /// Connection tests and writes never create tables; existing tables are never altered.
-/// UTC instants are stored as PostgreSQL timestamptz, MySQL datetime(6), and Oracle timestamp(6).
+/// Acquisition-server local time is stored in MySQL datetime(6) and Oracle timestamp(6).
+/// PostgreSQL timestamptz retains the instant and uses the acquisition-server timezone for the session.
 /// Standard point rows deduplicate immutable event_id values; custom mappings use ordinary INSERT semantics.
 /// </summary>
 public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnector
@@ -258,7 +259,12 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
             sql += $" ORDER BY {Q(provider, "timestamp")} DESC, {Q(provider, "event_id")} DESC";
             sql += provider == ExternalDatabaseProvider.Oracle ? " FETCH FIRST :row_limit ROWS ONLY" : " LIMIT @row_limit";
             await using var command = Command(database, connection, sql);
-            var timestampType = provider == ExternalDatabaseProvider.PostgreSql ? "timestamp with time zone" : "TIMESTAMP";
+            var timestampType = provider switch
+            {
+                ExternalDatabaseProvider.PostgreSql => "timestamp with time zone",
+                ExternalDatabaseProvider.MySql => "datetime",
+                _ => "TIMESTAMP"
+            };
             AddValueParameter(command, provider, "from_time", query.From, DatabaseFieldType.Timestamp, timestampType);
             AddValueParameter(command, provider, "to_time", query.To, DatabaseFieldType.Timestamp, timestampType);
             if (query.DeviceId.HasValue) AddValueParameter(command, provider, "device", query.DeviceId.Value.ToString("D"));
@@ -271,9 +277,9 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
                 if (!Guid.TryParse(reader.GetString(1), out var deviceId) || !Guid.TryParse(reader.GetString(3), out var tagId)
                     || !Enum.TryParse<SampleQuality>(reader.GetString(9), out var quality) || !Enum.IsDefined(quality))
                     throw new ConnectorConfigurationException("标准点表包含无效的设备标识、点位标识或质量码，请核对数据结构。");
-                var utc = DateTime.SpecifyKind(reader.GetDateTime(8), DateTimeKind.Utc);
+                var timestamp = ReadPointTimestamp(reader.GetDateTime(8), provider);
                 result.Add(new(deviceId, Text(reader, 2), tagId, Text(reader, 4), Text(reader, 5),
-                    JsonValue(reader, 6), JsonValue(reader, 7), quality, new DateTimeOffset(utc), ""));
+                    JsonValue(reader, 6), JsonValue(reader, 7), quality, timestamp, ""));
             }
             return result;
         }, cancellationToken);
@@ -296,13 +302,13 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
             if (configuration.Provider == ExternalDatabaseProvider.MySql)
             {
                 // Reject truncation/coercion even when the server's default SQL mode is lax.
-                await using var utc = Command(database, configuration, "SET SESSION time_zone = '+00:00', sql_mode = CONCAT_WS(',', @@SESSION.sql_mode, 'STRICT_ALL_TABLES')");
-                await utc.ExecuteNonQueryAsync(commandDeadline.Token).ConfigureAwait(false);
+                await using var session = Command(database, configuration, SessionTimeSql(configuration.Provider));
+                await session.ExecuteNonQueryAsync(commandDeadline.Token).ConfigureAwait(false);
             }
             else if (configuration.Provider == ExternalDatabaseProvider.Oracle)
             {
-                await using var utc = Command(database, configuration, "ALTER SESSION SET TIME_ZONE = '+00:00'");
-                await utc.ExecuteNonQueryAsync(commandDeadline.Token).ConfigureAwait(false);
+                await using var session = Command(database, configuration, SessionTimeSql(configuration.Provider));
+                await session.ExecuteNonQueryAsync(commandDeadline.Token).ConfigureAwait(false);
             }
             return await action(database, commandDeadline.Token).ConfigureAwait(false);
         }
@@ -429,7 +435,7 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
         if (configuration.Provider == ExternalDatabaseProvider.PostgreSql && !string.Equals(timestamp, "timestamp with time zone", StringComparison.OrdinalIgnoreCase)
             || configuration.Provider == ExternalDatabaseProvider.MySql && !string.Equals(timestamp, "datetime", StringComparison.OrdinalIgnoreCase)
             || configuration.Provider == ExternalDatabaseProvider.Oracle && (!timestamp.StartsWith("TIMESTAMP", StringComparison.OrdinalIgnoreCase) || timestamp.Contains("TIME ZONE", StringComparison.OrdinalIgnoreCase)))
-            throw new ConnectorConfigurationException("标准点表 timestamp 类型不匹配；须使用 PostgreSQL timestamptz、MySQL datetime 或 Oracle UTC timestamp。");
+            throw new ConnectorConfigurationException("标准点表 timestamp 类型不匹配；须使用 PostgreSQL timestamptz、MySQL datetime 或 Oracle timestamp，时间以采集服务器时区为准。");
     }
 
     private static async Task RequireTransactionalMySqlTableAsync(DbConnection database, DatabaseConnectionConfiguration configuration, DatabaseTableInfo table, CancellationToken token)

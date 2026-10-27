@@ -5,6 +5,29 @@ namespace EdgeGateway.Tests.RuntimeStorage;
 
 public sealed class DatabaseMappingRulesTests
 {
+    [Fact]
+    public void TimestampAndTextMappingsUseServerClockAndKeepOriginalSampleInstant()
+    {
+        var instant = new DateTimeOffset(2026, 10, 26, 23, 45, 30, TimeSpan.Zero);
+        var expected = instant.ToLocalTime();
+        var sample = new TelemetrySample(Guid.NewGuid(), "设备", Guid.NewGuid(), "点", "0", 1, 1, SampleQuality.Good, instant, "");
+        var mapping = new DatabaseColumnMapping { Column = "at", Source = DatabaseValueSource.SampleTime,
+            TagId = sample.TagId, FieldType = DatabaseFieldType.Timestamp };
+        var group = new DatabaseWriteGroupConfiguration { Mode = DatabaseStorageMode.ColumnMapping, Columns = [mapping] };
+        DatabaseWritePreview Preview() => DatabaseWriteInspector.Inspect(new(), group,
+            [new("at", "datetime", false, false, false)], new Dictionary<Guid, TelemetrySample> { [sample.TagId] = sample },
+            new HashSet<Guid> { sample.TagId }, new HashSet<Guid> { sample.DeviceId }, instant.AddSeconds(1));
+        var preview = Preview();
+        Assert.True(preview.RowReady);
+        Assert.Equal(expected.ToString(System.Globalization.CultureInfo.InvariantCulture), Assert.Single(preview.Columns).Value);
+        mapping.FieldType = DatabaseFieldType.Text;
+        Assert.Equal(expected.ToString("O"), Assert.Single(Preview().Columns).Value);
+        mapping.Source = DatabaseValueSource.Constant; mapping.TagId = null; mapping.FieldType = DatabaseFieldType.Timestamp;
+        mapping.ConstantValue = "2026-10-27T10:20:30";
+        var constant = new DateTimeOffset(new DateTime(2026, 10, 27, 10, 20, 30));
+        Assert.Equal(constant.ToString(System.Globalization.CultureInfo.InvariantCulture), Assert.Single(Preview().Columns).Value);
+    }
+
     [Theory]
     [InlineData("int", DatabaseFieldType.Int64)]
     [InlineData("INTEGER", DatabaseFieldType.Int64)]

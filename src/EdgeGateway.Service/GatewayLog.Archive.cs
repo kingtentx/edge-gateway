@@ -201,13 +201,13 @@ public sealed partial class GatewayLog
                             partial = result.IsPartial, scannedBytes = result.ScannedBytes, warnings = result.Warnings });
                         await writer.WriteLineAsync((csv ? ArchiveCsvLine("查询说明", header) : header).AsMemory(), cancellationToken).ConfigureAwait(false);
                         if (csv)
-                            await writer.WriteLineAsync(ArchiveCsvLine("时间（UTC）", "类别", "级别", "设备标识", "设备名称", "点位标识", "点位名称", "地址",
+                            await writer.WriteLineAsync(ArchiveCsvLine("时间（采集服务器）", "类别", "级别", "设备标识", "设备名称", "点位标识", "点位名称", "地址",
                                 "原始值", "工程值", "质量", "单位", "错误说明", "运行日志内容", "来源文件").AsMemory(), cancellationToken).ConfigureAwait(false);
                         foreach (var entry in result.Entries)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             var sample = entry.Sample;
-                            var line = csv ? ArchiveCsvLine(entry.Timestamp.ToUniversalTime().ToString("O"), entry.Kind, entry.Level.ToString(),
+                            var line = csv ? ArchiveCsvLine(TimeZoneInfo.ConvertTime(entry.Timestamp, _clock.LocalTimeZone).ToString("O"), entry.Kind, entry.Level.ToString(),
                                 sample?.DeviceId.ToString() ?? "", sample?.DeviceName ?? "", sample?.TagId.ToString() ?? "", sample?.TagName ?? "",
                                 sample?.Address ?? "", sample?.RawValue ?? "", sample?.Value ?? "", sample?.Quality.ToString() ?? "", sample?.Unit ?? "",
                                 sample?.Error ?? "", entry.Kind == "event" ? FullEventMessage(entry) : "", entry.FileName) : entry.Json;

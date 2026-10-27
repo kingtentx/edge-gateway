@@ -96,7 +96,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         var bytes = 512 + message.Length * 6L;
         if (bytes > SamplePayloadBudget.MaximumSampleBytes)
         { Reject("单条日志超过 1 M 预估载荷上限，已拒绝该条记录。"); return; }
-        var entry = new GatewayLogEntry(DateTimeOffset.UtcNow, level, message.Replace('\r', ' ').Replace('\n', ' '));
+        var entry = new GatewayLogEntry(_clock.GetLocalNow(), level, message.Replace('\r', ' ').Replace('\n', ' '));
         lock (_sync) Append(entry);
         Queue(new LogWork(entry, null, configuration, null, bytes));
     }
@@ -109,7 +109,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         if (_writes is null) return;
         if (!SamplePayloadBudget.TryEstimate(sample, out var bytes))
         { Reject("单条采样超出 1 M 或结构复杂度限制，未写入采集日志。"); return; }
-        var entry = new GatewayLogEntry(DateTimeOffset.UtcNow, GatewayLogLevel.Information, "");
+        var entry = new GatewayLogEntry(_clock.GetLocalNow(), GatewayLogLevel.Information, "");
         // Samples go to structured files; preserve the small UI ring for operational events.
         Queue(new LogWork(entry, sample, configuration, null, bytes));
     }
@@ -157,14 +157,14 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         var destinations = new[] { new LogFileState(_directory!), new LogFileState(Path.Combine(_directory!, "data")) };
         void MaintainCurrentPolicy(LogFileState state, GatewayLoggingConfiguration policy, string path, bool force = false)
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = DateOnly.FromDateTime(_clock.GetLocalNow().DateTime);
             if (!force && ReferenceEquals(state.AppliedPolicy, policy) && today == state.LastMaintenance) return;
             Directory.CreateDirectory(state.Directory);
             MaintainFiles(path, policy, state == destinations[1]);
             state.AppliedPolicy = policy; state.LastMaintenance = today;
             _diskPolicy = null;
         }
-        string CurrentPath(LogFileState state) => state.ActivePath ?? DailyLogPath(state.Directory, DateTimeOffset.UtcNow);
+        string CurrentPath(LogFileState state) => state.ActivePath ?? DailyLogPath(state.Directory, _clock.GetLocalNow());
         try
         {
             while (await _writes!.Reader.WaitToReadAsync().ConfigureAwait(false))
@@ -297,11 +297,11 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         return stream;
     }
 
-    private static byte[] SerializeLine(GatewayLogEntry entry, TelemetrySample? sample)
+    private byte[] SerializeLine(GatewayLogEntry entry, TelemetrySample? sample)
     {
         var content = sample is null
             ? JsonSerializer.SerializeToUtf8Bytes(new { timestamp = entry.Timestamp, level = entry.Level, kind = "event", message = entry.Message }, LineOptions)
-            : JsonSerializer.SerializeToUtf8Bytes(new SampleLogLine(sample.Timestamp.ToUniversalTime(), sample.DeviceId, sample.DeviceName,
+            : JsonSerializer.SerializeToUtf8Bytes(new SampleLogLine(TimeZoneInfo.ConvertTime(sample.Timestamp, _clock.LocalTimeZone), sample.DeviceId, sample.DeviceName,
                 sample.TagId, sample.TagName, sample.Address, sample.RawValue, sample.Value, sample.Quality,
                 string.IsNullOrWhiteSpace(sample.Unit) ? null : sample.Unit,
                 string.IsNullOrWhiteSpace(sample.Error) ? null : sample.Error), LineOptions);
@@ -317,8 +317,8 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Unit,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Error);
 
-    private static string DailyLogPath(string directory, DateTimeOffset timestamp) =>
-        Path.Combine(directory, timestamp.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".log");
+    private string DailyLogPath(string directory, DateTimeOffset timestamp) =>
+        Path.Combine(directory, TimeZoneInfo.ConvertTime(timestamp, _clock.LocalTimeZone).ToString("yyyyMMdd", CultureInfo.InvariantCulture) + ".log");
 
     private static string NextRotatedLogPath(string path)
     {
@@ -352,7 +352,7 @@ public sealed partial class GatewayLog : IConfigurableGatewayLog, IGatewayLogSta
     {
         lock (_sync)
         {
-            if (_fileError != error) Append(new GatewayLogEntry(DateTimeOffset.UtcNow, GatewayLogLevel.Error, error));
+            if (_fileError != error) Append(new GatewayLogEntry(_clock.GetLocalNow(), GatewayLogLevel.Error, error));
             _fileError = error;
         }
     }

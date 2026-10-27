@@ -69,7 +69,7 @@ public sealed partial class ExternalDatabaseConnector
                 Database = configuration.Database, UserID = configuration.Username, Password = password,
                 ConnectionTimeout = (uint)configuration.ConnectionTimeoutSeconds, DefaultCommandTimeout = (uint)configuration.CommandTimeoutSeconds,
                 SslMode = configuration.UseTls ? MySqlSslMode.VerifyFull : MySqlSslMode.Disabled,
-                DateTimeKind = MySqlDateTimeKind.Utc, Pooling = true, MinimumPoolSize = 0, MaximumPoolSize = 20,
+                DateTimeKind = MySqlDateTimeKind.Unspecified, Pooling = true, MinimumPoolSize = 0, MaximumPoolSize = 20,
                 PersistSecurityInfo = false, AllowLoadLocalInfile = false, AllowPublicKeyRetrieval = false
             }.ConnectionString,
             ExternalDatabaseProvider.PostgreSql => new NpgsqlConnectionStringBuilder
@@ -78,7 +78,7 @@ public sealed partial class ExternalDatabaseConnector
                 Username = configuration.Username, Password = password, Timeout = configuration.ConnectionTimeoutSeconds,
                 CommandTimeout = configuration.CommandTimeoutSeconds, SslMode = configuration.UseTls ? SslMode.VerifyFull : SslMode.Disable,
                 Pooling = true, MinPoolSize = 0, MaxPoolSize = 20, IncludeErrorDetail = false, PersistSecurityInfo = false,
-                Timezone = "UTC", ApplicationName = "EdgeGateway"
+                Timezone = PostgreSqlServerTimeZone(), ApplicationName = "EdgeGateway"
             }.ConnectionString,
             ExternalDatabaseProvider.Oracle => new OracleConnectionStringBuilder
             {
@@ -148,7 +148,8 @@ public sealed partial class ExternalDatabaseConnector
     }
 
     internal static DbParameter AddValueParameter(DbCommand command, ExternalDatabaseProvider provider, string name,
-        object? input, DatabaseFieldType requestedType = DatabaseFieldType.Auto, string? databaseType = null)
+        object? input, DatabaseFieldType requestedType = DatabaseFieldType.Auto, string? databaseType = null,
+        TimeZoneInfo? serverTimeZone = null)
     {
         var value = NormalizeValue(input);
         var parameter = command.CreateParameter();
@@ -157,11 +158,13 @@ public sealed partial class ExternalDatabaseConnector
         switch (value)
         {
             case DateTimeOffset instant:
-                BindTimestamp(parameter, provider, instant.UtcDateTime, databaseType);
+                BindTimestamp(parameter, provider, instant, databaseType, serverTimeZone);
                 break;
             case DateTime date:
-                var utc = date.Kind == DateTimeKind.Local ? date.ToUniversalTime() : DateTime.SpecifyKind(date, DateTimeKind.Utc);
-                BindTimestamp(parameter, provider, utc, databaseType);
+                var zone = serverTimeZone ?? TimeZoneInfo.Local;
+                var datedInstant = date.Kind == DateTimeKind.Unspecified
+                    ? new DateTimeOffset(date, zone.GetUtcOffset(date)) : new DateTimeOffset(date);
+                BindTimestamp(parameter, provider, datedInstant, databaseType, zone);
                 break;
             case bool boolean when parameter is OracleParameter oracle:
                 oracle.OracleDbType = string.Equals(databaseType, "BOOLEAN", StringComparison.OrdinalIgnoreCase) ? OracleDbType.Boolean : OracleDbType.Int16;
@@ -221,27 +224,39 @@ public sealed partial class ExternalDatabaseConnector
         _ => value
     };
 
-    private static void BindTimestamp(DbParameter parameter, ExternalDatabaseProvider provider, DateTime utc, string? databaseType)
+    private static void BindTimestamp(DbParameter parameter, ExternalDatabaseProvider provider, DateTimeOffset instant,
+        string? databaseType, TimeZoneInfo? serverTimeZone = null)
     {
+        var zone = serverTimeZone ?? TimeZoneInfo.Local;
+        var local = TimeZoneInfo.ConvertTime(instant, zone);
         if (parameter is NpgsqlParameter postgres)
         {
             var withoutZone = string.Equals(databaseType, "timestamp without time zone", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(databaseType, "timestamp", StringComparison.OrdinalIgnoreCase);
             postgres.NpgsqlDbType = withoutZone ? NpgsqlDbType.Timestamp : NpgsqlDbType.TimestampTz;
-            postgres.Value = withoutZone ? DateTime.SpecifyKind(utc, DateTimeKind.Unspecified) : utc;
+            // Npgsql requires UTC transport for timestamptz; the connection timezone controls display.
+            postgres.Value = withoutZone ? local.DateTime : instant.UtcDateTime;
         }
         else if (parameter is OracleParameter oracle)
         {
             if (databaseType?.Contains("WITH TIME ZONE", StringComparison.OrdinalIgnoreCase) == true)
-            { oracle.OracleDbType = OracleDbType.TimeStampTZ; oracle.Value = new OracleTimeStampTZ(utc, "+00:00"); }
-            else { oracle.OracleDbType = string.Equals(databaseType, "DATE", StringComparison.OrdinalIgnoreCase) ? OracleDbType.Date : OracleDbType.TimeStamp; oracle.Value = DateTime.SpecifyKind(utc, DateTimeKind.Unspecified); }
+            { oracle.OracleDbType = OracleDbType.TimeStampTZ; oracle.Value = new OracleTimeStampTZ(local.DateTime, FormatTimeZoneOffset(local.Offset)); }
+            else { oracle.OracleDbType = string.Equals(databaseType, "DATE", StringComparison.OrdinalIgnoreCase) ? OracleDbType.Date : OracleDbType.TimeStamp; oracle.Value = local.DateTime; }
         }
-        else { parameter.DbType = DbType.DateTime; parameter.Value = utc; }
+        else
+        {
+            // MySQL TIMESTAMP interprets its input using the session's current offset.
+            // DATETIME stores the original acquisition's server wall clock, including historical DST.
+            var clock = provider == ExternalDatabaseProvider.MySql && string.Equals(databaseType, "timestamp", StringComparison.OrdinalIgnoreCase)
+                ? instant.ToOffset(zone.GetUtcOffset(DateTimeOffset.UtcNow)).DateTime : local.DateTime;
+            parameter.DbType = DbType.DateTime;
+            parameter.Value = clock;
+        }
     }
 
     private static void SetNullType(DbParameter parameter, ExternalDatabaseProvider provider, DatabaseFieldType type, string? databaseType)
     {
-        if (type == DatabaseFieldType.Timestamp) { BindTimestamp(parameter, provider, DateTime.UnixEpoch, databaseType); parameter.Value = DBNull.Value; return; }
+        if (type == DatabaseFieldType.Timestamp) { BindTimestamp(parameter, provider, DateTimeOffset.UnixEpoch, databaseType); parameter.Value = DBNull.Value; return; }
         parameter.DbType = type switch
         {
             DatabaseFieldType.Int64 => DbType.Int64, DatabaseFieldType.Decimal => DbType.Decimal,
