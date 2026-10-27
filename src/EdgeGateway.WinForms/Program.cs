@@ -52,6 +52,9 @@ internal static class Program
         GatewayHost? host = null;
         try
         {
+#if !DEBUG
+            // Release keeps acquisition independent of the client. Debug owns the host
+            // in this process so stopping the debugger cannot leave DLLs locked by a worker.
             if (!smokeTest)
             {
                 var remoteApplication = GatewayWorkerClient.ConnectOrStart();
@@ -59,9 +62,10 @@ internal static class Program
                 System.Windows.Forms.Application.Run(remoteWindow);
                 return remoteWindow.SmokeTestFailed ? 1 : 0;
             }
+#endif
 
             host = GatewayHost.CreateAsync(dataDirectory, pluginDirectory: driverDirectory,
-                enableVerificationFaults: true, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
+                enableVerificationFaults: smokeTest, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
             using var window = new MainForm(host.Application, smokeTest, screenshotPath, layoutMatrix,
                 host.BeginConfigurationWriteFailureForVerification, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke, loggingSmoke: loggingSmoke);
             System.Windows.Forms.Application.Run(window);

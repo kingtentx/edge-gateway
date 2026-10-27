@@ -4,6 +4,8 @@
 
 生产版本保留 WinForms 客户端与独立后台 Worker。WinForms 通过当前用户专用的本地 Named Pipe 发送命令和查询状态；Worker 独占 GatewayHost、设备驱动实例、采集调度和数据库连接。
 
+2026-10-27 起，Debug 构建在界面进程内托管 `GatewayHost`，避免 VS 停止调试后残留 Worker 锁定构建输出；下面的独立后台进程语义适用于 Release。Debug 关闭窗口仍隐藏到托盘，只有退出网关或进程终止才停止采集。详见 [Debug 文件占用处理](debug-worker-file-lock.md)。
+
 - 点击窗口关闭按钮只隐藏到系统托盘，Worker 继续采集；双击托盘图标或选择“打开 Edge Gateway”恢复窗口。
 - 托盘右键“退出网关”会提示当前采集状态，确认后通过 IPC 请求 Worker 正常停止采集、释放资源并退出，然后关闭 WinForms。
 - 关闭或崩溃 WinForms 不会直接停止 Worker；重新打开客户端时会尝试连接已有 Worker。
