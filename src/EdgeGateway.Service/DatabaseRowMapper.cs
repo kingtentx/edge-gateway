@@ -12,13 +12,13 @@ internal static class DatabaseRowMapper
     public static DatabaseWriteRow PointRow(TelemetrySample sample)
     {
         var eventId = Guid.NewGuid().ToString("N");
-        return new(eventId, DateTimeOffset.UtcNow, new Dictionary<string, object?>(StringComparer.Ordinal)
+        return new(eventId, DateTimeOffset.Now, new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["event_id"] = eventId,
             ["device_id"] = sample.DeviceId.ToString("D"), ["device_name"] = sample.DeviceName,
             ["tag_id"] = sample.TagId.ToString("D"), ["tag_name"] = sample.TagName, ["address"] = sample.Address,
             ["raw_value"] = JsonValue(sample.RawValue), ["value_text"] = JsonValue(sample.Value),
-            ["timestamp"] = sample.Timestamp.ToUniversalTime(), ["quality"] = sample.Quality.ToString()
+            ["timestamp"] = sample.Timestamp.ToLocalTime(), ["quality"] = sample.Quality.ToString()
         });
     }
 
@@ -52,7 +52,7 @@ internal static class DatabaseRowMapper
             DatabaseValueSource.EngineeringValue => sample!.Value,
             DatabaseValueSource.RawValue => sample!.RawValue,
             DatabaseValueSource.NumericValue => sample!.NumericValue,
-            DatabaseValueSource.SampleTime => sample!.Timestamp.ToUniversalTime(),
+            DatabaseValueSource.SampleTime => sample!.Timestamp.ToLocalTime(),
             DatabaseValueSource.Quality => sample!.Quality.ToString(),
             DatabaseValueSource.DeviceId => sample!.DeviceId.ToString("D"),
             DatabaseValueSource.DeviceName => sample!.DeviceName,
@@ -61,7 +61,7 @@ internal static class DatabaseRowMapper
             DatabaseValueSource.Address => sample!.Address,
             DatabaseValueSource.Unit => sample!.Unit,
             DatabaseValueSource.Error => sample!.Error,
-            DatabaseValueSource.RecordTime => now,
+            DatabaseValueSource.RecordTime => now.ToLocalTime(),
             DatabaseValueSource.EventId => eventId,
             DatabaseValueSource.Constant => mapping.ConstantValue,
             _ => throw new InvalidDataException("不支持的字段值来源。")
@@ -80,8 +80,8 @@ internal static class DatabaseRowMapper
             DatabaseFieldType.Auto => value,
             DatabaseFieldType.Text => value switch
             {
-                DateTimeOffset timestamp => timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
-                DateTime timestamp => timestamp.ToString("O", CultureInfo.InvariantCulture),
+                DateTimeOffset timestamp => timestamp.ToLocalTime().ToString("O", CultureInfo.InvariantCulture),
+                DateTime timestamp => TimestampValue(timestamp).ToString("O", CultureInfo.InvariantCulture),
                 _ => Convert.ToString(value, CultureInfo.InvariantCulture)
             },
             DatabaseFieldType.Int64 => ExactInt64(value),
@@ -178,9 +178,9 @@ internal static class DatabaseRowMapper
     }
     private static DateTimeOffset TimestampValue(object value) => value switch
     {
-        DateTimeOffset timestamp => timestamp.ToUniversalTime(),
-        DateTime timestamp => new DateTimeOffset(timestamp.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(timestamp, DateTimeKind.Utc) : timestamp).ToUniversalTime(),
-        string text => DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
+        DateTimeOffset timestamp => timestamp.ToLocalTime(),
+        DateTime timestamp => new DateTimeOffset(timestamp).ToLocalTime(),
+        string text => DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal).ToLocalTime(),
         _ => throw new InvalidCastException("时间列须为时间值或 ISO 8601 时间字符串。")
     };
 }

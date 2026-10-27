@@ -66,7 +66,7 @@ public sealed class GatewayLogTests : IDisposable
         using var good = JsonDocument.Parse(lines[0]);
         Assert.False(good.RootElement.TryGetProperty("unit", out _));
         Assert.False(good.RootElement.TryGetProperty("error", out _));
-        Assert.Equal(TimeSpan.Zero, good.RootElement.GetProperty("timestamp").GetDateTimeOffset().Offset);
+        Assert.True(sample.Timestamp.ToLocalTime().EqualsExact(good.RootElement.GetProperty("timestamp").GetDateTimeOffset()));
         using var bad = JsonDocument.Parse(lines[1]);
         Assert.Equal("Bad", bad.RootElement.GetProperty("quality").GetString());
         Assert.Equal("读取超时", bad.RootElement.GetProperty("error").GetString());

@@ -58,7 +58,7 @@ try
     Check(await Count(pointTable) == rows.Length, "stable event_id replay is idempotent");
     var history = await connector.QueryPointHistoryAsync(configuration, pointGroup, new(device, tag, timestamp.AddSeconds(-1), timestamp.AddSeconds(10), 10000));
     Check(history.Count == rows.Length, "filtered standard history");
-    Check(history[^1].Timestamp == timestamp.ToUniversalTime(), "UTC and microsecond timestamp round trip");
+    Check(history[^1].Timestamp.EqualsExact(timestamp.ToLocalTime()), "server local time and microsecond timestamp round trip");
     Check(history[^1].RawValue is long integer && integer == long.MaxValue, "64-bit raw value round trip");
     Check(history[^1].Value is JsonElement element && element.GetProperty("文本").GetString() == "温度; SELECT 'quoted';--", "structured JSON and Unicode round trip");
     Check((await connector.QueryPointHistoryAsync(configuration, pointGroup, new(device, Guid.NewGuid(), timestamp.AddSeconds(-1), timestamp.AddSeconds(10), 100))).Count == 0, "tag filter");
@@ -67,11 +67,11 @@ try
     var identity = provider switch { ExternalDatabaseProvider.PostgreSql => "bigint GENERATED ALWAYS AS IDENTITY UNIQUE", ExternalDatabaseProvider.Oracle => "NUMBER GENERATED ALWAYS AS IDENTITY UNIQUE", _ => "bigint AUTO_INCREMENT UNIQUE" };
     var timeType = provider switch { ExternalDatabaseProvider.PostgreSql => "timestamp(6) without time zone", ExternalDatabaseProvider.Oracle => "TIMESTAMP(6)", _ => "datetime(6)" };
     var boolType = provider switch { ExternalDatabaseProvider.PostgreSql => "boolean", ExternalDatabaseProvider.Oracle => "NUMBER(1)", _ => "tinyint(1)" };
-    await Execute($"CREATE TABLE {Table(customTable)} ({Q("row_id")} {identity}, {Q("event_key")} varchar(64) NOT NULL PRIMARY KEY, {Q("温度")} decimal(28,8) NOT NULL, {Q("at_utc")} {timeType} NOT NULL, {Q("flag")} {boolType} NOT NULL, {Q("note")} varchar(120) NOT NULL, {Q("big_value")} decimal(20,0) NULL)" + (provider == ExternalDatabaseProvider.MySql ? " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4" : ""));
+    await Execute($"CREATE TABLE {Table(customTable)} ({Q("row_id")} {identity}, {Q("event_key")} varchar(64) NOT NULL PRIMARY KEY, {Q("温度")} decimal(28,8) NOT NULL, {Q("at_local")} {timeType} NOT NULL, {Q("flag")} {boolType} NOT NULL, {Q("note")} varchar(120) NOT NULL, {Q("big_value")} decimal(20,0) NULL)" + (provider == ExternalDatabaseProvider.MySql ? " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4" : ""));
     created.Add(customTable);
     var metadata = await connector.GetColumnsAsync(configuration, customTable);
     Check(metadata.Single(column => column.Name == "row_id").IsGenerated, "generated column metadata");
-    var mappings = new[] { ("event_key", DatabaseFieldType.Text), ("温度", DatabaseFieldType.Decimal), ("at_utc", DatabaseFieldType.Timestamp), ("flag", DatabaseFieldType.Boolean), ("note", DatabaseFieldType.Text), ("big_value", DatabaseFieldType.Decimal) };
+    var mappings = new[] { ("event_key", DatabaseFieldType.Text), ("温度", DatabaseFieldType.Decimal), ("at_local", DatabaseFieldType.Timestamp), ("flag", DatabaseFieldType.Boolean), ("note", DatabaseFieldType.Text), ("big_value", DatabaseFieldType.Decimal) };
     var customGroup = new DatabaseWriteGroupConfiguration { Schema = schema, Table = customTable.Name, Mode = DatabaseStorageMode.ColumnMapping,
         Columns = mappings.Select(mapping => new DatabaseColumnMapping { Column = mapping.Item1, FieldType = mapping.Item2 }).ToList() };
     var customRows = Enumerable.Range(0, 1001).Select(index => CustomRow(index, timestamp)).ToArray();
@@ -82,11 +82,11 @@ try
     Check(await Count(customTable) == customRows.Length, "custom mapped multi-row transaction");
     await using (var command = raw.CreateCommand())
     {
-        command.CommandText = $"SELECT {Q("温度")}, {Q("at_utc")}, {Q("flag")}, {Q("note")}, {Q("big_value")} FROM {Table(customTable)} WHERE {Q("event_key")} = 'custom-0'";
+        command.CommandText = $"SELECT {Q("温度")}, {Q("at_local")}, {Q("flag")}, {Q("note")}, {Q("big_value")} FROM {Table(customTable)} WHERE {Q("event_key")} = 'custom-0'";
         await using var reader = await command.ExecuteReaderAsync();
         Check(await reader.ReadAsync(), "custom row read");
         Check(reader.GetDecimal(0) == 12345678901234567890.12345678m, "decimal precision");
-        Check(reader.GetDateTime(1).Ticks == timestamp.UtcTicks, "custom timestamp UTC clock");
+        Check(reader.GetDateTime(1).Ticks == timestamp.ToLocalTime().Ticks, "custom timestamp acquisition-server clock");
         Check(provider == ExternalDatabaseProvider.Oracle ? reader.GetDecimal(2) == 1 : reader.GetBoolean(2), "boolean binding");
         Check(reader.GetString(3) == "温度'; DROP TABLE test;--", "SQL text remains a parameter value");
         Check(reader.GetDecimal(4) == (decimal)ulong.MaxValue, "unsigned 64-bit precision");
@@ -102,8 +102,8 @@ try
         // An UPDATE of an already committed row does not reliably block Oracle's
         // duplicate INSERT check. Hold a NEW unique key uncommitted instead, so
         // the second session must wait for this transaction on every provider.
-        held.CommandText = $"INSERT INTO {Table(customTable)} ({Q("event_key")}, {Q("温度")}, {Q("at_utc")}, {Q("flag")}, {Q("note")})"
-            + $" SELECT 'custom-5000', {Q("温度")}, {Q("at_utc")}, {Q("flag")}, {Q("note")} FROM {Table(customTable)} WHERE {Q("event_key")} = 'custom-0'";
+        held.CommandText = $"INSERT INTO {Table(customTable)} ({Q("event_key")}, {Q("温度")}, {Q("at_local")}, {Q("flag")}, {Q("note")})"
+            + $" SELECT 'custom-5000', {Q("温度")}, {Q("at_local")}, {Q("flag")}, {Q("note")} FROM {Table(customTable)} WHERE {Q("event_key")} = 'custom-0'";
         await held.ExecuteNonQueryAsync();
         using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
         try { await connector.WriteRowsAsync(configuration, customGroup, [CustomRow(2000, timestamp), CustomRow(5000, timestamp)], cancel.Token); throw new InvalidOperationException("Blocked write ignored cancellation"); }
@@ -194,6 +194,6 @@ static DatabaseWriteRow PointRow(int index, DateTimeOffset time, Guid device, Gu
 }
 static DatabaseWriteRow CustomRow(int index, DateTimeOffset time) => new(Guid.NewGuid().ToString("N"), time, new Dictionary<string, object?>
 {
-    ["event_key"] = "custom-" + index, ["温度"] = 12345678901234567890.12345678m, ["at_utc"] = time, ["flag"] = index % 2 == 0,
+    ["event_key"] = "custom-" + index, ["温度"] = 12345678901234567890.12345678m, ["at_local"] = time, ["flag"] = index % 2 == 0,
     ["note"] = "温度'; DROP TABLE test;--", ["big_value"] = (decimal)ulong.MaxValue
 });

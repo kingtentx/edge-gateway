@@ -34,7 +34,7 @@ public sealed class AcquisitionDataServiceTests
     }
 
     [Fact]
-    public async Task PointRowsKeepExactValuesUtcAndQualityIndependentOfMqttUploadSwitch()
+    public async Task PointRowsKeepExactValuesServerTimeAndQualityIndependentOfMqttUploadSwitch()
     {
         var configuration = Configuration();
         configuration.Devices[0].Tags[0].UploadEnabled = false;
@@ -55,7 +55,7 @@ public sealed class AcquisitionDataServiceTests
         Assert.Equal("18446744073709551615", row.Values["value_text"]);
         Assert.Equal("18446744073709551615", row.Values["raw_value"]);
         var storedTime = Assert.IsType<DateTimeOffset>(row.Values["timestamp"]);
-        Assert.Equal(TimeSpan.Zero, storedTime.Offset);
+        Assert.Equal(timestamp.ToLocalTime().Offset, storedTime.Offset);
         Assert.Equal(timestamp, storedTime);
         Assert.Equal(row.EventId, row.Values["event_id"]);
         var bad = rows.Single(item => (string)item.Values["tag_id"]! == second.TagId.ToString("D"));
@@ -90,7 +90,7 @@ public sealed class AcquisitionDataServiceTests
         });
         var counter = rows.Single(row => Equals(row.Values["_NAME"], first.TagName));
         Assert.Equal("18446744073709551615", counter.Values["_VALUE"]);
-        Assert.Equal(first.Timestamp.ToUniversalTime(), counter.Values["_TIMESTAMP"]);
+        Assert.True(first.Timestamp.ToLocalTime().EqualsExact(Assert.IsType<DateTimeOffset>(counter.Values["_TIMESTAMP"])));
         Assert.Contains(rows, row => Equals(row.Values["_VALUE"], "状态文本"));
         Assert.All(connector.Writes, write => Assert.Equal(group.Id, write.GroupId));
     }
