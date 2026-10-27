@@ -15,8 +15,8 @@ internal class ModernButton : GatewayButton
 
     protected override void OnCreateControl()
     {
-        base.OnCreateControl();
         Type = Primary ? AntdUI.TTypeMini.Primary : AntdUI.TTypeMini.Default;
+        base.OnCreateControl();
         RefreshGlyph();
     }
 

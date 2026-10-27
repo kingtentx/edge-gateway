@@ -461,6 +461,19 @@ public sealed partial class MainForm
     internal sealed class DeviceActionButtonCell : DataGridViewButtonCell
     {
         public DeviceActionButtonCell() { }
+        private bool _hovered;
+        protected override void OnMouseEnter(int rowIndex)
+        {
+            _hovered = true;
+            base.OnMouseEnter(rowIndex);
+            if (rowIndex >= 0 && ColumnIndex >= 0) DataGridView?.InvalidateCell(ColumnIndex, rowIndex);
+        }
+        protected override void OnMouseLeave(int rowIndex)
+        {
+            _hovered = false;
+            base.OnMouseLeave(rowIndex);
+            if (rowIndex >= 0 && ColumnIndex >= 0) DataGridView?.InvalidateCell(ColumnIndex, rowIndex);
+        }
 
         public bool ActionEnabled { get; set; }
         public bool StartsDevice { get; set; }
@@ -498,9 +511,10 @@ public sealed partial class MainForm
             var inset = UiTheme.Scale(DataGridView, 5);
             var bounds = Rectangle.Inflate(cellBounds, -inset, -inset);
             if (bounds.Width <= 2 || bounds.Height <= 2) return;
-            var background = !ActionEnabled ? Color.FromArgb(237, 241, 246) : StartsDevice ? UiTheme.Blue : Color.White;
+            var background = !ActionEnabled ? Color.FromArgb(237, 241, 246) : StartsDevice ? (_hovered ? Color.FromArgb(9, 88, 217) : UiTheme.Blue) : (_hovered ? Color.FromArgb(255, 225, 225) : Color.White);
             var foreground = !ActionEnabled ? Color.FromArgb(152, 163, 179) : StartsDevice ? Color.White : UiTheme.Red;
-            var border = ActionEnabled && StartsDevice ? UiTheme.Blue : UiTheme.Border;
+            var border = ActionEnabled && _hovered ? (StartsDevice ? Color.FromArgb(9, 88, 217) : UiTheme.Red)
+                : ActionEnabled && StartsDevice ? UiTheme.Blue : UiTheme.Border;
             var radius = Math.Min(UiTheme.Scale(DataGridView, 6), Math.Min(bounds.Width, bounds.Height) / 2);
             using var path = new GraphicsPath();
             var diameter = Math.Max(2, radius * 2);

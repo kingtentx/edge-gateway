@@ -46,6 +46,20 @@ public sealed partial class MainForm
                     if (_deviceSearch.Text != "Modbus") throw new InvalidOperationException("Navigation toggle lost device filters.");
                 }
                 SaveEditorScreenshot(this, "navigation-collapse", mode + "-expanded");
+                if (mode == "wide")
+                {
+                    foreach (var name in new[] { "ProbeDevice", "AddDevice" })
+                    {
+                        var button = Descendants(_pages["devices"]).OfType<GatewayButton>().Single(control => control.Name == name);
+                        typeof(Control).GetMethod("OnMouseEnter", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                            .Invoke(button, [EventArgs.Empty]);
+                        await Task.Delay(250);
+                        SaveEditorScreenshot(this, "navigation-hover", name);
+                        typeof(Control).GetMethod("OnMouseLeave", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                            .Invoke(button, [EventArgs.Empty]);
+                        await Task.Delay(250);
+                    }
+                }
                 for (var click = 0; click < 11; click++) collapseNavigationButton.PerformClick();
                 await Task.Delay(100);
                 AssertNavigationShell(true, mode + " rapid clicks");
@@ -64,7 +78,7 @@ public sealed partial class MainForm
 
     private void AssertNavigationShell(bool collapsed, string context)
     {
-        var width = UiTheme.Scale(applicationShell, collapsed ? 56 : applicationShell.ClientSize.Width < UiTheme.Scale(applicationShell, 1000) ? 204 : 244);
+        var width = UiTheme.Scale(applicationShell, collapsed ? 56 : 184);
         if (navigationMenu.Collapsed != collapsed || navigationViewportPanel.Width != width
             || applicationShell.ColumnStyles[0].Width != width || applicationBody.Left != navigationViewportPanel.Right
             || navigationContentPanel.Width != width || navigationBrandPanel.Visible == collapsed)

@@ -141,9 +141,8 @@ public sealed partial class MainForm : DpiAwareForm
             arranging = true;
             try
             {
-                var compactNavigation = shell.ClientSize.Width < UiTheme.Scale(shell, 1000);
                 // Keep a stable logical rail width; AntdUI owns menu scrolling.
-                var sidebarWidth = UiTheme.Scale(shell, navigationMenu.Collapsed ? 56 : compactNavigation ? 204 : 244);
+                var sidebarWidth = UiTheme.Scale(shell, navigationMenu.Collapsed ? 56 : 184);
                 if (shell.ColumnStyles[0].Width != sidebarWidth)
                 {
                     shell.ColumnStyles[0].Width = sidebarWidth;
@@ -159,8 +158,8 @@ public sealed partial class MainForm : DpiAwareForm
                         }));
                     }
                 }
-                brandTitle.Text = compactNavigation ? "EDGE" : "EDGE GATEWAY";
-                brandCaption.Text = compactNavigation ? "采集网关" : "工业数据 · 本地连接";
+                brandTitle.Text = "EDGE";
+                brandCaption.Text = "边缘采集网关";
                 var narrow = body.ClientSize.Width < UiTheme.Scale(body, 400);
                 if (compactHeader == narrow) return;
                 compactHeader = narrow;

@@ -87,7 +87,8 @@ public sealed partial class MainForm
         navigationMenu.Margin = Padding.Empty;
         navigationMenu.Padding = new Padding(4);
         navigationMenu.Radius = 6;
-        navigationMenu.Gap = 6;
+        navigationMenu.Gap = 10;
+        navigationMenu.itemMargin = 6;
         navigationMenu.IconRatio = 1F;
         navigationMenu.BackColor = Color.White;
         navigationMenu.ForeColor = UiTheme.Ink;
@@ -130,7 +131,7 @@ public sealed partial class MainForm
         // applicationShell
         //
         applicationShell.ColumnCount = 2;
-        applicationShell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 206F));
+        applicationShell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 184F));
         applicationShell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         applicationShell.Controls.Add(navigationViewportPanel, 0, 0);
         applicationShell.Controls.Add(applicationBody, 1, 0);
@@ -215,7 +216,7 @@ public sealed partial class MainForm
         brandTitleLabel.Name = "brandTitleLabel";
         brandTitleLabel.Size = new Size(159, 25);
         brandTitleLabel.TabIndex = 0;
-        brandTitleLabel.Text = "EDGE GATEWAY";
+        brandTitleLabel.Text = "EDGE";
         //
         // brandCaptionLabel
         //
@@ -226,7 +227,7 @@ public sealed partial class MainForm
         brandCaptionLabel.Name = "brandCaptionLabel";
         brandCaptionLabel.Size = new Size(132, 20);
         brandCaptionLabel.TabIndex = 1;
-        brandCaptionLabel.Text = "工业数据 · 本地连接";
+        brandCaptionLabel.Text = "边缘采集网关";
         //
         // applicationBody
         //
