@@ -67,21 +67,20 @@ public sealed partial class MainForm
         try
         {
             collapseNavigationButton.PerformClick();
-            PerformLayoutRecursively(this);
-            if (!navigationMenu.Collapsed || navigationViewportPanel.Width >= width || navigationBrandPanel.Visible)
-                throw new InvalidOperationException("AntdUI menu did not collapse to icons.");
+            await Task.Delay(80);
+            AssertNavigationShell(true, "horizontal menu");
             foreach (var key in _navigation.Keys)
             {
-                navigationMenu.Select(_navigation[key]);
-                PerformLayoutRecursively(this);
-                if (_activePage != key || !navigationMenu.ClientRectangle.Contains(_navigation[key].Rect()))
+                _compactNavigation[key].PerformClick();
+                await Task.Yield();
+                if (_activePage != key)
                     throw new InvalidOperationException("Collapsed menu navigation is unreachable: " + key);
-                AssertNavigationItemFits(_navigation[key], "collapsed menu");
+                AssertNavigationShell(true, "horizontal route " + key);
             }
             ShowPage("devices");
             SaveEditorScreenshot(this, "antd", "menu-collapsed");
-            collapseNavigationButton.PerformClick();
-            PerformLayoutRecursively(this);
+            expandNavigationButton.PerformClick();
+            await Task.Delay(80);
             if (navigationMenu.Collapsed || navigationViewportPanel.Width != width)
                 throw new InvalidOperationException("AntdUI menu did not restore its expanded width.");
             foreach (var item in _navigation.Values) AssertNavigationItemFits(item, "expanded menu");
@@ -108,7 +107,7 @@ public sealed partial class MainForm
         finally
         {
             _deviceGroupFilter.ExpandDrop = false;
-            if (navigationMenu.Collapsed) collapseNavigationButton.PerformClick();
+            if (navigationMenu.Collapsed) expandNavigationButton.PerformClick();
             ShowPage(originalPage);
         }
     }

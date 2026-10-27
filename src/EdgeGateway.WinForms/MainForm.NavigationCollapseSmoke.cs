@@ -15,7 +15,7 @@ public sealed partial class MainForm
                 WindowState = mode == "maximized" ? FormWindowState.Maximized : FormWindowState.Normal;
                 if (mode != "maximized") ClientSize = new Size(UiTheme.Scale(this, mode == "wide" ? 1400 : 980), UiTheme.Scale(this, 680));
                 await Task.Delay(150);
-                if (navigationMenu.Collapsed) collapseNavigationButton.PerformClick();
+                if (navigationMenu.Collapsed) expandNavigationButton.PerformClick();
                 for (var cycle = 0; cycle < 3; cycle++)
                 {
                     collapseNavigationButton.PerformClick();
@@ -23,25 +23,26 @@ public sealed partial class MainForm
                     AssertNavigationShell(true, mode + " collapse " + cycle);
                     foreach (var key in _navigation.Keys)
                     {
-                        navigationMenu.Select(_navigation[key]);
+                        _compactNavigation[key].PerformClick();
                         await Task.Yield();
                         if (_activePage != key) throw new InvalidOperationException("Collapsed route failed: " + key);
                         AssertNavigationShell(true, mode + "/" + key);
                     }
                     ShowPage("devices");
                     if (cycle == 2) SaveEditorScreenshot(this, "navigation-collapse", mode + "-collapsed");
-                    collapseNavigationButton.PerformClick();
+                    expandNavigationButton.PerformClick();
                     await Task.Delay(80);
                     AssertNavigationShell(false, mode + " expand " + cycle);
                     if (_deviceSearch.Text != "Modbus") throw new InvalidOperationException("Navigation toggle lost device filters.");
                 }
                 SaveEditorScreenshot(this, "navigation-collapse", mode + "-expanded");
-                for (var click = 0; click < 11; click++) collapseNavigationButton.PerformClick();
+                for (var click = 0; click < 11; click++)
+                    (navigationMenu.Collapsed ? expandNavigationButton : collapseNavigationButton).PerformClick();
                 await Task.Delay(100);
                 AssertNavigationShell(true, mode + " rapid clicks");
                 _refreshTimer.Start(); await Task.Delay(1100); _refreshTimer.Stop();
                 AssertNavigationShell(true, mode + " timer refresh");
-                collapseNavigationButton.PerformClick();
+                expandNavigationButton.PerformClick();
                 await Task.Delay(80);
                 AssertNavigationShell(false, mode + " final expand");
                 Console.WriteLine("Stable navigation collapse: " + mode);
@@ -53,19 +54,40 @@ public sealed partial class MainForm
 
     private void AssertNavigationShell(bool collapsed, string context)
     {
-        var width = UiTheme.Scale(applicationShell, collapsed ? 56 : applicationShell.ClientSize.Width < UiTheme.Scale(applicationShell, 1000) ? 172 : 192);
-        if (navigationMenu.Collapsed != collapsed || navigationViewportPanel.Width != width
-            || applicationShell.ColumnStyles[0].Width != width || applicationBody.Left != navigationViewportPanel.Right
-            || navigationContentPanel.Width != width || navigationBrandPanel.Visible == collapsed)
-            throw new InvalidOperationException($"{context}: menu/shell states disagree: collapsed={navigationMenu.Collapsed}; expectedWidth={width}; rail={navigationViewportPanel.Width}; content={navigationContentPanel.Width}; column={applicationShell.ColumnStyles[0].Width}; bodyLeft={applicationBody.Left}; brand={navigationBrandPanel.Visible}.");
-        foreach (var item in _navigation.Values)
+        if (navigationMenu.Collapsed != collapsed || compactNavigationBar.Visible != collapsed
+            || navigationViewportPanel.Visible == collapsed)
+            throw new InvalidOperationException(context + ": navigation display/state mismatch.");
+        if (collapsed)
         {
-            AssertNavigationItemFits(item, context);
-            if (!collapsed) continue;
-            var icon = item.Rect("Icon", 0, navigationMenu.ScrollBar.ValueY);
-            if (Math.Abs(icon.Left + icon.Width / 2 - navigationMenu.ClientSize.Width / 2) > UiTheme.Scale(navigationMenu, 2))
-                throw new InvalidOperationException(context + ": collapsed icon is not centered: " + item.Text);
+            if (applicationShell.ColumnStyles[0].Width != 0 || applicationBody.Left != 0
+                || applicationBody.Width != applicationShell.ClientSize.Width
+                || applicationBody.Top != compactNavigationBar.Bottom
+                || compactNavigationBar.Height != UiTheme.Scale(this, 52))
+                throw new InvalidOperationException(context + ": collapsed toolbar does not release the full page width.");
+            AssertVisibleBounds(compactApplicationIcon, context + " application logo");
+            if (compactApplicationIcon.Image is null) throw new InvalidOperationException("Missing application logo.");
+            var centerY = compactApplicationIcon.PointToScreen(new Point(0, compactApplicationIcon.Height / 2)).Y;
+            var previousRight = compactApplicationIcon.RectangleToScreen(compactApplicationIcon.ClientRectangle).Right;
+            foreach (var button in _compactNavigation.Values.Append(expandNavigationButton))
+            {
+                AssertVisibleBounds(button, context + " " + button.AccessibleName);
+                var bounds = button.RectangleToScreen(button.ClientRectangle);
+                if (bounds.Left < previousRight || Math.Abs(bounds.Top + bounds.Height / 2 - centerY) > 1)
+                    throw new InvalidOperationException(context + ": icons and expand action are not in one horizontal row.");
+                previousRight = bounds.Right;
+            }
+            if (_compactNavigation[_activePage].Type != AntdUI.TTypeMini.Primary)
+                throw new InvalidOperationException(context + ": current route is not highlighted.");
         }
-        AssertVisibleBounds(collapseNavigationButton, context + " toggle button");
+        else
+        {
+            var width = UiTheme.Scale(applicationShell, applicationShell.ClientSize.Width < UiTheme.Scale(applicationShell, 1000) ? 172 : 192);
+            if (navigationViewportPanel.Width != width || applicationShell.ColumnStyles[0].Width != width
+                || applicationBody.Left != navigationViewportPanel.Right || applicationBody.Top != 0
+                || navigationContentPanel.Width != width || !navigationBrandPanel.Visible)
+                throw new InvalidOperationException(context + ": expanded sidebar geometry mismatch.");
+            foreach (var item in _navigation.Values) AssertNavigationItemFits(item, context);
+            AssertVisibleBounds(collapseNavigationButton, context + " collapse button");
+        }
     }
 }
