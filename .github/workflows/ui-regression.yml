@@ -27,6 +27,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force artifacts/ui-regression | Out-Null
           git rev-parse HEAD | Set-Content artifacts/ui-regression/SOURCE_COMMIT.txt
+          git archive --format=zip --output=artifacts/ui-regression/source.zip HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet --info | Tee-Object artifacts/ui-regression/sdk.log
       - name: Verify architecture boundaries
         run: |
@@ -37,6 +39,7 @@ jobs:
         run: |
           dotnet restore EdgeGateway.sln 2>&1 | Tee-Object artifacts/ui-regression/restore.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item "$env:USERPROFILE/.nuget/packages/antdui/2.4.16/antdui.2.4.16.nupkg" artifacts/ui-regression/
       - name: Build Release solution
         id: build
         run: |
