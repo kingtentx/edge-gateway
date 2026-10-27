@@ -6,6 +6,7 @@ namespace EdgeGateway.WinForms;
 /// </summary>
 internal sealed partial class PlatformPageView : UserControl
 {
+
     private DpiAwareForm? _dpiOwner;
     private bool _arranging;
 

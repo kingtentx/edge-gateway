@@ -498,7 +498,7 @@ public sealed partial class MainForm
         AssertVisibleBounds(control, context);
         AssertInputSurface(control, context);
         if (control is Button button) AssertButtonContentFits(button, context);
-        foreach (var child in Descendants(control).Where(x => x.Visible && x is TextBoxBase))
+        foreach (var child in Descendants(control).Where(x => x.Visible && x is TextBox or System.Windows.Forms.TextBoxBase))
             AssertVisibleBounds(child, context + " input content");
     }
 

@@ -14,7 +14,7 @@ public class DpiAwareForm : Form
     internal bool IsDpiLayoutReady => !_initializing && !_dpiChanging;
     internal event EventHandler? DpiLayoutCompleted;
 
-    protected DpiAwareForm()
+    public DpiAwareForm()
     {
         // Keep the entire derived constructor at its original 96-DPI design baseline.
         // Resuming before all controls exist causes only a partial tree to scale.

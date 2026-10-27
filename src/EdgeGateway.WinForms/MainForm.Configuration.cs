@@ -34,32 +34,6 @@ public sealed partial class MainForm
         _tagHeading = _devicesPageView.TagHeading;
         _tagSummary = _devicesPageView.TagSummary;
         _deviceGrid.Name = "DeviceList"; _tagGrid.Name = "TagList";
-        UiTheme.AddColumn(_deviceGrid, "Name", "设备名称", 150, 160);
-        AddDeviceActionColumn(DeviceStartColumnName, "启动", true);
-        AddDeviceActionColumn(DeviceStopColumnName, "停止", false);
-        var configurationColumn = new DataGridViewLinkColumn
-        {
-            Name = DeviceConfigurationColumnName, HeaderText = "配置", Text = "配置",
-            UseColumnTextForLinkValue = true, TrackVisitedState = false,
-            LinkBehavior = LinkBehavior.HoverUnderline, LinkColor = UiTheme.Blue,
-            ActiveLinkColor = UiTheme.Blue, VisitedLinkColor = UiTheme.Blue,
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, MinimumWidth = 72,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-            DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
-        };
-        configurationColumn.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        _deviceGrid.Columns.Add(configurationColumn);
-        if (_deviceGrid is DpiDataGridView dpiGrid) dpiGrid.RegisterColumn(configurationColumn, 72);
-        UiTheme.AddColumn(_deviceGrid, "State", "采集状态", 96, 96);
-        UiTheme.AddColumn(_deviceGrid, "PointCount", "点位", 72, 72);
-        UiTheme.AddColumn(_deviceGrid, "Driver", "采集驱动", 140);
-        UiTheme.AddColumn(_deviceGrid, "Channel", "通信通道", 120);
-        UiTheme.AddColumn(_deviceGrid, "Group", "分组", 100);
-        UiTheme.AddColumn(_deviceGrid, "Enabled", "启用", 72, 72);
-        UiTheme.AddColumn(_deviceGrid, "Cycle", "周期 (ms)", 96);
-        UiTheme.AddColumn(_deviceGrid, "LastSuccess", "最近成功采集", 160, 160);
-        UiTheme.AddColumn(_deviceGrid, "Failures", "连续失败", 100, 100);
-        UiTheme.AddColumn(_deviceGrid, "Error", "采集诊断", 270, 270);
         _deviceGrid.SelectionChanged += (_, _) => { if (!_rebindingDevices) { BindTags(); UpdateSelectionCommands(); } };
         _deviceGrid.CellContentClick += async (_, e) => await HandleDeviceGridActionAsync(e);
         _deviceGrid.CellDoubleClick += async (_, e) => await HandleDeviceGridActionAsync(e, doubleClick: true);
@@ -69,19 +43,7 @@ public sealed partial class MainForm
             if (e.KeyCode == Keys.F2) { e.Handled = true; await EditDeviceAsync(); }
             else if (e.KeyCode == Keys.Delete) { e.Handled = true; await DeleteDeviceAsync(); }
         };
-        UiTheme.AddColumn(_tagGrid, "Name", "点位名称", 150, 150);
-        UiTheme.AddColumn(_tagGrid, "Address", "地址", 110);
-        UiTheme.AddColumn(_tagGrid, "Type", "数据类型", 105);
-        UiTheme.AddColumn(_tagGrid, "Unit", "单位", 70);
-        UiTheme.AddColumn(_tagGrid, "Access", "读写", 86);
-        UiTheme.AddColumn(_tagGrid, "Enabled", "启用", 72);
-        UiTheme.AddColumn(_tagGrid, "Upload", "上传", 72);
-        UiTheme.AddColumn(_tagGrid, "Method", "读取方法", 180, 180);
-        UiTheme.AddColumn(_tagGrid, "Area", "寄存区", 110);
-        UiTheme.AddColumn(_tagGrid, "ByteOrder", "字节序", 85);
-        UiTheme.AddColumn(_tagGrid, "Scaling", "工程值换算", 160, 160);
-        UiTheme.AddColumn(_tagGrid, "Scan", "点位周期 (ms)", 125);
-        UiTheme.AddColumn(_tagGrid, "Deadband", "上报死区", 105);
+
         _tagGrid.CellDoubleClick += async (_, e) =>
         {
             if (e.RowIndex >= 0 && _tagGrid.Rows[e.RowIndex].DataBoundItem is TagRow tag) await EditTagAsync(tag.Id);
@@ -99,18 +61,21 @@ public sealed partial class MainForm
         probeDevice.Click += async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(false));
         _configurationCommands.Add(probeDevice);
         _selectionCommands.Add((probeDevice, () => SelectedDevice() is not null));
-        _deviceMore = new CommandMenuButton("更多操作", BuildDeviceMenu, exception => ShowError(exception.Message)) { Name = "DeviceMoreActions" };
-        _channelMenu = new CommandMenuButton("通道管理", BuildChannelMenu, exception => ShowError(exception.Message)) { Name = "ChannelActions" };
-        _deviceExchange = new CommandMenuButton("设备导入导出", BuildDeviceExchangeMenu, exception => ShowError(exception.Message)) { Name = "DeviceExcelExchange" };
+        _deviceMore = _devicesPageView.deviceMoreButton;
+        _deviceMore.Bind(BuildDeviceMenu, exception => ShowError(exception.Message));
+        _channelMenu = _devicesPageView.channelButton;
+        _channelMenu.Bind(BuildChannelMenu, exception => ShowError(exception.Message));
+        _deviceExchange = _devicesPageView.deviceExchangeButton;
+        _deviceExchange.Bind(BuildDeviceExchangeMenu, exception => ShowError(exception.Message));
         _configurationCommands.AddRange([_deviceMore, _deviceExchange, _channelMenu]);
         _deviceSummary.Margin = new Padding(4, 9, 0, 0);
-        var filters = BuildDeviceFilters();
-        // Keep the Designer-owned buttons in their existing flow host. A second
-        // autosized flow panel reparents them and measures at an unconstrained width.
-        _devicesPageView.DeviceToolbarHost.Controls.AddRange([_deviceExchange, _deviceMore, _channelMenu, _deviceSummary]);
-        _devicesPageView.DeviceFiltersHost.Controls.Add(filters);
+        _deviceGroupFilter = _devicesPageView.groupFilter;
+        _deviceChannelFilter = _devicesPageView.channelFilter;
+        _deviceSearch = _devicesPageView.deviceSearchInput;
+        BindDeviceFilters();
 
-        _tagMore = new CommandMenuButton("点位操作", BuildTagMenu, exception => ShowError(exception.Message)) { Name = "TagMoreActions" };
+        _tagMore = _devicesPageView.tagMoreButton;
+        _tagMore.Bind(BuildTagMenu, exception => ShowError(exception.Message));
         _configurationCommands.Add(_tagMore);
         UiTheme.StyleInput(_tagSearch);
         _tagSearch.TextChanged += (_, _) => BindTags();
@@ -127,8 +92,6 @@ public sealed partial class MainForm
         singlePointRead.Click += async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(true));
         _configurationCommands.Add(singlePointRead);
         _selectionCommands.Add((singlePointRead, () => SelectedTag() is not null));
-        _devicesPageView.TagToolbarHost.Controls.Add(_tagMore);
-        _devicesPageView.TagToolbarHost.Controls.SetChildIndex(_tagMore, 3);
 
         return _devicesPageView;
     }
@@ -194,21 +157,6 @@ public sealed partial class MainForm
             new("ClearTagSearch", "清除点位筛选", () => { _tagSearch.Clear(); return Task.CompletedTask; }, () => CanEdit() && _tagSearch.TextLength > 0, SeparateBefore: true),
             new("DeleteTag", "删除所选点位…", () => DeleteTagAsync(deviceId, tagId), Tag, "请先选择点位", SeparateBefore: true, Dangerous: true)
         ];
-    }
-
-    private void AddDeviceActionColumn(string name, string text, bool start)
-    {
-        var column = new DataGridViewButtonColumn
-        {
-            CellTemplate = new DeviceActionButtonCell { StartsDevice = start },
-            Name = name, HeaderText = text, Text = text, UseColumnTextForButtonValue = true,
-            FlatStyle = FlatStyle.Flat, AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
-            MinimumWidth = 72, SortMode = DataGridViewColumnSortMode.NotSortable,
-            DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
-        };
-        column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        _deviceGrid.Columns.Add(column);
-        if (_deviceGrid is DpiDataGridView dpiGrid) dpiGrid.RegisterColumn(column, 72);
     }
 
     private Button ConfigurationButton(string text, EventHandler action, bool primary = false)
@@ -510,7 +458,7 @@ public sealed partial class MainForm
     private sealed record DeviceRow(Guid Id, string Name, string Channel, string Group, string Driver, string Enabled, string State, int PointCount, int Cycle);
     private sealed record TagRow(Guid Id, string Name, string Address, string Method, string Type, string Area, string ByteOrder, string Scaling, string Unit, string Access, string Enabled, string Upload, string Scan, string Deadband);
 
-    private sealed class DeviceActionButtonCell : DataGridViewButtonCell
+    internal sealed class DeviceActionButtonCell : DataGridViewButtonCell
     {
         public DeviceActionButtonCell() { }
 

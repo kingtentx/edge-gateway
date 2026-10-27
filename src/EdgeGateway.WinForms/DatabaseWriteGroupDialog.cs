@@ -3,144 +3,12 @@ using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
 
-internal static class DatabaseUiText
-{
-    internal static DatabaseWriteGroupConfiguration NewWriteGroup(Guid connectionId, IReadOnlyList<DatabaseWriteGroupConfiguration> groups)
-    {
-        var draft = new DatabaseWriteGroupConfiguration { ConnectionId = connectionId };
-        var names = groups.Select(group => group.Name.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var baseName = draft.Name;
-        for (var suffix = 2; names.Contains(draft.Name); suffix++) draft.Name = $"{baseName}（{suffix}）";
-        return draft;
-    }
-
-    internal static string Provider(ExternalDatabaseProvider value) => value switch
-    { ExternalDatabaseProvider.MySql => "MySQL", ExternalDatabaseProvider.PostgreSql => "PostgreSQL", _ => "Oracle" };
-    internal static string Mode(DatabaseStorageMode value) => value switch
-    {
-        DatabaseStorageMode.PointRows => "标准点行（每点一行）",
-        DatabaseStorageMode.PointMapping => "自定义逐点（每点一行）",
-        _ => "自定义整行（固定点位组合）"
-    };
-    internal static string Source(DatabaseValueSource value) => value switch
-    {
-        DatabaseValueSource.EngineeringValue => "value_text [工程值]", DatabaseValueSource.RawValue => "raw_value [原始值]",
-        DatabaseValueSource.NumericValue => "NumericValue [数值·派生属性]",
-        DatabaseValueSource.SampleTime => "timestamp [采样时间]", DatabaseValueSource.Quality => "quality [质量]",
-        DatabaseValueSource.DeviceId => "device_id [设备标识]", DatabaseValueSource.DeviceName => "device_name [设备名称]",
-        DatabaseValueSource.TagId => "tag_id [点位标识]", DatabaseValueSource.TagName => "tag_name [点位名称]",
-        DatabaseValueSource.Address => "address [点位地址]", DatabaseValueSource.Unit => "Unit [单位·采样属性]",
-        DatabaseValueSource.Error => "Error [错误说明·采样属性]", DatabaseValueSource.RecordTime => "RecordTime [记录时间·生成项]",
-        DatabaseValueSource.EventId => "event_id [记录编号]", DatabaseValueSource.Constant => "Constant [手动常量]",
-        _ => "不写入 [默认值/NULL]"
-    };
-    internal static string FieldType(DatabaseFieldType value) => value switch
-    { DatabaseFieldType.Auto => "自动", DatabaseFieldType.Text => "文本", DatabaseFieldType.Int64 => "整数", DatabaseFieldType.Decimal => "精确小数", DatabaseFieldType.Double => "浮点", DatabaseFieldType.Boolean => "布尔", _ => "时间" };
-    internal static bool NeedsPoint(DatabaseValueSource source) => source is not (DatabaseValueSource.RecordTime or DatabaseValueSource.EventId or DatabaseValueSource.Constant);
-    internal sealed record EnumItem<T>(T Value, string Text);
-    internal sealed record PointItem(Guid Id, string Text) { public override string ToString() => Text; }
-}
-
-internal sealed class DatabaseConnectionDialog : EditorDialog
-{
-    private readonly DatabaseConnectionConfiguration _source;
-    private readonly IGatewayApplication _application;
-    private readonly TextBox _name, _host, _database, _username, _password;
-    private readonly ComboBox _provider;
-    private readonly CheckBox _enabled, _tls;
-    private readonly NumericUpDown _port, _connectTimeout, _commandTimeout, _batch, _flush, _capacity, _capacityMb, _retryAttempts;
-    private readonly Label _testResult = EditorLayout.WrappingLabel("连接测试使用当前输入，成功后检查默认 gateway_point 表；不保存配置、不自动建表。", color: UiTheme.Muted);
-    private bool _testing;
-    internal DatabaseConnectionConfiguration Value { get; private set; } = null!;
-    internal IEnumerable<Control> SmokeInputs => new Control[] { _name, _enabled, _provider, _host, _port, _database, _username, _password, _tls, _connectTimeout, _commandTimeout, _batch, _flush, _capacity, _capacityMb, _retryAttempts };
-
-    internal DatabaseConnectionDialog(DatabaseConnectionConfiguration configuration, IGatewayApplication application)
-        : base("数据库连接", "配置采集数据的外部数据库；直接输入密码并随连接配置保存。保存前需停止全部设备。")
-    {
-        _source = GatewayJson.Clone(configuration); _application = application;
-        var fields = AddTab("连接设置");
-        _name = TextInput(_source.Name); _enabled = new CheckBox { Text = "启用该数据库写入", AutoSize = true, Checked = _source.Enabled };
-        _provider = SelectInput(Enum.GetValues<ExternalDatabaseProvider>().Cast<object>().ToArray(), _source.Provider);
-        _provider.FormattingEnabled = true; _provider.Format += (_, e) => { if (e.ListItem is ExternalDatabaseProvider value) e.Value = DatabaseUiText.Provider(value); };
-        _host = TextInput(_source.Host); _port = NumberInput(_source.Port, 1, 65535); _database = TextInput(_source.Database);
-        _username = TextInput(_source.Username); _password = TextInput(_source.Password);
-        _password.UseSystemPasswordChar = true;
-        _password.PlaceholderText = "直接输入密码；无密码时留空";
-        _tls = new CheckBox { Text = "启用 TLS（验证服务器证书）", AutoSize = true, Checked = _source.UseTls };
-        Section(fields, "连接信息");
-        Add(fields, "DatabaseName", "连接名称", _name); Add(fields, "DatabaseEnabled", "数据写入", _enabled);
-        Add(fields, "DatabaseProvider", "数据库类型", _provider); Add(fields, "DatabaseHost", "服务器", _host);
-        Add(fields, "DatabasePort", "端口", _port); Add(fields, "DatabaseCatalog", "数据库 / Oracle 服务名", _database);
-        Add(fields, "DatabaseUsername", "用户名", _username); Add(fields, "DatabasePassword", "密码", _password);
-        Add(fields, "DatabaseTls", "连接加密", _tls);
-        var test = UiTheme.Button("测试连接", async (_, _) => await TestAsync()); test.Name = "TestDatabaseConnection";
-        Span(fields, test); _testResult.Name = "DatabaseConnectionResult"; Span(fields, _testResult);
-        fields = AddTab("批次与超时");
-        _connectTimeout = NumberInput(_source.ConnectionTimeoutSeconds, 1, 120); _commandTimeout = NumberInput(_source.CommandTimeoutSeconds, 1, 300);
-        _batch = NumberInput(_source.BatchSize, 1, 5000); _flush = NumberInput(_source.FlushIntervalMs, 50, 60000); _capacity = NumberInput(_source.QueueCapacityRows, 1, 1000000);
-        _capacityMb = NumberInput(_source.QueueCapacityMb, 1, 1024); _retryAttempts = NumberInput(_source.MaxRetryAttempts, 1, 10);
-        Section(fields, "连接与命令"); Add(fields, "DatabaseConnectTimeout", "连接超时（秒）", _connectTimeout); Add(fields, "DatabaseCommandTimeout", "命令超时（秒）", _commandTimeout);
-        Section(fields, "批量写入", "采集结果通过独立队列批量写入；队列积压、失败及丢弃数量在数据库页显示。");
-        Add(fields, "DatabaseBatchSize", "每批最大行数", _batch); Add(fields, "DatabaseFlushInterval", "提交间隔（ms）", _flush); Add(fields, "DatabaseQueueCapacity", "队列最大行数", _capacity);
-        Add(fields, "DatabaseQueueCapacityMb", "队列最大大小（M）", _capacityMb); Add(fields, "DatabaseMaxRetryAttempts", "每批最多尝试次数", _retryAttempts);
-        Hint(fields, "同一连接下所有写入组共享行数和大小配额；队列满时拒绝新记录并计数。单行最多 1 M。");
-        _provider.SelectedIndexChanged += (_, _) =>
-        {
-            if (_provider.SelectedItem is not ExternalDatabaseProvider selected) return;
-            if (_port.Value is 3306 or 5432 or 1521) _port.Value = selected switch { ExternalDatabaseProvider.MySql => 3306, ExternalDatabaseProvider.PostgreSql => 5432, _ => 1521 };
-        };
-    }
-
-    private DatabaseConnectionConfiguration CaptureConnectionDraft()
-    {
-        var value = GatewayJson.Clone(_source);
-        value.Name = Required(_name, "连接名称"); value.Host = Required(_host, "服务器"); value.Database = Required(_database, "数据库 / 服务名");
-        value.Username = Required(_username, "用户名"); value.Password = _password.Text;
-        value.Provider = (ExternalDatabaseProvider)_provider.SelectedItem!; value.Port = (int)_port.Value; value.Enabled = _enabled.Checked; value.UseTls = _tls.Checked;
-        value.ConnectionTimeoutSeconds = (int)_connectTimeout.Value; value.CommandTimeoutSeconds = (int)_commandTimeout.Value;
-        value.BatchSize = (int)_batch.Value; value.FlushIntervalMs = (int)_flush.Value; value.QueueCapacityRows = (int)_capacity.Value; value.QueueCapacityMb = (int)_capacityMb.Value; value.MaxRetryAttempts = (int)_retryAttempts.Value;
-        return value;
-    }
-
-    private async Task TestAsync()
-    {
-        if (_testing) return;
-        try
-        {
-            var connection = CaptureConnectionDraft(); _testing = true; Tabs.Enabled = false; UseWaitCursor = true;
-            _testResult.Text = "正在测试连接并检查默认数据表…"; _testResult.ForeColor = UiTheme.Muted;
-            var result = await _application.TestDatabaseConnectionAsync(connection);
-            _testResult.Text = result.Message + (string.IsNullOrWhiteSpace(result.ServerVersion) ? "" : "\n服务器版本：" + result.ServerVersion);
-            _testResult.ForeColor = result.Success ? UiTheme.Green : UiTheme.Red;
-        }
-        catch (Exception exception) { _testResult.Text = exception.Message; _testResult.ForeColor = UiTheme.Red; }
-        finally { _testing = false; Tabs.Enabled = true; UseWaitCursor = false; }
-    }
-    protected override void Commit() { if (_testing) throw new InvalidOperationException("连接测试尚未完成，请稍后保存。"); Value = CaptureConnectionDraft(); }
-    protected override void OnFormClosing(FormClosingEventArgs e) { if (_testing) e.Cancel = true; base.OnFormClosing(e); }
-    internal DatabaseConnectionConfiguration CommitForSmoke() { Commit(); return Value; }
-    internal static void Add(TableLayoutPanel fields, string name, string label, Control control) { control.Name = name; Field(fields, label, control); }
-    internal static void Span(TableLayoutPanel fields, Control control)
-    { var row = fields.RowCount++; fields.RowStyles.Add(new RowStyle(SizeType.AutoSize)); fields.Controls.Add(control, 0, row); fields.SetColumnSpan(control, 2); }
-}
-
-internal sealed class DatabaseWriteGroupDialog : EditorDialog
+internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
 {
     private readonly DatabaseWriteGroupConfiguration _source;
     private readonly IGatewayApplication _application;
     private readonly IReadOnlyList<DatabaseConnectionConfiguration> _connections;
     private readonly IReadOnlyList<DatabaseUiText.PointItem> _points;
-    private readonly TextBox _name, _schema, _table;
-    private readonly ComboBox _connection, _mode, _tables;
-    private readonly CheckBox _enabled, _allPoints, _goodOnly;
-    private readonly NumericUpDown _interval, _maxAge;
-    private readonly CheckedListBox _pointList = new() { Name = "DatabaseSelectedPoints", Dock = DockStyle.Fill, CheckOnClick = true, IntegralHeight = false, BorderStyle = BorderStyle.FixedSingle };
-    private readonly TextBox _pointSearch = new() { Name = "DatabasePointSearch", PlaceholderText = "搜索设备或点位", Dock = DockStyle.Fill };
-    private readonly DataGridView _mapping = UiTheme.Grid();
-    private readonly Label _status = EditorLayout.WrappingLabel("标准模式每个点位每次采样一行；自定义模式按字段映射写入已有表。", color: UiTheme.Muted);
-    private readonly Label _mappingStatus = EditorLayout.WrappingLabel("", color: UiTheme.Muted);
-    private readonly Label _mappingHint = EditorLayout.WrappingLabel("", color: UiTheme.Muted);
-    private readonly Label _mappingEmpty = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.White };
     private readonly HashSet<Guid> _selectedPoints;
     private IReadOnlyList<DatabaseColumnInfo> _columns = [];
     private string? _metadataKey;
@@ -149,11 +17,12 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
     // UI-only option; omitted columns are never persisted as an invalid source enum.
     private const DatabaseValueSource OmittedSource = (DatabaseValueSource)(-1);
     private readonly Dictionary<string, DatabaseValueSource> _samplingSources = new(StringComparer.Ordinal);
-    private readonly TabPage _pointTab, _mappingTab;
-    private readonly Button _loadColumns, _createTable, _mappingLoadColumns, _switchPointMapping;
     internal DatabaseWriteGroupConfiguration Value { get; private set; } = null!;
     internal DataGridView SmokeMapping => _mapping;
     internal CheckedListBox SmokePointList => _pointList;
+
+    public DatabaseWriteGroupDialog() : base("数据库写入组", "配置写入目标、点位选择与字段映射。")
+    { _source = new(); _connections = []; _points = []; _selectedPoints = []; _application = null!; InitializeComponent(); }
 
     internal DatabaseWriteGroupDialog(DatabaseWriteGroupConfiguration configuration,
         IReadOnlyList<DatabaseConnectionConfiguration> connections, IReadOnlyList<DeviceConfiguration> devices, IGatewayApplication application)
@@ -164,32 +33,25 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         _selectedPoints = _source.TagIds.ToHashSet();
         _points = devices.SelectMany(device => device.Tags.Select(tag => new DatabaseUiText.PointItem(tag.Id,
             device.Name + " / " + tag.Name + (!device.Enabled || !tag.Enabled ? "（未启用）" : "")))).ToArray();
-        var fields = AddTab("写入设置");
-        _name = TextInput(_source.Name); _enabled = new CheckBox { Text = "启用该写入组", AutoSize = true, Checked = _source.Enabled };
-        _connection = SelectInput(_connections.Select(c => new ConnectionChoice(c.Id, c.Name + " · " + DatabaseUiText.Provider(c.Provider))).Cast<object>().ToArray(), null);
+        InitializeComponent();
+        _name.Text = _source.Name; _enabled.Checked = _source.Enabled;
+        BindChoice(_connection, _connections.Select(c => new ConnectionChoice(c.Id, c.Name + " · " + DatabaseUiText.Provider(c.Provider))).Cast<object>().ToArray(), null);
         for (var i = 0; i < _connection.Items.Count; i++) if (_connection.Items[i] is ConnectionChoice choice && choice.Id == _source.ConnectionId) _connection.SelectedIndex = i;
-        _mode = SelectInput(Enum.GetValues<DatabaseStorageMode>().Cast<object>().ToArray(), _source.Mode); _mode.FormattingEnabled = true;
+        BindChoice(_mode, Enum.GetValues<DatabaseStorageMode>().Cast<object>().ToArray(), _source.Mode);
         _mode.Format += (_, e) => { if (e.ListItem is DatabaseStorageMode value) e.Value = DatabaseUiText.Mode(value); };
-        _schema = TextInput(_source.Schema); _schema.PlaceholderText = "PostgreSQL 常用 public；Oracle 使用所属用户";
-        _table = TextInput(_source.Table); _tables = SelectInput([], null); _tables.Name = "DatabaseExistingTables";
-        _interval = NumberInput(_source.WriteIntervalMs, 100, 3600000); _maxAge = NumberInput(_source.MaxSampleAgeMs, 100, 86400000);
-        _goodOnly = new CheckBox { Text = "仅在关联点位全部为 Good 时写入整行", AutoSize = true, Checked = _source.RequireGoodQuality };
-        Section(fields, "写入目标");
-        Add(fields, "DatabaseGroupName", "写入组名称", _name); Add(fields, "DatabaseGroupEnabled", "写入开关", _enabled);
-        Add(fields, "DatabaseGroupConnection", "数据库连接", _connection); Add(fields, "DatabaseStorageMode", "数据格式", _mode);
-        Add(fields, "DatabaseSchema", "Schema / 所属用户", _schema); Add(fields, "DatabaseTable", "表名", _table);
-        var listTables = UiTheme.Button("读取数据表", async (_, _) => await InspectAsync(async () =>
+        _schema.Text = _source.Schema; _table.Text = _source.Table;
+        _interval.Value = Math.Clamp(_source.WriteIntervalMs, 100, 3600000);
+        _maxAge.Value = Math.Clamp(_source.MaxSampleAgeMs, 100, 86400000);
+        _goodOnly.Checked = _source.RequireGoodQuality; _allPoints.Checked = _source.TagIds.Count == 0;
+        listTablesButton.Click += async (_, _) => await InspectAsync(async () =>
         {
             var tables = await _application.GetDatabaseTablesAsync(CurrentConnection());
             _bindingTable = true;
             try { _tables.Items.Clear(); _tables.Items.AddRange(tables.Cast<object>().ToArray()); }
             finally { _bindingTable = false; }
             _status.Text = $"读取到 {tables.Count} 张表。可从列表选择目标表，或直接填写表名。";
-        })); listTables.Name = "ReadDatabaseTables";
-        Span(fields, listTables); Field(fields, "已有数据表", _tables);
-        _loadColumns = UiTheme.Button("读取表字段并映射", async (_, _) => await ReadColumnsAsync()); _loadColumns.Name = "ReadDatabaseColumns";
-        _createTable = UiTheme.Button("创建数据表", async (_, _) => await CreateTableAsync()); _createTable.Name = "CreateDatabasePointTable";
-        var preview = UiTheme.Button("检查与预览", async (_, _) =>
+        });
+        previewButton.Click += async (_, _) =>
         {
             try
             {
@@ -201,48 +63,24 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
                 });
             }
             catch (Exception exception) { _status.Text = exception.Message; }
-        });
-        preview.Name = "PreviewDatabaseWrite";
-        Span(fields, UiTheme.Toolbar(_loadColumns, _createTable, preview)); _status.Name = "DatabaseGroupResult"; Span(fields, _status);
-        Section(fields, "自定义写入策略", "逐点模式按每次采样生成行；最小写入间隔只用于固定点位组合。标准点行保留实际采样质量。");
-        Add(fields, "DatabaseWriteInterval", "最小写入间隔（ms）", _interval); Add(fields, "DatabaseMaxSampleAge", "点位最大数据年龄（ms）", _maxAge);
-        Add(fields, "DatabaseRequireGood", "写入质量要求", _goodOnly);
-
-        _pointTab = new TabPage("标准点行 · 点位选择") { BackColor = Color.White };
-        var selection = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(10), Margin = Padding.Empty };
-        selection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); selection.RowStyles.Add(new RowStyle(SizeType.AutoSize)); selection.RowStyles.Add(new RowStyle(SizeType.AutoSize)); selection.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        _allPoints = new CheckBox { Name = "DatabaseAllEnabledPoints", Text = "全部启用点位（后续新增点位也写入）", AutoSize = true, Checked = _source.TagIds.Count == 0, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8) };
-        UiTheme.StyleInput(_pointSearch); _pointSearch.Margin = new Padding(0, 0, 0, 8);
-        selection.Controls.Add(_allPoints, 0, 0); selection.Controls.Add(UiTheme.InputSurface(_pointSearch), 0, 1); selection.Controls.Add(_pointList, 0, 2); _pointTab.Controls.Add(selection); Tabs.TabPages.Add(_pointTab);
+        };
+        _loadColumns.Click += async (_, _) => await ReadColumnsAsync();
+        _createTable.Click += async (_, _) => await CreateTableAsync();
+        _mappingLoadColumns.Click += async (_, _) => await ReadColumnsAsync();
+        _switchPointMapping.Click += (_, _) => _mode.SelectedItem = DatabaseStorageMode.PointMapping;
+        ConfigureMappingGrid();
         _pointList.ItemCheck += (_, e) => { if (_bindingPoints) return; var id = ((DatabaseUiText.PointItem)_pointList.Items[e.Index]).Id; if (e.NewValue == CheckState.Checked) _selectedPoints.Add(id); else _selectedPoints.Remove(id); };
         _pointSearch.TextChanged += (_, _) => BindPoints(); _allPoints.CheckedChanged += (_, _) => _pointList.Enabled = !_allPoints.Checked;
         BindPoints(); _pointList.Enabled = !_allPoints.Checked;
 
-        _mappingTab = new TabPage("自定义 · 字段映射") { BackColor = Color.White };
-        ConfigureMappingGrid();
-        _mappingLoadColumns = UiTheme.Button("读取 / 刷新字段", async (_, _) => await ReadColumnsAsync());
-        _mappingLoadColumns.Name = "RefreshMappingColumns";
-        _switchPointMapping = UiTheme.Button("自定义逐点映射", (_, _) => _mode.SelectedItem = DatabaseStorageMode.PointMapping, primary: true);
-        _switchPointMapping.Name = "UsePointMapping";
-        var mappingLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
-        mappingLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        mappingLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); mappingLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        mappingLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); mappingLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        mappingLayout.Controls.Add(UiTheme.Toolbar(_switchPointMapping, _mappingLoadColumns), 0, 0);
-        mappingLayout.Controls.Add(_mappingHint, 0, 1);
-        var mappingBody = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty };
-        mappingBody.Controls.Add(_mapping); mappingBody.Controls.Add(_mappingEmpty);
-        mappingLayout.Controls.Add(mappingBody, 0, 2); mappingLayout.Controls.Add(_mappingStatus, 0, 3);
         mappingLayout.SizeChanged += (_, _) =>
         {
             foreach (var label in new[] { _mappingHint, _mappingStatus })
                 label.MaximumSize = new Size(Math.Max(1, mappingLayout.ClientSize.Width - label.Margin.Horizontal), 0);
         };
-        _mappingStatus.Name = "DatabaseMappingResult"; _mappingEmpty.Name = "DatabaseMappingEmpty";
         _status.TextChanged += (_, _) => _mappingStatus.Text = _status.Text;
         _status.ForeColorChanged += (_, _) => _mappingStatus.ForeColor = _status.ForeColor;
         _mappingStatus.Text = _status.Text;
-        _mappingTab.Controls.Add(mappingLayout); Tabs.TabPages.Add(_mappingTab);
         BindMappingRows(_source.Columns, _source.Columns.Select(mapping => new DatabaseColumnInfo(mapping.Column, "尚未读取", true)).ToArray());
         _mode.SelectedIndexChanged += (_, _) => UpdateMode();
         _tables.SelectedIndexChanged += (_, _) => { if (!_bindingTable && _tables.SelectedItem is DatabaseTableInfo table) { _schema.Text = table.Schema; _table.Text = table.Name; } };
@@ -297,19 +135,9 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
 
     private void ConfigureMappingGrid()
     {
-        _mapping.Name = "DatabaseColumnMappings"; _mapping.ReadOnly = false; _mapping.AllowUserToAddRows = false;
-        _mapping.EditMode = DataGridViewEditMode.EditOnEnter;
-        _mapping.Columns.Add(new DataGridViewCheckBoxColumn { Name = "Include", HeaderText = "使用采样", Width = 100, MinimumWidth = 100,
-            ToolTipText = "勾选：使用采样来源。取消勾选：写入手动常量。若不写入此列，请在值来源中选择“不写入”。" });
-        UiTheme.AddColumn(_mapping, "Column", "表字段", 130, 130); _mapping.Columns["Column"].ReadOnly = true;
-        UiTheme.AddColumn(_mapping, "DataType", "数据库类型 / 要求", 160, 160); _mapping.Columns["DataType"].ReadOnly = true;
-        _mapping.Columns.Add(new DataGridViewComboBoxColumn { Name = "Source", HeaderText = "值来源", MinimumWidth = 240, FillWeight = 240,
-            DataSource = Enumerable.Append(Enum.GetValues<DatabaseValueSource>(), OmittedSource).Select(value => new DatabaseUiText.EnumItem<DatabaseValueSource>(value, DatabaseUiText.Source(value))).ToArray(), ValueMember = "Value", DisplayMember = "Text" });
-        _mapping.Columns.Add(new DataGridViewComboBoxColumn { Name = "Point", HeaderText = "绑定点位", MinimumWidth = 220, FillWeight = 220,
-            DataSource = new[] { new DatabaseUiText.PointItem(Guid.Empty, "不绑定点位") }.Concat(_points).ToArray(), ValueMember = "Id", DisplayMember = "Text" });
-        _mapping.Columns.Add(new DataGridViewComboBoxColumn { Name = "FieldType", HeaderText = "转换类型", MinimumWidth = 110, FillWeight = 110,
-            DataSource = Enum.GetValues<DatabaseFieldType>().Select(value => new DatabaseUiText.EnumItem<DatabaseFieldType>(value, DatabaseUiText.FieldType(value))).ToArray(), ValueMember = "Value", DisplayMember = "Text" });
-        UiTheme.AddColumn(_mapping, "Constant", "手动常量", 150, 150);
+        ((DataGridViewComboBoxColumn)_mapping.Columns["Source"]).DataSource = Enumerable.Append(Enum.GetValues<DatabaseValueSource>(), OmittedSource).Select(value => new DatabaseUiText.EnumItem<DatabaseValueSource>(value, DatabaseUiText.Source(value))).ToArray();
+        ((DataGridViewComboBoxColumn)_mapping.Columns["Point"]).DataSource = new[] { new DatabaseUiText.PointItem(Guid.Empty, "不绑定点位") }.Concat(_points).ToArray();
+        ((DataGridViewComboBoxColumn)_mapping.Columns["FieldType"]).DataSource = Enum.GetValues<DatabaseFieldType>().Select(value => new DatabaseUiText.EnumItem<DatabaseFieldType>(value, DatabaseUiText.FieldType(value))).ToArray();
         // Combo/check columns also need logical minimum widths registered for DPI scaling.
         if (_mapping is DpiDataGridView dpiGrid)
             foreach (DataGridViewColumn column in _mapping.Columns) dpiGrid.RegisterColumn(column, column.MinimumWidth);
@@ -320,7 +148,7 @@ internal sealed class DatabaseWriteGroupDialog : EditorDialog
         {
             if (e.Control is ComboBox combo)
                 combo.DropDownWidth = Math.Min(Screen.FromControl(this).WorkingArea.Width, Math.Max(combo.Width, UiTheme.Scale(this, 360)));
-            if (e.Control is TextBox text && _mapping.CurrentCell?.OwningColumn.Name == "Constant")
+            if (e.Control is System.Windows.Forms.TextBox text && _mapping.CurrentCell?.OwningColumn.Name == "Constant")
             {
                 text.BorderStyle = BorderStyle.FixedSingle;
                 text.BackColor = UiTheme.InputBackground;

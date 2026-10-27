@@ -3,8 +3,10 @@ using EdgeGateway.Application;
 
 namespace EdgeGateway.WinForms;
 
-internal sealed class DriverDetailsDialog : DpiAwareForm
+internal sealed partial class DriverDetailsDialog : DpiAwareForm
 {
+    public DriverDetailsDialog() { InitializeComponent(); }
+
     public DriverDetailsDialog(string name, IReadOnlyList<DriverDetails> details)
     {
         Text = "驱动详情 · " + name;
@@ -12,21 +14,9 @@ internal sealed class DriverDetailsDialog : DpiAwareForm
         BackColor = Color.White;
         StartPosition = FormStartPosition.CenterParent;
         ConfigureWindow(new Size(760, 600), new Size(520, 360));
-        var text = new TextBox
-        {
-            Name = "DriverDetailsText", Dock = DockStyle.Fill, Multiline = true, ReadOnly = true,
-            ScrollBars = ScrollBars.Vertical, WordWrap = true, BackColor = Color.White,
-            BorderStyle = BorderStyle.None, Text = Describe(name, details)
-        };
-        var close = UiTheme.Button("关闭", (_, _) => Close());
-        CancelButton = close;
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(16) };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(text, 0, 0);
-        layout.Controls.Add(UiTheme.Toolbar(close), 0, 1);
-        Controls.Add(layout);
+        InitializeComponent();
+        detailsText.Text = Describe(name, details);
+        closeButton.Click += (_, _) => Close();
     }
 
     private static string Describe(string name, IReadOnlyList<DriverDetails> details)

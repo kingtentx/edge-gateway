@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -130,7 +130,8 @@ namespace EdgeGateway {
                     },
                     Attributes = attributes
                 };
-                var arguments = scenario == "Logging" ? " --smoke-logging --screenshot "
+                var arguments = scenario == "UiRedesign" ? " --smoke-test --screenshot "
+                    : scenario == "Logging" ? " --smoke-logging --screenshot "
                     : scenario == "Workbooks" ? " --smoke-workbooks --screenshot "
                     : scenario == "DatabaseMapping" ? " --smoke-database-mapping --screenshot "
                     : scenario == "ServerResources" ? " --smoke-server-resources --screenshot " : " --smoke-test --layout-matrix --screenshot ";
@@ -180,6 +181,7 @@ namespace EdgeGateway {
 '@
 }
 $code = [EdgeGateway.BackgroundUiSmoke]::Run($applicationPath, $repositoryRoot, $outputRoot, $TimeoutSeconds, $Scenario)
+[IO.File]::WriteAllText((Join-Path $outputRoot 'exit-code.txt'), [string]$code)
 if ($code -ne 0) {
     Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log')
     throw "Background WinForms smoke failed: $code"
@@ -214,6 +216,33 @@ if ($Scenario -eq 'DatabaseMapping') {
     $screenshots = @(Get-ChildItem -LiteralPath $outputRoot -Filter '*custom-point-mapping*.png' -File)
     if ($screenshots.Count -ne 1 -or $screenshots[0].Length -eq 0) { throw 'Database mapping screenshot is missing or empty.' }
     Write-Output 'Background database mapping smoke passed.'
+    return
+}
+if ($Scenario -eq 'UiRedesign') {
+    $outputText = [IO.File]::ReadAllText((Join-Path $outputRoot 'ui-smoke.stdout.log'))
+    $errorText = [IO.File]::ReadAllText((Join-Path $outputRoot 'ui-smoke.stderr.log'))
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw ('UI smoke wrote errors: ' + $errorText) }
+    $markers = @(
+        'Overview health smoke passed:', 'Deferred tab navigation passed:',
+        'WinForms editor smoke passed: 15 drivers',
+        'Device configuration smoke passed: 15 dedicated driver windows',
+        'Existing device driver change smoke passed:', 'Device row entry smoke passed:',
+        'Device enabled configuration smoke passed:', 'Unified device dialog smoke passed:',
+        'Dynamic driver switch passed at actual', 'Device import smoke passed:',
+        'Device-action/autosave smoke passed:', 'Live configuration smoke passed: A kept collecting',
+        'Completed capabilities smoke passed at actual', 'Usability smoke passed at actual',
+        'Data recording configuration smoke passed:'
+    )
+    foreach ($marker in $markers) {
+        if (-not $outputText.Contains($marker)) { throw ('Missing UI smoke completion marker: ' + $marker) }
+    }
+    foreach ($page in @('', '-devices', '-realtime', '-history', '-diagnostics', '-database', '-cloud', '-logs')) {
+        $imagePath = Join-Path $outputRoot ('ui-smoke' + $page + '.png')
+        if (-not (Test-Path -LiteralPath $imagePath) -or (Get-Item -LiteralPath $imagePath).Length -eq 0) {
+            throw ('Missing page screenshot: ' + $imagePath)
+        }
+    }
+    Write-Output 'Background UI redesign baseline passed (eight pages and editor behavior; no DPI matrix).'
     return
 }
 # Reuse the same assertions, marker counts and image checks as the interactive runner.

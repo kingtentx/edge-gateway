@@ -2,6 +2,19 @@
   "source": "NuGet package metadata resolved for EdgeGateway.WinForms net8.0-windows",
   "packages": [
     {
+      "id": "AntdUI",
+      "version": "2.4.16",
+      "authors": "Tom",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://licenses.nuget.org/Apache-2.0",
+      "copyright": "Copyright © Tom 2024-2030",
+      "repository": {
+        "type": "git",
+        "url": "https://gitee.com/AntdUI/AntdUI",
+        "commit": "3167b26361e161cb26d628be5bd0532b9e6e92ce"
+      }
+    },
+    {
       "id": "BitFaster.Caching",
       "version": "2.6.0",
       "authors": "Alex Peck",

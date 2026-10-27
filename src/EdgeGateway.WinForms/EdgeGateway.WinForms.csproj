@@ -80,4 +80,36 @@
     <ProjectReference Include="../EdgeGateway.Application/EdgeGateway.Application.csproj" />
     <ProjectReference Include="../EdgeGateway.Hosting/EdgeGateway.Hosting.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Update="EditorDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="EditorDialog.Designer.cs"><DependentUpon>EditorDialog.cs</DependentUpon></Compile>
+    <Compile Update="TagEditor.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="TagEditor.Designer.cs"><DependentUpon>TagEditor.cs</DependentUpon></Compile>
+    <Compile Update="WriteValueDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="WriteValueDialog.Designer.cs"><DependentUpon>WriteValueDialog.cs</DependentUpon></Compile>
+    <Compile Update="ChannelEditor.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="ChannelEditor.Designer.cs"><DependentUpon>ChannelEditor.cs</DependentUpon></Compile>
+    <Compile Update="DatabaseConnectionDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="DatabaseConnectionDialog.Designer.cs"><DependentUpon>DatabaseConnectionDialog.cs</DependentUpon></Compile>
+    <Compile Update="DatabaseWriteGroupDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="DatabaseWriteGroupDialog.Designer.cs"><DependentUpon>DatabaseWriteGroupDialog.cs</DependentUpon></Compile>
+    <Compile Update="DatabasePreviewDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="DatabasePreviewDialog.Designer.cs"><DependentUpon>DatabasePreviewDialog.cs</DependentUpon></Compile>
+    <Compile Update="DeviceConfigurationDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="DeviceConfigurationDialog.Designer.cs"><DependentUpon>DeviceConfigurationDialog.cs</DependentUpon></Compile>
+    <Compile Update="DeviceWorkbookImportDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="DeviceWorkbookImportDialog.Designer.cs"><DependentUpon>DeviceWorkbookImportDialog.cs</DependentUpon></Compile>
+    <Compile Update="TagImportDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="TagImportDialog.Designer.cs"><DependentUpon>TagImportDialog.cs</DependentUpon></Compile>
+    <Compile Update="DriverPluginDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="DriverPluginDialog.Designer.cs"><DependentUpon>DriverPluginDialog.cs</DependentUpon></Compile>
+    <Compile Update="DriverDetailsDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="DriverDetailsDialog.Designer.cs"><DependentUpon>DriverDetailsDialog.cs</DependentUpon></Compile>
+    <Compile Update="EditorFeedback.cs"><SubType>Component</SubType></Compile>
+    <Compile Update="EditorFeedback.Designer.cs"><DependentUpon>EditorFeedback.cs</DependentUpon></Compile>
+    <Compile Update="InputFrame.cs"><SubType>Component</SubType></Compile>
+    <Compile Update="InputFrame.Designer.cs"><DependentUpon>InputFrame.cs</DependentUpon></Compile>
+    <Compile Update="LogArchivePageView.cs"><SubType>UserControl</SubType></Compile>
+    <Compile Update="LogArchivePageView.Designer.cs"><DependentUpon>LogArchivePageView.cs</DependentUpon></Compile>
+  </ItemGroup>
 </Project>

@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+界面采用 AntdUI 与原生 WinForms 的混合实现：固定结构在各自 Designer 中维护，驱动参数、数据库字段映射行、实时数据和曲线由代码生成或绑定。迁移范围与保留控件见 [界面重构](docs/ui-redesign-architecture.md)，实际验证与未验收项见 [本轮记录](docs/ui-redesign-verification.md)。
+
 **2026-10-27 Debug 文件占用修复：** Debug 将采集宿主放在界面进程内，避免 VS 停止调试后残留 `--worker` 进程占用驱动 DLL、导致 MSB3027；Release 继续使用独立后台与托盘退出。已正常退出本机未采集的残留后台；本次尚未执行构建或测试。[原因与操作说明](docs/debug-worker-file-lock.md)。
 
 **2026-10-27 统一服务器时间：** 外库时间、运行/采样日志、日志日期文件名和 CSV 时间统一采用采集服务器当地时间；保留原采样时刻，避免 UTC 钟面值与北京时间相差 8 小时。旧日志及已入库数据不自动改写；跨版本历史需按切换边界区分。[行为、更新边界与验证](docs/server-local-time.md)。

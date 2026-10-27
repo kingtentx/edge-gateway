@@ -86,7 +86,7 @@ internal sealed class DriverParameterPanel : UserControl
         foreach (var field in _fields.Values)
         {
             var locked = readOnly || field.Metadata.IsReadOnly || field.Metadata.BoundProperty is not null;
-            if (field.Input is TextBoxBase text) text.ReadOnly = locked;
+            if (field.Input is TextBox text) text.ReadOnly = locked;
             else field.Input.Enabled = !locked;
         }
     }

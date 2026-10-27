@@ -17,29 +17,25 @@ public sealed partial class MainForm
         _databaseGroupGrid = _databasePageView.GroupsGrid;
         _databaseState = _databasePageView.DatabaseState;
         _databaseGrid.Name = "DatabaseConnections"; _databaseGroupGrid.Name = "DatabaseWriteGroups";
-        UiTheme.AddColumn(_databaseGrid, "Name", "连接名称", 150, 150); UiTheme.AddColumn(_databaseGrid, "Provider", "类型", 110, 110);
-        UiTheme.AddColumn(_databaseGrid, "Target", "服务器 / 数据库", 220, 220); UiTheme.AddColumn(_databaseGrid, "State", "状态", 130, 130);
-        UiTheme.AddColumn(_databaseGrid, "Queued", "排队行数", 100); UiTheme.AddColumn(_databaseGrid, "Written", "已写行数", 100);
-        UiTheme.AddColumn(_databaseGrid, "Load", "队列载荷 / 峰值", 180, 180);
-        UiTheme.AddColumn(_databaseGrid, "Retry", "失败 / 重试 / 超时", 180, 180);
-        UiTheme.AddColumn(_databaseGrid, "Duration", "在途 / 最近耗时", 180, 180);
-        UiTheme.AddColumn(_databaseGrid, "Dropped", "丢弃 / 跳过", 120); UiTheme.AddColumn(_databaseGrid, "Error", "最近错误", 260, 260);
-        UiTheme.AddColumn(_databaseGroupGrid, "Name", "写入组", 150, 150); UiTheme.AddColumn(_databaseGroupGrid, "Connection", "数据库连接", 150, 150);
-        UiTheme.AddColumn(_databaseGroupGrid, "Mode", "数据格式", 180, 180); UiTheme.AddColumn(_databaseGroupGrid, "Table", "目标表", 200, 200);
-        UiTheme.AddColumn(_databaseGroupGrid, "Selection", "点位 / 映射", 150, 150); UiTheme.AddColumn(_databaseGroupGrid, "Enabled", "写入状态", 100);
-        Button Change(string name, Func<Task> action)
-        {
-            var button = UiTheme.Button(name, async (_, _) => await RunBusyAsync(action));
-            _stoppedConfigurationCommands.Add(button); return button;
-        }
-        _databasePageView.ConnectionsToolbarHost.Controls.Add(UiTheme.Toolbar(
-            Change("添加连接", () => EditDatabaseConnectionAsync(true)), Change("编辑连接", () => EditDatabaseConnectionAsync(false)),
-            Change("启用 / 停用连接", ToggleDatabaseConnectionAsync), Change("删除连接", DeleteDatabaseConnectionAsync),
-            UiTheme.Button("测试连接", async (_, _) => await RunBusyAsync(TestSelectedDatabaseAsync))));
-        _databasePageView.GroupsToolbarHost.Controls.Add(UiTheme.Toolbar(
-            Change("添加写入组", () => EditDatabaseGroupAsync(true)), Change("编辑写入组", () => EditDatabaseGroupAsync(false)),
-            Change("启用 / 停用写入组", ToggleDatabaseGroupAsync), Change("删除写入组", DeleteDatabaseGroupAsync),
-            UiTheme.Button("检查与预览", async (_, _) => await RunBusyAsync(PreviewSelectedDatabaseGroupAsync))));
+
+        _databasePageView.addConnection.Click += async (_, _) => await RunBusyAsync(() => EditDatabaseConnectionAsync(true));
+        _stoppedConfigurationCommands.Add(_databasePageView.addConnection);
+        _databasePageView.editConnection.Click += async (_, _) => await RunBusyAsync(() => EditDatabaseConnectionAsync(false));
+        _stoppedConfigurationCommands.Add(_databasePageView.editConnection);
+        _databasePageView.toggleConnection.Click += async (_, _) => await RunBusyAsync(() => ToggleDatabaseConnectionAsync());
+        _stoppedConfigurationCommands.Add(_databasePageView.toggleConnection);
+        _databasePageView.deleteConnection.Click += async (_, _) => await RunBusyAsync(() => DeleteDatabaseConnectionAsync());
+        _stoppedConfigurationCommands.Add(_databasePageView.deleteConnection);
+        _databasePageView.testConnection.Click += async (_, _) => await RunBusyAsync(() => TestSelectedDatabaseAsync());
+        _databasePageView.addGroup.Click += async (_, _) => await RunBusyAsync(() => EditDatabaseGroupAsync(true));
+        _stoppedConfigurationCommands.Add(_databasePageView.addGroup);
+        _databasePageView.editGroup.Click += async (_, _) => await RunBusyAsync(() => EditDatabaseGroupAsync(false));
+        _stoppedConfigurationCommands.Add(_databasePageView.editGroup);
+        _databasePageView.toggleGroup.Click += async (_, _) => await RunBusyAsync(() => ToggleDatabaseGroupAsync());
+        _stoppedConfigurationCommands.Add(_databasePageView.toggleGroup);
+        _databasePageView.deleteGroup.Click += async (_, _) => await RunBusyAsync(() => DeleteDatabaseGroupAsync());
+        _stoppedConfigurationCommands.Add(_databasePageView.deleteGroup);
+        _databasePageView.previewGroup.Click += async (_, _) => await RunBusyAsync(() => PreviewSelectedDatabaseGroupAsync());
         _databaseGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseConnectionAsync(false)); };
         _databaseGroupGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseGroupAsync(false)); };
         _databaseState.Name = "DatabaseConfigurationState";

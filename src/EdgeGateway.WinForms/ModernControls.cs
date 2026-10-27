@@ -4,74 +4,37 @@ using System.Drawing.Drawing2D;
 namespace EdgeGateway.WinForms;
 
 /// <summary>Native button semantics (keyboard/default/cancel/accessibility), with a shared visual treatment.</summary>
-internal class ModernButton : Button
+internal class ModernButton : GatewayButton
 {
     private Bitmap? _glyphImage;
-    private int _glyphSize;
-    private Color _glyphColor;
-    private bool _hover, _pressed;
-    public IconChar Glyph { get; init; }
-    public bool Primary { get; init; }
-    public bool Navigation { get; init; }
+    public IconChar Glyph { get; set; }
+    public bool Primary { get; set; }
+    public bool Navigation { get; set; }
 
-    public ModernButton()
+    public ModernButton() { Radius = 6; WaveSize = 0; }
+
+    protected override void OnCreateControl()
     {
-        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-        FlatStyle = FlatStyle.Flat; FlatAppearance.BorderSize = 0; UseVisualStyleBackColor = false;
+        base.OnCreateControl();
+        Type = Primary ? AntdUI.TTypeMini.Primary : AntdUI.TTypeMini.Default;
+        RefreshGlyph();
     }
 
-    public override Size GetPreferredSize(Size proposedSize)
+    private void RefreshGlyph()
     {
-        var text = TextRenderer.MeasureText(Text, Font, Size.Empty, TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
-        var icon = Glyph == IconChar.None ? 0 : UiTheme.Scale(this, Navigation ? 29 : 25);
-        return new Size(Math.Max(MinimumSize.Width, text.Width + icon + Padding.Horizontal + UiTheme.Scale(this, 4)),
-            Math.Max(MinimumSize.Height, text.Height + Padding.Vertical + UiTheme.Scale(this, 2)));
+        var previous = _glyphImage;
+        _glyphImage = Glyph == IconChar.None ? null : Glyph.ToBitmap(IconFont.Solid,
+            UiTheme.Scale(this, Navigation ? 18 : 15), ForeColor);
+        Icon = _glyphImage;
+        previous?.Dispose();
     }
 
-    protected override void OnPaintBackground(PaintEventArgs pevent) => pevent.Graphics.Clear(Parent?.BackColor ?? UiTheme.Background);
-
-    protected override void OnPaint(PaintEventArgs e)
+    protected override void OnForeColorChanged(EventArgs e) { base.OnForeColorChanged(e); if (IsHandleCreated) RefreshGlyph(); }
+    protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); RefreshGlyph(); }
+    protected override void Dispose(bool disposing)
     {
-        // ButtonBase is Opaque and normal WM_PAINT skips OnPaintBackground.
-        // Fill the complete surface so the pixels outside rounded corners are stable.
-        OnPaintBackground(e);
-        var graphics = e.Graphics;
-        graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        var background = !Enabled ? Color.FromArgb(239, 242, 247) : _pressed
-            ? ControlPaint.Dark(BackColor, .08f) : _hover ? (Navigation ? Color.FromArgb(35, 55, 83) : ControlPaint.Light(BackColor, .15f)) : BackColor;
-        var foreground = Enabled ? ForeColor : Color.FromArgb(153, 166, 184);
-        using var path = RoundedPath(new RectangleF(1, 1, Math.Max(1, Width - 2), Math.Max(1, Height - 2)), UiTheme.Scale(this, 8));
-        using var brush = new SolidBrush(background);
-        graphics.FillPath(brush, path);
-        if (!Navigation && !Primary)
-        {
-            using var border = new Pen(_hover && Enabled ? UiTheme.Blue : UiTheme.Border, Math.Max(1, UiTheme.Scale(this, 1)));
-            graphics.DrawPath(border, path);
-        }
-        if (Navigation && BackColor != UiTheme.Navy)
-        {
-            using var indicator = new SolidBrush(Color.FromArgb(87, 179, 255));
-            graphics.FillRectangle(indicator, UiTheme.Scale(this, 2), Height / 4, UiTheme.Scale(this, 3), Height / 2);
-        }
-        var iconSize = Glyph == IconChar.None ? 0 : UiTheme.Scale(this, Navigation ? 18 : 15);
-        var gap = iconSize == 0 ? 0 : UiTheme.Scale(this, 9);
-        var measured = TextRenderer.MeasureText(Text, Font, Size.Empty, TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
-        var left = Navigation ? Padding.Left : Math.Max(Padding.Left, (Width - iconSize - gap - measured.Width) / 2);
-        if (iconSize > 0)
-        {
-            if (_glyphImage is null || _glyphSize != iconSize || _glyphColor != foreground)
-            {
-                _glyphImage?.Dispose();
-                _glyphImage = Glyph.ToBitmap(IconFont.Solid, iconSize, foreground);
-                _glyphSize = iconSize; _glyphColor = foreground;
-            }
-            graphics.DrawImageUnscaled(_glyphImage, left, (Height - iconSize) / 2);
-            left += iconSize + gap;
-        }
-        TextRenderer.DrawText(graphics, Text, Font, new Rectangle(left, 0, Math.Max(1, Width - left - Padding.Right), Height), foreground,
-            TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
-        if (Focused && ShowFocusCues)
-            ControlPaint.DrawFocusRectangle(graphics, Rectangle.Inflate(ClientRectangle, -UiTheme.Scale(this, 5), -UiTheme.Scale(this, 5)), foreground, background);
+        if (disposing) { Icon = null; _glyphImage?.Dispose(); _glyphImage = null; }
+        base.Dispose(disposing);
     }
 
     internal static GraphicsPath RoundedPath(RectangleF rect, float radius)
@@ -86,21 +49,11 @@ internal class ModernButton : Button
         path.CloseFigure(); return path;
     }
 
-    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); _hover = true; Invalidate(); }
-    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); _hover = _pressed = false; Invalidate(); }
-    protected override void OnMouseDown(MouseEventArgs e) { base.OnMouseDown(e); _pressed = true; Invalidate(); }
-    protected override void OnMouseUp(MouseEventArgs e) { base.OnMouseUp(e); _pressed = false; Invalidate(); }
-    protected override void OnEnabledChanged(EventArgs e) { base.OnEnabledChanged(e); Invalidate(); }
-    protected override void OnDpiChangedAfterParent(EventArgs e)
-    {
-        base.OnDpiChangedAfterParent(e); _glyphImage?.Dispose(); _glyphImage = null; Invalidate();
-    }
-    protected override void Dispose(bool disposing) { if (disposing) _glyphImage?.Dispose(); base.Dispose(disposing); }
 }
 
 internal sealed class SurfaceCard : TableLayoutPanel
 {
-    public Color Accent { get; init; } = UiTheme.Blue;
+    public Color Accent { get; set; } = UiTheme.Blue;
     public SurfaceCard() { DoubleBuffered = true; ResizeRedraw = true; }
     protected override void OnPaintBackground(PaintEventArgs e)
     {
@@ -123,6 +76,12 @@ internal sealed class DpiDataGridView : DataGridView
     private Font? _headerFont;
     private DpiAwareForm? _dpiForm;
     public DpiDataGridView() { DoubleBuffered = true; }
+    protected override void OnColumnAdded(DataGridViewColumnEventArgs e)
+    {
+        base.OnColumnAdded(e);
+        _logicalColumnWidths.TryAdd(e.Column, e.Column.MinimumWidth);
+    }
+
     internal void RegisterColumn(DataGridViewColumn column, int logicalMinimum)
     {
         _logicalColumnWidths[column] = logicalMinimum;

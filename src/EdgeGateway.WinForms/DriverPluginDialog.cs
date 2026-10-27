@@ -4,18 +4,14 @@ using EdgeGateway.Model;
 namespace EdgeGateway.WinForms;
 
 /// <summary>Local administrator UI for installing trusted, single-file driver factory plugins.</summary>
-internal sealed class DriverPluginDialog : DpiAwareForm
+internal sealed partial class DriverPluginDialog : DpiAwareForm
 {
     private readonly IGatewayApplication _application;
-    private readonly DataGridView _grid = UiTheme.Grid();
-    private readonly Label _status = UiTheme.Label("", 10, UiTheme.Muted);
     private readonly string _pluginDirectory;
     private bool _refreshing;
     private bool _busy;
-    private readonly Button _details;
-    private readonly Button _update;
-    private readonly Button _uninstall;
-    private readonly FlowLayoutPanel _actions;
+
+    public DriverPluginDialog() { _application = null!; _pluginDirectory = ""; InitializeComponent(); }
 
     public DriverPluginDialog(IGatewayApplication application, string driverDirectory)
     {
@@ -27,20 +23,9 @@ internal sealed class DriverPluginDialog : DpiAwareForm
         ConfigureWindow(new Size(980, 650), new Size(700, 480));
         StartPosition = FormStartPosition.CenterParent;
 
-        UiTheme.AddColumn(_grid, "Name", "驱动名称", 200, 160);
-        UiTheme.AddColumn(_grid, "Source", "来源", 110, 100);
-        UiTheme.AddColumn(_grid, "Status", "状态", 100, 90);
-        UiTheme.AddColumn(_grid, "DriverIds", "驱动标识", 180, 150);
-        UiTheme.AddColumn(_grid, "Version", "版本", 110, 100);
-        UiTheme.AddColumn(_grid, "AssemblyName", "程序集", 180, 140);
-        UiTheme.AddColumn(_grid, "Sha256", "SHA-256", 260, 160);
-        _grid.Dock = DockStyle.Fill;
-        _grid.ReadOnly = true;
-        _grid.AutoGenerateColumns = false;
-
-        var upload = UiTheme.Button("上传并加载 DLL", async (_, _) => await InstallAsync(false), true);
-        upload.Name = "UploadDriverDll";
-        var open = UiTheme.Button("打开插件目录", (_, _) =>
+        InitializeComponent();
+        upload.Click += async (_, _) => await InstallAsync(false);
+        open.Click += (_, _) =>
         {
             try
             {
@@ -48,31 +33,16 @@ internal sealed class DriverPluginDialog : DpiAwareForm
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_pluginDirectory) { UseShellExecute = true });
             }
             catch (Exception ex) { ShowMessage(ex.Message, MessageBoxIcon.Error); }
-        });
-        var refresh = UiTheme.Button("刷新驱动列表", async (_, _) => await RefreshGridAsync());
-        var close = UiTheme.Button("关闭", (_, _) => Close());
-        _details = UiTheme.Button("查看详情", async (_, _) => await ShowDetailsAsync());
-        _update = UiTheme.Button("更新 DLL", async (_, _) => await InstallAsync(true));
-        _uninstall = UiTheme.Button("卸载驱动", async (_, _) => await UninstallAsync());
-        _details.Name = "DriverDetails";
-        _update.Name = "UpdateDriverDll";
-        _uninstall.Name = "UninstallDriverPlugin";
-        _actions = UiTheme.Toolbar(upload, _details, _update, _uninstall, refresh, open, close);
+        };
+        refresh.Click += async (_, _) => await RefreshGridAsync();
+        close.Click += (_, _) => Close();
+        _details.Click += async (_, _) => await ShowDetailsAsync();
+        _update.Click += async (_, _) => await InstallAsync(true);
+        _uninstall.Click += async (_, _) => await UninstallAsync();
         _grid.SelectionChanged += (_, _) => UpdateActions();
         _grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await ShowDetailsAsync(); };
         FormClosing += (_, e) => { if (_busy) e.Cancel = true; };
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(12), BackColor = Color.White };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _status.Dock = DockStyle.Fill;
-        _status.Visible = false;
-        layout.Controls.Add(_actions, 0, 0);
-        layout.Controls.Add(_grid, 0, 1);
-        layout.Controls.Add(_status, 0, 2);
         layout.SizeChanged += (_, _) => _status.MaximumSize = new Size(Math.Max(1, layout.ClientSize.Width - layout.Padding.Horizontal), 0);
-        Controls.Add(layout);
         Shown += async (_, _) => await RefreshGridAsync();
         UpdateActions();
     }

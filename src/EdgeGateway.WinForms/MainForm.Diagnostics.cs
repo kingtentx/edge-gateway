@@ -13,18 +13,15 @@ public sealed partial class MainForm
     {
         _diagnosticsPageView = new DiagnosticsPageView();
         _telemetryDiagnosticsGrid = _diagnosticsPageView.DiagnosticsGrid;
-        UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Item", "诊断项目", 180, 180);
-        UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Value", "当前值 / 最近事件", 260, 260);
-        UiTheme.AddColumn(_telemetryDiagnosticsGrid, "Meaning", "说明", 350, 350);
+
         _telemetryDiagnosticsGrid.DataSource = _telemetryDiagnosticRows;
         _telemetryDiagnosticsGrid.CellDoubleClick += (_, e) =>
         {
             if (e.RowIndex >= 0 && _telemetryDiagnosticsGrid.Rows[e.RowIndex].DataBoundItem is DiagnosticRow row)
                 MessageBox.Show(this, row.Value + "\n\n" + row.Meaning, row.Item, MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
-        _diagnosticsPageView.ToolbarHost.Controls.Add(UiTheme.Toolbar(
-            UiTheme.Button("刷新状态", async (_, _) => await RefreshSnapshotsAsync()),
-            UiTheme.Button("导出诊断", async (_, _) => await RunBusyAsync(ExportDiagnosticsAsync))));
+        _diagnosticsPageView.refreshButton.Click += async (_, _) => await RunBusyAsync(() => RefreshSnapshotsAsync());
+        _diagnosticsPageView.exportButton.Click += async (_, _) => await RunBusyAsync(() => ExportDiagnosticsAsync());
         return _diagnosticsPageView;
     }
 

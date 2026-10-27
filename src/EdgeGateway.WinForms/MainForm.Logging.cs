@@ -23,33 +23,31 @@ public sealed partial class MainForm
         _loggingApply = _loggingPageView.ApplyButton;
         _loggingReset = _loggingPageView.ResetButton;
         _loggingFileState = _loggingPageView.FileState;
-        var viewport = _loggingPageView.SettingsFieldsHost;
-        var fields = EditorLayout.Fields();
-        viewport.Controls.Add(fields);
-        void Add(string key, string label, Control control)
-        { control.Name = "Logging_" + key; EditorDialog.Field(fields, label, control); _loggingFields.Add(key, control); _configurationCommands.Add(control); }
+        _loggingFields.Add("MinimumLevel", _loggingPageView.MinimumLevelInput);
+        _loggingFields.Add("MaxFileSizeMb", _loggingPageView.MaxFileSizeMbInput);
+        _loggingFields.Add("RetainedFileCount", _loggingPageView.RetainedFileCountInput);
+        _loggingFields.Add("RetainedDays", _loggingPageView.RetainedDaysInput);
+        _loggingFields.Add("Samples", _loggingPageView.SamplesInput);
+        _loggingFields.Add("SampleMaxFileSizeMb", _loggingPageView.SampleMaxFileSizeMbInput);
+        _loggingFields.Add("SampleRetainedFileCount", _loggingPageView.SampleRetainedFileCountInput);
+        _loggingFields.Add("SampleRetainedDays", _loggingPageView.SampleRetainedDaysInput);
+        _loggingFields.Add("MinimumFreeDiskSpaceMb", _loggingPageView.MinimumFreeDiskSpaceMbInput);
+        _loggingFields.Add("DiskResumeMarginMb", _loggingPageView.DiskResumeMarginMbInput);
         void Changed() { if (_bindingLogging) return; _loggingDirty = true; UpdateCommands(); }
-        var level = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FormattingEnabled = true }; level.Items.AddRange(Enum.GetValues<GatewayLogLevel>().Cast<object>().ToArray());
-        level.Format += (_, e) => { if (e.ListItem is GatewayLogLevel value) e.Value = LogLevelText(value); }; level.SelectedIndexChanged += (_, _) => Changed();
-        var samples = new CheckBox { Text = "将每个采样结果写入采样日志", AutoSize = true }; samples.CheckedChanged += (_, _) => Changed();
-        EditorDialog.Section(fields, "运行日志", "保存系统事件、设备状态、故障与操作记录；最低级别不影响采样数据。");
-        Add("MinimumLevel", "运行日志最低级别", level);
-        void Number(string key, string label, int min, int max)
-        { var input = new NumericUpDown { Minimum = min, Maximum = max, ThousandsSeparator = true }; input.ValueChanged += (_, _) => Changed(); Add(key, label, input); }
-        Number("MaxFileSizeMb", "单文件最大大小（M）", 1, 1024); Number("RetainedFileCount", "最多保留文件数", 1, 1000); Number("RetainedDays", "最多保留天数", 1, 3650);
-        EditorDialog.Section(fields, "采样数据", "独立记录逐点原始值、工程值、质量、时间和错误；关闭后仍可查询已保存的文件。");
-        Add("Samples", "记录采样数据", samples);
-        Number("SampleMaxFileSizeMb", "单文件最大大小（M）", 1, 1024);
-        Number("SampleRetainedFileCount", "最多保留文件数", 1, 1000);
-        Number("SampleRetainedDays", "最多保留天数", 1, 3650);
-        EditorDialog.Section(fields, "磁盘保护", "低于保护阈值暂停文件写入；空间达到阈值加恢复余量后自动恢复。保护期间的日志不补写，丢弃数可见。不会删除其他业务文件。");
-        Number("MinimumFreeDiskSpaceMb", "最低剩余空间（M）", 16, 1048576);
-        Number("DiskResumeMarginMb", "恢复余量（M）", 1, 65536);
+        foreach (var control in _loggingFields.Values)
+        {
+            _configurationCommands.Add(control);
+            if (control is NumericUpDown number) number.ValueChanged += (_, _) => Changed();
+            else if (control is CheckBox check) check.CheckedChanged += (_, _) => Changed();
+            else if (control is ComboBox choice) choice.SelectedIndexChanged += (_, _) => Changed();
+        }
+        var level = _loggingPageView.MinimumLevelInput;
+        level.Items.AddRange(Enum.GetValues<GatewayLogLevel>().Cast<object>().ToArray());
+        level.Format += (_, e) => { if (e.ListItem is GatewayLogLevel value) e.Value = LogLevelText(value); };
         var logPaths = _application.GetLoggingStatus();
-        EditorDialog.Hint(fields, "程序日志：" + (logPaths.DirectoryPath ?? "未启用文件日志") + Environment.NewLine
-            + "点位采样日志：" + (logPaths.SampleDirectoryPath ?? "未启用文件日志") + Environment.NewLine
-            + "在“运行日志”和“采样数据”页签分别查询并导出已保存的记录。");
-        var openLogs = UiTheme.Button("打开日志目录", (_, _) =>
+        _loggingPageView.logPathsLabel.Text = "程序日志：" + (logPaths.DirectoryPath ?? "未启用文件日志") + Environment.NewLine
+            + "点位采样日志：" + (logPaths.SampleDirectoryPath ?? "未启用文件日志");
+        _loggingPageView.openLogsButton.Click += (_, _) =>
         {
             try
             {
@@ -59,9 +57,7 @@ public sealed partial class MainForm
                 Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
             }
             catch (Exception exception) { ShowError(exception.Message); }
-        });
-        DatabaseConnectionDialog.Span(fields, _loggingFileState);
-        openLogs.Name = "OpenLogDirectory"; DatabaseConnectionDialog.Span(fields, openLogs);
+        };
         _loggingApply.Click += async (_, _) => await RunBusyAsync(ApplyLoggingSettingsAsync);
         _loggingReset.Click += (_, _) => { _loggingDirty = false; BindLoggingFields(); UpdateCommands(); };
         _configurationCommands.AddRange([_loggingApply, _loggingReset]);

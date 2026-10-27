@@ -347,7 +347,8 @@ public sealed partial class MainForm
             ((NumericUpDown)_loggingFields["MaxFileSizeMb"]).Value = 12;
             ((NumericUpDown)_loggingFields["MinimumFreeDiskSpaceMb"]).Value = 128;
             ((NumericUpDown)_loggingFields["DiskResumeMarginMb"]).Value = 32;
-            Check(_loggingDirty && _loggingApply.Enabled, "logging controls did not support a live draft.");
+            Check(_loggingDirty && _loggingApply.Enabled && _loggingReset.Enabled,
+                "logging apply/reset controls did not support a live draft.");
             using (RejectConfigurationWritesForSmoke())
             {
                 var rejected = false;
@@ -358,7 +359,8 @@ public sealed partial class MainForm
             }
             var beforeSample = _application.GetLatest().Max(sample => sample.Timestamp);
             await ApplyLoggingSettingsAsync();
-            Check(!_loggingDirty && _configuration.Logging.RetainedDays == 17 && _configuration.Logging.MaxFileSizeMb == 12
+            Check(!_loggingDirty && !_loggingApply.Enabled && !_loggingReset.Enabled
+                && _configuration.Logging.RetainedDays == 17 && _configuration.Logging.MaxFileSizeMb == 12
                 && _configuration.Logging.MinimumFreeDiskSpaceMb == 128 && _configuration.Logging.DiskResumeMarginMb == 32
                 && _application.IsDeviceRunning(device.Id), "logging hot apply did not persist or interrupted the device.");
             timer.Restart();

@@ -6,17 +6,25 @@ internal sealed record MenuCommand(string Key, string Text, Func<Task> Execute, 
 /// <summary>A keyboard accessible native menu with actions created for the selected target when it opens.</summary>
 internal sealed class CommandMenuButton : ModernButton
 {
-    private readonly Func<IReadOnlyList<MenuCommand>> _commands;
-    private readonly Action<Exception> _onError;
+    private Func<IReadOnlyList<MenuCommand>> _commands = () => [];
+    private Action<Exception> _onError = _ => { };
     private readonly ContextMenuStrip _menu = new() { ShowImageMargin = false, ShowCheckMargin = false };
     private IReadOnlyList<MenuCommand> _openedCommands = [];
 
-    public CommandMenuButton(string text, Func<IReadOnlyList<MenuCommand>> commands, Action<Exception> onError)
+    public CommandMenuButton(string text, Func<IReadOnlyList<MenuCommand>> commands, Action<Exception> onError) : this()
     {
-        Text = text; AccessibleName = text; _commands = commands; _onError = onError;
+        Text = text; AccessibleName = text; Glyph = UiTheme.ActionIcon(text);
+        Bind(commands, onError);
+    }
+
+    internal void Bind(Func<IReadOnlyList<MenuCommand>> commands, Action<Exception> onError)
+    { _commands = commands; _onError = onError; }
+
+    public CommandMenuButton()
+    {
         AutoSize = true; MinimumSize = new Size(100, UiTheme.ActionHeight); Height = UiTheme.ActionHeight;
         Padding = new Padding(13, 6, 13, 6); Margin = new Padding(0, 0, 8, 6);
-        BackColor = Color.White; ForeColor = UiTheme.Ink; Glyph = UiTheme.ActionIcon(text);
+        BackColor = Color.White; ForeColor = UiTheme.Ink;
         Cursor = Cursors.Hand;
         _menu.BackColor = Color.White; _menu.ForeColor = UiTheme.Ink;
         _menu.Renderer = new MenuRenderer();

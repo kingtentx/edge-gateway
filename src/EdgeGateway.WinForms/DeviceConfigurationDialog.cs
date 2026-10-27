@@ -5,7 +5,7 @@ using System.Globalization;
 namespace EdgeGateway.WinForms;
 
 /// <summary>Creates or edits every device setting through one isolated, driver-aware draft.</summary>
-internal sealed class DeviceConfigurationDialog : EditorDialog
+internal sealed partial class DeviceConfigurationDialog : EditorDialog
 {
     private readonly DeviceConfiguration _original;
     private readonly IDriverCatalog _drivers;
@@ -14,11 +14,6 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     private readonly List<Control> _connectionInputs = [];
     private readonly List<string> _connectionKeys = [];
     private readonly Dictionary<string, DeviceConfiguration> _driverDrafts = new(StringComparer.OrdinalIgnoreCase);
-    private readonly TextBox _name, _group;
-    private readonly ComboBox _driver, _channel, _scanMode;
-    private readonly CheckBox _enabled, _autoDemotion;
-    private readonly NumericUpDown _cycle, _timeout, _demotionCount, _demotionInterval;
-    private readonly Label _driverDetails;
     private DriverDescriptor? _descriptor;
     private DriverParameterPanel? _parameters;
     private TabPage? _protocolPage;
@@ -27,6 +22,12 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     public DeviceConfiguration? Value { get; private set; }
     internal IReadOnlyCollection<Control> SmokeParameterInputs => _parameters?.Inputs ?? _connectionInputs;
     internal Guid? SmokeChannelId => (_channel.SelectedItem as ChannelOption)?.Id;
+
+    public DeviceConfigurationDialog() : base("设备配置", "配置设备与采集参数。")
+    {
+        _original = new(); _drivers = null!;
+        InitializeComponent();
+    }
 
     public DeviceConfigurationDialog(DeviceConfiguration device, IDriverCatalog drivers, bool readOnly = false, bool isNew = false,
         IReadOnlyList<ChannelConfiguration>? channels = null)
@@ -43,66 +44,38 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
         _readOnly = readOnly; _isNew = isNew;
         _driverDrafts[_original.DriverId] = Clone(_original);
 
-        var acquisition = AddTab("采集设置");
-        TabOf(acquisition).Name = "AcquisitionSettings";
-        Section(acquisition, "设备信息");
-        _enabled = Register("Enabled", new CheckBox
-        {
-            Text = "启用设备", Checked = _original.Enabled, AutoSize = true,
-            MinimumSize = new Size(0, 32)
-        });
-        _name = Register("Name", TextInput(_original.Name));
-        _group = Register("Group", TextInput(_original.Group));
-        _channel = Register("ChannelId", new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList });
+        InitializeComponent();
+        Register("Enabled", _enabled); Register("Name", _name); Register("Group", _group);
+        Register("ChannelId", _channel); Register("DriverId", _driver);
+        Register("PollIntervalMs", _cycle); Register("TimeoutMs", _timeout);
+        Register("ScanMode", _scanMode); Register("AutoDemotionEnabled", _autoDemotion);
+        Register("DemotionFailureCount", _demotionCount); Register("DemotionIntervalMs", _demotionInterval);
+        _enabled.Checked = _original.Enabled; _name.Text = _original.Name; _group.Text = _original.Group;
+        _cycle.Value = Math.Clamp(_original.PollIntervalMs, 100, 3600000);
+        _timeout.Value = Math.Clamp(_original.TimeoutMs, 100, 120000);
+        _autoDemotion.Checked = _original.AutoDemotionEnabled;
+        _demotionCount.Value = Math.Clamp(_original.DemotionFailureCount, 1, 30);
+        _demotionInterval.Value = Math.Clamp(_original.DemotionIntervalMs, 100, 3600000);
         EditorLayout.ConfigureDropDown(_channel, 520, 320);
         _channel.Items.Add(new ChannelOption(null, "独立通信"));
         _channel.Items.AddRange((channels ?? []).Select(c => new ChannelOption(c.Id, c.Name)).Cast<object>().ToArray());
         if (_original.ChannelId.HasValue && !_channel.Items.Cast<ChannelOption>().Any(c => c.Id == _original.ChannelId))
             _channel.Items.Add(new ChannelOption(_original.ChannelId, "现有通道 · " + _original.ChannelId));
         _channel.SelectedItem = _channel.Items.Cast<ChannelOption>().First(c => c.Id == _original.ChannelId);
-        _driver = Register("DriverId", new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FormattingEnabled = true });
         EditorLayout.ConfigureDropDown(_driver, 620, 440);
         _driver.Format += (_, e) => { if (e.ListItem is DriverDescriptor descriptor) e.Value = descriptor.Name + "  ·  " + descriptor.Id; };
-        // Populate before selecting: an unbound catalog must also work before the form is shown.
         var catalog = _drivers.Drivers.ToArray();
         _driver.Items.AddRange(catalog.Cast<object>().ToArray());
         _driver.SelectedIndex = Array.FindIndex(catalog, x => string.Equals(x.Id, _original.DriverId, StringComparison.OrdinalIgnoreCase));
         if (_driver.SelectedIndex < 0) throw new InvalidOperationException("未找到设备使用的采集驱动：" + _original.DriverId);
-        _cycle = Register("PollIntervalMs", Number(_original.PollIntervalMs, 100, 3_600_000));
-        _timeout = Register("TimeoutMs", Number(_original.TimeoutMs, 100, 120_000));
-        Field(acquisition, "启用状态", _enabled);
-        Field(acquisition, "设备名称", _name);
-        Field(acquisition, "设备分组", _group);
-        Section(acquisition, "通信与采集", "选择驱动后，在对应连接页配置设备地址。");
-        Field(acquisition, "采集驱动", _driver);
-        Field(acquisition, "通信通道", _channel);
-        Field(acquisition, "采集周期 (ms)", _cycle);
-        Field(acquisition, "通信超时 (ms)", _timeout);
-        Hint(acquisition, "启用设备后可在列表中启动采集；取消勾选后禁止启动。更换驱动不会自动转换已有点位，请核对点位地址与方法。");
-        _driverDetails = EditorLayout.WrappingLabel("", 10, UiTheme.Muted);
-        var detailsRow = acquisition.RowCount++;
-        acquisition.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        acquisition.Controls.Add(_driverDetails, 0, detailsRow); acquisition.SetColumnSpan(_driverDetails, 2);
-        var scanning = AddTab("扫描与恢复");
-        Section(scanning, "扫描策略", "按设备统一扫描，或按各点位的周期扫描。");
-        _scanMode = Register("ScanMode", SelectInput(Enum.GetValues<DeviceScanMode>().Cast<object>().ToArray(), _original.ScanMode));
+        _scanMode.Items.AddRange(Enum.GetValues<DeviceScanMode>().Cast<object>().ToArray());
+        _scanMode.SelectedItem = _original.ScanMode;
         _scanMode.Format += (_, e) => e.Value = e.ListItem is DeviceScanMode.TagRate ? "按点位周期扫描" : "按设备周期扫描";
-        _scanMode.FormattingEnabled = true;
-        _autoDemotion = Register("AutoDemotionEnabled", new CheckBox { Text = "连续失败后降低重试频率", Checked = _original.AutoDemotionEnabled, AutoSize = true });
-        _demotionCount = Register("DemotionFailureCount", Number(_original.DemotionFailureCount, 1, 30));
-        _demotionInterval = Register("DemotionIntervalMs", Number(_original.DemotionIntervalMs, 100, 3_600_000));
-        Field(scanning, "扫描模式", _scanMode);
-        EditorLayout.FieldNote(scanning, "点位周期设为 0 时继承设备周期。");
-        Section(scanning, "故障恢复", "仅在启用故障降速后，按以下阈值降低重试频率。");
-        Field(scanning, "故障降速", _autoDemotion);
-        Field(scanning, "连续失败次数", _demotionCount);
-        Field(scanning, "降速重试间隔 (ms)", _demotionInterval);
-        Hint(scanning, "按点位周期扫描时，点位周期 0 继承设备周期。失败设备释放通道后退避；达到阈值按指定间隔重试，读取恢复后自动恢复正常扫描。诊断和写入按请求执行。");
         _driver.SelectedIndexChanged += (_, _) => UpdateProtocolFields();
         _cycle.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
         _timeout.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
         UpdateProtocolFields();
-        Tabs.SelectedTab = TabOf(acquisition);
+        Tabs.SelectedTab = acquisitionTab;
         if (isNew && !readOnly) SetConfirmText("添加设备");
         if (readOnly) SetReadOnlyView();
     }
@@ -197,7 +170,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
     {
         foreach (var input in _fields.Values)
         {
-            if (input is TextBoxBase text) text.ReadOnly = _readOnly;
+            if (input is TextBox text) text.ReadOnly = _readOnly;
             else input.Enabled = !_readOnly;
         }
         _parameters?.SetReadOnly(_readOnly);
@@ -295,7 +268,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
                 || !ReferenceEquals(AcceptButton, SmokeCommands[0]))
                 throw new InvalidOperationException("Read-only device configuration exposes an apply action.");
             foreach (var input in _fields.Values.Concat(SmokeParameterInputs))
-                if (input is TextBoxBase text ? !text.ReadOnly : input.Enabled)
+                if (input is TextBox text ? !text.ReadOnly : input.Enabled)
                     throw new InvalidOperationException("Read-only device configuration exposes an editable field.");
         }
     }
@@ -309,7 +282,7 @@ internal sealed class DeviceConfigurationDialog : EditorDialog
             input = _parameters?.Inputs.Single(x => x.Name == "DriverParameter_" + key[11..])
                 ?? throw new ArgumentException("当前驱动没有参数字段。", nameof(key));
         else if (!_fields.TryGetValue(key, out input!)) throw new ArgumentException("未找到配置字段：" + key, nameof(key));
-        if (!input.Enabled || input is TextBoxBase { ReadOnly: true })
+        if (!input.Enabled || input is TextBox { ReadOnly: true })
             throw new InvalidOperationException("该配置字段为只读。");
         switch (input)
         {

@@ -81,7 +81,7 @@ internal static class UiTheme
     public static void StyleInput(Control input)
     {
         input.ForeColor = Ink;
-        if (input is TextBoxBase text)
+        if (input is TextBox text)
         {
             text.BorderStyle = BorderStyle.FixedSingle;
             text.BackColor = text.ReadOnly ? Color.FromArgb(242, 245, 249) : InputBackground;

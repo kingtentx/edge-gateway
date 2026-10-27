@@ -1,42 +1,76 @@
 namespace EdgeGateway.WinForms;
 
 /// <summary>A button-height surface around a native, font-height editor.</summary>
-internal sealed class InputFrame : Panel
+internal sealed partial class InputFrame : AntdUI.Panel
 {
-    private readonly Control _editor;
+    private Control? _editor;
     private bool _arranging;
     private Font? _measuredFont;
     private int _measuredDpi;
     private int _textHeight;
 
-    public InputFrame(Control editor)
+    public InputFrame()
     {
-        _editor = editor;
-        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-        Name = "InputSurface_" + editor.Name;
+        InitializeComponent();
         TabStop = false;
+        AutoSize = true;
+        MinimumSize = new Size(0, UiTheme.ActionHeight);
+        Height = UiTheme.ActionHeight;
+    }
+
+    public InputFrame(Control editor) : this()
+    {
+        Name = "InputSurface_" + editor.Name;
         TabIndex = editor.TabIndex;
         AccessibleName = editor.AccessibleName;
         Margin = editor.Margin;
         Dock = editor.Dock == DockStyle.Fill ? DockStyle.Top : editor.Dock;
         Anchor = editor.Anchor;
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
         MinimumSize = new Size(editor.MinimumSize.Width, UiTheme.ActionHeight);
         Size = new Size(editor.Width, UiTheme.ActionHeight);
+        Controls.Add(editor);
+    }
+
+    protected override void OnControlAdded(ControlEventArgs e)
+    {
+        base.OnControlAdded(e);
+        if (e.Control is null) return;
+        _editor = e.Control;
+        var editor = _editor;
         editor.Dock = DockStyle.None;
         editor.Anchor = AnchorStyles.Top | AnchorStyles.Left;
         editor.Margin = Padding.Empty;
         editor.MinimumSize = Size.Empty;
-        if (editor is TextBoxBase text) text.BorderStyle = BorderStyle.None;
-        if (editor is NumericUpDown number) number.BorderStyle = BorderStyle.None;
-        Controls.Add(editor);
-        editor.Enter += (_, _) => Invalidate();
-        editor.Leave += (_, _) => Invalidate();
-        editor.EnabledChanged += (_, _) => Invalidate();
-        editor.BackColorChanged += (_, _) => { BackColor = editor.BackColor; Invalidate(); };
-        editor.SizeChanged += (_, _) => ArrangeEditor();
-        BackColor = editor.BackColor;
+        if (editor is TextBox text) text.BorderStyle = System.Windows.Forms.BorderStyle.None;
+        if (editor is NumericUpDown number) number.BorderStyle = System.Windows.Forms.BorderStyle.None;
+        editor.Enter += OnEditorAppearanceChanged;
+        editor.Leave += OnEditorAppearanceChanged;
+        editor.EnabledChanged += OnEditorAppearanceChanged;
+        editor.BackColorChanged += OnEditorAppearanceChanged;
+        editor.SizeChanged += OnEditorSizeChanged;
+        editor.BringToFront();
+        UpdateSurface();
+    }
+
+    protected override void OnControlRemoved(ControlEventArgs e)
+    {
+        if (e.Control == _editor && _editor is { } editor)
+        {
+            editor.Enter -= OnEditorAppearanceChanged; editor.Leave -= OnEditorAppearanceChanged;
+            editor.EnabledChanged -= OnEditorAppearanceChanged; editor.BackColorChanged -= OnEditorAppearanceChanged;
+            editor.SizeChanged -= OnEditorSizeChanged; _editor = null;
+        }
+        base.OnControlRemoved(e);
+    }
+
+    private void OnEditorAppearanceChanged(object? sender, EventArgs e) => UpdateSurface();
+    private void OnEditorSizeChanged(object? sender, EventArgs e) => ArrangeEditor();
+    private void UpdateSurface()
+    {
+        if (_editor is null) return;
+        BackColor = _editor.BackColor;
+        BorderColor = _editor.ContainsFocus ? UiTheme.Blue : UiTheme.Border;
+        Invalidate();
     }
 
     public override Size GetPreferredSize(Size proposedSize)
@@ -66,6 +100,7 @@ internal sealed class InputFrame : Panel
             var inset = UiTheme.Scale(this, 8);
             // Native editors own their font-dependent height and handle lifecycle;
             // the surface only sizes the available width and centers the editor.
+            if (_editor is AntdUI.Input) _editor.Height = Math.Max(1, ClientSize.Height - UiTheme.Scale(this, 2));
             var top = Math.Max(0, (ClientSize.Height - _editor.Height) / 2);
             var width = Math.Max(1, ClientSize.Width - inset * 2);
             // Even an unchanged SetBounds can ask an AutoSize ancestor to lay out
@@ -79,19 +114,9 @@ internal sealed class InputFrame : Panel
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
-        if (!_editor.Enabled) return;
+        if (_editor is null || !_editor.Enabled) return;
         _editor.Focus();
         if (_editor is ComboBox combo && e.Button == MouseButtons.Left) combo.DroppedDown = true;
     }
 
-    protected override void OnPaintBackground(PaintEventArgs e)
-    {
-        e.Graphics.Clear(Parent?.BackColor ?? UiTheme.Background);
-        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        using var path = ModernButton.RoundedPath(new RectangleF(1, 1, Math.Max(1, Width - 2), Math.Max(1, Height - 2)), UiTheme.Scale(this, 8));
-        using var fill = new SolidBrush(BackColor);
-        e.Graphics.FillPath(fill, path);
-        using var pen = new Pen(_editor.ContainsFocus ? UiTheme.Blue : UiTheme.Border, Math.Max(1, UiTheme.Scale(this, 1)));
-        e.Graphics.DrawPath(pen, path);
-    }
 }

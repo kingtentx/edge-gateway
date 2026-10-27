@@ -5,34 +5,26 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private readonly ComboBox _deviceGroupFilter = new() { Name = "DeviceGroupFilter", DropDownStyle = ComboBoxStyle.DropDownList, Width = 125 };
-    private readonly ComboBox _deviceChannelFilter = new() { Name = "DeviceChannelFilter", DropDownStyle = ComboBoxStyle.DropDownList, Width = 145 };
-    private readonly TextBox _deviceSearch = new() { Name = "DeviceSearch", Width = 200, PlaceholderText = "设备 / 驱动 / 点位 / 地址" };
+    private ComboBox _deviceGroupFilter = null!;
+    private ComboBox _deviceChannelFilter = null!;
+    private TextBox _deviceSearch = null!;
     private bool _bindingDeviceFilters, _rebindingDevices;
 
-    private FlowLayoutPanel BuildDeviceFilters()
+    private void BindDeviceFilters()
     {
         EditorLayout.ConfigureDropDown(_deviceChannelFilter, 500, 320);
         EditorLayout.ConfigureDropDown(_deviceGroupFilter, 400, 320);
         _deviceChannelFilter.SelectedIndexChanged += (_, _) => { if (!_bindingDeviceFilters) BindDeviceRows(); };
         _deviceGroupFilter.SelectedIndexChanged += (_, _) => { if (!_bindingDeviceFilters) BindDeviceRows(); };
         _deviceSearch.TextChanged += (_, _) => { if (!_bindingDeviceFilters) BindDeviceRows(); };
-        var clear = UiTheme.Button("清除筛选", (_, _) =>
+        _devicesPageView.clearFiltersButton.Click += (_, _) =>
         {
             _bindingDeviceFilters = true;
             _deviceChannelFilter.SelectedIndex = _deviceGroupFilter.SelectedIndex = 0;
             _deviceSearch.Clear();
             _bindingDeviceFilters = false;
             BindDeviceRows();
-        });
-        clear.Margin = new Padding(0, 23, 0, 6);
-        var toolbar = UiTheme.Toolbar(
-            UiTheme.FilterField("通信通道", _deviceChannelFilter),
-            UiTheme.FilterField("设备分组", _deviceGroupFilter),
-            UiTheme.FilterField("查找设备", _deviceSearch), clear);
-        toolbar.Name = "DeviceFilters";
-        toolbar.Padding = new Padding(0, 0, 0, 6);
-        return toolbar;
+        };
     }
 
     private void RefreshDeviceFilters()
@@ -160,30 +152,4 @@ public sealed partial class MainForm
     { public override string ToString() => Name; }
     private sealed record GroupChoice(string? Group, string Name)
     { public override string ToString() => Name; }
-}
-
-internal sealed class ChannelEditor : EditorDialog
-{
-    public ChannelConfiguration Value { get; }
-    private readonly TextBox _name, _description;
-    private readonly NumericUpDown _delay;
-    public ChannelEditor(ChannelConfiguration value) : base("通信通道", "同一通道的采集、诊断和写入依次执行；不同通道并行。设备连接参数仍在设备配置中设置。")
-    {
-        Value = value;
-        var fields = AddTab("通道设置");
-        Section(fields, "通道信息", "设置名称与通信间隔。");
-        _name = TextInput(value.Name); _name.Name = "ChannelName";
-        _delay = NumberInput(value.InterRequestDelayMs, 0, 60000); _delay.Name = "ChannelDelay";
-        _description = TextInput(value.Description); _description.Name = "ChannelDescription";
-        Field(fields, "通道名称", _name);
-        Field(fields, "请求间隔 (ms)", _delay);
-        Field(fields, "说明", _description);
-        Hint(fields, "间隔从上一批通信完成开始计算。该设置控制调度，不合并驱动连接；同一物理串口仍只允许一个启用设备。");
-    }
-    protected override void Commit()
-    {
-        Value.Name = Required(_name, "通道名称");
-        Value.InterRequestDelayMs = (int)_delay.Value;
-        Value.Description = _description.Text.Trim();
-    }
 }

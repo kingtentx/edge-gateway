@@ -19,16 +19,12 @@ public sealed partial class MainForm
     {
         private readonly MainForm _owner;
         private readonly bool _samples;
-        internal readonly DataGridView Grid = UiTheme.Grid();
-        internal readonly DateTimePicker From = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "yyyy-MM-dd HH:mm:ss", Width = 190, Value = DateTime.Now.AddHours(-1) };
-        internal readonly DateTimePicker To = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "yyyy-MM-dd HH:mm:ss", Width = 190, Value = DateTime.Now.AddMinutes(1) };
-        internal readonly TextBox Keyword = new() { MaxLength = 256, Width = 180, PlaceholderText = "内容 / 地址 / 错误" };
-        internal readonly TextBox Device = new() { MaxLength = 256, Width = 160, PlaceholderText = "设备名称或完整标识" };
-        internal readonly TextBox Tag = new() { MaxLength = 256, Width = 160, PlaceholderText = "点位名称或完整标识" };
-        internal readonly ComboBox Level = ChoiceBox(110), Quality = ChoiceBox(110);
-        internal readonly NumericUpDown Limit = new() { Minimum = 1, Maximum = 2000, Value = 500, Width = 80 };
-        internal readonly NumericUpDown Budget = new() { Minimum = 1, Maximum = 64, Value = 32, Width = 80 };
-        internal readonly Label State = EditorLayout.WrappingLabel("选择条件后查询；只查询本类日志。结果受扫描量、行数及 4 M 载荷限制。", color: UiTheme.Muted);
+        internal readonly DataGridView Grid;
+        internal readonly DateTimePicker From, To;
+        internal readonly TextBox Keyword, Device, Tag;
+        internal readonly ComboBox Level, Quality;
+        internal readonly NumericUpDown Limit, Budget;
+        internal readonly Label State;
         internal readonly Button Search, Cancel, Export;
         internal readonly TabPage Page;
         internal GatewayLogQueryResult? Result;
@@ -43,20 +39,13 @@ public sealed partial class MainForm
             var prefix = samples ? "SampleArchive" : "EventArchive";
             Page = page;
             Page.Name = prefix; Page.BackColor = Color.White;
+            var view = samples ? owner._loggingPageView.sampleView : owner._loggingPageView.eventView;
+            view.ConfigureCategory(samples);
+            Grid = view.Grid; From = view.From; To = view.To; Device = view.Device; Tag = view.TagInput;
+            Keyword = view.Keyword; Level = view.Level; Quality = view.Quality; Limit = view.Limit; Budget = view.Budget;
+            State = view.State; Search = view.Search; Cancel = view.Cancel; Export = view.Export;
+            From.Value = DateTime.Now.AddHours(-1); To.Value = DateTime.Now.AddMinutes(1);
             Grid.Name = prefix + "Results";
-            UiTheme.AddColumn(Grid, "Timestamp", "时间", 180, 180);
-            if (samples)
-            {
-                foreach (var (key, title) in new[] { ("Device", "设备"), ("Tag", "点位"), ("Address", "地址"), ("RawValue", "原始值"),
-                    ("Value", "工程值"), ("Quality", "质量"), ("Unit", "单位"), ("Error", "错误说明") })
-                    UiTheme.AddColumn(Grid, key, title, key == "Error" ? 240 : 140, key == "Error" ? 180 : 100);
-            }
-            else
-            {
-                UiTheme.AddColumn(Grid, "Level", "级别", 100, 80);
-                UiTheme.AddColumn(Grid, "Message", "日志内容", 500, 280);
-            }
-            UiTheme.AddColumn(Grid, "FileName", "来源文件", 200, 160);
             Level.FormattingEnabled = true;
             Level.Items.AddRange(Enum.GetValues<GatewayLogLevel>().Cast<object>().ToArray());
             Level.SelectedItem = GatewayLogLevel.Debug;
@@ -65,23 +54,10 @@ public sealed partial class MainForm
             Quality.Items.AddRange(Enum.GetValues<SampleQuality>().Cast<object>().ToArray());
             Quality.SelectedIndex = 0; Quality.FormattingEnabled = true;
             Quality.Format += (_, e) => { if (e.ListItem is SampleQuality value) e.Value = QualityText(value); };
-            Search = UiTheme.Button("查询", async (_, _) => await QueryAsync(), true);
-            Cancel = UiTheme.Button("取消查询 / 导出", (_, _) => _cancellation?.Cancel()); Cancel.Enabled = false;
-            Export = UiTheme.Button("导出当前结果", async (_, _) => await ExportAsync()); Export.Enabled = false;
-            var recent = UiTheme.Button("最近一小时", (_, _) => { To.Value = DateTime.Now; From.Value = To.Value.AddHours(-1); });
-            var filters = new List<Control> { UiTheme.FilterField("开始时间", From), UiTheme.FilterField("结束时间", To) };
-            if (samples) filters.AddRange([UiTheme.FilterField("设备", Device), UiTheme.FilterField("点位", Tag), UiTheme.FilterField("采样质量", Quality)]);
-            else filters.Add(UiTheme.FilterField("最低级别", Level));
-            filters.AddRange([UiTheme.FilterField("关键词", Keyword), UiTheme.FilterField("最多条数", Limit), UiTheme.FilterField("扫描上限（M）", Budget)]);
-            var filterBar = UiTheme.Toolbar(filters.ToArray());
-            var actions = UiTheme.Toolbar(Search, recent, Cancel, Export);
-            var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            for (var i = 0; i < 3; i++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            panel.Controls.Add(filterBar, 0, 0); panel.Controls.Add(actions, 0, 1); panel.Controls.Add(State, 0, 2); panel.Controls.Add(Grid, 0, 3);
-            panel.SizeChanged += (_, _) => SetWrappingWidth(State, panel.ClientSize.Width - 16);
-            Page.Controls.Add(owner.ScrollableContent(panel, prefix + "Viewport", () => filterBar.Height + actions.Height + State.Height + UiTheme.Scale(panel, 180)));
+            Search.Click += async (_, _) => await QueryAsync();
+            Cancel.Click += (_, _) => _cancellation?.Cancel(); Cancel.Enabled = false;
+            Export.Click += async (_, _) => await ExportAsync(); Export.Enabled = false;
+            view.Recent.Click += (_, _) => { To.Value = DateTime.Now; From.Value = To.Value.AddHours(-1); };
             Inputs = samples ? [From, To, Device, Tag, Quality, Keyword, Limit, Budget, Search, Export]
                 : [From, To, Level, Keyword, Limit, Budget, Search, Export];
             foreach (var (control, name) in new[] { ((Control)From, "From"), (To, "To"), (Device, "Device"), (Tag, "Tag"), (Quality, "Quality"),

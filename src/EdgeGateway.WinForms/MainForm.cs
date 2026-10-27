@@ -42,6 +42,16 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly bool _loggingSmoke;
     public bool SmokeTestFailed { get; private set; }
 
+    // Visual Studio must be able to construct the shell without a host or a tray icon.
+    public MainForm()
+    {
+        _configuration = new(); _application = null!; _drivers = null!; _log = null!;
+        _driverDirectory = ""; _trayIcon = null!; _trayMenu = null!; _applicationIcon = null!;
+        Text = "Edge Gateway · 边缘采集网关";
+        ConfigureWindow(new Size(1400, 860), new Size(960, 620));
+        InitializeComponent();
+    }
+
     public MainForm(IGatewayApplication application,
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
@@ -193,7 +203,7 @@ public sealed partial class MainForm : DpiAwareForm
         _pages[key].BringToFront();
         foreach (var nav in _navigation)
         {
-            nav.Value.BackColor = nav.Key == key ? Color.FromArgb(39, 67, 106) : UiTheme.Navy;
+            nav.Value.DefaultBack = nav.Key == key ? Color.FromArgb(39, 67, 106) : UiTheme.Navy;
             nav.Value.ForeColor = nav.Key == key ? Color.White : Color.FromArgb(190, 205, 225);
         }
         // Hidden grids may create their bound rows only when first displayed.
@@ -379,7 +389,7 @@ public sealed partial class MainForm : DpiAwareForm
                 AssertInputSurface(input, context);
                 // A NumericUpDown is one operator field. Verify its internal edit box after
                 // scrolling the whole control without treating it as another keyboard stop.
-                foreach (var child in Descendants(input).Where(x => x.Visible && x is TextBoxBase))
+                foreach (var child in Descendants(input).Where(x => x.Visible && x is TextBox or System.Windows.Forms.TextBoxBase))
                     AssertVisibleBounds(child, context + " field content");
             }
             EditorInputs(tab).FirstOrDefault(x => x.Visible && x.Enabled)?.Focus();
@@ -395,7 +405,7 @@ public sealed partial class MainForm : DpiAwareForm
     {
         foreach (Control child in root.Controls)
         {
-            if (child is TextBoxBase or ComboBox or NumericUpDown or CheckBox) yield return child;
+            if (child is TextBox or System.Windows.Forms.TextBoxBase or ComboBox or NumericUpDown or CheckBox) yield return child;
             else foreach (var input in EditorInputs(child)) yield return input;
         }
     }
@@ -430,7 +440,7 @@ public sealed partial class MainForm : DpiAwareForm
 
     private static void AssertPageToolbarsFit(Control root, string page)
     {
-        if (root is TextBoxBase or ComboBox or NumericUpDown or DateTimePicker or CheckBox)
+        if (root is TextBox or System.Windows.Forms.TextBoxBase or ComboBox or NumericUpDown or DateTimePicker or CheckBox)
         {
             BringIntoViewAndAssert(root, page + " input");
             return;
@@ -649,7 +659,7 @@ public sealed partial class MainForm : DpiAwareForm
             else
                 await _application.StopAsync();
             _allowClose = true;
-            _trayIcon.Visible = false;
+            if (_trayIcon is not null) _trayIcon.Visible = false;
             Close();
         }
         catch (Exception exception)
@@ -710,10 +720,10 @@ public sealed partial class MainForm : DpiAwareForm
         {
             _refreshTimer.Dispose();
             _feedbackTip.Dispose();
-            _trayIcon.Visible = false;
-            _trayIcon.Dispose();
-            _trayMenu.Dispose();
-            _applicationIcon.Dispose();
+            if (_trayIcon is not null) _trayIcon.Visible = false;
+            _trayIcon?.Dispose();
+            _trayMenu?.Dispose();
+            _applicationIcon?.Dispose();
         }
         base.Dispose(disposing);
     }

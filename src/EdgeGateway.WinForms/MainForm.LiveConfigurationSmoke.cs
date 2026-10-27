@@ -43,10 +43,12 @@ public sealed partial class MainForm
             Check(CanEdit() && SelectedDevice()?.Id == a && SelectedTag() is not null,
                 "the running fixture lost its editable device/point context.");
             // The new UI intentionally disables fields for other platforms and a
-            // reset action when no draft exists. Every remaining device, point and
+            // apply/reset actions when no logging draft exists. Every remaining device, point and
             // platform-draft command must stay usable while A is collecting.
+            Check(!_loggingDirty, "the running fixture unexpectedly inherited a logging draft.");
             var disabled = _stoppedConfigurationCommands.Concat(new Control[]
-                { _cloudFields["typeKey"], _cloudFields["platformGatewayId"], _cloudReset }).ToHashSet();
+                { _cloudFields["typeKey"], _cloudFields["platformGatewayId"], _cloudReset,
+                    _loggingApply, _loggingReset }).ToHashSet();
             foreach (var control in _configurationCommands)
                 Check(control.Enabled == !disabled.Contains(control),
                     $"unexpected availability for '{control.Name}' / '{control.Text}' while A is collecting.");

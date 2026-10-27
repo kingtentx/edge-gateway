@@ -33,17 +33,12 @@ public sealed partial class MainForm
         _realtimeGrid = _realtimePageView.RealtimeGrid;
         _realtimeDevice = _realtimePageView.DeviceSelector;
         _realtimeSearch = _realtimePageView.PointSearch;
-        ConfigureSampleColumns(_realtimeGrid, includeRaw: true);
         _realtimeGrid.CellFormatting += SampleCellFormatting;
         _realtimeGrid.SelectionChanged += (_, _) => UpdateWriteButton();
         _realtimeDevice.SelectedIndexChanged += (_, _) => RefreshRealtime(_application.GetLatest());
         _realtimeSearch.TextChanged += (_, _) => RefreshRealtime(_application.GetLatest());
-        _writeButton = UiTheme.Button("写入选中点位", async (_, _) => await RunBusyAsync(WritePointAsync));
-        _realtimeGrid.Name = "RealtimeValues";
-        _writeButton.Margin = new Padding(0, 23, 0, 6);
-        var toolbar = UiTheme.Toolbar(UiTheme.FilterField("采集设备", _realtimeDevice),
-            UiTheme.FilterField("查找点位", _realtimeSearch), _writeButton);
-        _realtimePageView.ToolbarHost.Controls.Add(toolbar);
+        _writeButton = _realtimePageView.writeButton;
+        _writeButton.Click += async (_, _) => await RunBusyAsync(WritePointAsync);
         return _realtimePageView;
     }
 
@@ -59,23 +54,20 @@ public sealed partial class MainForm
         _historyLimit = _historyPageView.ResultLimit;
         _historySummary = _historyPageView.QuerySummary;
         _trend = _historyPageView.TrendChart;
-        ConfigureSampleColumns(_historyGrid, includeRaw: true);
         _historyGrid.CellFormatting += SampleCellFormatting;
         _historyDevice.SelectedIndexChanged += (_, _) => BindHistoryTags();
-        var query = _historyQuery = UiTheme.Button("查询", async (_, _) => await RunBusyAsync(QueryHistoryAsync), true); query.Name = "QueryExternalHistory";
-        _historyGroup.Name = "ExternalHistoryGroup"; _historyGroup.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
-        _historyExport = UiTheme.Button("导出查询结果", async (_, _) => await RunBusyAsync(ExportHistoryAsync));
-        var recent = UiTheme.Button("最近一小时", (_, _) => { _historyTo.Value = DateTime.Now; _historyFrom.Value = DateTime.Now.AddHours(-1); });
-        foreach (var button in new[] { query, recent, _historyExport }) button.Margin = new Padding(0, 23, 8, 6);
-        var toolbar = UiTheme.Toolbar(UiTheme.FilterField("外部数据库写入组", _historyGroup), UiTheme.FilterField("设备", _historyDevice), UiTheme.FilterField("点位", _historyTag),
-            UiTheme.FilterField("开始时间", _historyFrom), UiTheme.FilterField("结束时间", _historyTo),
-            UiTheme.FilterField("最多条数", _historyLimit), query, recent, _historyExport);
+        _historyFrom.Value = DateTime.Now.AddHours(-1); _historyTo.Value = DateTime.Now.AddMinutes(1);
+        _historyQuery = _historyPageView.queryButton; _historyQuery.Name = "QueryExternalHistory";
+        _historyQuery.Click += async (_, _) => await RunBusyAsync(QueryHistoryAsync);
+        _historyGroup.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
+        _historyExport = _historyPageView.exportButton;
+        _historyExport.Click += async (_, _) => await RunBusyAsync(ExportHistoryAsync);
+        _historyPageView.recentButton.Click += (_, _) => { _historyTo.Value = DateTime.Now; _historyFrom.Value = DateTime.Now.AddHours(-1); };
         _historyDevice.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
         _historyTag.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
         _historyFrom.ValueChanged += (_, _) => UpdateHistoryQueryState();
         _historyTo.ValueChanged += (_, _) => UpdateHistoryQueryState();
         _historyLimit.ValueChanged += (_, _) => UpdateHistoryQueryState();
-        _historyPageView.ToolbarHost.Controls.Add(toolbar);
         _trend.Visible = false;
         void ArrangeHistoryLayout()
         {
@@ -92,32 +84,6 @@ public sealed partial class MainForm
     }
 
     private Control BuildLogsPage() => WithLoggingSettings();
-
-    private static ComboBox ChoiceBox(int width)
-    {
-        var choice = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = width, Margin = new Padding(0, 4, 8, 0), IntegralHeight = false, DropDownHeight = 320 };
-        choice.DropDown += (_, _) =>
-        {
-            var workArea = Screen.FromControl(choice).WorkingArea;
-            choice.DropDownHeight = Math.Min(UiTheme.Scale(choice, 320), Math.Max(choice.ItemHeight * 3, workArea.Height / 2));
-            var textWidth = choice.Items.Cast<object>().Select(x => TextRenderer.MeasureText(x.ToString(), choice.Font).Width).DefaultIfEmpty(choice.Width).Max();
-            choice.DropDownWidth = Math.Min(workArea.Width, Math.Max(choice.Width, textWidth + UiTheme.Scale(choice, 32)));
-        };
-        return choice;
-    }
-
-    private static void ConfigureSampleColumns(DataGridView grid, bool includeRaw)
-    {
-        UiTheme.AddColumn(grid, "Device", "设备", 100, 110);
-        UiTheme.AddColumn(grid, "Tag", "点位", 110, 120);
-        UiTheme.AddColumn(grid, "Address", "地址", 80, 80);
-        UiTheme.AddColumn(grid, "Value", "工程值", 100, 110);
-        if (includeRaw) UiTheme.AddColumn(grid, "RawValue", "原始值", 90, 100);
-        UiTheme.AddColumn(grid, "Unit", "单位", 60, 60);
-        UiTheme.AddColumn(grid, "Quality", "质量", 70, 65);
-        UiTheme.AddColumn(grid, "Time", "采样时间", 165, 140);
-        UiTheme.AddColumn(grid, "Error", "状态信息", 130, 150);
-    }
 
     private void BindDeviceChoices()
     {

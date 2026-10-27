@@ -16,6 +16,7 @@
 
 | 依赖 | 版本 | 许可 | 随附文件 |
 |---|---|---|---|
+| AntdUI | 2.4.16 | Apache-2.0；Copyright © Tom 2024-2030 | [AntdUI-LICENSE.txt](LICENSES/AntdUI-LICENSE.txt) |
 | FontAwesome.Sharp | 6.6.0 | Apache-2.0；内嵌 Font Awesome Free 字体按 SIL OFL 1.1，图标及代码许可见资源声明 | [组件许可](LICENSES/FontAwesome.Sharp-LICENSE.txt)、[字体与图标许可](LICENSES/FontAwesome-Free-LICENSE.txt) |
 | Microsoft.Data.Sqlite / Microsoft.Data.Sqlite.Core | 8.0.32 | MIT | [Microsoft.Data.Sqlite-LICENSE.txt](LICENSES/Microsoft.Data.Sqlite-LICENSE.txt) |
 | ClosedXML / ClosedXML.Parser | 0.105.1 / 2.0.0 | MIT | [ClosedXML](LICENSES/ClosedXML-LICENSE.txt)、[Parser](LICENSES/ClosedXML.Parser-LICENSE.txt) |
