@@ -24,6 +24,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly bool _databaseMappingSmoke;
     private readonly bool _databaseRefreshSmoke;
     private readonly bool _pageRefreshSmoke;
+    private readonly bool _navigationSmoke;
     private readonly bool _serverResourcesSmoke;
     private readonly bool _workbookSmoke;
     private readonly string? _smokeScreenshotPath;
@@ -58,7 +59,7 @@ public sealed partial class MainForm : DpiAwareForm
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
         bool serverResourcesSmoke = false, bool workbookSmoke = false, bool leaveWorkerRunning = false, bool loggingSmoke = false,
-        bool databaseRefreshSmoke = false, bool pageRefreshSmoke = false)
+        bool databaseRefreshSmoke = false, bool pageRefreshSmoke = false, bool navigationSmoke = false)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
@@ -68,7 +69,8 @@ public sealed partial class MainForm : DpiAwareForm
         _loggingSmoke = loggingSmoke;
         _workbookSmoke = workbookSmoke;
         _leaveWorkerRunning = leaveWorkerRunning;
-        _smokeTest = pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
+        _smokeTest = navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
+        _navigationSmoke = navigationSmoke;
         _pageRefreshSmoke = pageRefreshSmoke;
         _databaseRefreshSmoke = databaseRefreshSmoke;
         _databaseMappingSmoke = databaseMappingSmoke;
@@ -128,16 +130,6 @@ public sealed partial class MainForm : DpiAwareForm
         _navigation.Add("cloud", navigationCloudItem);
         _navigation.Add("logs", navigationLogsItem);
         navigationMenu.ItemClick += (_, e) => { if (!_selectingNavigation && e.Item.Name is { } key) ShowPage(key); };
-        collapseNavigationButton.Click += (_, _) =>
-        {
-            navigationMenu.Collapsed = !navigationMenu.Collapsed;
-            brandTitleLabel.Visible = brandCaptionLabel.Visible = !navigationMenu.Collapsed;
-            navigationBrandPanel.Visible = !navigationMenu.Collapsed;
-            collapseNavigationButton.IconSvg = navigationMenu.Collapsed ? "MenuUnfoldOutlined" : "MenuFoldOutlined";
-            collapseNavigationButton.AccessibleName = navigationMenu.Collapsed ? "展开导航菜单" : "收起导航菜单";
-            applicationShell.PerformLayout();
-        };
-
         bool arranging = false;
         bool? compactHeader = null;
         void ArrangeShell()
@@ -173,7 +165,29 @@ public sealed partial class MainForm : DpiAwareForm
             }
             finally { arranging = false; }
         }
-        collapseNavigationButton.Click += (_, _) => ArrangeShell();
+        collapseNavigationButton.Click += (_, _) =>
+        {
+            // Hiding the AutoSize brand can synchronously enter the shell's layout.
+            // Change menu state and column width together, then lay out once; updating
+            // the column from that nested layout could leave its cached actual width stale.
+            shell.SuspendLayout();
+            sidebar.SuspendLayout();
+            try
+            {
+                var collapsed = !navigationMenu.Collapsed;
+                navigationMenu.SetCollapsed(collapsed);
+                brandTitleLabel.Visible = brandCaptionLabel.Visible = !collapsed;
+                navigationBrandPanel.Visible = !collapsed;
+                collapseNavigationButton.IconSvg = collapsed ? "MenuUnfoldOutlined" : "MenuFoldOutlined";
+                collapseNavigationButton.AccessibleName = collapsed ? "展开导航菜单" : "收起导航菜单";
+                ArrangeShell();
+            }
+            finally
+            {
+                sidebar.ResumeLayout(true);
+                shell.ResumeLayout(true);
+            }
+        };
         shell.SizeChanged += (_, _) => ArrangeShell();
         shell.HandleCreated += (_, _) => ArrangeShell();
         shell.DpiChangedAfterParent += (_, _) => { compactHeader = null; ArrangeShell(); };
@@ -215,6 +229,15 @@ public sealed partial class MainForm : DpiAwareForm
 
     private async void OnShown(object? sender, EventArgs e)
     {
+        if (_navigationSmoke)
+        {
+            try { await SmokeNavigationCollapseAsync(); }
+            catch (Exception exception)
+            {
+                SmokeTestFailed = true; TrySaveSmokeFailure(this, "navigation-collapse-failed"); Console.Error.WriteLine(exception);
+            }
+            _allowClose = true; Close(); return;
+        }
         if (_pageRefreshSmoke)
         {
             try { await SmokePageRefreshAsync(); }

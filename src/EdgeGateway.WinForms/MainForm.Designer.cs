@@ -90,6 +90,7 @@ public sealed partial class MainForm
         navigationMenu.BackActive = UiTheme.BlueSoft;
         navigationMenu.ForeActive = UiTheme.Blue;
         navigationMenu.Unique = true;
+        navigationMenu.AutoCollapse = false;
         navigationMenu.TabStop = true;
         collapseNavigationButton.Name = "CollapseNavigation";
         collapseNavigationButton.AccessibleName = "收起导航菜单";
