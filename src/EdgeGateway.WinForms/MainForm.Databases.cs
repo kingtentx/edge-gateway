@@ -1,3 +1,5 @@
+using EdgeGateway.Abstractions;
+using System.ComponentModel;
 using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
@@ -8,6 +10,7 @@ public sealed partial class MainForm
     private DataGridView _databaseGrid = null!, _databaseGroupGrid = null!;
     private Label _databaseState = null!;
     private DatabasePageView _databasePageView = null!;
+    private AcquisitionSpoolStatistics? _databaseSpool;
 
     private Control BuildDatabasesPage()
     {
@@ -43,9 +46,10 @@ public sealed partial class MainForm
         return _databasePageView;
     }
 
-    private void BindDatabaseViews(Guid? connectionId = null, Guid? groupId = null)
+    private void BindDatabaseViews(Guid? connectionId = null, Guid? groupId = null, AcquisitionSpoolStatistics? spool = null)
     {
         if (_databaseGrid.Columns.Count == 0) return;
+        if (spool is not null) _databaseSpool = spool;
         var statuses = _application.GetDatabaseStatuses().ToDictionary(status => status.ConnectionId);
         var rows = _configuration.Databases.Select(connection =>
         {
@@ -58,7 +62,7 @@ public sealed partial class MainForm
                 $"{status?.FailedBatches ?? 0} / {status?.RetriedBatches ?? 0} / {status?.TimedOutOperations ?? 0}",
                 $"{status?.InFlightBatches ?? 0} 批 / {status?.LastWriteMilliseconds ?? 0:F1} ms");
         }).ToArray();
-        GridViewState.Rebind(_databaseGrid, rows, row => row.Id, connectionId);
+        UpdateDatabaseRows(_databaseGrid, rows, row => row.Id, connectionId);
         var groups = _configuration.DatabaseWriteGroups.Select(group => new DatabaseGroupRow(group.Id, group.Name,
             _configuration.Databases.FirstOrDefault(connection => connection.Id == group.ConnectionId)?.Name ?? "连接不存在",
             DatabaseUiText.Mode(group.Mode), new DatabaseTableInfo(group.Schema, group.Table).ToString(),
@@ -66,11 +70,40 @@ public sealed partial class MainForm
                 : (group.TagIds.Count == 0 ? "全部启用点位" : $"{group.TagIds.Count} 个点位")
                     + (group.Mode == DatabaseStorageMode.PointMapping ? $" / {group.Columns.Count} 个映射字段" : ""),
             group.Enabled ? "已启用" : "未启用")).ToArray();
-        GridViewState.Rebind(_databaseGroupGrid, groups, row => row.Id, groupId);
-        _databaseState.Text = _application.IsRunning ? "设备正在运行。停止全部设备后可修改数据库与写入组；当前已保存的写入配置继续工作。"
+        UpdateDatabaseRows(_databaseGroupGrid, groups, row => row.Id, groupId);
+        var description = _application.IsRunning ? "设备正在运行。停止全部设备后可修改数据库与写入组；当前已保存的写入配置继续工作。"
             : _configuration.Databases.Count == 0 ? "默认采集结果写入日志。添加数据库连接 → 配置写入组 → 启用连接与写入组 → 启动设备。"
             : "数据库配置已保存。标准点行和自定义逐点按采样写入；自定义整行按关联点位组合。连接与写入组均需启用。";
+        if (_databaseSpool is { } buffer)
+            description += Environment.NewLine
+                + $"本地持久缓冲：{buffer.PendingRows:N0} 行 / {buffer.PendingBatches:N0} 批 / {buffer.PendingBytes / 1048576d:N1} M；"
+                + $"本进程确认 {buffer.AcknowledgedBatches:N0} 批，容量拒绝 {buffer.CapacityRejectedBatches:N0} 批。"
+                + (buffer.LastError is null ? "" : Environment.NewLine + "缓冲异常：" + buffer.LastError);
+        // Publish the complete text once. Clearing the statistics line before the
+        // await used to shrink and expand the AutoSize row on every timer tick.
+        if (_databaseState.Text != description) _databaseState.Text = description;
         foreach (DataGridViewRow row in _databaseGrid.Rows) if (row.DataBoundItem is DatabaseConnectionRow data) row.Cells["Error"].ToolTipText = data.Error;
+    }
+
+    private static void UpdateDatabaseRows<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, Guid> key, Guid? preferredKey)
+    {
+        object? RowKey(object item) => item is T value ? key(value) : null;
+        if (grid.DataSource is BindingList<T> bound && bound.Count == rows.Count
+            && bound.Select(key).SequenceEqual(rows.Select(key)))
+        {
+            GridViewState? state = preferredKey.HasValue ? GridViewState.Capture(grid, RowKey) : null;
+            for (var index = 0; index < rows.Count; index++)
+            {
+                if (EqualityComparer<T>.Default.Equals(bound[index], rows[index])) continue;
+                state ??= GridViewState.Capture(grid, RowKey);
+                bound[index] = rows[index];
+            }
+            state?.Restore(grid, RowKey, preferredKey);
+            return;
+        }
+        var previous = GridViewState.Capture(grid, RowKey);
+        grid.DataSource = new BindingList<T>(rows.ToList());
+        previous.Restore(grid, RowKey, preferredKey);
     }
 
     private string? DatabasePointReferenceWarning(IEnumerable<TagConfiguration> points)

@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -131,6 +131,7 @@ namespace EdgeGateway {
                     Attributes = attributes
                 };
                 var arguments = scenario == "UiRedesign" ? " --smoke-test --screenshot "
+                    : scenario == "DatabaseRefresh" ? " --smoke-database-refresh --screenshot "
                     : scenario == "Logging" ? " --smoke-logging --screenshot "
                     : scenario == "Workbooks" ? " --smoke-workbooks --screenshot "
                     : scenario == "DatabaseMapping" ? " --smoke-database-mapping --screenshot "
@@ -185,6 +186,16 @@ $code = [EdgeGateway.BackgroundUiSmoke]::Run($applicationPath, $repositoryRoot, 
 if ($code -ne 0) {
     Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log')
     throw "Background WinForms smoke failed: $code"
+}
+if ($Scenario -eq 'DatabaseRefresh') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'Database refresh wrote errors.' }
+    if ($outputText -notmatch 'Database refresh smoke passed:') { throw 'Database refresh completion marker is missing.' }
+    $screenshots = @(Get-ChildItem -LiteralPath $outputRoot -Filter '*database-refresh*.png' -File)
+    if ($screenshots.Count -ne 3 -or @($screenshots | Where-Object Length -eq 0).Count -ne 0) { throw 'Database refresh screenshots are missing or empty.' }
+    Write-Output 'Background database refresh smoke passed.'
+    return
 }
 if ($Scenario -eq 'Logging') {
     $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
