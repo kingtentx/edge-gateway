@@ -198,7 +198,7 @@ public sealed partial class MainForm
         _deviceSearch.Clear();
         _deviceChannelFilter.SelectedItem = _deviceChannelFilter.Items.Cast<ChannelChoice>().Single(choice => choice.Id == channel); Rows(a);
         _deviceChannelFilter.SelectedItem = _deviceChannelFilter.Items.Cast<ChannelChoice>().Single(choice => choice.IndependentOnly); Rows(b);
-        var clear = Descendants(_pages["devices"]).OfType<Button>().Single(button => button.Text == "清除筛选");
+        var clear = _devicesPageView.clearFiltersButton;
         BringIntoViewAndAssert(clear, "capabilities clear filters"); clear.PerformClick(); Rows(a, b);
     }
 

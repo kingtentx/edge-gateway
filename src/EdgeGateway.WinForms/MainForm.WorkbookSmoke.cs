@@ -39,10 +39,12 @@ public sealed partial class MainForm
                 && MenuItem(_deviceExchange, "ExportAllDevicesExcel").Enabled
                 && MenuItem(_deviceExchange, "DeviceExcelTemplate").Enabled, "Excel device actions missing.");
             _deviceExchange.OpenedMenu.Close();
+            _pointsDialog.Show(this);
             OpenMenuForSmoke(_tagMore, "Excel point menu " + name);
             CheckUsability(MenuItem(_tagMore, "ImportTags").Text?.Contains("Excel") == true
                 && MenuItem(_tagMore, "ExportTags").Enabled, "Excel point actions missing.");
             _tagMore.OpenedMenu.Close();
+            _pointsDialog.Hide();
             SaveSmokeScreenshot(this, Path.Combine(directory, $"workbook-{name}-devices.png"));
             using (var editor = new DeviceWorkbookImportDialog(update => _application.PreviewDeviceWorkbook(workbook, update)))
             {

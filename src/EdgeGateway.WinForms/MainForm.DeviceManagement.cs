@@ -130,7 +130,7 @@ public sealed partial class MainForm
 
     private async Task ProbeSelectionAsync(bool selectedPoint)
     {
-        var device = SelectedDevice();
+        var device = selectedPoint ? PointDevice() : SelectedDevice();
         if (device is null) { SetFooter("请先选择设备。"); return; }
         var tag = selectedPoint ? SelectedTag() : null;
         if (selectedPoint && tag is null) { SetFooter("请先选择需要读取的点位。"); return; }
@@ -145,7 +145,7 @@ public sealed partial class MainForm
         if (sample is not null) details += $"\n\n点位：{sample.TagName}\n地址：{sample.Address}\n原始值：{ValueText(sample.RawValue)}\n工程值：{ValueText(sample.Value)} {sample.Unit}\n质量：{sample.Quality}\n采样时间：{sample.Timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss.fff}";
         if (!string.IsNullOrEmpty(result.Error)) details += "\n\n诊断说明：" + result.Error;
         SetFooter(state + " · " + device.Name);
-        MessageBox.Show(this, details, "连接与读点诊断", MessageBoxButtons.OK, result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+        MessageBox.Show(selectedPoint ? PointDialogOwner : this, details, "连接与读点诊断", MessageBoxButtons.OK, result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
     }
 
     private sealed record ChannelChoice(Guid? Id, string Name, bool IndependentOnly = false)

@@ -679,6 +679,7 @@ public sealed partial class MainForm : DpiAwareForm
     {
         if (IsDisposed) return;
         _lastFeedback = message;
+        if (_pointsDialog is { Visible: true }) _pointsDialog.SetFeedback(message);
         _footer.Text = DateTime.Now.ToString("HH:mm:ss") + "  ·  " + message.Replace('\n', ' ');
         _feedbackTip.SetToolTip(_footer, message + "\n点击查看完整说明");
         _footer.ForeColor = message.Contains("失败", StringComparison.Ordinal) ? UiTheme.Red : UiTheme.Muted;
@@ -687,7 +688,7 @@ public sealed partial class MainForm : DpiAwareForm
     {
         _log.Write(GatewayLogLevel.Error, message);
         SetFooter(message.Split('\n')[0]);
-        if (!_smokeTest) MessageBox.Show(this, message, "采集网关", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        if (!_smokeTest) MessageBox.Show(_pointsDialog is { Visible: true } ? _pointsDialog : this, message, "采集网关", MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
 
     private async void OnClosing(object? sender, FormClosingEventArgs e)

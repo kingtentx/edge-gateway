@@ -95,6 +95,8 @@
     <Compile Update="DatabaseWriteGroupDialog.Designer.cs"><DependentUpon>DatabaseWriteGroupDialog.cs</DependentUpon></Compile>
     <Compile Update="DatabasePreviewDialog.cs"><SubType>Form</SubType></Compile>
     <Compile Update="DatabasePreviewDialog.Designer.cs"><DependentUpon>DatabasePreviewDialog.cs</DependentUpon></Compile>
+    <Compile Update="DevicePointsDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="DevicePointsDialog.Designer.cs"><DependentUpon>DevicePointsDialog.cs</DependentUpon></Compile>
     <Compile Update="DeviceConfigurationDialog.cs"><SubType>Form</SubType></Compile>
     <Compile Update="DeviceConfigurationDialog.Designer.cs"><DependentUpon>DeviceConfigurationDialog.cs</DependentUpon></Compile>
     <Compile Update="DeviceWorkbookImportDialog.cs"><SubType>Form</SubType></Compile>

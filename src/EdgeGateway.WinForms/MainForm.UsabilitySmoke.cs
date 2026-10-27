@@ -32,6 +32,8 @@ public sealed partial class MainForm
             fixture.Devices = [a, b]; fixture.Channels = [];
             await CommitConfigurationAsync(fixture, a.Id, replaceCloudDraft: true);
             ShowPage("devices"); PerformLayoutRecursively(this);
+            await SmokePointDialogRowAsync(a, b);
+            RebindConfigurationViews(a.Id);
             CheckUsability(_tagHeading.Text.Contains(a.Name, StringComparison.Ordinal), "point context omitted its device.");
             var selected = _tagGrid.Rows.Cast<DataGridViewRow>().Single(row => row.DataBoundItem is TagRow tag && tag.Id == a.Tags[22].Id);
             _tagGrid.CurrentCell = selected.Cells["Address"];
@@ -71,10 +73,12 @@ public sealed partial class MainForm
             CheckUsability(MenuItem(_channelMenu, "AddChannel").Enabled && !MenuItem(_channelMenu, "EditChannel").Enabled,
                 "channel menu availability does not match its target.");
             _channelMenu.OpenedMenu.Close();
+            _pointsDialog.Show(this);
             OpenMenuForSmoke(_tagMore, "point menu");
             CheckUsability(MenuItem(_tagMore, "ImportTags").Enabled && MenuItem(_tagMore, "TagTemplate").Enabled,
                 "point import/template commands are missing.");
             _tagMore.OpenedMenu.Close();
+            _pointsDialog.Hide();
 
             ShowPage("cloud");
             CheckUsability(_cloudTabs.TabPages.Count == 4, "platform settings were not divided into four tabs.");
@@ -161,11 +165,96 @@ public sealed partial class MainForm
         }
         finally
         {
+            _pointsDialog.Hide();
             _deviceMore.OpenedMenu.Close(); _channelMenu.OpenedMenu.Close(); _tagMore.OpenedMenu.Close();
             _deviceSearch.Clear(); _tagSearch.Clear();
             await RestoreConfigurationForSmokeAsync(original);
             RebindConfigurationViews(originalSelection); ShowPage(page); UpdateCommands();
         }
+    }
+
+    private async Task SmokePointDialogRowAsync(DeviceConfiguration selected, DeviceConfiguration target)
+    {
+        Exception? failure = null;
+        var observed = false;
+        var targetRow = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(row => ((DeviceRow)row.DataBoundItem).Id == target.Id);
+        using var timer = new System.Windows.Forms.Timer { Interval = 40 };
+        timer.Tick += async (_, _) =>
+        {
+            if (!_pointsDialog.Visible || !_pointsDialog.Modal) return;
+            timer.Stop(); observed = true;
+            try
+            {
+                CheckUsability(SelectedDevice()?.Id == selected.Id && PointDevice()?.Id == target.Id,
+                    "point dialog followed selection instead of the clicked row.");
+                _tagSearch.Text = "B 点位";
+                RebindConfigurationViews(selected.Id);
+                CheckUsability(PointDevice()?.Id == target.Id && _tagGrid.Rows.Count == 1 && _tagSearch.Text == "B 点位",
+                    "refresh changed the point dialog target or search.");
+                _tagSearch.Clear();
+                await EditPointFromDialogForSmokeAsync(_pointsDialog.AddTagButton, "弹窗新增点位", rejectFirst: true);
+                var added = _configuration.Devices.Single(device => device.Id == target.Id).Tags.Single(tag => tag.Name == "弹窗新增点位");
+                CheckUsability(SelectedTag()?.Id == added.Id, "new point was not selected after saving.");
+                await EditPointFromDialogForSmokeAsync(_pointsDialog.EditTagButton, "弹窗编辑点位", rejectFirst: false);
+                CheckUsability(_configuration.Devices.Single(device => device.Id == target.Id).Tags.Single(tag => tag.Id == added.Id).Name == "弹窗编辑点位"
+                    && _configuration.Devices.Single(device => device.Id == selected.Id).Tags.Count == selected.Tags.Count,
+                    "point dialog saved to the wrong device or replaced point identity.");
+                SaveEditorScreenshot(_pointsDialog, "points", "saved");
+                var fullSize = _pointsDialog.ClientSize;
+                _pointsDialog.ClientSize = new Size(UiTheme.Scale(_pointsDialog, 760), UiTheme.Scale(_pointsDialog, 460));
+                PerformLayoutRecursively(_pointsDialog);
+                BringIntoViewAndAssert(_pointsDialog.AddTagButton, "compact point dialog add");
+                BringIntoViewAndAssert(_tagSearch, "compact point dialog search");
+                BringIntoViewAndAssert(Descendants(_pointsDialog).Single(control => control.Name == "ClosePoints"), "compact point dialog close");
+                VerifyPointRowsForSmoke("compact point dialog");
+                SaveEditorScreenshot(_pointsDialog, "points", "compact");
+                _pointsDialog.ClientSize = fullSize;
+            }
+            catch (Exception exception) { failure = exception; TrySaveSmokeFailure(_pointsDialog, "point-dialog-failed"); }
+            finally { _pointsDialog.DialogResult = DialogResult.Cancel; }
+        };
+        timer.Start();
+        try { await DeviceGridActionAsync(new DataGridViewCellEventArgs(_deviceGrid.Columns[DevicePointsColumnName].Index, targetRow.Index)); }
+        finally { timer.Stop(); }
+        if (failure is not null) throw new InvalidOperationException("Point dialog row action failed.", failure);
+        CheckUsability(observed && !_pointsDialog.Visible && _pointsDeviceId is null, "point dialog did not release its device context.");
+        Console.WriteLine("Point dialog row action passed: clicked B while A selected, pinned context through refresh, nested add/edit and validation retention, stable point ID and compact layout.");
+    }
+
+    private async Task EditPointFromDialogForSmokeAsync(AntdUI.Button action, string name, bool rejectFirst)
+    {
+        Exception? failure = null;
+        var observed = false;
+        using var timer = new System.Windows.Forms.Timer { Interval = 40 };
+        timer.Tick += async (_, _) =>
+        {
+            var editor = System.Windows.Forms.Application.OpenForms.OfType<TagEditor>().SingleOrDefault(form => form.Visible && form.Modal);
+            if (editor is null) return;
+            timer.Stop(); observed = true;
+            try
+            {
+                CheckUsability(ReferenceEquals(editor.Owner, _pointsDialog), "point editor does not belong to the point dialog.");
+                var field = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "TagName");
+                if (rejectFirst)
+                {
+                    field.Text = "";
+                    try { await editor.ApplyAndAcceptForSmokeAsync(); }
+                    catch (Exception) when (editor.LastApplyErrorForSmoke is not null) { }
+                    CheckUsability(editor.Visible && editor.LastApplyErrorForSmoke is not null && field.Text == "",
+                        "invalid point input did not remain in the nested editor.");
+                }
+                field.Text = name;
+                await editor.ApplyAndAcceptForSmokeAsync();
+            }
+            catch (Exception exception) { failure = exception; }
+            finally { editor.DialogResult = DialogResult.Cancel; editor.Close(); }
+        };
+        timer.Start();
+        try { action.PerformClick(); }
+        finally { timer.Stop(); }
+        if (failure is not null) throw new InvalidOperationException("Nested point editor failed.", failure);
+        CheckUsability(observed, "point action did not open an editor.");
+        await Task.CompletedTask;
     }
 
     private static void CheckUsability(bool condition, string message)
@@ -176,42 +265,32 @@ public sealed partial class MainForm
     private void SmokeListSpace()
     {
         var originalSize = ClientSize;
-        var split = _devicesPageView.ListSplit;
-        var originalDistance = split.SplitterDistance;
-        var selectedDevice = SelectedDevice()?.Id;
-        var selectedTag = SelectedTag()?.Id;
         try
         {
-            CheckUsability(_deviceGrid.ClientSize.Height >= _deviceGrid.ColumnHeadersHeight + _deviceGrid.RowTemplate.Height * 3
-                && _tagGrid.ClientSize.Height >= _tagGrid.ColumnHeadersHeight + _tagGrid.RowTemplate.Height * 3,
-                "default lists must each offer at least three full rows.");
-            var target = Math.Clamp(originalDistance + UiTheme.Scale(this, 48), split.Panel1MinSize,
-                split.Height - split.SplitterWidth - split.Panel2MinSize);
-            // Exercise the same public WinForms events used by a native splitter drag.
-            split.OnSplitterMoving(new SplitterCancelEventArgs(1, target, 1, target));
-            split.SplitterDistance = target;
-            PerformLayoutRecursively(this);
-            CheckUsability(split.SplitterDistance == target && target > originalDistance, "drag did not enlarge the device list.");
-            RebindConfigurationViews(selectedDevice);
-            PerformLayoutRecursively(this);
-            CheckUsability(split.SplitterDistance == target && SelectedDevice()?.Id == selectedDevice && SelectedTag()?.Id == selectedTag,
-                "refresh lost the divider position or row identity.");
+            CheckUsability(!Descendants(_devicesPageView).Contains(_tagGrid), "point grid remains on the device page.");
+            CheckUsability(_deviceGrid.ClientSize.Height >= _deviceGrid.ColumnHeadersHeight + _deviceGrid.RowTemplate.Height * 5,
+                "device list must offer at least five full rows.");
             SaveEditorScreenshot(this, "skin", "lists-adjusted");
             ClientSize = new Size(originalSize.Width, Math.Min(originalSize.Height, UiTheme.Scale(this, 600)));
             PerformLayoutRecursively(this);
             BringIntoViewAndAssert(_devicesPageView.AddDeviceButton, "short window device actions");
-            BringIntoViewAndAssert(_devicesPageView.AddTagButton, "short window point actions");
-            BringIntoViewAndAssert(_tagSearch, "short window point search");
-            CheckUsability(_tagGrid.ClientSize.Height >= _tagGrid.ColumnHeadersHeight + _tagGrid.RowTemplate.Height * 2,
-                "short window collapsed the point list.");
+            BringIntoViewAndAssert(_deviceSearch, "short window device search");
+            CheckUsability(_deviceGrid.ClientSize.Height >= _deviceGrid.ColumnHeadersHeight + _deviceGrid.RowTemplate.Height * 3,
+                "short window collapsed the device list.");
             SaveEditorScreenshot(this, "skin", "short-window");
-            Console.WriteLine($"Skin list layout passed at actual {DeviceDpi} DPI: both grids >= 3 initial rows; divider adjustment and refresh retain selection; short window actions reachable.");
+            _pointsDialog.Show(this);
+            PerformLayoutRecursively(_pointsDialog);
+            BringIntoViewAndAssert(_pointsDialog.AddTagButton, "point dialog actions");
+            BringIntoViewAndAssert(_tagSearch, "point dialog search");
+            CheckUsability(_tagGrid.ClientSize.Height >= _tagGrid.ColumnHeadersHeight + _tagGrid.RowTemplate.Height * 5,
+                "point dialog list is too short.");
+            SaveEditorScreenshot(_pointsDialog, "points", "dialog");
+            Console.WriteLine($"Skin list layout passed at actual {DeviceDpi} DPI: device-only full-height grid, separate point dialog and short-window actions reachable.");
         }
         finally
         {
+            _pointsDialog.Hide();
             ClientSize = originalSize;
-            typeof(SplitContainer).GetMethod("OnDoubleClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-                .Invoke(split, [EventArgs.Empty]);
             PerformLayoutRecursively(this);
             ResetScrollPositions(_pages["devices"], navigationMenu);
         }

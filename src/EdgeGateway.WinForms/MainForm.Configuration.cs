@@ -9,6 +9,13 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
+    private const string DevicePointsColumnName = "DevicePoints";
+    private DevicePointsDialog _pointsDialog = null!;
+    private Guid? _pointsDeviceId;
+    private Form PointDialogOwner => _pointsDialog.Visible ? _pointsDialog : this;
+    private DeviceConfiguration? PointDevice() => _pointsDeviceId.HasValue
+        ? _configuration.Devices.FirstOrDefault(device => device.Id == _pointsDeviceId.Value) : SelectedDevice();
+
     private const string DeviceConfigurationColumnName = "DeviceConfiguration";
     private const string DeviceStartColumnName = "DeviceStart";
     private const string DeviceStopColumnName = "DeviceStop";
@@ -27,12 +34,15 @@ public sealed partial class MainForm
     private Control BuildDevicesPage()
     {
         _devicesPageView = new DevicesPageView();
+        _pointsDialog = new DevicePointsDialog();
+        Disposed += (_, _) => _pointsDialog.Dispose();
+        _pointsDialog.FormClosing += (_, e) => { if (_busy) e.Cancel = true; };
         _deviceGrid = _devicesPageView.DeviceGrid;
-        _tagGrid = _devicesPageView.TagGrid;
-        _tagSearch = _devicesPageView.TagSearch;
+        _tagGrid = _pointsDialog.TagGrid;
+        _tagSearch = _pointsDialog.TagSearch;
         _deviceSummary = _devicesPageView.DeviceSummary;
-        _tagHeading = _devicesPageView.TagHeading;
-        _tagSummary = _devicesPageView.TagSummary;
+        _tagHeading = _pointsDialog.TagHeading;
+        _tagSummary = _pointsDialog.TagSummary;
         _deviceGrid.Name = "DeviceList"; _tagGrid.Name = "TagList";
         _deviceGrid.SelectionChanged += (_, _) => { if (!_rebindingDevices) { BindTags(); UpdateSelectionCommands(); } };
         _deviceGrid.CellContentClick += async (_, e) => await HandleDeviceGridActionAsync(e);
@@ -74,21 +84,21 @@ public sealed partial class MainForm
         _deviceSearch = _devicesPageView.deviceSearchInput;
         BindDeviceFilters();
 
-        _tagMore = _devicesPageView.tagMoreButton;
+        _tagMore = _pointsDialog.tagMoreButton;
         _tagMore.Bind(BuildTagMenu, exception => ShowError(exception.Message));
         _configurationCommands.Add(_tagMore);
         UiTheme.StyleInput(_tagSearch);
         _tagSearch.TextChanged += (_, _) => BindTags();
         _tagHeading.Dock = _tagSummary.Dock = DockStyle.Fill;
-        var addTag = _devicesPageView.AddTagButton;
+        var addTag = _pointsDialog.AddTagButton;
         addTag.Click += async (_, _) => await AddTagAsync();
         _configurationCommands.Add(addTag);
-        _selectionCommands.Add((addTag, () => SelectedDevice() is not null));
-        var editTag = _devicesPageView.EditTagButton;
+        _selectionCommands.Add((addTag, () => PointDevice() is not null));
+        var editTag = _pointsDialog.EditTagButton;
         editTag.Click += async (_, _) => await EditTagAsync();
         _configurationCommands.Add(editTag);
         _selectionCommands.Add((editTag, () => SelectedTag() is not null));
-        var singlePointRead = _devicesPageView.SinglePointReadButton;
+        var singlePointRead = _pointsDialog.SinglePointReadButton;
         singlePointRead.Click += async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(true));
         _configurationCommands.Add(singlePointRead);
         _selectionCommands.Add((singlePointRead, () => SelectedTag() is not null));
@@ -147,7 +157,7 @@ public sealed partial class MainForm
 
     private IReadOnlyList<MenuCommand> BuildTagMenu()
     {
-        var deviceId = SelectedDevice()?.Id; var tagId = SelectedTag()?.Id;
+        var deviceId = PointDevice()?.Id; var tagId = SelectedTag()?.Id;
         bool Device() => CanEdit() && deviceId.HasValue && _configuration.Devices.Any(d => d.Id == deviceId);
         bool Tag() => Device() && tagId.HasValue && _configuration.Devices.Single(d => d.Id == deviceId).Tags.Any(t => t.Id == tagId);
         return [
@@ -203,7 +213,7 @@ public sealed partial class MainForm
         if (doubleClick)
         {
             // Action columns already handle their first click. Do not invoke them twice.
-            if (columnName is DeviceConfigurationColumnName or DeviceStartColumnName or DeviceStopColumnName)
+            if (columnName is DeviceConfigurationColumnName or DeviceStartColumnName or DeviceStopColumnName or DevicePointsColumnName)
                 return Task.CompletedTask;
             columnName = DeviceConfigurationColumnName;
         }
@@ -213,6 +223,11 @@ public sealed partial class MainForm
     private async Task DeviceRowActionAsync(Guid deviceId, string columnName)
     {
         if (_busy || _closing) return;
+        if (columnName == DevicePointsColumnName)
+        {
+            ShowDevicePoints(deviceId);
+            return;
+        }
         if (columnName == DeviceConfigurationColumnName)
         {
             await ConfigureDeviceAsync(deviceId);
@@ -225,6 +240,18 @@ public sealed partial class MainForm
         if (start && !device.Enabled) { SetFooter("该设备未启用，请在“配置 → 采集设置”打开开关“启用设备”，保存后启动。"); return; }
         if (start == _application.IsDeviceRunning(deviceId)) return;
         await RunBusyAsync(() => ExecuteDeviceActionAsync(deviceId, start));
+    }
+
+    private void ShowDevicePoints(Guid deviceId)
+    {
+        if (_busy || _closing || !_configuration.Devices.Any(device => device.Id == deviceId)) return;
+        _pointsDeviceId = deviceId;
+        _pointsDialog.DialogResult = DialogResult.None;
+        BindTags();
+        _pointsDialog.Text = PointDevice()!.Name + " · 设备点位";
+        _pointsDialog.SetFeedback("双击点位编辑，修改成功后自动保存。");
+        try { _pointsDialog.ShowDialog(this); }
+        finally { _pointsDeviceId = null; BindTags(); }
     }
 
     private Task ConfigureDeviceAsync(Guid deviceId)
@@ -296,7 +323,7 @@ public sealed partial class MainForm
     private DeviceConfiguration? SelectedDevice() => _deviceGrid.CurrentRow?.DataBoundItem is DeviceRow row
         ? _configuration.Devices.FirstOrDefault(x => x.Id == row.Id) : null;
     private TagConfiguration? SelectedTag() => _tagGrid.CurrentRow?.DataBoundItem is TagRow row
-        ? SelectedDevice()?.Tags.FirstOrDefault(x => x.Id == row.Id) : null;
+        ? PointDevice()?.Tags.FirstOrDefault(x => x.Id == row.Id) : null;
 
     private Task AddDeviceAsync()
     {
@@ -334,7 +361,7 @@ public sealed partial class MainForm
     private Task AddTagAsync()
     {
         if (!CanEdit()) return Task.CompletedTask;
-        var device = SelectedDevice(); if (device is null) { SetFooter("请先添加或选择设备。"); return Task.CompletedTask; }
+        var device = PointDevice(); if (device is null) { SetFooter("请先添加或选择设备。"); return Task.CompletedTask; }
         var descriptor = _drivers.GetDescriptor(device.DriverId);
         using var editor = new TagEditor(TagEditor.CreateDefaultTag(descriptor, $"点位 {device.Tags.Count + 1}"), descriptor);
         BindEditorApply(editor, device.Id, async () =>
@@ -343,14 +370,14 @@ public sealed partial class MainForm
             _tagSearch.Clear();
             CompleteConfigurationCommit(applied, device.Id, $"点位“{editor.Value.Name}”已添加并自动保存。", selectTag: editor.Value.Id);
         });
-        editor.ShowDialog(this);
+        editor.ShowDialog(PointDialogOwner);
         return Task.CompletedTask;
     }
 
     private Task EditTagAsync(Guid? tagId = null)
     {
         if (!CanEdit()) return Task.CompletedTask;
-        var device = SelectedDevice(); var tag = tagId.HasValue ? device?.Tags.FirstOrDefault(x => x.Id == tagId) : SelectedTag();
+        var device = PointDevice(); var tag = tagId.HasValue ? device?.Tags.FirstOrDefault(x => x.Id == tagId) : SelectedTag();
         if (device is null || tag is null) return Task.CompletedTask;
         using var editor = new TagEditor(Clone(tag), _drivers.GetDescriptor(device.DriverId));
         BindEditorApply(editor, device.Id, async () =>
@@ -358,19 +385,19 @@ public sealed partial class MainForm
             var applied = await _application.UpdateTagAsync(device.Id, editor.Value);
             CompleteConfigurationCommit(applied, device.Id, $"点位“{editor.Value.Name}”已更新并自动保存。", selectTag: tag.Id);
         });
-        editor.ShowDialog(this);
+        editor.ShowDialog(PointDialogOwner);
         return Task.CompletedTask;
     }
 
     private async Task DeleteTagAsync(Guid? deviceId = null, Guid? tagId = null)
     {
         if (!CanEdit()) return;
-        var device = deviceId.HasValue ? _configuration.Devices.FirstOrDefault(d => d.Id == deviceId) : SelectedDevice();
+        var device = deviceId.HasValue ? _configuration.Devices.FirstOrDefault(d => d.Id == deviceId) : PointDevice();
         var tag = tagId.HasValue ? device?.Tags.FirstOrDefault(t => t.Id == tagId) : SelectedTag();
         if (device is null || tag is null) return;
         if (DatabasePointReferenceWarning([tag]) is { } referenceWarning) { ShowError(referenceWarning); return; }
         var notice = _application.IsDeviceRunning(device.Id) ? "\n保存后仅重新连接该点位所属设备，其他设备继续采集。" : "";
-        if (MessageBox.Show(this, $"删除点位“{tag.Name}”？{notice}", "删除点位", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+        if (MessageBox.Show(PointDialogOwner, $"删除点位“{tag.Name}”？{notice}", "删除点位", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
         await RunBusyAsync(async () => CompleteConfigurationCommit(await _application.DeleteTagAsync(device.Id, tag.Id),
             device.Id, $"点位“{tag.Name}”已删除并自动保存。"));
     }
@@ -384,7 +411,7 @@ public sealed partial class MainForm
 
     private void BindTags(Guid? selectTag = null)
     {
-        var device = SelectedDevice();
+        var device = PointDevice();
         if (_tagDeviceId != device?.Id)
         {
             _tagDeviceId = device?.Id;
@@ -405,7 +432,7 @@ public sealed partial class MainForm
         GridViewState.Rebind(_tagGrid, rows, row => row.Id, selectTag);
         _tagHeading.Text = device is null ? "请选择设备" : device.Name + " · 点位管理";
         _tagSummary.Text = device is null ? "在上方选择设备，或先添加采集设备。"
-            : $"{descriptor!.Name}  ·  显示 {rows.Count} / 共 {device.Tags.Count} 个点位"
+            : $"{descriptor?.Name ?? device.DriverId}  ·  显示 {rows.Count} / 共 {device.Tags.Count} 个点位"
             + (search.Length > 0 && rows.Count == 0 ? "  ·  未找到匹配点位，可在点位操作中清除筛选。" : "");
         _tagSearch.Enabled = device is not null;
         UpdateSelectionCommands();

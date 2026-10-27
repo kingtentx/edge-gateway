@@ -372,6 +372,8 @@ public sealed partial class MainForm
 
     private void VerifyPointRowsForSmoke(string context, bool verifyInitialViewport = false)
     {
+        var openedHere = !_pointsDialog.Visible;
+        if (openedHere) { _pointsDialog.Show(this); PerformLayoutRecursively(_pointsDialog); }
         var grid = _tagGrid;
         var state = GridViewState.Capture(grid, item => ((TagRow)item).Id);
         var priorCell = grid.CurrentCell;
@@ -398,7 +400,7 @@ public sealed partial class MainForm
             var last = grid.Rows[grid.Rows.Count - 1].Cells[lastColumn.Index];
             foreach (var cell in new[] { first, last }.Distinct())
             {
-                FocusForSmoke(grid, grid, this, context + " point cell " + cell.OwningColumn?.Name);
+                FocusForSmoke(grid, grid, _pointsDialog, context + " point cell " + cell.OwningColumn?.Name);
                 PerformLayoutRecursively(this);
                 // Native fill layout estimates rows before reserving the horizontal
                 // scrollbar and can backfill an extra row. Complete that layout before
@@ -451,6 +453,7 @@ public sealed partial class MainForm
             foreach (var (scroll, position) in viewports.AsEnumerable().Reverse())
                 scroll.AutoScrollPosition = position;
             PerformLayoutRecursively(this);
+            if (openedHere) _pointsDialog.Hide();
         }
 
         void AssertCellVisible(DataGridViewCell cell, bool requireFocus, string phase)
