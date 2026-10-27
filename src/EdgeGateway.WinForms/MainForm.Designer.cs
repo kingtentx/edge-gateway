@@ -101,7 +101,6 @@ public sealed partial class MainForm
         collapseNavigationButton.AccessibleName = "收起导航菜单";
         collapseNavigationButton.IconSvg = "MenuOutlined";
         collapseNavigationButton.Text = "";
-        collapseNavigationButton.Ghost = true;
         collapseNavigationButton.Anchor = AnchorStyles.Top | AnchorStyles.Left;
         collapseNavigationButton.Width = 56;
         collapseNavigationButton.Height = 40;

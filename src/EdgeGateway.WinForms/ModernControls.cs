@@ -24,7 +24,8 @@ internal class ModernButton : GatewayButton
     {
         var previous = _glyphImage;
         _glyphImage = Glyph == IconChar.None ? null : Glyph.ToBitmap(IconFont.Solid,
-            UiTheme.Scale(this, Navigation ? 18 : 15), ForeColor);
+            UiTheme.Scale(this, Navigation ? 18 : 15),
+            AntdUI.Style.Get(Primary ? AntdUI.Colour.PrimaryColor : AntdUI.Colour.DefaultColor, nameof(AntdUI.Button)));
         Icon = _glyphImage;
         previous?.Dispose();
     }

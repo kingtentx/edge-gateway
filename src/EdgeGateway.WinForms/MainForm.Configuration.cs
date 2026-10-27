@@ -477,6 +477,24 @@ public sealed partial class MainForm
     {
         public DeviceActionButtonCell() { }
         private bool _hovered;
+        private bool _keyboardPressed;
+        protected override void OnKeyDown(KeyEventArgs e, int rowIndex)
+        {
+            if (e.KeyCode == Keys.Space) _keyboardPressed = true;
+            base.OnKeyDown(e, rowIndex);
+            DataGridView?.InvalidateCell(this);
+        }
+        protected override void OnKeyUp(KeyEventArgs e, int rowIndex)
+        {
+            _keyboardPressed = false;
+            base.OnKeyUp(e, rowIndex);
+            DataGridView?.InvalidateCell(this);
+        }
+        protected override void OnLeave(int rowIndex, bool throughMouseClick)
+        {
+            _keyboardPressed = false;
+            base.OnLeave(rowIndex, throughMouseClick);
+        }
         protected override void OnMouseEnter(int rowIndex)
         {
             _hovered = true;
@@ -526,10 +544,18 @@ public sealed partial class MainForm
             var inset = UiTheme.Scale(DataGridView, 5);
             var bounds = Rectangle.Inflate(cellBounds, -inset, -inset);
             if (bounds.Width <= 2 || bounds.Height <= 2) return;
-            var background = !ActionEnabled ? Color.FromArgb(237, 241, 246) : StartsDevice ? (_hovered ? Color.FromArgb(9, 88, 217) : UiTheme.Blue) : (_hovered ? Color.FromArgb(255, 225, 225) : Color.White);
-            var foreground = !ActionEnabled ? Color.FromArgb(152, 163, 179) : StartsDevice ? Color.White : UiTheme.Red;
-            var border = ActionEnabled && _hovered ? (StartsDevice ? Color.FromArgb(9, 88, 217) : UiTheme.Red)
-                : ActionEnabled && StartsDevice ? UiTheme.Blue : UiTheme.Border;
+            // DataGridView keeps its native cell/accessibility/keyboard contract. The
+            // cell renderer uses the same tokens as AntdUI's borderless basic buttons;
+            // do not introduce a second palette for row commands.
+            static Color ButtonColor(AntdUI.Colour token) => AntdUI.Style.Get(token, nameof(AntdUI.Button));
+            var focused = DataGridView.Focused && DataGridView.CurrentCellAddress == new Point(ColumnIndex, rowIndex);
+            if (!focused) _keyboardPressed = false;
+            var pressed = (_hovered && (Control.MouseButtons & MouseButtons.Left) != 0) || (focused && _keyboardPressed);
+            var background = ButtonColor(!ActionEnabled ? AntdUI.Colour.FillTertiary
+                : StartsDevice ? (pressed ? AntdUI.Colour.PrimaryActive : _hovered ? AntdUI.Colour.PrimaryHover : AntdUI.Colour.Primary)
+                : AntdUI.Colour.DefaultBg);
+            var foreground = ButtonColor(!ActionEnabled ? AntdUI.Colour.TextQuaternary
+                : StartsDevice ? AntdUI.Colour.PrimaryColor : AntdUI.Colour.DefaultColor);
             var radius = Math.Min(UiTheme.Scale(DataGridView, 6), Math.Min(bounds.Width, bounds.Height) / 2);
             using var path = new GraphicsPath();
             var diameter = Math.Max(2, radius * 2);
@@ -539,11 +565,22 @@ public sealed partial class MainForm
             path.AddArc(bounds.X, bounds.Bottom - diameter, diameter, diameter, 90, 90);
             path.CloseFigure();
             using var fill = new SolidBrush(background);
-            using var outline = new Pen(border);
-            graphics.FillPath(fill, path); graphics.DrawPath(outline, path);
-            TextRenderer.DrawText(graphics, formattedValue?.ToString() ?? "", cellStyle.Font, bounds,
-                foreground, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
-            if (DataGridView.Focused && DataGridView.CurrentCellAddress == new Point(ColumnIndex, rowIndex))
+            var smoothing = graphics.SmoothingMode;
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            graphics.FillPath(fill, path);
+            if (ActionEnabled && !StartsDevice && (pressed || _hovered))
+            {
+                using var stateFill = new SolidBrush(ButtonColor(pressed ? AntdUI.Colour.Fill : AntdUI.Colour.FillSecondary));
+                graphics.FillPath(stateFill, path);
+            }
+            graphics.SmoothingMode = smoothing;
+            // GDI+ preserves the alpha in AntdUI's disabled foreground token.
+            using var textBrush = new SolidBrush(foreground);
+            using var textFormat = new StringFormat { Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+            graphics.DrawString(formattedValue?.ToString() ?? "", cellStyle.Font ?? DataGridView.Font,
+                textBrush, bounds, textFormat);
+            if (focused)
                 ControlPaint.DrawFocusRectangle(graphics, Rectangle.Inflate(bounds, -2, -2), foreground, background);
         }
     }

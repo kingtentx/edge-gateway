@@ -33,8 +33,7 @@ internal static class UiTheme
         var button = new ModernButton
         {
             Text = text, AutoSize = true, MinimumSize = new Size(100, ActionHeight), Height = ActionHeight,
-            Padding = new Padding(10, 4, 10, 4), BackColor = primary ? Blue : Color.White,
-            ForeColor = primary ? Color.White : text.Contains("删除") ? Red : Ink,
+            Padding = new Padding(10, 4, 10, 4),
             Margin = new Padding(0, 0, 8, 6), AccessibleName = text,
             Cursor = Cursors.Hand, Glyph = ActionIcon(text), Primary = primary
         };
@@ -44,7 +43,7 @@ internal static class UiTheme
 
     public static Button NavigationButton(string text, string key) => new ModernButton
     {
-        Text = text, BackColor = Navy, ForeColor = Color.FromArgb(184, 201, 224),
+        Text = text,
         Padding = new Padding(14, 10, 10, 10), MinimumSize = new Size(0, 48),
         Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold), Navigation = true,
         Glyph = key switch

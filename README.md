@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**2026-10-27 界面开发规范：** 全部界面使用 AntdUI-Demo 规范样式；按钮统一采用官方基础 Default / Primary 及默认交互状态。组件规范、参考版本与验证见 [AntdUI-Demo 样式规范](docs/ui-antdui-style-guide.md)。
+
 **2026-10-27 设备页重排：** 顶部拆分筛选与设备操作区，主页面仅保留设备表；每行“查看点位”打开独立点位管理弹窗，保留搜索、编辑、导入导出和读点功能，按点击设备 ID 保存。Release 编译及八页面/弹窗定向检查通过。[布局与验证](docs/ui-device-points-dialog.md)。
 
 **2026-10-27 表单视觉整理：** 删除开关右侧重复文字，保留左侧字段名；点位列表名称在左、开关在右。按 AntdUI Demo 的透明容器方式消除输入框外围第二层白色底块，统一搜索、下拉、数值及日期表单。Release 编译、八页面/弹窗及开关交互定向检查通过。[实现与验证](docs/ui-form-switches.md)。

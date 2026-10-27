@@ -830,7 +830,6 @@ internal sealed partial class PlatformPageView
         resetButton.MinimumSize = new Size(110, 38);
         resetButton.Size = new Size(120, 38);
         resetButton.Radius = 6;
-        resetButton.BorderWidth = 1F;
         resetButton.Cursor = Cursors.Hand;
         resetButton.Margin = new Padding(0, 0, 8, 6);
         resetButton.TabIndex = 1;

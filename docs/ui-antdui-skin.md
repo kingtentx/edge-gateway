@@ -1,5 +1,7 @@
 # AntdUI Demo 浅色皮肤与列表空间
 
+后续开发统一遵循 [AntdUI-Demo 样式规范](ui-antdui-style-guide.md)，按钮不再使用自定义配色与描边；下文保留历史实现和验证记录。
+
 ## 参照与范围
 
 用户于 2026-10-27 指定 [AntdUI/AntdUI-Demo](https://github.com/AntdUI/AntdUI-Demo) 为界面风格参考。本轮读取其 `MainWindow.Designer.cs` 和 `assets/screenshots/Table.png`，固定参考提交 `0a66f848f1e218ca975c69c3b9a4312c6316db6f`。参考其白色导航、浅灰表头、蓝色选择态、线性图标和细分隔线；项目仍使用 .NET 8 WinForms 和 AntdUI 2.4.16。

@@ -4,6 +4,56 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
+    private async Task SmokeDefaultButtonStatesAsync()
+    {
+        var originalPage = _activePage;
+        ShowPage("devices");
+        var primary = Descendants(this).OfType<Button>().Single(button => button.Name == "AddDevice");
+        var normal = _devicesPageView.clearFiltersButton;
+        var buttons = new[] { primary, normal };
+        var enabled = buttons.Select(button => button.Enabled).ToArray();
+        var clicked = 0;
+        void OnClick(object? sender, EventArgs e) => clicked++;
+        normal.Click += OnClick;
+        try
+        {
+            foreach (var button in buttons) BringIntoViewAndAssert(button, "default button states");
+            SaveEditorScreenshot(this, "buttons", "default");
+            // An isolated desktop has no physical cursor. Exercise the control's
+            // MouseEnter event without Windows immediately scheduling MouseLeave
+            // for the real pointer on the user's different desktop.
+            var enter = typeof(AntdUI.Button).GetMethod("OnMouseEnter",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            foreach (var button in buttons)
+                enter.Invoke(button, [EventArgs.Empty]);
+            await Task.Delay(250);
+            if (buttons.Any(button => !button.ExtraMouseHover))
+                throw new InvalidOperationException("Button hover did not respond to MouseEnter.");
+            SaveEditorScreenshot(this, "buttons", "hover");
+            // Capture the official pressed renderer without invoking AddDevice's modal command.
+            foreach (var button in buttons) button.ExtraMouseDown = true;
+            SaveEditorScreenshot(this, "buttons", "pressed");
+            foreach (var button in buttons) { button.ExtraMouseDown = false; button.Enabled = false; button.PerformClick(); }
+            if (clicked != 0) throw new InvalidOperationException("Disabled button invoked its command.");
+            SaveEditorScreenshot(this, "buttons", "disabled");
+            for (var i = 0; i < buttons.Length; i++) buttons[i].Enabled = enabled[i];
+            FocusForSmoke(normal, normal, this, "default button keyboard");
+            SendControlSmokeMessage(normal.Handle, 0x0100, new IntPtr((int)Keys.Space), IntPtr.Zero);
+            SendControlSmokeMessage(normal.Handle, 0x0101, new IntPtr((int)Keys.Space), IntPtr.Zero);
+            if (clicked != 1) throw new InvalidOperationException("Default button Space key did not invoke exactly one command.");
+            VerifyDeviceRowCommandsForSmoke("default row buttons");
+            SaveEditorScreenshot(this, "buttons", "keyboard-row-focus");
+            Console.WriteLine("Default button states passed: MouseEnter event hover, official pressed rendering, disabled command rejection, Space key and device row focus/accessibility.");
+        }
+        finally
+        {
+            normal.Click -= OnClick;
+            for (var i = 0; i < buttons.Length; i++)
+            { buttons[i].ExtraMouseDown = false; buttons[i].ExtraMouseHover = false; buttons[i].Enabled = enabled[i]; }
+            ShowPage(originalPage);
+        }
+    }
+
     private void AssertNavigationItemFits(AntdUI.MenuItem item, string context)
     {
         var scroll = navigationMenu.ScrollBar.ValueY;

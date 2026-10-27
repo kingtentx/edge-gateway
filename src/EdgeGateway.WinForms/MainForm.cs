@@ -323,6 +323,7 @@ public sealed partial class MainForm : DpiAwareForm
                 await SmokeOverviewAsync();
                 SmokeDeferredPageNavigation();
                 await SmokeAntdNavigationAndSelectAsync();
+                await SmokeDefaultButtonStatesAsync();
                 var originalSize = Size;
                 Width = MinimumSize.Width;
                 PerformLayoutRecursively(this);

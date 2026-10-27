@@ -24,7 +24,6 @@ internal sealed class CommandMenuButton : ModernButton
     {
         AutoSize = true; MinimumSize = new Size(100, UiTheme.ActionHeight); Height = UiTheme.ActionHeight;
         Padding = new Padding(13, 6, 13, 6); Margin = new Padding(0, 0, 8, 6);
-        BackColor = Color.White; ForeColor = UiTheme.Ink;
         Cursor = Cursors.Hand;
         _menu.BackColor = Color.White; _menu.ForeColor = UiTheme.Ink;
         _menu.Renderer = new MenuRenderer();
