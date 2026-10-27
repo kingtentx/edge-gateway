@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**2026-10-27 八页面刷新检查：** 修复实时监控每秒整表重绑，保留变化行更新和阅读位置；八页面及全部数据库/平台/日志页签的连续刷新专项通过。[检查与验证](docs/ui-page-refresh.md)。
+
 **2026-10-27 数据库页刷新修复：** 状态说明与缓冲统计一次更新，无变化的数据不再重绑；修复每秒刷新导致页签、表格上下抖动。Release 编译和隔离后台数据库连续刷新专项通过。[原因与验证](docs/ui-database-refresh.md)。
 
 界面采用 AntdUI 与原生 WinForms 的混合实现：固定结构在各自 Designer 中维护，驱动参数、数据库字段映射行、实时数据和曲线由代码生成或绑定。迁移范围与保留控件见 [界面重构](docs/ui-redesign-architecture.md)，首次迁移验证与未验收项见 [迁移记录](docs/ui-redesign-verification.md)。
