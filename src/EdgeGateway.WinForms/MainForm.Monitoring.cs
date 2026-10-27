@@ -130,7 +130,7 @@ public sealed partial class MainForm
             && (search.Length == 0 || sample.TagName.Contains(search, StringComparison.OrdinalIgnoreCase)
                 || sample.Address.Contains(search, StringComparison.OrdinalIgnoreCase)))
             .OrderBy(sample => sample.DeviceName).ThenBy(sample => sample.TagName).Select(ToRow).ToList();
-        GridViewState.Rebind(_realtimeGrid, rows, row => (row.Sample.DeviceId, row.Sample.TagId));
+        GridViewState.UpdateRows(_realtimeGrid, rows, row => (row.Sample.DeviceId, row.Sample.TagId));
         UpdateWriteButton();
     }
 

@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace EdgeGateway.WinForms;
 
 /// <summary>Retains a stable row, column and scroll position while a UI snapshot is replaced.</summary>
@@ -48,5 +50,27 @@ internal sealed record GridViewState(object? SelectedKey, string? ColumnName, ob
         var state = Capture(grid, Key);
         grid.DataSource = rows.ToList();
         state.Restore(grid, Key, preferredKey);
+    }
+
+    /// <summary>Polling keeps bound rows alive until stable identities or their order change.</summary>
+    internal static void UpdateRows<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
+    {
+        object? RowKey(object item) => item is T value ? key(value) : null;
+        if (grid.DataSource is BindingList<T> bound && bound.Count == rows.Count
+            && bound.Select(key).SequenceEqual(rows.Select(key)))
+        {
+            GridViewState? state = preferredKey is not null ? Capture(grid, RowKey) : null;
+            for (var index = 0; index < rows.Count; index++)
+            {
+                if (EqualityComparer<T>.Default.Equals(bound[index], rows[index])) continue;
+                state ??= Capture(grid, RowKey);
+                bound[index] = rows[index];
+            }
+            state?.Restore(grid, RowKey, preferredKey);
+            return;
+        }
+        var previous = Capture(grid, RowKey);
+        grid.DataSource = new BindingList<T>(rows.ToList());
+        previous.Restore(grid, RowKey, preferredKey);
     }
 }
