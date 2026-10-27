@@ -68,18 +68,18 @@ public sealed partial class MainForm
         {
             collapseNavigationButton.PerformClick();
             await Task.Delay(80);
-            AssertNavigationShell(true, "horizontal menu");
+            AssertNavigationShell(true, "collapsed menu");
             foreach (var key in _navigation.Keys)
             {
-                _compactNavigation[key].PerformClick();
-                await Task.Yield();
-                if (_activePage != key)
+                navigationMenu.Select(_navigation[key]);
+                PerformLayoutRecursively(this);
+                if (_activePage != key || !navigationMenu.ClientRectangle.Contains(_navigation[key].Rect()))
                     throw new InvalidOperationException("Collapsed menu navigation is unreachable: " + key);
-                AssertNavigationShell(true, "horizontal route " + key);
+                AssertNavigationItemFits(_navigation[key], "collapsed menu");
             }
             ShowPage("devices");
             SaveEditorScreenshot(this, "antd", "menu-collapsed");
-            expandNavigationButton.PerformClick();
+            collapseNavigationButton.PerformClick();
             await Task.Delay(80);
             if (navigationMenu.Collapsed || navigationViewportPanel.Width != width)
                 throw new InvalidOperationException("AntdUI menu did not restore its expanded width.");
@@ -107,7 +107,7 @@ public sealed partial class MainForm
         finally
         {
             _deviceGroupFilter.ExpandDrop = false;
-            if (navigationMenu.Collapsed) expandNavigationButton.PerformClick();
+            if (navigationMenu.Collapsed) collapseNavigationButton.PerformClick();
             ShowPage(originalPage);
         }
     }

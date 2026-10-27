@@ -19,7 +19,6 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly NotifyIcon _trayIcon;
     private readonly ContextMenuStrip _trayMenu;
     private readonly Icon _applicationIcon;
-    private readonly Dictionary<string, GatewayButton> _compactNavigation = [];
     private bool _exitRequested;
     private readonly bool _layoutMatrix;
     private readonly bool _databaseMappingSmoke;
@@ -112,6 +111,8 @@ public sealed partial class MainForm : DpiAwareForm
     {
         InitializeComponent();
 
+        navigationApplicationIcon.Image = _applicationIcon.ToBitmap();
+        _feedbackTip.SetToolTip(collapseNavigationButton, "收起导航菜单");
         var shell = applicationShell;
         var navigationViewport = navigationViewportPanel;
         var sidebar = navigationContentPanel;
@@ -131,22 +132,8 @@ public sealed partial class MainForm : DpiAwareForm
         _navigation.Add("cloud", navigationCloudItem);
         _navigation.Add("logs", navigationLogsItem);
         navigationMenu.ItemClick += (_, e) => { if (!_selectingNavigation && e.Item.Name is { } key) ShowPage(key); };
-        compactApplicationIcon.Image = _applicationIcon.ToBitmap();
-        _compactNavigation.Add("overview", compactOverviewButton);
-        _compactNavigation.Add("devices", compactDevicesButton);
-        _compactNavigation.Add("realtime", compactRealtimeButton);
-        _compactNavigation.Add("history", compactHistoryButton);
-        _compactNavigation.Add("diagnostics", compactDiagnosticsButton);
-        _compactNavigation.Add("database", compactDatabaseButton);
-        _compactNavigation.Add("cloud", compactCloudButton);
-        _compactNavigation.Add("logs", compactLogsButton);
-        foreach (var (key, button) in _compactNavigation)
-        {
-            button.Click += (_, _) => ShowPage(key);
-            _feedbackTip.SetToolTip(button, button.AccessibleName);
-        }
-        _feedbackTip.SetToolTip(expandNavigationButton, "展开导航菜单");
         bool arranging = false;
+        bool shellLayoutPending = false;
         bool? compactHeader = null;
         void ArrangeShell()
         {
@@ -156,10 +143,22 @@ public sealed partial class MainForm : DpiAwareForm
             {
                 var compactNavigation = shell.ClientSize.Width < UiTheme.Scale(shell, 1000);
                 // Keep a stable logical rail width; AntdUI owns menu scrolling.
-                var sidebarWidth = UiTheme.Scale(shell, navigationMenu.Collapsed ? 0 : compactNavigation ? 172 : 192);
-                if (shell.ColumnStyles[0].Width != sidebarWidth) shell.ColumnStyles[0].Width = sidebarWidth;
-                var navigationHeight = UiTheme.Scale(shell, navigationMenu.Collapsed ? 52 : 0);
-                if (shell.RowStyles[0].Height != navigationHeight) shell.RowStyles[0].Height = navigationHeight;
+                var sidebarWidth = UiTheme.Scale(shell, navigationMenu.Collapsed ? 56 : compactNavigation ? 204 : 244);
+                if (shell.ColumnStyles[0].Width != sidebarWidth)
+                {
+                    shell.ColumnStyles[0].Width = sidebarWidth;
+                    // SizeChanged can arrive inside TableLayoutPanel's current pass.
+                    // Finish the new column width on the next normal UI layout turn.
+                    if (!shellLayoutPending)
+                    {
+                        shellLayoutPending = true;
+                        shell.BeginInvoke((Action)(() =>
+                        {
+                            shellLayoutPending = false;
+                            if (!shell.IsDisposed) shell.PerformLayout();
+                        }));
+                    }
+                }
                 brandTitle.Text = compactNavigation ? "EDGE" : "EDGE GATEWAY";
                 brandCaption.Text = compactNavigation ? "采集网关" : "工业数据 · 本地连接";
                 var narrow = body.ClientSize.Width < UiTheme.Scale(body, 400);
@@ -183,9 +182,9 @@ public sealed partial class MainForm : DpiAwareForm
             }
             finally { arranging = false; }
         }
-        void ToggleNavigation(object? sender, EventArgs e)
+        collapseNavigationButton.Click += (_, _) =>
         {
-            // Switching between the sidebar and toolbar can synchronously enter layout.
+            // Hiding the AutoSize brand can synchronously enter the shell's layout.
             // Change menu state and column width together, then lay out once; updating
             // the column from that nested layout could leave its cached actual width stale.
             shell.SuspendLayout();
@@ -193,11 +192,10 @@ public sealed partial class MainForm : DpiAwareForm
             try
             {
                 var collapsed = !navigationMenu.Collapsed;
-                navigationMenu.SetCollapsed(collapsed);
+                navigationMenu.SetRailCollapsed(collapsed);
                 brandTitleLabel.Visible = brandCaptionLabel.Visible = !collapsed;
-                navigationViewportPanel.Visible = !collapsed;
-                compactNavigationBar.Visible = collapsed;
-                collapseNavigationButton.IconSvg = collapsed ? "MenuUnfoldOutlined" : "MenuFoldOutlined";
+                navigationBrandPanel.Visible = !collapsed;
+                _feedbackTip.SetToolTip(collapseNavigationButton, collapsed ? "展开导航菜单" : "收起导航菜单");
                 collapseNavigationButton.AccessibleName = collapsed ? "展开导航菜单" : "收起导航菜单";
                 ArrangeShell();
             }
@@ -206,9 +204,7 @@ public sealed partial class MainForm : DpiAwareForm
                 sidebar.ResumeLayout(true);
                 shell.ResumeLayout(true);
             }
-        }
-        collapseNavigationButton.Click += ToggleNavigation;
-        expandNavigationButton.Click += ToggleNavigation;
+        };
         shell.SizeChanged += (_, _) => ArrangeShell();
         shell.HandleCreated += (_, _) => ArrangeShell();
         shell.DpiChangedAfterParent += (_, _) => { compactHeader = null; ArrangeShell(); };
@@ -238,8 +234,6 @@ public sealed partial class MainForm : DpiAwareForm
     private void ShowPage(string key)
     {
         _activePage = key;
-        foreach (var (route, button) in _compactNavigation)
-            button.Type = route == key ? AntdUI.TTypeMini.Primary : AntdUI.TTypeMini.Default;
         foreach (var page in _pages) page.Value.Visible = page.Key == key;
         _pages[key].BringToFront();
         _selectingNavigation = true;
@@ -802,7 +796,7 @@ public sealed partial class MainForm : DpiAwareForm
             if (_trayIcon is not null) _trayIcon.Visible = false;
             _trayIcon?.Dispose();
             _trayMenu?.Dispose();
-            compactApplicationIcon?.Image?.Dispose();
+            navigationApplicationIcon?.Image?.Dispose();
             _applicationIcon?.Dispose();
         }
         base.Dispose(disposing);
