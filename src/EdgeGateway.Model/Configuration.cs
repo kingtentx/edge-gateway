@@ -13,6 +13,7 @@ public sealed class GatewayConfiguration
     public TelemetryReportMode ReportMode { get; set; } = TelemetryReportMode.Periodic;
     public int HeartbeatIntervalMs { get; set; } = 60_000;
     public MqttConfiguration Mqtt { get; set; } = new();
+    public List<string> DeviceGroups { get; set; } = [];
     public List<ChannelConfiguration> Channels { get; set; } = [];
     public List<DeviceConfiguration> Devices { get; set; } = [];
     public GatewayLoggingConfiguration Logging { get; set; } = new();

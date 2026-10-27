@@ -42,7 +42,7 @@ public sealed partial class MainForm
                 .FirstOrDefault(c => c.Id == channel?.Id && c.IndependentOnly == (channel?.IndependentOnly ?? false)) ?? _deviceChannelFilter.Items[0];
             _deviceGroupFilter.Items.Clear();
             _deviceGroupFilter.Items.Add(new GroupChoice(null, "全部分组"));
-            _deviceGroupFilter.Items.AddRange(_configuration.Devices.Select(d => d.Group).Distinct(StringComparer.OrdinalIgnoreCase)
+            _deviceGroupFilter.Items.AddRange(DeviceGroupNames()
                 .Order(StringComparer.OrdinalIgnoreCase).Select(g => new GroupChoice(g, string.IsNullOrEmpty(g) ? "未分组" : g)).Cast<object>().ToArray());
             _deviceGroupFilter.SelectedItem = _deviceGroupFilter.Items.Cast<GroupChoice>()
                 .FirstOrDefault(g => string.Equals(g.Group, group, StringComparison.OrdinalIgnoreCase)) ?? _deviceGroupFilter.Items[0];
@@ -84,7 +84,7 @@ public sealed partial class MainForm
         var original = deviceId.HasValue ? _configuration.Devices.FirstOrDefault(d => d.Id == deviceId) : SelectedDevice();
         if (original is null) { SetFooter("请先选择需要复制的设备。"); return Task.CompletedTask; }
         var draft = DeviceConfigurationOperations.Copy(original, _configuration.Devices.Select(d => d.Name));
-        using var editor = new DeviceConfigurationDialog(draft, _drivers, channels: _configuration.Channels);
+        using var editor = new DeviceConfigurationDialog(draft, _drivers, channels: _configuration.Channels, groups: DeviceGroupNames());
         editor.Text = "复制设备 · " + original.Name;
         BindEditorApply(editor, null, async () =>
         {
@@ -96,14 +96,14 @@ public sealed partial class MainForm
         return Task.CompletedTask;
     }
 
-    private Task EditChannelAsync(bool add, Guid? selectedChannelId = null)
+    private Task<Guid?> EditChannelAsync(bool add, Guid? selectedChannelId = null, Form? owner = null)
     {
-        if (!CanEdit()) return Task.CompletedTask;
-        if (_application.IsRunning) { SetFooter("请停止全部设备后维护通信通道；设备与点位仍可独立编辑。"); return Task.CompletedTask; }
+        if (!CanEdit()) return Task.FromResult<Guid?>(null);
+        if (_application.IsRunning) { SetFooter("请停止全部设备后维护通信通道；设备与点位仍可独立编辑。"); return Task.FromResult<Guid?>(null); }
         var channelId = selectedChannelId ?? (_deviceChannelFilter.SelectedItem as ChannelChoice)?.Id;
-        var channel = add ? new ChannelConfiguration { Name = "通道 " + (_configuration.Channels.Count + 1) }
+        var channel = add ? new ChannelConfiguration { Name = UniqueCatalogName("通道", _configuration.Channels.Select(c => c.Name)) }
             : _configuration.Channels.FirstOrDefault(c => c.Id == channelId);
-        if (channel is null) { SetFooter("请在通道筛选中选择要编辑的具体通道。"); return Task.CompletedTask; }
+        if (channel is null) { SetFooter("请在通道筛选中选择要编辑的具体通道。"); return Task.FromResult<Guid?>(null); }
         using var editor = new ChannelEditor(Clone(channel));
         BindEditorApply(editor, null, async () =>
         {
@@ -111,21 +111,8 @@ public sealed partial class MainForm
             CompleteConfigurationCommit(applied, successMessage: "通信通道已自动保存。");
             _deviceChannelFilter.SelectedItem = _deviceChannelFilter.Items.Cast<ChannelChoice>().First(c => c.Id == channel.Id);
         });
-        editor.ShowDialog(this);
-        return Task.CompletedTask;
-    }
-
-    private async Task DeleteChannelAsync(Guid? selectedChannelId = null)
-    {
-        if (!CanEdit()) return;
-        if (_application.IsRunning) { SetFooter("请停止全部设备后删除通道。"); return; }
-        var id = selectedChannelId ?? (_deviceChannelFilter.SelectedItem as ChannelChoice)?.Id;
-        var channel = _configuration.Channels.FirstOrDefault(c => c.Id == id);
-        if (channel is null) { SetFooter("请先选择具体通道。"); return; }
-        if (_configuration.Devices.Any(d => d.ChannelId == id)) { SetFooter("该通道仍有设备，请先在设备配置中迁移到其他通道或独立通信。"); return; }
-        if (MessageBox.Show(this, $"删除通信通道“{channel.Name}”？", "删除通道", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
-        await RunBusyAsync(async () => CompleteConfigurationCommit(await _application.DeleteChannelAsync(channel.Id),
-            successMessage: "通信通道已删除并自动保存。"));
+        var accepted = editor.ShowDialog(owner ?? this) == DialogResult.OK;
+        return Task.FromResult<Guid?>(accepted ? channel.Id : null);
     }
 
     private async Task ProbeSelectionAsync(bool selectedPoint)

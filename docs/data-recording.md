@@ -2,7 +2,7 @@
 
 ## 当前版本的存储边界
 
-本版本按开发环境重新定义存储，不保留旧 SQLite 采集历史，不提供旧数据库、旧配置版本的迁移或兼容层。配置只接受 **schema 3**；导入 JSON 必须显式声明 `schemaVersion: 3`；SQLite 快照元数据使用 `schema_version=3`，物理表结构使用独立的 `PRAGMA user_version=5`。缺少版本同样明确拒绝，不按模型默认值接纳。开发部署请使用新的空数据目录；旧 `gateway.db`、`gateway.json` 不再作为应用数据源读取。
+本版本按开发环境重新定义存储，不保留旧 SQLite 采集历史，不提供旧数据库、旧配置版本的迁移或兼容层。配置只接受 **schema 3**；导入 JSON 必须显式声明 `schemaVersion: 3`；SQLite 快照元数据使用 `schema_version=3`，物理表结构使用独立的 `PRAGMA user_version=6`。缺少版本同样明确拒绝，不按模型默认值接纳。开发部署请使用新的空数据目录；旧 `gateway.db`、`gateway.json` 不再作为应用数据源读取。
 
 | 内容 | 当前存放位置 | 说明 |
 |---|---|---|

@@ -85,7 +85,7 @@ TCP 读取按协议长度组帧，不假设一次 `ReadAsync` 得到完整报文
 
 - 数据库写入组新增默认名须避开全部已保存组名（忽略前后空格/大小写）；编辑按稳定 ID 排除自身。名称重复与长度错误分开提示，重名保存定位到名称输入框且保留字段映射草稿，不通过放宽唯一性约束解决默认名冲突。
 - 日志主文件使用 `yyyyMMdd.log`（采集服务器当地写入日期），大小轮转使用 `yyyyMMdd.001.log` 等未占用序号，不再加 `gateway-` 前缀。采样文件使用扁平 JSON，仅保留一次采样时间、设备/点位身份、地址、原始值/工程值及实际质量；去掉 level/kind/sample 包装和 numericValue，空 unit/error 不写入，有错误时保留错误及失败空值。查询/导出识别精简记录，已有日志仍可查询并按保留策略清理。
-- 配置模型及 JSON 交换保持 schema 3；SQLite 结构版本为 5，按功能以强类型关系表保存，禁止整份/分组 JSON payload。网关、上报、MQTT、RPC、日志、通道、设备网络/串口/驱动参数、点位、外库连接/写入组/选点/字段映射分别落表；驱动元数据统一在 driver_registry，禁止恢复重复的 driver_plugins/driver_catalog。configuration_snapshots 仅存 current/previous 元数据，功能表带 slot，外键与完整配置在同一 WAL/FULL 事务内切换；旧数据库明确拒绝且不自动清空或迁移。详见 [关系配置表](../../../docs/sqlite-configuration-schema.md)。UTF-8 JSON 文件只作导入/导出；使用稳定 Guid、枚举名称和 `SchemaVersion`。设备、点位与导入使用独立候选，经 `IGatewayApplication` 基于最新配置提交，内部通过 `GatewayRuntime.ApplyConfigurationAsync(candidate, configurationStore, cancellationToken)` 在生命周期锁内校验、以 SQLite WAL/FULL 事务更新当前及上一份同版本配置，再应用运行时；禁止 UI 自行保存或调用仅适合全停初始化的 `Configure`。首次启动默认设备前由应用层先落盘，保持重启后的设备和点位 ID 稳定。
+- 配置模型及 JSON 交换保持 schema 3；SQLite 结构版本为 6，按功能以强类型关系表保存，禁止整份/分组 JSON payload。网关、上报、MQTT、RPC、日志、通道、设备网络/串口/驱动参数、点位、外库连接/写入组/选点/字段映射分别落表；驱动元数据统一在 driver_registry，禁止恢复重复的 driver_plugins/driver_catalog。configuration_snapshots 仅存 current/previous 元数据，功能表带 slot，外键与完整配置在同一 WAL/FULL 事务内切换；旧数据库明确拒绝且不自动清空或迁移。详见 [关系配置表](../../../docs/sqlite-configuration-schema.md)。UTF-8 JSON 文件只作导入/导出；使用稳定 Guid、枚举名称和 `SchemaVersion`。设备、点位与导入使用独立候选，经 `IGatewayApplication` 基于最新配置提交，内部通过 `GatewayRuntime.ApplyConfigurationAsync(candidate, configurationStore, cancellationToken)` 在生命周期锁内校验、以 SQLite WAL/FULL 事务更新当前及上一份同版本配置，再应用运行时；禁止 UI 自行保存或调用仅适合全停初始化的 `Configure`。首次启动默认设备前由应用层先落盘，保持重启后的设备和点位 ID 稳定。
 - 仅在配置数据库没有当前配置时创建演示配置。先加载驱动并应用停用清单，再筛选可用驱动对应的默认设备，完整校验后首次落盘；已保存配置不能因缺驱动自动删设备。损坏、无效或版本不支持的配置应显示错误，不静默重置；不读取旧 gateway.json / gateway.db。
 - 运行时使用配置深拷贝，允许设备运行期间新增、编辑、删除、追加导入设备与点位。新增设备与原本停止的设备保存后保持停止；仅重新建立配置有实质变化且原本运行的目标会话，禁用或删除则停止该目标。保留其他设备的会话、样本、状态和共享工作任务；单台重启不重建共享任务。比较值时忽略字典键顺序，保留点位顺序语义。完整校验仍拒绝同串口多个启用设备，不以停止状态绕过约束。
 - 校验失败、保存失败或提交前取消不得修改现有会话与内存配置；原子保存提交后必须完成运行时同步，不再响应调用方取消。新会话连接失败进入原有可见故障与退避重连流程，不自动回滚已保存参数；“重启已调度”不能写成“设备已连接”。结果分别返回 `Added`、`Updated`、`Removed`、`Restarted`、`Stopped` 的设备 ID，停止集合不包含重启集合。详见 [运行中配置与数据闭环](../../../docs/live-configuration.md)。
@@ -136,6 +136,8 @@ TCP 读取按协议长度组帧，不假设一次 `ReadAsync` 得到完整报文
 实时快照也通过 `GridViewState.UpdateRows` 按设备/点位稳定键更新，不能在每个时钟周期重新指定 DataSource。检查刷新问题时区分曲线/状态值的正常重绘与表格重绑、控件边界位移、滚动位置重置；`PageRefresh` 隔离专项覆盖八页面及数据库/平台/日志全部页签，仍须遵守测试授权。详见 [八页面刷新检查](../../../docs/ui-page-refresh.md)。
 
 常用动作与低频菜单分层，菜单保留文字、禁用原因和键盘路径；按实际打开后的布局验收，不只检查触发按钮。设备身份与本行命令优先同屏，冻结区不能占满小表格。点位区显示所属设备和数量，筛选说明范围与空结果；新增、保存、删除后按设备/点位 ID 恢复明确上下文。历史输入改变时标记尚未查询，摘要与导出始终绑定上次已执行条件和结果。
+
+设备管理提供独立分组管理与通道管理列表，新增、编辑和删除通过应用命令提交；空分组持久化到 device_groups，重命名同步设备分组，引用中的分组/通道禁止删除，管理修改要求全停。固定列表、工具栏与分组名称表单放在 Designer，设备编辑器可选择已有分组或输入新名。详见 [分组与通道管理](../../../docs/device-catalog-management.md)。
 
 设备管理主页面只显示设备表，筛选区与设备操作区分行，表格填满剩余空间；不恢复下方点位列表或上下分隔条。点位通过设备行“查看点位”进入独立 DevicePointsDialog，固定结构在其 Designer 中创建。弹窗绑定事件行设备 ID，不能跟随主列表后续选择改变；新增/编辑/删除/导入/导出/单点读取均使用该上下文，子编辑器和提示以点位弹窗为拥有者，保存失败保留输入，关闭后释放上下文。详见 [设备列表与点位弹窗](../../../docs/ui-device-points-dialog.md)。
 

@@ -36,6 +36,17 @@ public static class ConfigurationValidator
         }
         var channels = new HashSet<Guid>();
         var channelNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (configuration.DeviceGroups is null) errors.Add("设备分组列表不能为 null。");
+        else
+        {
+            if (configuration.DeviceGroups.Count > 500) errors.Add("最多配置 500 个设备分组。");
+            var groupNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var name in configuration.DeviceGroups)
+            {
+                if (string.IsNullOrWhiteSpace(name) || name.Length > 80 || name != name.Trim()) errors.Add("设备分组名称须为 1–80 个字符且不能带首尾空格。");
+                else if (!groupNames.Add(name)) errors.Add("设备分组名称重复。");
+            }
+        }
         if (configuration.Channels is null) errors.Add("通道列表不能为 null。");
         else
         {

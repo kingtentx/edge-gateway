@@ -27,7 +27,12 @@ public sealed partial class MainForm
             fixture.Logging.RetainedDays = 17;
             fixture.Mqtt.Host = "existing-broker.invalid";
             await CommitConfigurationAsync(fixture, replaceCloudDraft: true);
-            var before = DeviceImportSmokeJson(_configuration);
+            var expectedExisting = Clone(_configuration);
+            expectedExisting.DeviceGroups = expectedExisting.DeviceGroups
+                .Concat(expectedExisting.Devices.Select(device => device.Group))
+                .Concat(incoming.Devices.Select(device => device.Group))
+                .Where(group => !string.IsNullOrWhiteSpace(group)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var before = DeviceImportSmokeJson(expectedExisting);
             await AppendImportedDevicesAsync(incoming);
 
             var added = _configuration.Devices.Single(x => x.Id == source.Id);

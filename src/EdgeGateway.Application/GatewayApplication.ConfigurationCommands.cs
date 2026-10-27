@@ -76,6 +76,43 @@ public sealed partial class GatewayApplication
         return ChangeAsync(candidate => FindDevice(candidate, deviceId).Tags = drafts.ToList(), cancellationToken);
     }
 
+    public Task<ConfigurationApplyResult> SaveDeviceGroupAsync(string? originalName, string name, CancellationToken cancellationToken = default)
+    {
+        var next = name?.Trim() ?? "";
+        if (next.Length is 0 or > 80) throw new ArgumentException("分组名称须为 1–80 个字符。", nameof(name));
+        return ChangeAsync(candidate =>
+        {
+            var index = originalName is null ? -1 : candidate.DeviceGroups.FindIndex(group => string.Equals(group, originalName, StringComparison.OrdinalIgnoreCase));
+            if (originalName is not null && index < 0) throw new InvalidOperationException("分组不存在，请刷新列表。");
+            if (candidate.DeviceGroups.Where((_, i) => i != index).Any(group => string.Equals(group, next, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("分组名称已存在。");
+            if (index < 0) candidate.DeviceGroups.Add(next);
+            else
+            {
+                candidate.DeviceGroups[index] = next;
+                foreach (var device in candidate.Devices.Where(device => string.Equals(device.Group, originalName, StringComparison.OrdinalIgnoreCase)))
+                    device.Group = next;
+            }
+        }, cancellationToken, requireStopped: true);
+    }
+
+    public Task<ConfigurationApplyResult> DeleteDeviceGroupAsync(string name, CancellationToken cancellationToken = default) =>
+        ChangeAsync(candidate =>
+        {
+            if (candidate.Devices.Any(device => string.Equals(device.Group, name, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("该分组仍有设备，请先修改设备分组后再删除。");
+            var index = candidate.DeviceGroups.FindIndex(group => string.Equals(group, name, StringComparison.OrdinalIgnoreCase));
+            if (index < 0) throw new InvalidOperationException("分组不存在，请刷新列表。");
+            candidate.DeviceGroups.RemoveAt(index);
+        }, cancellationToken, requireStopped: true);
+
+    private static void IncludeDeviceGroups(GatewayConfiguration candidate)
+    {
+        foreach (var device in candidate.Devices)
+            if (!string.IsNullOrWhiteSpace(device.Group) && !candidate.DeviceGroups.Contains(device.Group, StringComparer.OrdinalIgnoreCase))
+                candidate.DeviceGroups.Add(device.Group);
+    }
+
     public Task<ConfigurationApplyResult> UpsertChannelAsync(ChannelConfiguration channel, bool isNew, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channel);
@@ -124,11 +161,13 @@ public sealed partial class GatewayApplication
         try
         {
             ThrowIfDisposed();
-            if (requireStopped && _runtime.IsRunning) throw new InvalidOperationException("请先停止全部设备，再应用全局或通道设置。");
+            if (requireStopped && _runtime.IsRunning) throw new InvalidOperationException("请先停止全部设备，再应用全局、分组或通道设置。");
             // Build the candidate only after admission. Concurrent commands for different
             // devices therefore retain changes committed while this command was waiting.
             var candidate = GatewayJson.Clone(_configuration);
+            IncludeDeviceGroups(candidate);
             change(candidate);
+            IncludeDeviceGroups(candidate);
             return await ApplyCoreAsync(candidate, options, cancellationToken).ConfigureAwait(false);
         }
         finally { _commands.Release(); }

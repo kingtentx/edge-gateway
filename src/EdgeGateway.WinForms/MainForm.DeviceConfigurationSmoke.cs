@@ -219,6 +219,7 @@ public sealed partial class MainForm
             NumericUpDown number => number.Value.ToString(CultureInfo.InvariantCulture),
             CheckBox toggle => toggle.Checked ? "true" : "false",
             ComboBox { SelectedItem: DriverDescriptor descriptor } => descriptor.Id,
+            ComboBox { DropDownStyle: ComboBoxStyle.DropDown } choice => choice.Text,
             ComboBox choice => choice.SelectedItem?.ToString() ?? "",
             _ => control.Text
         };

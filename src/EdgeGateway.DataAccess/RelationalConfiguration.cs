@@ -3,10 +3,10 @@ using Microsoft.Data.Sqlite;
 
 namespace EdgeGateway.DataAccess;
 
-/// <summary>Functional schema. JSON schema 3 is an exchange contract; SQLite layout version 5 is independent.</summary>
+/// <summary>Functional schema. JSON schema 3 is an exchange contract; SQLite layout version 6 is independent.</summary>
 internal static class RelationalConfiguration
 {
-    internal const int StorageVersion = 5;
+    internal const int StorageVersion = 6;
     private const string Slot = "slot TEXT NOT NULL";
     private const string SnapshotForeignKey = "FOREIGN KEY(slot) REFERENCES configuration_snapshots(slot) ON DELETE CASCADE ON UPDATE CASCADE";
     private const string Singleton = "PRIMARY KEY(slot), " + SnapshotForeignKey;
@@ -86,6 +86,10 @@ internal static class RelationalConfiguration
         Groups.CreateSql +
         Columns.CreateSql +
         """
+        CREATE TABLE device_groups (
+            slot TEXT NOT NULL, position INTEGER NOT NULL CHECK(position>=0), name TEXT NOT NULL COLLATE NOCASE CHECK(length(trim(name)) BETWEEN 1 AND 80 AND name=trim(name)),
+            PRIMARY KEY(slot,name), UNIQUE(slot,position),
+            FOREIGN KEY(slot) REFERENCES configuration_snapshots(slot) ON DELETE CASCADE ON UPDATE CASCADE) STRICT;
         CREATE TABLE device_properties (
             slot TEXT NOT NULL, device_id TEXT NOT NULL, name TEXT NOT NULL, value TEXT NOT NULL,
             PRIMARY KEY(slot,device_id,name),
@@ -110,6 +114,13 @@ internal static class RelationalConfiguration
         {
             var values = table.Capture(value);
             rows.Add((connection, transaction) => table.Insert(connection, transaction, "current", values, keys));
+        }
+        for (var i = 0; i < configuration.DeviceGroups.Count; i++)
+        {
+            var name = configuration.DeviceGroups[i];
+            var position = i;
+            rows.Add((connection, transaction) => Execute(connection, transaction,
+                "INSERT INTO device_groups(slot,position,name) VALUES('current',$p0,$p1)", position, name));
         }
         Add(Gateway, configuration);
         Add(Telemetry, configuration);
@@ -178,6 +189,14 @@ internal static class RelationalConfiguration
         Mqtt.ReadRequired(connection, transaction, slot, configuration.Mqtt);
         Rpc.ReadRequired(connection, transaction, slot, configuration.Mqtt);
         Logging.ReadRequired(connection, transaction, slot, configuration.Logging);
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT name FROM device_groups WHERE slot=$slot ORDER BY position";
+            command.Parameters.AddWithValue("$slot", slot);
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) configuration.DeviceGroups.Add(reader.GetString(0));
+        }
         configuration.Channels = Channels.Read(connection, transaction, slot, "position");
         configuration.Devices = Devices.Read(connection, transaction, slot, "position");
         foreach (var device in configuration.Devices)

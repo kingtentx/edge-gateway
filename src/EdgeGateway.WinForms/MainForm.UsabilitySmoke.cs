@@ -69,10 +69,6 @@ public sealed partial class MainForm
             CheckUsability(_configuration.Devices.Single(device => device.Id == a.Id).Group == "从菜单保存"
                 && _configuration.Devices.Single(device => device.Id == b.Id).Group == b.Group, "menu edited another device.");
 
-            OpenMenuForSmoke(_channelMenu, "channel menu");
-            CheckUsability(MenuItem(_channelMenu, "AddChannel").Enabled && !MenuItem(_channelMenu, "EditChannel").Enabled,
-                "channel menu availability does not match its target.");
-            _channelMenu.OpenedMenu.Close();
             _pointsDialog.Show(this);
             OpenMenuForSmoke(_tagMore, "point menu");
             CheckUsability(MenuItem(_tagMore, "ImportTags").Enabled && MenuItem(_tagMore, "TagTemplate").Enabled,
@@ -166,7 +162,7 @@ public sealed partial class MainForm
         finally
         {
             _pointsDialog.Hide();
-            _deviceMore.OpenedMenu.Close(); _channelMenu.OpenedMenu.Close(); _tagMore.OpenedMenu.Close();
+            _deviceMore.OpenedMenu.Close(); _tagMore.OpenedMenu.Close();
             _deviceSearch.Clear(); _tagSearch.Clear();
             await RestoreConfigurationForSmokeAsync(original);
             RebindConfigurationViews(originalSelection); ShowPage(page); UpdateCommands();

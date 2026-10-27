@@ -34,7 +34,7 @@ public sealed class RelationalConfigurationTests : IDisposable
         Assert.True(JsonNode.DeepEquals(JsonSerializer.SerializeToNode(configuration, GatewayJson.Options),
             JsonSerializer.SerializeToNode(await reopened.LoadAsync(), GatewayJson.Options)));
         using var connection = Open();
-        Assert.Equal(5L, Scalar(connection, "PRAGMA user_version"));
+        Assert.Equal(6L, Scalar(connection, "PRAGMA user_version"));
         Assert.Equal(2L, Scalar(connection, "SELECT COUNT(*) FROM configuration_snapshots"));
         Assert.Equal(0L, Scalar(connection, "SELECT COUNT(*) FROM pragma_foreign_key_check"));
         Assert.Equal("integer", Scalar(connection, "SELECT typeof(poll_interval_ms) FROM devices LIMIT 1"));
@@ -45,6 +45,7 @@ public sealed class RelationalConfigurationTests : IDisposable
     }
 
     [Theory]
+    [InlineData("duplicate-group")]
     [InlineData("duplicate-device")]
     [InlineData("missing-channel")]
     [InlineData("missing-tag")]
@@ -60,6 +61,7 @@ public sealed class RelationalConfigurationTests : IDisposable
         var previous = JsonSerializer.Serialize(await store.LoadPreviousAsync(), GatewayJson.Options);
         switch (failure)
         {
+            case "duplicate-group": configuration.DeviceGroups.Add(configuration.DeviceGroups[0].ToUpperInvariant()); break;
             case "duplicate-device": configuration.Devices.Add(configuration.Devices[0]); break;
             case "missing-channel": configuration.Devices[0].ChannelId = Guid.NewGuid(); break;
             case "missing-tag": configuration.DatabaseWriteGroups[0].TagIds.Add(Guid.NewGuid()); break;
@@ -92,6 +94,7 @@ public sealed class RelationalConfigurationTests : IDisposable
     [Theory]
     [InlineData(0)]
     [InlineData(3)]
+    [InlineData(5)]
     [InlineData(99)]
     public async Task OldOrUnversionedNonemptyDatabaseIsRejectedWithoutRemovingTables(int version)
     {
@@ -185,6 +188,7 @@ public sealed class RelationalConfigurationTests : IDisposable
         config.SchemaVersion = 3;
         config.Mqtt = FillScalars(new MqttConfiguration());
         config.Logging = FillScalars(new GatewayLoggingConfiguration());
+        config.DeviceGroups = ["空分组", "line A"];
         config.Channels = [FillScalars(new ChannelConfiguration()), FillScalars(new ChannelConfiguration())];
         config.Devices = [FillScalars(new DeviceConfiguration()), FillScalars(new DeviceConfiguration())];
         for (var i = 0; i < config.Devices.Count; i++)

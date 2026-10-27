@@ -15,7 +15,7 @@ internal sealed partial class DeviceConfigurationDialog
     private GatewayInput _name = null!;
     private Label _nameLabel = null!;
     private InputFrame _nameSurface = null!;
-    private GatewayInput _group = null!;
+    private GatewaySelect _group = null!;
     private Label _groupLabel = null!;
     private InputFrame _groupSurface = null!;
     private Label acquisitionSection2 = null!;
@@ -148,12 +148,12 @@ internal sealed partial class DeviceConfigurationDialog
         _name.Margin = Padding.Empty;
         _nameSurface.Controls.Add(_name);
         acquisition.Controls.Add(_nameSurface, 1, 2);
-        _group = new GatewayInput();
+        _group = new GatewaySelect();
         _group.Name = "_group";
         _group.Dock = DockStyle.Fill;
         _group.Margin = new Padding(0, 3, 0, 5);
         _group.MinimumSize = new Size(150, 30);
-        _group.BorderStyle = BorderStyle.FixedSingle;
+        _group.DropDownStyle = ComboBoxStyle.DropDown;
         _groupLabel = new Label();
         _groupLabel.Name = "_groupLabel";
         _groupLabel.Text = "设备分组";

@@ -19,7 +19,9 @@ public sealed partial class MainForm
 
     private static void DrawSmokeWindow(Form window, Bitmap bitmap, string context)
     {
-        var main = window as MainForm ?? window.Owner as MainForm;
+        Form? owner = window;
+        while (owner is not null && owner is not MainForm) owner = owner.Owner;
+        var main = owner as MainForm;
         if (main?._smokeTest != true || !window.IsHandleCreated)
             throw new InvalidOperationException("Window capture requires a shown, isolated smoke-test form.");
         var handle = window.Handle;

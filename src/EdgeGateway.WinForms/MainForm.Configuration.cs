@@ -28,7 +28,7 @@ public sealed partial class MainForm
     private Label _tagSummary = null!;
     private readonly List<(Control Control, Func<bool> Available)> _selectionCommands = [];
     private Guid? _tagDeviceId;
-    private CommandMenuButton _deviceMore = null!, _deviceExchange = null!, _tagMore = null!, _channelMenu = null!;
+    private CommandMenuButton _deviceMore = null!, _deviceExchange = null!, _tagMore = null!;
     private DevicesPageView _devicesPageView = null!;
 
     private Control BuildDevicesPage()
@@ -73,11 +73,11 @@ public sealed partial class MainForm
         _selectionCommands.Add((probeDevice, () => SelectedDevice() is not null));
         _deviceMore = _devicesPageView.deviceMoreButton;
         _deviceMore.Bind(BuildDeviceMenu, exception => ShowError(exception.Message));
-        _channelMenu = _devicesPageView.channelButton;
-        _channelMenu.Bind(BuildChannelMenu, exception => ShowError(exception.Message));
+        _devicesPageView.channelButton.Click += (_, _) => ShowConfigurationCatalog(false);
+        _devicesPageView.groupButton.Click += (_, _) => ShowConfigurationCatalog(true);
         _deviceExchange = _devicesPageView.deviceExchangeButton;
         _deviceExchange.Bind(BuildDeviceExchangeMenu, exception => ShowError(exception.Message));
-        _configurationCommands.AddRange([_deviceMore, _deviceExchange, _channelMenu]);
+        _configurationCommands.AddRange([_deviceMore, _deviceExchange, _devicesPageView.channelButton, _devicesPageView.groupButton]);
         _deviceSummary.Margin = new Padding(4, 9, 0, 0);
         _deviceGroupFilter = _devicesPageView.groupFilter;
         _deviceChannelFilter = _devicesPageView.channelFilter;
@@ -140,18 +140,6 @@ public sealed partial class MainForm
             new("ReplaceConfiguration", "替换整份配置…", () => RunBusyAsync(ImportConfigurationAsync), () => CanEdit() && !_application.IsRunning,
                 "请先停止全部设备；整份配置将替换当前设备及平台设置"),
             new("DeleteDevice", "删除所选设备…", () => DeleteDeviceAsync(id), Target, "请先选择设备", SeparateBefore: true, Dangerous: true)
-        ];
-    }
-
-    private IReadOnlyList<MenuCommand> BuildChannelMenu()
-    {
-        var id = (_deviceChannelFilter.SelectedItem as ChannelChoice)?.Id;
-        bool Stopped() => CanEdit() && !_application.IsRunning;
-        bool Target() => Stopped() && id.HasValue && _configuration.Channels.Any(c => c.Id == id);
-        return [
-            new("AddChannel", "添加通信通道…", () => EditChannelAsync(true), Stopped, "请先停止全部设备再维护通道"),
-            new("EditChannel", "编辑所选通道…", () => EditChannelAsync(false, id), Target, "请先停止全部设备，并在筛选中选择具体通道"),
-            new("DeleteChannel", "删除所选通道…", () => DeleteChannelAsync(id), () => Target() && !_configuration.Devices.Any(d => d.ChannelId == id), "请选择未被设备使用的具体通道，并停止全部设备", SeparateBefore: true, Dangerous: true)
         ];
     }
 
@@ -261,7 +249,7 @@ public sealed partial class MainForm
         if (device is null) return Task.CompletedTask;
         try
         {
-            using var dialog = new DeviceConfigurationDialog(device, _drivers, channels: _configuration.Channels);
+            using var dialog = new DeviceConfigurationDialog(device, _drivers, channels: _configuration.Channels, groups: DeviceGroupNames());
             BindEditorApply(dialog, deviceId, async () =>
             {
                 var value = dialog.Value ?? throw new InvalidOperationException("设备配置尚未通过检查。");
@@ -329,7 +317,7 @@ public sealed partial class MainForm
     {
         if (!CanEdit()) return Task.CompletedTask;
         var device = new DeviceConfiguration { Name = $"设备 {_configuration.Devices.Count + 1}", Tags = [new TagConfiguration { Name = "采集点位", Address = "sine", DataType = TagDataType.Float64 }] };
-        using var editor = new DeviceConfigurationDialog(device, _drivers, isNew: true, channels: _configuration.Channels);
+        using var editor = new DeviceConfigurationDialog(device, _drivers, isNew: true, channels: _configuration.Channels, groups: DeviceGroupNames());
         BindEditorApply(editor, null, async () =>
         {
             var value = editor.Value ?? throw new InvalidOperationException("设备配置尚未通过检查。");

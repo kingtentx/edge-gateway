@@ -30,7 +30,7 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
     }
 
     public DeviceConfigurationDialog(DeviceConfiguration device, IDriverCatalog drivers, bool readOnly = false, bool isNew = false,
-        IReadOnlyList<ChannelConfiguration>? channels = null)
+        IReadOnlyList<ChannelConfiguration>? channels = null, IReadOnlyList<string>? groups = null)
         : base(readOnly ? "查看设备配置" : isNew ? "添加采集设备" : "设备配置", readOnly
             ? "浏览设备与连接参数。当前为只读视图，不会更改配置。"
             : "选择驱动并填写连接参数，保存后生效。设备可在列表中单独启动。")
@@ -50,6 +50,7 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
         Register("PollIntervalMs", _cycle); Register("TimeoutMs", _timeout);
         Register("ScanMode", _scanMode); Register("AutoDemotionEnabled", _autoDemotion);
         Register("DemotionFailureCount", _demotionCount); Register("DemotionIntervalMs", _demotionInterval);
+        _group.Items.AddRange((groups ?? []).Append(_original.Group).Distinct(StringComparer.OrdinalIgnoreCase).Cast<object>().ToArray());
         _enabled.Checked = _original.Enabled; _name.Text = _original.Name; _group.Text = _original.Group;
         _cycle.Value = Math.Clamp(_original.PollIntervalMs, 100, 3600000);
         _timeout.Value = Math.Clamp(_original.TimeoutMs, 100, 120000);
@@ -207,7 +208,8 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
         var descriptor = _descriptor ?? throw new InvalidOperationException("请选择采集驱动。");
         var candidate = Clone(CaptureDriverDraft());
         candidate.Name = Required(_name, "设备名称");
-        candidate.Group = Required(_group, "设备分组");
+        candidate.Group = _group.Text.Trim();
+        if (candidate.Group.Length is 0 or > 80) throw new EditorValidationException("设备分组须为 1–80 个字符。", _group);
         candidate.DriverId = descriptor.Id;
         candidate.Enabled = _enabled.Checked;
         candidate.PollIntervalMs = IntegerValue(_cycle);
@@ -287,6 +289,8 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
         switch (input)
         {
             case NumericUpDown number: number.Value = decimal.Parse(value, CultureInfo.InvariantCulture); break;
+            case ComboBox choice when choice.DropDownStyle == ComboBoxStyle.DropDown:
+                choice.Text = value; break;
             case ComboBox choice:
                 var option = choice.Items.Cast<object>().SingleOrDefault(item => item switch
                 {

@@ -57,6 +57,8 @@ public interface IGatewayApplication : IAsyncDisposable
     Task<ConfigurationApplyResult> UpdateTagAsync(Guid deviceId, TagConfiguration tag, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> DeleteTagAsync(Guid deviceId, Guid tagId, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> ReplaceDeviceTagsAsync(Guid deviceId, IReadOnlyList<TagConfiguration> tags, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> SaveDeviceGroupAsync(string? originalName, string name, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> DeleteDeviceGroupAsync(string name, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> UpsertChannelAsync(ChannelConfiguration channel, bool isNew, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> DeleteChannelAsync(Guid channelId, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> ApplyGlobalSettingsAsync(GatewayConfiguration draft, ConfigurationApplyOptions? options = null, CancellationToken cancellationToken = default);

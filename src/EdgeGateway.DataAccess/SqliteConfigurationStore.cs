@@ -89,7 +89,7 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
             {
                 using var transaction = connection.BeginTransaction();
                 command.Transaction = transaction;
-                command.CommandText = RelationalConfiguration.CreateSql + """
+                command.CommandText = RelationalConfiguration.CreateSql + $"""
                     CREATE TABLE driver_registry (
                         driver_id TEXT PRIMARY KEY NOT NULL COLLATE NOCASE,
                         name TEXT NOT NULL,
@@ -103,7 +103,7 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
                         is_legacy INTEGER NOT NULL DEFAULT 0 CHECK(is_legacy IN (0,1)),
                         source TEXT NOT NULL DEFAULT '',
                         updated_ms INTEGER NOT NULL) STRICT;
-                    PRAGMA user_version=5;
+                    PRAGMA user_version={RelationalConfiguration.StorageVersion};
                     """;
                 command.ExecuteNonQuery();
                 transaction.Commit();

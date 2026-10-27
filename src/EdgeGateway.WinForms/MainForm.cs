@@ -352,6 +352,7 @@ public sealed partial class MainForm : DpiAwareForm
                         bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
                     }
                 }
+                await SmokeConfigurationCatalogsAsync();
                 SmokeDriverEditors();
                 SmokeDynamicDriverSwitch();
                 await SmokeDeviceConfigurationsAsync();

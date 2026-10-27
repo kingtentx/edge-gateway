@@ -115,6 +115,9 @@ public sealed partial class GatewayRuntime
         var left = Clone(first);
         var right = Clone(second);
         left.Devices = []; right.Devices = [];
+        // Device edits may register their group names while other devices collect.
+        // This catalog is descriptive metadata, not a shared runtime resource.
+        left.DeviceGroups = []; right.DeviceGroups = [];
         left.Logging = new(); right.Logging = new();
         return ConfigurationValuesEqual(left, right);
     }
