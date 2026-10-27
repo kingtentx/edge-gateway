@@ -181,7 +181,7 @@ internal sealed class DriverParameterPanel : UserControl
             _ => ((decimal)0, (decimal)0)
         };
         if (range.Item2 > range.Item1 && decimal.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) && number >= range.Item1 && number <= range.Item2)
-            return new NumericUpDown { Minimum = range.Item1, Maximum = range.Item2, Value = number, ThousandsSeparator = true, DecimalPlaces = 0, BorderStyle = BorderStyle.FixedSingle };
+            return new NumericUpDown { Minimum = range.Item1, Maximum = range.Item2, Value = number, ThousandsSeparator = false, DecimalPlaces = 0, BorderStyle = BorderStyle.FixedSingle };
         return new TextBox { Text = value, UseSystemPasswordChar = parameter.IsSecret, BorderStyle = BorderStyle.FixedSingle };
     }
 

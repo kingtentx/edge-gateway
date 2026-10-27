@@ -505,6 +505,20 @@ public sealed partial class MainForm
 
     private static void AssertInputSurface(Control control, string context)
     {
+        if (control is NumericUpDown number && number.ThousandsSeparator)
+            throw new InvalidOperationException(context + ": thousands separators enabled: " + control.Name);
+        if (control is GatewaySwitch toggle)
+        {
+            AssertVisibleBounds(toggle.SwitchControl, context + " switch track");
+            var caption = toggle.Controls.OfType<Label>().Single();
+            if (!string.IsNullOrEmpty(toggle.Text))
+            {
+                AssertVisibleBounds(caption, context + " switch caption");
+                var needed = caption.GetPreferredSize(new Size(caption.Width, int.MaxValue));
+                if (needed.Height > caption.Height)
+                    throw new InvalidOperationException(context + ": switch caption is clipped: " + toggle.Name);
+            }
+        }
         if (control is not (TextBox { Multiline: false } or ComboBox or NumericUpDown or DateTimePicker)) return;
         if (control.Parent is not InputFrame surface)
             throw new InvalidOperationException(context + ": single-line editor is missing its button-height surface: " + control.Name);

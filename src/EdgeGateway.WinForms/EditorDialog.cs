@@ -187,7 +187,7 @@ public partial class EditorDialog : DpiAwareForm
         table.Controls.Add(label, 0, row); table.SetColumnSpan(label, 2);
     }
     protected static TextBox TextInput(string value) => new() { Text = value, MinimumSize = new Size(150, 30), BorderStyle = BorderStyle.FixedSingle };
-    protected static NumericUpDown NumberInput(int value, int minimum, int maximum) => new() { Minimum = minimum, Maximum = maximum, Value = Math.Clamp(value, minimum, maximum), ThousandsSeparator = true, BorderStyle = BorderStyle.FixedSingle };
+    protected static NumericUpDown NumberInput(int value, int minimum, int maximum) => new() { Minimum = minimum, Maximum = maximum, Value = Math.Clamp(value, minimum, maximum), ThousandsSeparator = false, BorderStyle = BorderStyle.FixedSingle };
     protected static ComboBox SelectInput(object[] values, object? selected)
     {
         var box = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList }; box.Items.AddRange(values); box.SelectedItem = selected;

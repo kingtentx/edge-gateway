@@ -36,11 +36,11 @@ internal sealed partial class TagEditor
     private InputFrame _unitSurface = null!;
     private Label _basicSection2 = null!;
     private Label _basicHint3 = null!;
-    private AntdUI.Checkbox _enabled = null!;
+    private GatewaySwitch _enabled = null!;
     private Label _enabledLabel = null!;
-    private AntdUI.Checkbox _uploadEnabled = null!;
+    private GatewaySwitch _uploadEnabled = null!;
     private Label _uploadEnabledLabel = null!;
-    private AntdUI.Checkbox _writable = null!;
+    private GatewaySwitch _writable = null!;
     private Label _writableLabel = null!;
     private ComboBox _writeMethod = null!;
     private Label _writeMethodLabel = null!;
@@ -422,7 +422,7 @@ internal sealed partial class TagEditor
         _basic.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _basic.Controls.Add(_basicHint3, 0, 10);
         _basic.SetColumnSpan(_basicHint3, 2);
-        _enabled = new AntdUI.Checkbox();
+        _enabled = new GatewaySwitch();
         _enabled.Name = "_enabled";
         _enabled.Dock = DockStyle.Fill;
         _enabled.Margin = new Padding(0, 3, 0, 5);
@@ -446,7 +446,7 @@ internal sealed partial class TagEditor
         _basic.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _basic.Controls.Add(_enabledLabel, 0, 11);
         _basic.Controls.Add(_enabled, 1, 11);
-        _uploadEnabled = new AntdUI.Checkbox();
+        _uploadEnabled = new GatewaySwitch();
         _uploadEnabled.Name = "_uploadEnabled";
         _uploadEnabled.Dock = DockStyle.Fill;
         _uploadEnabled.Margin = new Padding(0, 3, 0, 5);
@@ -470,7 +470,7 @@ internal sealed partial class TagEditor
         _basic.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _basic.Controls.Add(_uploadEnabledLabel, 0, 12);
         _basic.Controls.Add(_uploadEnabled, 1, 12);
-        _writable = new AntdUI.Checkbox();
+        _writable = new GatewaySwitch();
         _writable.Name = "_writable";
         _writable.Dock = DockStyle.Fill;
         _writable.Margin = new Padding(0, 3, 0, 5);
@@ -985,7 +985,7 @@ internal sealed partial class TagEditor
         _scanInterval.Name = "_scanInterval";
         _scanInterval.Dock = DockStyle.Fill;
         _scanInterval.Margin = new Padding(0, 3, 0, 5);
-        _scanInterval.ThousandsSeparator = true;
+        _scanInterval.ThousandsSeparator = false;
         _scanInterval.Minimum = 0;
         _scanInterval.Maximum = 3600000;
         _scanInterval.Name = "TagScanInterval";

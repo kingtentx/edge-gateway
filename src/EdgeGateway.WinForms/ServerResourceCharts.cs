@@ -139,7 +139,7 @@ internal sealed class ServerDiskBar : Control
         Invalidate();
     }
 
-    internal static string Capacity(long bytes) => $"{bytes / 1048576d:N0} M";
+    internal static string Capacity(long bytes) => $"{bytes / 1048576d:F0} M";
 
     private string CapacityDetails => UsedPercent is not null
         ? $"可用 {Capacity(_disk.FreeBytes!.Value)} / 总量 {Capacity(_disk.TotalBytes!.Value)}"

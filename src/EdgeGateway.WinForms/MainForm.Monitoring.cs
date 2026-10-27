@@ -198,7 +198,7 @@ public sealed partial class MainForm
             historyLayout.RowStyles[0].Height = tagId.HasValue ? UiTheme.Scale(_trend, 205) : 0;
         _trend.SetSamples(tagId.HasValue ? _queriedHistory : [], tagId.HasValue ? tagName : "");
         var limited = _queriedHistory.Count == query.Limit ? "；已达到条数上限，可缩小时间范围" : "";
-        _executedHistorySummary = $"{groupName} · {deviceName} / {tagName}  ·  {query.From:MM-dd HH:mm} — {query.To:MM-dd HH:mm}  ·  {_queriedHistory.Count:N0} 条{limited}。";
+        _executedHistorySummary = $"{groupName} · {deviceName} / {tagName}  ·  {query.From:MM-dd HH:mm} — {query.To:MM-dd HH:mm}  ·  {_queriedHistory.Count:F0} 条{limited}。";
         UpdateHistoryQueryState();
     }
 
@@ -228,7 +228,7 @@ public sealed partial class MainForm
             text.AppendLine(CsvLine(sample.DeviceId.ToString(), sample.DeviceName, sample.TagId.ToString(), sample.TagName, sample.Address,
                 ValueText(sample.RawValue), ValueText(sample.Value), sample.Unit, sample.Quality.ToString(), sample.Timestamp.ToLocalTime().ToString("O"), sample.Error ?? ""));
         await File.WriteAllTextAsync(dialog.FileName, text.ToString(), new UTF8Encoding(true));
-        SetFooter($"已导出 {_queriedHistory.Count:N0} 条历史记录。");
+        SetFooter($"已导出 {_queriedHistory.Count:F0} 条历史记录。");
     }
 
     private static string CsvLine(params string[] values) => string.Join(",", values.Select(value =>

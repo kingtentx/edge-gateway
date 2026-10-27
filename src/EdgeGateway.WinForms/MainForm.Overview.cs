@@ -114,9 +114,9 @@ public sealed partial class MainForm
 
     private void RefreshOverview(GatewayOverviewSummary summary)
     {
-        _deviceCount.Text = summary.TotalDevices.ToString("N0"); _onlineCount.Text = summary.OnlineDevices.ToString("N0");
-        _abnormalCount.Text = summary.AbnormalDevices.ToString("N0"); _stoppedCount.Text = summary.StoppedDevices.ToString("N0");
-        _overviewDeviceSummary.Text = $"启用 {summary.EnabledDevices:N0} 台 · 未启用 {summary.TotalDevices - summary.EnabledDevices:N0} 台 · 启用点位 {summary.EnabledPoints:N0} 个";
+        _deviceCount.Text = summary.TotalDevices.ToString("F0"); _onlineCount.Text = summary.OnlineDevices.ToString("F0");
+        _abnormalCount.Text = summary.AbnormalDevices.ToString("F0"); _stoppedCount.Text = summary.StoppedDevices.ToString("F0");
+        _overviewDeviceSummary.Text = $"启用 {summary.EnabledDevices:F0} 台 · 未启用 {summary.TotalDevices - summary.EnabledDevices:F0} 台 · 启用点位 {summary.EnabledPoints:F0} 个";
         var attention = summary.AbnormalDevices > 0 || summary.BadPoints > 0 || summary.UncertainPoints > 0;
         _healthState.Text = summary.TotalDevices == 0 ? "尚未配置设备" : attention ? "采集需要关注"
             : summary.ConnectingDevices > 0 ? "正在连接设备" : summary.OnlineDevices == 0 ? "等待启动采集"

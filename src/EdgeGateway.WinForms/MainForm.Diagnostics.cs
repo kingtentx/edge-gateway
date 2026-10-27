@@ -39,8 +39,8 @@ public sealed partial class MainForm
             new("最近发送确认", Time(status.LastBrokerAcknowledgedAt), _configuration.Mqtt.Platform == MqttPlatform.ThingsCloud
                 ? "ThingsCloud 须同时收到 MQTT PUBACK 与 attributes/response 成功；不代表最终业务入库。"
                 : "MQTT QoS 1 PUBACK 确认时间，不代表平台业务入库。"),
-            new("累计发送确认", status.AcknowledgedMessages.ToString("N0"), "本进程完成发送确认的队列报文次数；重复投递仍可能发生，不是所有底层 PUBACK 的计数。"),
-            new("待补传消息", statistics.OutboxCount.ToString("N0"), "已持久化消息按顺序发送，确认后才从队列移除。"),
+            new("累计发送确认", status.AcknowledgedMessages.ToString("F0"), "本进程完成发送确认的队列报文次数；重复投递仍可能发生，不是所有底层 PUBACK 的计数。"),
+            new("待补传消息", statistics.OutboxCount.ToString("F0"), "已持久化消息按顺序发送，确认后才从队列移除。"),
             new("最早待补传时间", Time(statistics.OldestOutboxAt), "用于判断积压持续时间；已入队消息按原载荷继续补传。"),
             new("最近生成入队", Time(status.LastEnqueuedAt), "只包含启用设备中启用采集且开启上传的点位。"),
             new("最近发送尝试", Time(status.LastSendAttemptAt), "发送失败不会删除待补传记录。"),
@@ -54,7 +54,7 @@ public sealed partial class MainForm
         };
         foreach (var database in _application.GetDatabaseStatuses())
         {
-            rows.Add(new(database.Name + " · 数据库写入", $"已写 {database.WrittenRows:N0} / 排队 {database.QueuedRows:N0} / 丢弃 {database.DroppedRows:N0} / 跳过 {database.SkippedRows:N0}", database.Error ?? "数据库记录独立于 MQTT 上传开关；积压、失败或丢弃须检查连接、权限及表结构。", $"database:{database.ConnectionId}"));
+            rows.Add(new(database.Name + " · 数据库写入", $"已写 {database.WrittenRows:F0} / 排队 {database.QueuedRows:F0} / 丢弃 {database.DroppedRows:F0} / 跳过 {database.SkippedRows:F0}", database.Error ?? "数据库记录独立于 MQTT 上传开关；积压、失败或丢弃须检查连接、权限及表结构。", $"database:{database.ConnectionId}"));
         }
         var rpc = _application.GetRpcStatus();
         rows.AddRange([

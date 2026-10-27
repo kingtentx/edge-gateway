@@ -103,7 +103,7 @@ public sealed partial class MainForm
                     Address = entry.Sample?.Address, RawValue = entry.Sample?.RawValue, Value = entry.Sample?.Value,
                     Quality = entry.Sample is null ? "" : QualityText(entry.Sample.Quality), Unit = entry.Sample?.Unit, Error = entry.Sample?.Error
                 }).ToArray();
-                _summary = $"{query.From.ToLocalTime():MM-dd HH:mm:ss} 至 {query.To.ToLocalTime():MM-dd HH:mm:ss} · {result.Entries.Count:N0} 条 · 扫描 {result.ScannedBytes / 1048576d:F2} M · 损坏 {result.InvalidLines} 条。"
+                _summary = $"{query.From.ToLocalTime():MM-dd HH:mm:ss} 至 {query.To.ToLocalTime():MM-dd HH:mm:ss} · {result.Entries.Count:F0} 条 · 扫描 {result.ScannedBytes / 1048576d:F2} M · 损坏 {result.InvalidLines} 条。"
                     + (result.IsPartial ? "【受限结果】" : "") + "导出本次查询快照。" + string.Join("；", result.Warnings);
                 UpdateSummary();
             }

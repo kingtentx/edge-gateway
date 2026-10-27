@@ -222,7 +222,7 @@ public sealed partial class MainForm
         var device = _configuration.Devices.FirstOrDefault(x => x.Id == deviceId);
         if (device is null) return;
         var start = columnName == DeviceStartColumnName;
-        if (start && !device.Enabled) { SetFooter("该设备未启用，请在“配置 → 采集设置”勾选“启用设备”，保存后启动。"); return; }
+        if (start && !device.Enabled) { SetFooter("该设备未启用，请在“配置 → 采集设置”打开开关“启用设备”，保存后启动。"); return; }
         if (start == _application.IsDeviceRunning(deviceId)) return;
         await RunBusyAsync(() => ExecuteDeviceActionAsync(deviceId, start));
     }
@@ -275,7 +275,7 @@ public sealed partial class MainForm
             if (row.Cells[DeviceStartColumnName] is DeviceActionButtonCell start)
             {
                 start.ActionEnabled = !_busy && !_closing && device.Enabled && !running;
-                start.ToolTipText = !device.Enabled ? "请先在“配置 → 采集设置”勾选“启用设备”。"
+                start.ToolTipText = !device.Enabled ? "请先在“配置 → 采集设置”打开开关“启用设备”。"
                     : running ? "该设备已启动。" : _dirty ? "使用已保存的平台设置启动；未应用的平台草稿不会生效。" : "仅启动本行设备的采集。";
             }
             if (row.Cells[DeviceStopColumnName] is DeviceActionButtonCell stop)

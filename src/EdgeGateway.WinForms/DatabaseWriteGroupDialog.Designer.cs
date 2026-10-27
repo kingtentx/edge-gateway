@@ -13,7 +13,7 @@ internal sealed partial class DatabaseWriteGroupDialog
     private GatewayInput _name = null!;
     private Label _nameLabel = null!;
     private InputFrame _nameSurface = null!;
-    private AntdUI.Checkbox _enabled = null!;
+    private GatewaySwitch _enabled = null!;
     private Label _enabledLabel = null!;
     private ComboBox _connection = null!;
     private Label _connectionLabel = null!;
@@ -44,11 +44,11 @@ internal sealed partial class DatabaseWriteGroupDialog
     private NumericUpDown _maxAge = null!;
     private Label _maxAgeLabel = null!;
     private InputFrame _maxAgeSurface = null!;
-    private AntdUI.Checkbox _goodOnly = null!;
+    private GatewaySwitch _goodOnly = null!;
     private Label _goodOnlyLabel = null!;
     private TabPage _pointTab = null!;
     private TableLayoutPanel selection = null!;
-    private AntdUI.Checkbox _allPoints = null!;
+    private GatewaySwitch _allPoints = null!;
     private GatewayInput _pointSearch = null!;
     private InputFrame pointSearchSurface = null!;
     private CheckedListBox _pointList = null!;
@@ -61,7 +61,7 @@ internal sealed partial class DatabaseWriteGroupDialog
     private Label _mappingStatus = null!;
     private Panel mappingBody = null!;
     private DpiDataGridView _mapping = null!;
-    private DataGridViewCheckBoxColumn _mappingColumnInclude = null!;
+    private GatewayGridSwitchColumn _mappingColumnInclude = null!;
     private DataGridViewTextBoxColumn _mappingColumnColumn = null!;
     private DataGridViewTextBoxColumn _mappingColumnDataType = null!;
     private DataGridViewComboBoxColumn _mappingColumnSource = null!;
@@ -143,7 +143,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _name.Margin = Padding.Empty;
         _nameSurface.Controls.Add(_name);
         writeFields.Controls.Add(_nameSurface, 1, 1);
-        _enabled = new AntdUI.Checkbox();
+        _enabled = new GatewaySwitch();
         _enabled.Name = "_enabled";
         _enabled.Dock = DockStyle.Fill;
         _enabled.Margin = new Padding(0, 3, 0, 5);
@@ -450,7 +450,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _interval.Name = "_interval";
         _interval.Dock = DockStyle.Fill;
         _interval.Margin = new Padding(0, 3, 0, 5);
-        _interval.ThousandsSeparator = true;
+        _interval.ThousandsSeparator = false;
         _interval.Minimum = 100;
         _interval.Maximum = 3600000;
         _interval.Name = "DatabaseWriteInterval";
@@ -483,7 +483,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _maxAge.Name = "_maxAge";
         _maxAge.Dock = DockStyle.Fill;
         _maxAge.Margin = new Padding(0, 3, 0, 5);
-        _maxAge.ThousandsSeparator = true;
+        _maxAge.ThousandsSeparator = false;
         _maxAge.Minimum = 100;
         _maxAge.Maximum = 86400000;
         _maxAge.Name = "DatabaseMaxSampleAge";
@@ -512,7 +512,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _maxAge.Margin = Padding.Empty;
         _maxAgeSurface.Controls.Add(_maxAge);
         writeFields.Controls.Add(_maxAgeSurface, 1, 14);
-        _goodOnly = new AntdUI.Checkbox();
+        _goodOnly = new GatewaySwitch();
         _goodOnly.Name = "_goodOnly";
         _goodOnly.Dock = DockStyle.Fill;
         _goodOnly.Margin = new Padding(0, 3, 0, 5);
@@ -552,7 +552,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         selection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         selection.RowCount = 3;
         selection.Padding = new Padding(10);
-        _allPoints = new AntdUI.Checkbox();
+        _allPoints = new GatewaySwitch();
         _allPoints.Name = "_allPoints";
         _allPoints.Dock = DockStyle.Fill;
         _allPoints.Margin = new Padding(0, 3, 0, 5);
@@ -689,7 +689,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mapping.Name = "DatabaseColumnMappings";
         _mapping.ReadOnly = false;
         _mapping.EditMode = DataGridViewEditMode.EditOnEnter;
-        _mappingColumnInclude = new DataGridViewCheckBoxColumn();
+        _mappingColumnInclude = new GatewayGridSwitchColumn();
         _mappingColumnInclude.Name = "_mappingColumnInclude";
         _mappingColumnInclude.DataPropertyName = "Include";
         _mappingColumnInclude.HeaderText = "使用采样";
@@ -698,7 +698,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mappingColumnInclude.SortMode = DataGridViewColumnSortMode.NotSortable;
         _mappingColumnInclude.Width = 100;
         _mappingColumnInclude.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-        _mappingColumnInclude.ToolTipText = "勾选：使用采样来源。取消勾选：写入手动常量。若不写入此列，请选择“不写入”。";
+        _mappingColumnInclude.ToolTipText = "打开开关：使用采样来源。关闭开关：写入手动常量。若不写入此列，请选择“不写入”。";
         _mappingColumnInclude.Name = "Include";
         _mapping.Columns.Add(_mappingColumnInclude);
         _mappingColumnColumn = new DataGridViewTextBoxColumn();

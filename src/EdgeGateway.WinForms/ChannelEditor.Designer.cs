@@ -112,7 +112,7 @@ internal sealed partial class ChannelEditor
         _delay.Name = "_delay";
         _delay.Dock = DockStyle.Fill;
         _delay.Margin = new Padding(0, 3, 0, 5);
-        _delay.ThousandsSeparator = true;
+        _delay.ThousandsSeparator = false;
         _delay.Minimum = 0;
         _delay.Maximum = 60000;
         _delay.Name = "ChannelDelay";

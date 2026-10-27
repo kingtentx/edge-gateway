@@ -37,7 +37,7 @@ internal sealed partial class LoggingPageView
     internal InputFrame RetainedDaysInputSurface = null!;
     internal Label settingsFieldsSection3 = null!;
     internal Label settingsFieldsHint4 = null!;
-    internal AntdUI.Checkbox SamplesInput = null!;
+    internal GatewaySwitch SamplesInput = null!;
     internal Label SamplesInputLabel = null!;
     internal NumericUpDown SampleMaxFileSizeMbInput = null!;
     internal Label SampleMaxFileSizeMbInputLabel = null!;
@@ -267,7 +267,7 @@ internal sealed partial class LoggingPageView
         MaxFileSizeMbInput.Name = "MaxFileSizeMbInput";
         MaxFileSizeMbInput.Dock = DockStyle.Fill;
         MaxFileSizeMbInput.Margin = new Padding(0, 3, 0, 5);
-        MaxFileSizeMbInput.ThousandsSeparator = true;
+        MaxFileSizeMbInput.ThousandsSeparator = false;
         MaxFileSizeMbInput.Minimum = 1;
         MaxFileSizeMbInput.Maximum = 1024;
         MaxFileSizeMbInput.Name = "Logging_MaxFileSizeMb";
@@ -300,7 +300,7 @@ internal sealed partial class LoggingPageView
         RetainedFileCountInput.Name = "RetainedFileCountInput";
         RetainedFileCountInput.Dock = DockStyle.Fill;
         RetainedFileCountInput.Margin = new Padding(0, 3, 0, 5);
-        RetainedFileCountInput.ThousandsSeparator = true;
+        RetainedFileCountInput.ThousandsSeparator = false;
         RetainedFileCountInput.Minimum = 1;
         RetainedFileCountInput.Maximum = 1000;
         RetainedFileCountInput.Name = "Logging_RetainedFileCount";
@@ -333,7 +333,7 @@ internal sealed partial class LoggingPageView
         RetainedDaysInput.Name = "RetainedDaysInput";
         RetainedDaysInput.Dock = DockStyle.Fill;
         RetainedDaysInput.Margin = new Padding(0, 3, 0, 5);
-        RetainedDaysInput.ThousandsSeparator = true;
+        RetainedDaysInput.ThousandsSeparator = false;
         RetainedDaysInput.Minimum = 1;
         RetainedDaysInput.Maximum = 3650;
         RetainedDaysInput.Name = "Logging_RetainedDays";
@@ -389,7 +389,7 @@ internal sealed partial class LoggingPageView
         settingsFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         settingsFields.Controls.Add(settingsFieldsHint4, 0, 7);
         settingsFields.SetColumnSpan(settingsFieldsHint4, 2);
-        SamplesInput = new AntdUI.Checkbox();
+        SamplesInput = new GatewaySwitch();
         SamplesInput.Name = "SamplesInput";
         SamplesInput.Dock = DockStyle.Fill;
         SamplesInput.Margin = new Padding(0, 3, 0, 5);
@@ -417,7 +417,7 @@ internal sealed partial class LoggingPageView
         SampleMaxFileSizeMbInput.Name = "SampleMaxFileSizeMbInput";
         SampleMaxFileSizeMbInput.Dock = DockStyle.Fill;
         SampleMaxFileSizeMbInput.Margin = new Padding(0, 3, 0, 5);
-        SampleMaxFileSizeMbInput.ThousandsSeparator = true;
+        SampleMaxFileSizeMbInput.ThousandsSeparator = false;
         SampleMaxFileSizeMbInput.Minimum = 1;
         SampleMaxFileSizeMbInput.Maximum = 1024;
         SampleMaxFileSizeMbInput.Name = "Logging_SampleMaxFileSizeMb";
@@ -450,7 +450,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedFileCountInput.Name = "SampleRetainedFileCountInput";
         SampleRetainedFileCountInput.Dock = DockStyle.Fill;
         SampleRetainedFileCountInput.Margin = new Padding(0, 3, 0, 5);
-        SampleRetainedFileCountInput.ThousandsSeparator = true;
+        SampleRetainedFileCountInput.ThousandsSeparator = false;
         SampleRetainedFileCountInput.Minimum = 1;
         SampleRetainedFileCountInput.Maximum = 1000;
         SampleRetainedFileCountInput.Name = "Logging_SampleRetainedFileCount";
@@ -483,7 +483,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedDaysInput.Name = "SampleRetainedDaysInput";
         SampleRetainedDaysInput.Dock = DockStyle.Fill;
         SampleRetainedDaysInput.Margin = new Padding(0, 3, 0, 5);
-        SampleRetainedDaysInput.ThousandsSeparator = true;
+        SampleRetainedDaysInput.ThousandsSeparator = false;
         SampleRetainedDaysInput.Minimum = 1;
         SampleRetainedDaysInput.Maximum = 3650;
         SampleRetainedDaysInput.Name = "Logging_SampleRetainedDays";
@@ -543,7 +543,7 @@ internal sealed partial class LoggingPageView
         MinimumFreeDiskSpaceMbInput.Name = "MinimumFreeDiskSpaceMbInput";
         MinimumFreeDiskSpaceMbInput.Dock = DockStyle.Fill;
         MinimumFreeDiskSpaceMbInput.Margin = new Padding(0, 3, 0, 5);
-        MinimumFreeDiskSpaceMbInput.ThousandsSeparator = true;
+        MinimumFreeDiskSpaceMbInput.ThousandsSeparator = false;
         MinimumFreeDiskSpaceMbInput.Minimum = 16;
         MinimumFreeDiskSpaceMbInput.Maximum = 1048576;
         MinimumFreeDiskSpaceMbInput.Name = "Logging_MinimumFreeDiskSpaceMb";
@@ -576,7 +576,7 @@ internal sealed partial class LoggingPageView
         DiskResumeMarginMbInput.Name = "DiskResumeMarginMbInput";
         DiskResumeMarginMbInput.Dock = DockStyle.Fill;
         DiskResumeMarginMbInput.Margin = new Padding(0, 3, 0, 5);
-        DiskResumeMarginMbInput.ThousandsSeparator = true;
+        DiskResumeMarginMbInput.ThousandsSeparator = false;
         DiskResumeMarginMbInput.Minimum = 1;
         DiskResumeMarginMbInput.Maximum = 65536;
         DiskResumeMarginMbInput.Name = "Logging_DiskResumeMarginMb";

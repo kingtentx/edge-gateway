@@ -5,12 +5,57 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
+    private async Task SmokeSwitchInputsAsync(DatabaseConnectionConfiguration connection)
+    {
+        using var dialog = new DatabaseConnectionDialog(connection, _application);
+        dialog.Show(this);
+        await Task.Delay(100);
+        var toggle = dialog.SmokeInputs.OfType<GatewaySwitch>().First();
+        BringIntoViewAndAssert(toggle, "database switch");
+        var original = toggle.Checked;
+        var changes = 0;
+        toggle.CheckedChanged += (_, _) => changes++;
+        var knob = toggle.SwitchControl;
+        var rect = knob.ReadRectangle;
+        var point = new IntPtr(((rect.Top + rect.Height / 2) << 16) | (rect.Left + rect.Width / 2));
+        SendControlSmokeMessage(knob.Handle, 0x0201, new IntPtr(1), point);
+        SendControlSmokeMessage(knob.Handle, 0x0202, IntPtr.Zero, point);
+        if (toggle.Checked == original || dialog.CommitForSmoke().Enabled != toggle.Checked || changes != 1)
+            throw new InvalidOperationException("Switch click did not update the draft exactly once.");
+        SendControlSmokeMessage(knob.Handle, 0x0100, new IntPtr((int)Keys.Space), IntPtr.Zero);
+        SendControlSmokeMessage(knob.Handle, 0x0101, new IntPtr((int)Keys.Space), IntPtr.Zero);
+        if (toggle.Checked != original || changes != 2)
+            throw new InvalidOperationException("Switch keyboard toggle did not restore the draft.");
+        if (!toggle.Focus()) throw new InvalidOperationException("Switch field cannot receive keyboard focus.");
+        for (var i = 0; i < 2; i++)
+        {
+            SendControlSmokeMessage(toggle.Handle, 0x0100, new IntPtr((int)Keys.Space), IntPtr.Zero);
+            SendControlSmokeMessage(toggle.Handle, 0x0101, new IntPtr((int)Keys.Space), IntPtr.Zero);
+        }
+        if (toggle.Checked != original || changes != 4)
+            throw new InvalidOperationException("Focused switch field did not handle Space exactly once.");
+        var port = dialog.SmokeInputs.OfType<NumericUpDown>().First();
+        port.Value = 12345;
+        if (port.Text != "12345" || port.ThousandsSeparator || dialog.CommitForSmoke().Port != 12345)
+            throw new InvalidOperationException("Numeric input added grouping or changed its value.");
+        var name = dialog.SmokeInputs.OfType<TextBox>().First();
+        name.Text = "1234567";
+        if (name.Text != "1234567" || dialog.CommitForSmoke().Name != "1234567")
+            throw new InvalidOperationException("Text input reformatted numeric text.");
+        toggle.Checked = true;
+        await Task.Delay(200);
+        SaveEditorScreenshot(dialog, "switch-inputs", "database-on");
+        dialog.Close();
+        Console.WriteLine("Switch input smoke passed: native mouse/Space events, one change per action, Boolean draft, ungrouped 12345 port and unchanged numeric text.");
+    }
+
     private async Task SmokeCustomPointMappingAsync()
     {
         if (!_smokeTest) throw new InvalidOperationException("Database mapping smoke requires an isolated smoke host.");
         static void Check(bool condition, string message)
         { if (!condition) throw new InvalidOperationException("Custom point mapping: " + message); }
         var connection = RecordingConnectionFixture();
+        await SmokeSwitchInputsAsync(connection);
         var device = new DeviceConfiguration { Name = "映射验证设备", DriverId = "simulator",
             Tags = [new() { Name = "温度" }, new() { Name = "计数" }] };
         var original = new DatabaseWriteGroupConfiguration { ConnectionId = connection.Id };
@@ -42,6 +87,22 @@ public sealed partial class MainForm
                 new("_TIMESTAMP", "timestamp", true), new("_QUALITY", "int", true), new("optional_note", "varchar", true, HasDefault: true)];
             editor.LoadColumnsForSmoke(columns);
             var grid = editor.SmokeMapping;
+            var switchCell = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY")).Cells["Include"];
+            BringIntoViewAndAssert(grid, "mapping switch");
+            grid.CurrentCell = switchCell;
+            var switchBefore = (bool)switchCell.Value!;
+            var cellBounds = grid.GetCellDisplayRectangle(switchCell.ColumnIndex, switchCell.RowIndex, false);
+            var trackBounds = switchCell.GetContentBounds(switchCell.RowIndex);
+            var switchPoint = new IntPtr(((cellBounds.Top + trackBounds.Top + trackBounds.Height / 2) << 16)
+                | (cellBounds.Left + trackBounds.Left + trackBounds.Width / 2));
+            SendControlSmokeMessage(grid.Handle, 0x0201, new IntPtr(1), switchPoint);
+            SendControlSmokeMessage(grid.Handle, 0x0202, IntPtr.Zero, switchPoint);
+            grid.EndEdit();
+            Check((bool)switchCell.Value! != switchBefore, "mapping switch click did not commit.");
+            SendControlSmokeMessage(grid.Handle, 0x0100, new IntPtr((int)Keys.Space), IntPtr.Zero);
+            SendControlSmokeMessage(grid.Handle, 0x0101, new IntPtr((int)Keys.Space), IntPtr.Zero);
+            grid.EndEdit();
+            Check((bool)switchCell.Value! == switchBefore, "mapping switch Space did not restore sampling.");
             Check(!grid.Columns["Point"].Visible, "point mode still asks each field for a fixed point binding.");
             var generated = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "id"));
             Check(generated.ReadOnly && generated.Cells["Include"].Value is false, "auto-increment id is writable.");
@@ -468,7 +529,7 @@ public sealed partial class MainForm
             var pointId = ((DatabaseUiText.PointItem)list.Items[index]).Id;
             var selectedIds = editor.CommitForSmoke().TagIds;
             var selectedBefore = selectedIds.Contains(pointId);
-            var checkbox = list.Controls.OfType<AntdUI.Checkbox>().Single(control => control.Visible && Equals(control.Tag, index));
+            var checkbox = list.Controls.OfType<GatewaySwitch>().Single(control => control.Visible && Equals(control.Tag, index));
             checkbox.Checked = !selectedBefore;
             bool selectedAfter;
             try { selectedAfter = editor.CommitForSmoke().TagIds.Contains(pointId); }

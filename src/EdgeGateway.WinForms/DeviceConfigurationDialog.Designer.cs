@@ -10,7 +10,7 @@ internal sealed partial class DeviceConfigurationDialog
     private Panel acquisitionViewport = null!;
     private TableLayoutPanel acquisition = null!;
     private Label acquisitionSection1 = null!;
-    private AntdUI.Checkbox _enabled = null!;
+    private GatewaySwitch _enabled = null!;
     private Label _enabledLabel = null!;
     private GatewayInput _name = null!;
     private Label _nameLabel = null!;
@@ -42,7 +42,7 @@ internal sealed partial class DeviceConfigurationDialog
     private ComboBox _scanMode = null!;
     private Label _scanModeLabel = null!;
     private InputFrame _scanModeSurface = null!;
-    private AntdUI.Checkbox _autoDemotion = null!;
+    private GatewaySwitch _autoDemotion = null!;
     private Label _autoDemotionLabel = null!;
     private NumericUpDown _demotionCount = null!;
     private Label _demotionCountLabel = null!;
@@ -94,7 +94,7 @@ internal sealed partial class DeviceConfigurationDialog
         acquisition.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         acquisition.Controls.Add(acquisitionSection1, 0, 0);
         acquisition.SetColumnSpan(acquisitionSection1, 2);
-        _enabled = new AntdUI.Checkbox();
+        _enabled = new GatewaySwitch();
         _enabled.Name = "_enabled";
         _enabled.Dock = DockStyle.Fill;
         _enabled.Margin = new Padding(0, 3, 0, 5);
@@ -275,7 +275,7 @@ internal sealed partial class DeviceConfigurationDialog
         _cycle.Name = "_cycle";
         _cycle.Dock = DockStyle.Fill;
         _cycle.Margin = new Padding(0, 3, 0, 5);
-        _cycle.ThousandsSeparator = true;
+        _cycle.ThousandsSeparator = false;
         _cycle.Minimum = 100;
         _cycle.Maximum = 3600000;
         _cycleLabel = new Label();
@@ -307,7 +307,7 @@ internal sealed partial class DeviceConfigurationDialog
         _timeout.Name = "_timeout";
         _timeout.Dock = DockStyle.Fill;
         _timeout.Margin = new Padding(0, 3, 0, 5);
-        _timeout.ThousandsSeparator = true;
+        _timeout.ThousandsSeparator = false;
         _timeout.Minimum = 100;
         _timeout.Maximum = 120000;
         _timeoutLabel = new Label();
@@ -443,7 +443,7 @@ internal sealed partial class DeviceConfigurationDialog
         _scanMode.Margin = Padding.Empty;
         _scanModeSurface.Controls.Add(_scanMode);
         scanning.Controls.Add(_scanModeSurface, 1, 2);
-        _autoDemotion = new AntdUI.Checkbox();
+        _autoDemotion = new GatewaySwitch();
         _autoDemotion.Name = "_autoDemotion";
         _autoDemotion.Dock = DockStyle.Fill;
         _autoDemotion.Margin = new Padding(0, 3, 0, 5);
@@ -470,7 +470,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionCount.Name = "_demotionCount";
         _demotionCount.Dock = DockStyle.Fill;
         _demotionCount.Margin = new Padding(0, 3, 0, 5);
-        _demotionCount.ThousandsSeparator = true;
+        _demotionCount.ThousandsSeparator = false;
         _demotionCount.Minimum = 1;
         _demotionCount.Maximum = 30;
         _demotionCountLabel = new Label();
@@ -502,7 +502,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionInterval.Name = "_demotionInterval";
         _demotionInterval.Dock = DockStyle.Fill;
         _demotionInterval.Margin = new Padding(0, 3, 0, 5);
-        _demotionInterval.ThousandsSeparator = true;
+        _demotionInterval.ThousandsSeparator = false;
         _demotionInterval.Minimum = 100;
         _demotionInterval.Maximum = 3600000;
         _demotionIntervalLabel = new Label();

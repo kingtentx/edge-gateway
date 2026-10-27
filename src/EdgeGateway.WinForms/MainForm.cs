@@ -520,6 +520,7 @@ public sealed partial class MainForm : DpiAwareForm
         if (root is TextBox or System.Windows.Forms.TextBoxBase or ComboBox or NumericUpDown or DateTimePicker or CheckBox)
         {
             BringIntoViewAndAssert(root, page + " input");
+            if (root is GatewaySwitch) AssertInputSurface(root, page);
             return;
         }
         if (root is FlowLayoutPanel toolbar)
@@ -558,7 +559,7 @@ public sealed partial class MainForm : DpiAwareForm
             ?? throw new InvalidOperationException("设备不存在。");
         if (start)
         {
-            if (!device.Enabled) throw new InvalidOperationException("设备未启用，请先在“配置 → 采集设置”勾选“启用设备”。");
+            if (!device.Enabled) throw new InvalidOperationException("设备未启用，请先在“配置 → 采集设置”打开开关“启用设备”。");
             // Persist generated default identities before their first acquisition.
             // Starting another device must not reconfigure the active runtime.
             await _application.StartDeviceAsync(deviceId);
@@ -590,7 +591,7 @@ public sealed partial class MainForm : DpiAwareForm
         if (preview.RequiresMqttDestinationConfirmation)
         {
             var response = MessageBox.Show(this,
-                $"当前仍有 {preview.PendingOutboxMessages:N0} 条待发送消息。\n\n"
+                $"当前仍有 {preview.PendingOutboxMessages:F0} 条待发送消息。\n\n"
                 + $"原连接：{preview.PreviousMqtt.Host}:{preview.PreviousMqtt.Port}\n新连接：{preview.ProposedMqtt.Host}:{preview.ProposedMqtt.Port}\n\n"
                 + "应用后，待发送消息将使用新的连接，仍保留原网关标识和主题。\n确认将这些消息迁移到新连接？",
                 "确认待发送消息的目标变更", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
@@ -640,7 +641,7 @@ public sealed partial class MainForm : DpiAwareForm
             var statistics = await _application.GetStatisticsAsync();
             if (!IsDisposed)
             {
-                _pendingCount.Text = $"待补传 {statistics.OutboxCount:N0} 条";
+                _pendingCount.Text = $"待补传 {statistics.OutboxCount:F0} 条";
                 if (_activePage == "overview" && (_serverResourceRefresh is null || _serverResourceRefresh.IsCompleted))
                     _serverResourceRefresh = RefreshServerResourcesAsync();
                 if (_activePage == "diagnostics") RefreshTelemetryDiagnostics(statistics);

@@ -57,7 +57,7 @@ public sealed partial class MainForm
             return new DatabaseConnectionRow(connection.Id, connection.Name, DatabaseUiText.Provider(connection.Provider),
                 $"{connection.Host}:{connection.Port} / {connection.Database}", state, status?.QueuedRows ?? 0, status?.WrittenRows ?? 0,
                 $"{status?.DroppedRows ?? 0} / {status?.SkippedRows ?? 0}", status?.Error ?? "—",
-                $"{(status?.QueuedBytes ?? 0) / 1048576d:F2} M / {status?.PeakQueuedRows ?? 0:N0} 行" + (status?.IsBackpressured == true ? "（高水位）" : ""),
+                $"{(status?.QueuedBytes ?? 0) / 1048576d:F2} M / {status?.PeakQueuedRows ?? 0:F0} 行" + (status?.IsBackpressured == true ? "（高水位）" : ""),
                 $"{status?.FailedBatches ?? 0} / {status?.RetriedBatches ?? 0} / {status?.TimedOutOperations ?? 0}",
                 $"{status?.InFlightBatches ?? 0} 批 / {status?.LastWriteMilliseconds ?? 0:F1} ms");
         }).ToArray();
@@ -75,8 +75,8 @@ public sealed partial class MainForm
             : "数据库配置已保存。标准点行和自定义逐点按采样写入；自定义整行按关联点位组合。连接与写入组均需启用。";
         if (_databaseSpool is { } buffer)
             description += Environment.NewLine
-                + $"本地持久缓冲：{buffer.PendingRows:N0} 行 / {buffer.PendingBatches:N0} 批 / {buffer.PendingBytes / 1048576d:N1} M；"
-                + $"本进程确认 {buffer.AcknowledgedBatches:N0} 批，容量拒绝 {buffer.CapacityRejectedBatches:N0} 批。"
+                + $"本地持久缓冲：{buffer.PendingRows:F0} 行 / {buffer.PendingBatches:F0} 批 / {buffer.PendingBytes / 1048576d:F1} M；"
+                + $"本进程确认 {buffer.AcknowledgedBatches:F0} 批，容量拒绝 {buffer.CapacityRejectedBatches:F0} 批。"
                 + (buffer.LastError is null ? "" : Environment.NewLine + "缓冲异常：" + buffer.LastError);
         // Publish the complete text once. Clearing the statistics line before the
         // await used to shrink and expand the AutoSize row on every timer tick.

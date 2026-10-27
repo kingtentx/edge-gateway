@@ -113,8 +113,8 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         _pointTab.Enabled = standard || pointMapping; _mapping.Enabled = !standard;
         _mapping.Columns["Point"].Visible = !pointMapping;
         _mappingHint.Text = standard ? "当前为标准点行模式，字段固定。已有业务表请切换为自定义逐点，再读取字段。"
-            : pointMapping ? "勾选“使用采样”取当前点位值；取消勾选后填写手动常量，仍写入该字段。不需要的字段请选择“不写入”；自增列自动跳过。"
-            : "勾选“使用采样”并绑定点位；取消勾选后填写手动常量，仍写入该字段。不需要的字段请选择“不写入”；自增列自动跳过。";
+            : pointMapping ? "打开开关“使用采样”取当前点位值；关闭开关后填写手动常量，仍写入该字段。不需要的字段请选择“不写入”；自增列自动跳过。"
+            : "打开开关“使用采样”并绑定点位；关闭开关后填写手动常量，仍写入该字段。不需要的字段请选择“不写入”；自增列自动跳过。";
         _mappingEmpty.Visible = _mapping.Rows.Count == 0;
         _mappingEmpty.Text = standard ? "已有自定义表？点击上方“使用自定义逐点映射”。"
             : "尚未读取表字段。\n请先在“写入设置”选择数据库和表名，\n再点击上方“读取 / 刷新字段”。";
@@ -260,7 +260,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         row.Cells["FieldType"].ReadOnly = generated || omitted;
         row.Cells["Constant"].ToolTipText = row.Cells["Include"].Value is not true
             ? "填写后作为手动常量写入；空的未配置列保持省略。自动类型按读取到的目标字段类型转换。"
-            : "取消勾选“使用采样”后可填写常量。";
+            : "关闭开关“使用采样”后可填写常量。";
         row.Cells["Point"].Style.BackColor = row.Cells["Point"].ReadOnly ? UiTheme.Background : Color.White;
         row.Cells["Constant"].Style.BackColor = row.Cells["Constant"].ReadOnly ? UiTheme.Background : Color.White;
         _mapping.InvalidateCell(row.Cells["Constant"]);
@@ -311,7 +311,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         var columns = await _application.GetDatabaseColumnsAsync(connection, table);
         LoadColumns(columns);
         Tabs.SelectedTab = _mappingTab;
-        _status.Text = $"目标：{connection.Name} / {table}；已读取 {columns.Count} 个字段。勾选使用采样，取消勾选填写常量；自增列由数据库生成。";
+        _status.Text = $"目标：{connection.Name} / {table}；已读取 {columns.Count} 个字段。打开开关使用采样，关闭开关填写常量；自增列由数据库生成。";
     });
 
     private async Task InspectAsync(Func<Task> action)
@@ -348,7 +348,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         value.WriteIntervalMs = (int)_interval.Value; value.MaxSampleAgeMs = (int)_maxAge.Value; value.RequireGoodQuality = _goodOnly.Checked;
         value.TagIds = _allPoints.Checked ? [] : _selectedPoints.ToList();
         if (value.Mode != DatabaseStorageMode.ColumnMapping && !_allPoints.Checked && value.TagIds.Count == 0)
-            throw new EditorValidationException("请选择至少一个点位，或勾选“全部启用点位”。", _allPoints);
+            throw new EditorValidationException("请选择至少一个点位，或打开开关“全部启用点位”。", _allPoints);
         if (value.Mode == DatabaseStorageMode.PointRows)
         {
             value.Columns = [];

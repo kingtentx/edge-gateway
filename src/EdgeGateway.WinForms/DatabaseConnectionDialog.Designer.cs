@@ -13,7 +13,7 @@ internal sealed partial class DatabaseConnectionDialog
     private GatewayInput _name = null!;
     private Label _nameLabel = null!;
     private InputFrame _nameSurface = null!;
-    private AntdUI.Checkbox _enabled = null!;
+    private GatewaySwitch _enabled = null!;
     private Label _enabledLabel = null!;
     private ComboBox _provider = null!;
     private Label _providerLabel = null!;
@@ -33,7 +33,7 @@ internal sealed partial class DatabaseConnectionDialog
     private GatewayInput _password = null!;
     private Label _passwordLabel = null!;
     private InputFrame _passwordSurface = null!;
-    private AntdUI.Checkbox _tls = null!;
+    private GatewaySwitch _tls = null!;
     private Label _tlsLabel = null!;
     private AntdUI.Button testConnectionButton = null!;
     private Label _testResult = null!;
@@ -139,7 +139,7 @@ internal sealed partial class DatabaseConnectionDialog
         _name.Margin = Padding.Empty;
         _nameSurface.Controls.Add(_name);
         connectionFields.Controls.Add(_nameSurface, 1, 1);
-        _enabled = new AntdUI.Checkbox();
+        _enabled = new GatewaySwitch();
         _enabled.Name = "_enabled";
         _enabled.Dock = DockStyle.Fill;
         _enabled.Margin = new Padding(0, 3, 0, 5);
@@ -233,7 +233,7 @@ internal sealed partial class DatabaseConnectionDialog
         _port.Name = "_port";
         _port.Dock = DockStyle.Fill;
         _port.Margin = new Padding(0, 3, 0, 5);
-        _port.ThousandsSeparator = true;
+        _port.ThousandsSeparator = false;
         _port.Minimum = 1;
         _port.Maximum = 65535;
         _port.Name = "DatabasePort";
@@ -360,7 +360,7 @@ internal sealed partial class DatabaseConnectionDialog
         _password.Margin = Padding.Empty;
         _passwordSurface.Controls.Add(_password);
         connectionFields.Controls.Add(_passwordSurface, 1, 8);
-        _tls = new AntdUI.Checkbox();
+        _tls = new GatewaySwitch();
         _tls.Name = "_tls";
         _tls.Dock = DockStyle.Fill;
         _tls.Margin = new Padding(0, 3, 0, 5);
@@ -457,7 +457,7 @@ internal sealed partial class DatabaseConnectionDialog
         _connectTimeout.Name = "_connectTimeout";
         _connectTimeout.Dock = DockStyle.Fill;
         _connectTimeout.Margin = new Padding(0, 3, 0, 5);
-        _connectTimeout.ThousandsSeparator = true;
+        _connectTimeout.ThousandsSeparator = false;
         _connectTimeout.Minimum = 1;
         _connectTimeout.Maximum = 120;
         _connectTimeout.Name = "DatabaseConnectTimeout";
@@ -490,7 +490,7 @@ internal sealed partial class DatabaseConnectionDialog
         _commandTimeout.Name = "_commandTimeout";
         _commandTimeout.Dock = DockStyle.Fill;
         _commandTimeout.Margin = new Padding(0, 3, 0, 5);
-        _commandTimeout.ThousandsSeparator = true;
+        _commandTimeout.ThousandsSeparator = false;
         _commandTimeout.Minimum = 1;
         _commandTimeout.Maximum = 300;
         _commandTimeout.Name = "DatabaseCommandTimeout";
@@ -550,7 +550,7 @@ internal sealed partial class DatabaseConnectionDialog
         _batch.Name = "_batch";
         _batch.Dock = DockStyle.Fill;
         _batch.Margin = new Padding(0, 3, 0, 5);
-        _batch.ThousandsSeparator = true;
+        _batch.ThousandsSeparator = false;
         _batch.Minimum = 1;
         _batch.Maximum = 5000;
         _batch.Name = "DatabaseBatchSize";
@@ -583,7 +583,7 @@ internal sealed partial class DatabaseConnectionDialog
         _flush.Name = "_flush";
         _flush.Dock = DockStyle.Fill;
         _flush.Margin = new Padding(0, 3, 0, 5);
-        _flush.ThousandsSeparator = true;
+        _flush.ThousandsSeparator = false;
         _flush.Minimum = 50;
         _flush.Maximum = 60000;
         _flush.Name = "DatabaseFlushInterval";
@@ -616,7 +616,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacity.Name = "_capacity";
         _capacity.Dock = DockStyle.Fill;
         _capacity.Margin = new Padding(0, 3, 0, 5);
-        _capacity.ThousandsSeparator = true;
+        _capacity.ThousandsSeparator = false;
         _capacity.Minimum = 1;
         _capacity.Maximum = 1000000;
         _capacity.Name = "DatabaseQueueCapacity";
@@ -649,7 +649,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacityMb.Name = "_capacityMb";
         _capacityMb.Dock = DockStyle.Fill;
         _capacityMb.Margin = new Padding(0, 3, 0, 5);
-        _capacityMb.ThousandsSeparator = true;
+        _capacityMb.ThousandsSeparator = false;
         _capacityMb.Minimum = 1;
         _capacityMb.Maximum = 1024;
         _capacityMb.Name = "DatabaseQueueCapacityMb";
@@ -682,7 +682,7 @@ internal sealed partial class DatabaseConnectionDialog
         _retryAttempts.Name = "_retryAttempts";
         _retryAttempts.Dock = DockStyle.Fill;
         _retryAttempts.Margin = new Padding(0, 3, 0, 5);
-        _retryAttempts.ThousandsSeparator = true;
+        _retryAttempts.ThousandsSeparator = false;
         _retryAttempts.Minimum = 1;
         _retryAttempts.Maximum = 10;
         _retryAttempts.Name = "DatabaseMaxRetryAttempts";

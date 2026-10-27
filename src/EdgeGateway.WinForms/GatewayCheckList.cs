@@ -2,10 +2,10 @@ using System.Collections;
 
 namespace EdgeGateway.WinForms;
 
-/// <summary>Virtualized data rows with AntdUI checkboxes for explicit point selection.</summary>
+/// <summary>Virtualized data rows with AntdUI switches for explicit point selection.</summary>
 public sealed class GatewayCheckList : ScrollableControl
 {
-    private readonly List<AntdUI.Checkbox> _rows = [];
+    private readonly List<GatewaySwitch> _rows = [];
     private bool _arranging;
     private int _selectedIndex = -1;
     public GatewayCheckList()
@@ -68,7 +68,7 @@ public sealed class GatewayCheckList : ScrollableControl
             var count = Math.Min(Items.Count - first, Math.Max(0, ClientSize.Height / RowHeight + 2));
             while (_rows.Count < count)
             {
-                var row = new AntdUI.Checkbox { AutoSize = false, TabStop = false };
+                var row = new GatewaySwitch { AutoSize = false, TabStop = false };
                 row.KeyDown += (_, e) => { if (e.KeyCode is Keys.Up or Keys.Down) OnKeyDown(e); };
                 row.CheckedChanged += (_, _) =>
                 {

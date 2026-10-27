@@ -106,8 +106,8 @@ public sealed partial class MainForm
         _loggingState.Text = _loggingDirty ? "有未保存的修改。应用后立即生效，正在采集的设备继续运行。" : "日志设置已保存；可在设备运行期间调整。";
         _loggingState.ForeColor = _loggingDirty ? UiTheme.Warning : UiTheme.Muted;
         var status = _application.GetLoggingStatus();
-        _loggingFileState.Text = $"日志队列：{status.PendingEntries:N0} 条；累计丢弃：{status.DroppedEntries:N0} 条；写入失败：{status.FailedEntries:N0} 条。"
-            + $"\n队列载荷：{status.PendingBytes / 1048576d:F2} M；可用磁盘：{(status.AvailableDiskBytes.HasValue ? (status.AvailableDiskBytes.Value / 1048576d).ToString("F0") + " M" : "未探测")}；磁盘保护：{(status.DiskProtectionActive ? "已暂停" : "未触发")}；保护丢弃：{status.DiskRejectedEntries:N0}。"
+        _loggingFileState.Text = $"日志队列：{status.PendingEntries:F0} 条；累计丢弃：{status.DroppedEntries:F0} 条；写入失败：{status.FailedEntries:F0} 条。"
+            + $"\n队列载荷：{status.PendingBytes / 1048576d:F2} M；可用磁盘：{(status.AvailableDiskBytes.HasValue ? (status.AvailableDiskBytes.Value / 1048576d).ToString("F0") + " M" : "未探测")}；磁盘保护：{(status.DiskProtectionActive ? "已暂停" : "未触发")}；保护丢弃：{status.DiskRejectedEntries:F0}。"
             + (string.IsNullOrWhiteSpace(status.FileError) ? "" : "\n文件写入错误：" + status.FileError);
         _loggingFileState.ForeColor = string.IsNullOrWhiteSpace(status.FileError) ? UiTheme.Muted : UiTheme.Red;
     }

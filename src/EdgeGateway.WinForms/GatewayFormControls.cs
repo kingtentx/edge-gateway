@@ -83,7 +83,7 @@ public class GatewayNumber : AntdUI.InputNumber, ISupportInitialize
     public GatewayNumber()
     {
         Radius = 6; Height = 38; BorderWidth = 1; BorderColor = UiTheme.Border;
-        Minimum = 0; Maximum = 100; WheelModifyEnabled = false;
+        Minimum = 0; Maximum = 100; WheelModifyEnabled = false; ThousandsSeparator = false;
     }
     public new decimal Minimum { get => base.Minimum ?? decimal.MinValue; set => base.Minimum = value; }
     public new decimal Maximum { get => base.Maximum ?? decimal.MaxValue; set => base.Maximum = value; }

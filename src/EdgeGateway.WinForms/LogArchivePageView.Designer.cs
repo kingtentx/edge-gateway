@@ -455,7 +455,7 @@ internal sealed partial class LogArchivePageView
         Limit.Name = "Limit";
         Limit.Dock = DockStyle.Fill;
         Limit.Margin = new Padding(0, 3, 0, 5);
-        Limit.ThousandsSeparator = true;
+        Limit.ThousandsSeparator = false;
         Limit.Minimum = 1;
         Limit.Maximum = 2000;
         Limit.Value = 500;
@@ -502,7 +502,7 @@ internal sealed partial class LogArchivePageView
         Budget.Name = "Budget";
         Budget.Dock = DockStyle.Fill;
         Budget.Margin = new Padding(0, 3, 0, 5);
-        Budget.ThousandsSeparator = true;
+        Budget.ThousandsSeparator = false;
         Budget.Minimum = 1;
         Budget.Maximum = 64;
         Budget.Value = 32;

@@ -20,7 +20,7 @@ internal sealed partial class WriteValueDialog
     private Label valueHelp = null!;
     private Label contentSection4 = null!;
     private Label contentHint5 = null!;
-    private AntdUI.Checkbox _verify = null!;
+    private GatewaySwitch _verify = null!;
     private Label _verifyLabel = null!;
     private NumericUpDown _verificationTimeout = null!;
     private Label _verificationTimeoutLabel = null!;
@@ -199,7 +199,7 @@ internal sealed partial class WriteValueDialog
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.Controls.Add(contentHint5, 0, 5);
         content.SetColumnSpan(contentHint5, 2);
-        _verify = new AntdUI.Checkbox();
+        _verify = new GatewaySwitch();
         _verify.Name = "_verify";
         _verify.Dock = DockStyle.Fill;
         _verify.Margin = new Padding(0, 3, 0, 5);
@@ -228,7 +228,7 @@ internal sealed partial class WriteValueDialog
         _verificationTimeout.Name = "_verificationTimeout";
         _verificationTimeout.Dock = DockStyle.Fill;
         _verificationTimeout.Margin = new Padding(0, 3, 0, 5);
-        _verificationTimeout.ThousandsSeparator = true;
+        _verificationTimeout.ThousandsSeparator = false;
         _verificationTimeout.Minimum = 50;
         _verificationTimeout.Maximum = 60000;
         _verificationTimeout.Value = 5000;
