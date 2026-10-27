@@ -6,13 +6,14 @@ internal static class UiTheme
 {
     public const int ActionHeight = 38;
     public static readonly Color Navy = Color.FromArgb(18, 31, 51);
-    public static readonly Color Blue = Color.FromArgb(37, 99, 235);
-    public static readonly Color Background = Color.FromArgb(244, 247, 251);
-    public static readonly Color Ink = Color.FromArgb(28, 43, 63);
-    public static readonly Color Muted = Color.FromArgb(102, 118, 139);
-    public static readonly Color Border = Color.FromArgb(221, 228, 237);
-    public static readonly Color InputBackground = Color.FromArgb(249, 251, 254);
-    public static readonly Color BlueSoft = Color.FromArgb(235, 242, 255);
+    public static readonly Color Blue = Color.FromArgb(22, 119, 255);
+    public static readonly Color Background = Color.FromArgb(245, 245, 245);
+    public static readonly Color Ink = Color.FromArgb(31, 31, 31);
+    public static readonly Color Muted = Color.FromArgb(115, 115, 115);
+    public static readonly Color Border = Color.FromArgb(232, 232, 232);
+    public static readonly Color InputBackground = Color.White;
+    public static readonly Color BlueSoft = Color.FromArgb(230, 244, 255);
+    public static readonly Color SurfaceSubtle = Color.FromArgb(250, 250, 250);
     public static readonly Color Warning = Color.FromArgb(164, 93, 16);
     public static readonly Color Green = Color.FromArgb(13, 155, 124);
     public static readonly Color Red = Color.FromArgb(216, 62, 75);
@@ -32,7 +33,7 @@ internal static class UiTheme
         var button = new ModernButton
         {
             Text = text, AutoSize = true, MinimumSize = new Size(100, ActionHeight), Height = ActionHeight,
-            Padding = new Padding(13, 6, 13, 6), BackColor = primary ? Blue : Color.White,
+            Padding = new Padding(10, 4, 10, 4), BackColor = primary ? Blue : Color.White,
             ForeColor = primary ? Color.White : text.Contains("删除") ? Red : Ink,
             Margin = new Padding(0, 0, 8, 6), AccessibleName = text,
             Cursor = Cursors.Hand, Glyph = ActionIcon(text), Primary = primary

@@ -29,7 +29,7 @@ public partial class EditorDialog : DpiAwareForm
         BackColor = UiTheme.Background;
         ForeColor = UiTheme.Ink;
         StartPosition = FormStartPosition.CenterParent;
-        ConfigureWindow(new Size(724, 611), new Size(604, 481));
+        ConfigureWindow(new Size(780, 700), new Size(604, 481));
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = false;
@@ -76,11 +76,11 @@ public partial class EditorDialog : DpiAwareForm
         try
         {
             var compact = ClientSize.Height < UiTheme.Scale(this, 460);
-            var padding = UiTheme.Scale(this, new Padding(compact ? 12 : 20));
+            var padding = UiTheme.Scale(this, new Padding(compact ? 10 : 16));
             if (_layout.Padding != padding) _layout.Padding = padding;
-            var headingPadding = UiTheme.Scale(this, new Padding(0, 0, 0, compact ? 6 : 14));
+            var headingPadding = UiTheme.Scale(this, new Padding(0, 0, 0, compact ? 4 : 8));
             if (_heading.Padding != headingPadding) _heading.Padding = headingPadding;
-            var buttonPadding = UiTheme.Scale(this, new Padding(12, compact ? 8 : 14, 4, 4));
+            var buttonPadding = UiTheme.Scale(this, new Padding(12, compact ? 6 : 10, 4, 4));
             if (_buttons.Padding != buttonPadding) _buttons.Padding = buttonPadding;
             if (_compactMode != compact)
             {

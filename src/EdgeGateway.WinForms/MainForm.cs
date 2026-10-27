@@ -113,7 +113,6 @@ public sealed partial class MainForm : DpiAwareForm
         var headerInfo = headerSaveStatusPanel;
         var brandTitle = brandTitleLabel;
         var brandCaption = brandCaptionLabel;
-        var edition = navigationEditionLabel;
 
         _navigation.Add("overview", navigationOverviewButton);
         _navigation.Add("devices", navigationDevicesButton);
@@ -145,12 +144,10 @@ public sealed partial class MainForm : DpiAwareForm
                 var requiredSidebarWidth = navigationButtonWidth + sidebar.Padding.Horizontal + sidebar.Margin.Horizontal
                     + navigationViewport.Padding.Horizontal + navigationViewport.Margin.Horizontal
                     + SystemInformation.GetVerticalScrollBarWidthForDpi(navigationViewport.DeviceDpi);
-                var sidebarWidth = Math.Max(UiTheme.Scale(shell, compactNavigation ? 172 : 206), requiredSidebarWidth);
+                var sidebarWidth = Math.Max(UiTheme.Scale(shell, compactNavigation ? 172 : 192), requiredSidebarWidth);
                 if (shell.ColumnStyles[0].Width != sidebarWidth) shell.ColumnStyles[0].Width = sidebarWidth;
                 brandTitle.Text = compactNavigation ? "EDGE" : "EDGE GATEWAY";
                 brandCaption.Text = compactNavigation ? "采集网关" : "工业数据 · 本地连接";
-                var sidebarTextWidth = Math.Max(1, sidebar.ClientSize.Width - sidebar.Padding.Horizontal);
-                SetWrappingWidth(edition, sidebarTextWidth);
                 var narrow = body.ClientSize.Width < UiTheme.Scale(body, 400);
                 if (compactHeader == narrow) return;
                 compactHeader = narrow;
@@ -203,8 +200,8 @@ public sealed partial class MainForm : DpiAwareForm
         _pages[key].BringToFront();
         foreach (var nav in _navigation)
         {
-            nav.Value.DefaultBack = nav.Key == key ? Color.FromArgb(39, 67, 106) : UiTheme.Navy;
-            nav.Value.ForeColor = nav.Key == key ? Color.White : Color.FromArgb(190, 205, 225);
+            nav.Value.DefaultBack = nav.Key == key ? UiTheme.BlueSoft : Color.White;
+            nav.Value.ForeColor = nav.Key == key ? UiTheme.Blue : UiTheme.Ink;
         }
         // Hidden grids may create their bound rows only when first displayed.
         // Refresh commands now rather than waiting for the next polling tick.
@@ -275,7 +272,11 @@ public sealed partial class MainForm : DpiAwareForm
                     AssertHeaderStatusFits();
                     AssertPageToolbarsFit(_pages[key], key);
                     ResetScrollPositions(_pages[key], _navigation["overview"]);
-                    if (key == "devices") VerifyPointRowsForSmoke("baseline devices", verifyInitialViewport: true);
+                    if (key == "devices")
+                    {
+                        VerifyPointRowsForSmoke("baseline devices", verifyInitialViewport: true);
+                        SmokeListSpace();
+                    }
                     using var bitmap = new Bitmap(Math.Max(1, Width), Math.Max(1, Height));
                     DrawSmokeWindow(this, bitmap, "baseline " + key);
                     if (!string.IsNullOrWhiteSpace(_smokeScreenshotPath))

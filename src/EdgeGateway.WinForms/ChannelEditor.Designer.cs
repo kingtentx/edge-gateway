@@ -33,7 +33,7 @@ internal sealed partial class ChannelEditor
         channelFieldsViewport.Name = "channelFieldsViewport";
         channelFieldsViewport.Dock = DockStyle.Fill;
         channelFieldsViewport.AutoScroll = true;
-        channelFieldsViewport.Padding = new Padding(14);
+        channelFieldsViewport.Padding = new Padding(10);
         channelFieldsViewport.Margin = Padding.Empty;
         channelFields = new TableLayoutPanel();
         channelFields.Name = "channelFields";
@@ -57,9 +57,9 @@ internal sealed partial class ChannelEditor
         channelFieldsSection1.ForeColor = UiTheme.Ink;
         channelFieldsSection1.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         channelFieldsSection1.Margin = new Padding(0, 4, 0, 4);
-        channelFieldsSection1.BackColor = UiTheme.BlueSoft;
-        channelFieldsSection1.Padding = new Padding(12, 8, 12, 8);
-        channelFieldsSection1.Margin = new Padding(0, 12, 0, 8);
+        channelFieldsSection1.BackColor = UiTheme.SurfaceSubtle;
+        channelFieldsSection1.Padding = new Padding(10, 6, 10, 6);
+        channelFieldsSection1.Margin = new Padding(0, 8, 0, 6);
         channelFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         channelFields.Controls.Add(channelFieldsSection1, 0, 0);
         channelFields.SetColumnSpan(channelFieldsSection1, 2);
@@ -79,7 +79,7 @@ internal sealed partial class ChannelEditor
         _name = new GatewayInput();
         _name.Name = "_name";
         _name.Dock = DockStyle.Fill;
-        _name.Margin = new Padding(0, 5, 0, 10);
+        _name.Margin = new Padding(0, 3, 0, 5);
         _name.MinimumSize = new Size(150, 30);
         _name.BorderStyle = BorderStyle.FixedSingle;
         _name.Name = "ChannelName";
@@ -91,7 +91,7 @@ internal sealed partial class ChannelEditor
         _nameLabel.ForeColor = UiTheme.Ink;
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
-        _nameLabel.Padding = new Padding(0, 7, 14, 7);
+        _nameLabel.Padding = new Padding(0, 4, 14, 4);
         _nameLabel.Margin = Padding.Empty;
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "通道名称";
@@ -102,7 +102,7 @@ internal sealed partial class ChannelEditor
         _nameSurface.Name = "_nameSurface";
         _nameSurface.Dock = DockStyle.Top;
         _nameSurface.Width = 220;
-        _nameSurface.Margin = new Padding(0, 5, 0, 10);
+        _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 2;
         _name.Dock = DockStyle.None;
         _name.Margin = Padding.Empty;
@@ -111,7 +111,7 @@ internal sealed partial class ChannelEditor
         _delay = new NumericUpDown();
         _delay.Name = "_delay";
         _delay.Dock = DockStyle.Fill;
-        _delay.Margin = new Padding(0, 5, 0, 10);
+        _delay.Margin = new Padding(0, 3, 0, 5);
         _delay.ThousandsSeparator = true;
         _delay.Minimum = 0;
         _delay.Maximum = 60000;
@@ -124,7 +124,7 @@ internal sealed partial class ChannelEditor
         _delayLabel.ForeColor = UiTheme.Ink;
         _delayLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _delayLabel.Margin = new Padding(0, 4, 0, 4);
-        _delayLabel.Padding = new Padding(0, 7, 14, 7);
+        _delayLabel.Padding = new Padding(0, 4, 14, 4);
         _delayLabel.Margin = Padding.Empty;
         _delayLabel.TextAlign = ContentAlignment.MiddleLeft;
         _delay.AccessibleName = "请求间隔 (ms)";
@@ -135,7 +135,7 @@ internal sealed partial class ChannelEditor
         _delaySurface.Name = "_delaySurface";
         _delaySurface.Dock = DockStyle.Top;
         _delaySurface.Width = 220;
-        _delaySurface.Margin = new Padding(0, 5, 0, 10);
+        _delaySurface.Margin = new Padding(0, 3, 0, 5);
         _delaySurface.TabIndex = 3;
         _delay.Dock = DockStyle.None;
         _delay.Margin = Padding.Empty;
@@ -144,7 +144,7 @@ internal sealed partial class ChannelEditor
         _description = new GatewayInput();
         _description.Name = "_description";
         _description.Dock = DockStyle.Fill;
-        _description.Margin = new Padding(0, 5, 0, 10);
+        _description.Margin = new Padding(0, 3, 0, 5);
         _description.MinimumSize = new Size(150, 30);
         _description.BorderStyle = BorderStyle.FixedSingle;
         _description.Name = "ChannelDescription";
@@ -156,7 +156,7 @@ internal sealed partial class ChannelEditor
         _descriptionLabel.ForeColor = UiTheme.Ink;
         _descriptionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _descriptionLabel.Margin = new Padding(0, 4, 0, 4);
-        _descriptionLabel.Padding = new Padding(0, 7, 14, 7);
+        _descriptionLabel.Padding = new Padding(0, 4, 14, 4);
         _descriptionLabel.Margin = Padding.Empty;
         _descriptionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _description.AccessibleName = "说明";
@@ -167,7 +167,7 @@ internal sealed partial class ChannelEditor
         _descriptionSurface.Name = "_descriptionSurface";
         _descriptionSurface.Dock = DockStyle.Top;
         _descriptionSurface.Width = 220;
-        _descriptionSurface.Margin = new Padding(0, 5, 0, 10);
+        _descriptionSurface.Margin = new Padding(0, 3, 0, 5);
         _descriptionSurface.TabIndex = 4;
         _description.Dock = DockStyle.None;
         _description.Margin = Padding.Empty;

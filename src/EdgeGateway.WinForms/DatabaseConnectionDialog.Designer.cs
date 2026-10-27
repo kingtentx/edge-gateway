@@ -77,7 +77,7 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFieldsViewport.Name = "connectionFieldsViewport";
         connectionFieldsViewport.Dock = DockStyle.Fill;
         connectionFieldsViewport.AutoScroll = true;
-        connectionFieldsViewport.Padding = new Padding(14);
+        connectionFieldsViewport.Padding = new Padding(10);
         connectionFieldsViewport.Margin = Padding.Empty;
         connectionFields = new TableLayoutPanel();
         connectionFields.Name = "connectionFields";
@@ -101,16 +101,16 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFieldsSection1.ForeColor = UiTheme.Ink;
         connectionFieldsSection1.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         connectionFieldsSection1.Margin = new Padding(0, 4, 0, 4);
-        connectionFieldsSection1.BackColor = UiTheme.BlueSoft;
-        connectionFieldsSection1.Padding = new Padding(12, 8, 12, 8);
-        connectionFieldsSection1.Margin = new Padding(0, 12, 0, 8);
+        connectionFieldsSection1.BackColor = UiTheme.SurfaceSubtle;
+        connectionFieldsSection1.Padding = new Padding(10, 6, 10, 6);
+        connectionFieldsSection1.Margin = new Padding(0, 8, 0, 6);
         connectionFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         connectionFields.Controls.Add(connectionFieldsSection1, 0, 0);
         connectionFields.SetColumnSpan(connectionFieldsSection1, 2);
         _name = new GatewayInput();
         _name.Name = "_name";
         _name.Dock = DockStyle.Fill;
-        _name.Margin = new Padding(0, 5, 0, 10);
+        _name.Margin = new Padding(0, 3, 0, 5);
         _name.MinimumSize = new Size(150, 30);
         _name.BorderStyle = BorderStyle.FixedSingle;
         _name.Name = "DatabaseName";
@@ -122,7 +122,7 @@ internal sealed partial class DatabaseConnectionDialog
         _nameLabel.ForeColor = UiTheme.Ink;
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
-        _nameLabel.Padding = new Padding(0, 7, 14, 7);
+        _nameLabel.Padding = new Padding(0, 4, 14, 4);
         _nameLabel.Margin = Padding.Empty;
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "连接名称";
@@ -133,7 +133,7 @@ internal sealed partial class DatabaseConnectionDialog
         _nameSurface.Name = "_nameSurface";
         _nameSurface.Dock = DockStyle.Top;
         _nameSurface.Width = 220;
-        _nameSurface.Margin = new Padding(0, 5, 0, 10);
+        _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 1;
         _name.Dock = DockStyle.None;
         _name.Margin = Padding.Empty;
@@ -142,7 +142,7 @@ internal sealed partial class DatabaseConnectionDialog
         _enabled = new AntdUI.Checkbox();
         _enabled.Name = "_enabled";
         _enabled.Dock = DockStyle.Fill;
-        _enabled.Margin = new Padding(0, 5, 0, 10);
+        _enabled.Margin = new Padding(0, 3, 0, 5);
         _enabled.AutoSize = true;
         _enabled.MinimumSize = new Size(0, 32);
         _enabled.Text = "启用该数据库写入";
@@ -155,7 +155,7 @@ internal sealed partial class DatabaseConnectionDialog
         _enabledLabel.ForeColor = UiTheme.Ink;
         _enabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _enabledLabel.Margin = new Padding(0, 4, 0, 4);
-        _enabledLabel.Padding = new Padding(0, 7, 14, 7);
+        _enabledLabel.Padding = new Padding(0, 4, 14, 4);
         _enabledLabel.Margin = Padding.Empty;
         _enabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _enabled.AccessibleName = "数据写入";
@@ -166,7 +166,7 @@ internal sealed partial class DatabaseConnectionDialog
         _provider = new ComboBox();
         _provider.Name = "_provider";
         _provider.Dock = DockStyle.Fill;
-        _provider.Margin = new Padding(0, 5, 0, 10);
+        _provider.Margin = new Padding(0, 3, 0, 5);
         _provider.DropDownStyle = ComboBoxStyle.DropDownList;
         _provider.IntegralHeight = false;
         _provider.DropDownHeight = 320;
@@ -180,7 +180,7 @@ internal sealed partial class DatabaseConnectionDialog
         _providerLabel.ForeColor = UiTheme.Ink;
         _providerLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _providerLabel.Margin = new Padding(0, 4, 0, 4);
-        _providerLabel.Padding = new Padding(0, 7, 14, 7);
+        _providerLabel.Padding = new Padding(0, 4, 14, 4);
         _providerLabel.Margin = Padding.Empty;
         _providerLabel.TextAlign = ContentAlignment.MiddleLeft;
         _provider.AccessibleName = "数据库类型";
@@ -191,7 +191,7 @@ internal sealed partial class DatabaseConnectionDialog
         _providerSurface.Name = "_providerSurface";
         _providerSurface.Dock = DockStyle.Top;
         _providerSurface.Width = 220;
-        _providerSurface.Margin = new Padding(0, 5, 0, 10);
+        _providerSurface.Margin = new Padding(0, 3, 0, 5);
         _providerSurface.TabIndex = 3;
         _provider.Dock = DockStyle.None;
         _provider.Margin = Padding.Empty;
@@ -200,7 +200,7 @@ internal sealed partial class DatabaseConnectionDialog
         _host = new GatewayInput();
         _host.Name = "_host";
         _host.Dock = DockStyle.Fill;
-        _host.Margin = new Padding(0, 5, 0, 10);
+        _host.Margin = new Padding(0, 3, 0, 5);
         _host.MinimumSize = new Size(150, 30);
         _host.BorderStyle = BorderStyle.FixedSingle;
         _host.Name = "DatabaseHost";
@@ -212,7 +212,7 @@ internal sealed partial class DatabaseConnectionDialog
         _hostLabel.ForeColor = UiTheme.Ink;
         _hostLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _hostLabel.Margin = new Padding(0, 4, 0, 4);
-        _hostLabel.Padding = new Padding(0, 7, 14, 7);
+        _hostLabel.Padding = new Padding(0, 4, 14, 4);
         _hostLabel.Margin = Padding.Empty;
         _hostLabel.TextAlign = ContentAlignment.MiddleLeft;
         _host.AccessibleName = "服务器";
@@ -223,7 +223,7 @@ internal sealed partial class DatabaseConnectionDialog
         _hostSurface.Name = "_hostSurface";
         _hostSurface.Dock = DockStyle.Top;
         _hostSurface.Width = 220;
-        _hostSurface.Margin = new Padding(0, 5, 0, 10);
+        _hostSurface.Margin = new Padding(0, 3, 0, 5);
         _hostSurface.TabIndex = 4;
         _host.Dock = DockStyle.None;
         _host.Margin = Padding.Empty;
@@ -232,7 +232,7 @@ internal sealed partial class DatabaseConnectionDialog
         _port = new NumericUpDown();
         _port.Name = "_port";
         _port.Dock = DockStyle.Fill;
-        _port.Margin = new Padding(0, 5, 0, 10);
+        _port.Margin = new Padding(0, 3, 0, 5);
         _port.ThousandsSeparator = true;
         _port.Minimum = 1;
         _port.Maximum = 65535;
@@ -245,7 +245,7 @@ internal sealed partial class DatabaseConnectionDialog
         _portLabel.ForeColor = UiTheme.Ink;
         _portLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _portLabel.Margin = new Padding(0, 4, 0, 4);
-        _portLabel.Padding = new Padding(0, 7, 14, 7);
+        _portLabel.Padding = new Padding(0, 4, 14, 4);
         _portLabel.Margin = Padding.Empty;
         _portLabel.TextAlign = ContentAlignment.MiddleLeft;
         _port.AccessibleName = "端口";
@@ -256,7 +256,7 @@ internal sealed partial class DatabaseConnectionDialog
         _portSurface.Name = "_portSurface";
         _portSurface.Dock = DockStyle.Top;
         _portSurface.Width = 220;
-        _portSurface.Margin = new Padding(0, 5, 0, 10);
+        _portSurface.Margin = new Padding(0, 3, 0, 5);
         _portSurface.TabIndex = 5;
         _port.Dock = DockStyle.None;
         _port.Margin = Padding.Empty;
@@ -265,7 +265,7 @@ internal sealed partial class DatabaseConnectionDialog
         _database = new GatewayInput();
         _database.Name = "_database";
         _database.Dock = DockStyle.Fill;
-        _database.Margin = new Padding(0, 5, 0, 10);
+        _database.Margin = new Padding(0, 3, 0, 5);
         _database.MinimumSize = new Size(150, 30);
         _database.BorderStyle = BorderStyle.FixedSingle;
         _database.Name = "DatabaseCatalog";
@@ -277,7 +277,7 @@ internal sealed partial class DatabaseConnectionDialog
         _databaseLabel.ForeColor = UiTheme.Ink;
         _databaseLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _databaseLabel.Margin = new Padding(0, 4, 0, 4);
-        _databaseLabel.Padding = new Padding(0, 7, 14, 7);
+        _databaseLabel.Padding = new Padding(0, 4, 14, 4);
         _databaseLabel.Margin = Padding.Empty;
         _databaseLabel.TextAlign = ContentAlignment.MiddleLeft;
         _database.AccessibleName = "数据库 / Oracle 服务名";
@@ -288,7 +288,7 @@ internal sealed partial class DatabaseConnectionDialog
         _databaseSurface.Name = "_databaseSurface";
         _databaseSurface.Dock = DockStyle.Top;
         _databaseSurface.Width = 220;
-        _databaseSurface.Margin = new Padding(0, 5, 0, 10);
+        _databaseSurface.Margin = new Padding(0, 3, 0, 5);
         _databaseSurface.TabIndex = 6;
         _database.Dock = DockStyle.None;
         _database.Margin = Padding.Empty;
@@ -297,7 +297,7 @@ internal sealed partial class DatabaseConnectionDialog
         _username = new GatewayInput();
         _username.Name = "_username";
         _username.Dock = DockStyle.Fill;
-        _username.Margin = new Padding(0, 5, 0, 10);
+        _username.Margin = new Padding(0, 3, 0, 5);
         _username.MinimumSize = new Size(150, 30);
         _username.BorderStyle = BorderStyle.FixedSingle;
         _username.Name = "DatabaseUsername";
@@ -309,7 +309,7 @@ internal sealed partial class DatabaseConnectionDialog
         _usernameLabel.ForeColor = UiTheme.Ink;
         _usernameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _usernameLabel.Margin = new Padding(0, 4, 0, 4);
-        _usernameLabel.Padding = new Padding(0, 7, 14, 7);
+        _usernameLabel.Padding = new Padding(0, 4, 14, 4);
         _usernameLabel.Margin = Padding.Empty;
         _usernameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _username.AccessibleName = "用户名";
@@ -320,7 +320,7 @@ internal sealed partial class DatabaseConnectionDialog
         _usernameSurface.Name = "_usernameSurface";
         _usernameSurface.Dock = DockStyle.Top;
         _usernameSurface.Width = 220;
-        _usernameSurface.Margin = new Padding(0, 5, 0, 10);
+        _usernameSurface.Margin = new Padding(0, 3, 0, 5);
         _usernameSurface.TabIndex = 7;
         _username.Dock = DockStyle.None;
         _username.Margin = Padding.Empty;
@@ -329,7 +329,7 @@ internal sealed partial class DatabaseConnectionDialog
         _password = new GatewayInput();
         _password.Name = "_password";
         _password.Dock = DockStyle.Fill;
-        _password.Margin = new Padding(0, 5, 0, 10);
+        _password.Margin = new Padding(0, 3, 0, 5);
         _password.MinimumSize = new Size(150, 30);
         _password.BorderStyle = BorderStyle.FixedSingle;
         _password.UseSystemPasswordChar = true;
@@ -343,7 +343,7 @@ internal sealed partial class DatabaseConnectionDialog
         _passwordLabel.ForeColor = UiTheme.Ink;
         _passwordLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _passwordLabel.Margin = new Padding(0, 4, 0, 4);
-        _passwordLabel.Padding = new Padding(0, 7, 14, 7);
+        _passwordLabel.Padding = new Padding(0, 4, 14, 4);
         _passwordLabel.Margin = Padding.Empty;
         _passwordLabel.TextAlign = ContentAlignment.MiddleLeft;
         _password.AccessibleName = "密码";
@@ -354,7 +354,7 @@ internal sealed partial class DatabaseConnectionDialog
         _passwordSurface.Name = "_passwordSurface";
         _passwordSurface.Dock = DockStyle.Top;
         _passwordSurface.Width = 220;
-        _passwordSurface.Margin = new Padding(0, 5, 0, 10);
+        _passwordSurface.Margin = new Padding(0, 3, 0, 5);
         _passwordSurface.TabIndex = 8;
         _password.Dock = DockStyle.None;
         _password.Margin = Padding.Empty;
@@ -363,7 +363,7 @@ internal sealed partial class DatabaseConnectionDialog
         _tls = new AntdUI.Checkbox();
         _tls.Name = "_tls";
         _tls.Dock = DockStyle.Fill;
-        _tls.Margin = new Padding(0, 5, 0, 10);
+        _tls.Margin = new Padding(0, 3, 0, 5);
         _tls.AutoSize = true;
         _tls.MinimumSize = new Size(0, 32);
         _tls.Text = "启用 TLS（验证服务器证书）";
@@ -376,7 +376,7 @@ internal sealed partial class DatabaseConnectionDialog
         _tlsLabel.ForeColor = UiTheme.Ink;
         _tlsLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _tlsLabel.Margin = new Padding(0, 4, 0, 4);
-        _tlsLabel.Padding = new Padding(0, 7, 14, 7);
+        _tlsLabel.Padding = new Padding(0, 4, 14, 4);
         _tlsLabel.Margin = Padding.Empty;
         _tlsLabel.TextAlign = ContentAlignment.MiddleLeft;
         _tls.AccessibleName = "连接加密";
@@ -394,7 +394,7 @@ internal sealed partial class DatabaseConnectionDialog
         testConnectionButton.Radius = 6;
         testConnectionButton.WaveSize = 0;
         testConnectionButton.Type = AntdUI.TTypeMini.Primary;
-        testConnectionButton.Padding = new Padding(13, 6, 13, 6);
+        testConnectionButton.Padding = new Padding(10, 4, 10, 4);
         testConnectionButton.Margin = new Padding(0, 0, 8, 6);
         testConnectionButton.Cursor = Cursors.Hand;
         testConnectionButton.Name = "TestDatabaseConnection";
@@ -423,7 +423,7 @@ internal sealed partial class DatabaseConnectionDialog
         batchFieldsViewport.Name = "batchFieldsViewport";
         batchFieldsViewport.Dock = DockStyle.Fill;
         batchFieldsViewport.AutoScroll = true;
-        batchFieldsViewport.Padding = new Padding(14);
+        batchFieldsViewport.Padding = new Padding(10);
         batchFieldsViewport.Margin = Padding.Empty;
         batchFields = new TableLayoutPanel();
         batchFields.Name = "batchFields";
@@ -447,16 +447,16 @@ internal sealed partial class DatabaseConnectionDialog
         batchFieldsSection3.ForeColor = UiTheme.Ink;
         batchFieldsSection3.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         batchFieldsSection3.Margin = new Padding(0, 4, 0, 4);
-        batchFieldsSection3.BackColor = UiTheme.BlueSoft;
-        batchFieldsSection3.Padding = new Padding(12, 8, 12, 8);
-        batchFieldsSection3.Margin = new Padding(0, 12, 0, 8);
+        batchFieldsSection3.BackColor = UiTheme.SurfaceSubtle;
+        batchFieldsSection3.Padding = new Padding(10, 6, 10, 6);
+        batchFieldsSection3.Margin = new Padding(0, 8, 0, 6);
         batchFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         batchFields.Controls.Add(batchFieldsSection3, 0, 0);
         batchFields.SetColumnSpan(batchFieldsSection3, 2);
         _connectTimeout = new NumericUpDown();
         _connectTimeout.Name = "_connectTimeout";
         _connectTimeout.Dock = DockStyle.Fill;
-        _connectTimeout.Margin = new Padding(0, 5, 0, 10);
+        _connectTimeout.Margin = new Padding(0, 3, 0, 5);
         _connectTimeout.ThousandsSeparator = true;
         _connectTimeout.Minimum = 1;
         _connectTimeout.Maximum = 120;
@@ -469,7 +469,7 @@ internal sealed partial class DatabaseConnectionDialog
         _connectTimeoutLabel.ForeColor = UiTheme.Ink;
         _connectTimeoutLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _connectTimeoutLabel.Margin = new Padding(0, 4, 0, 4);
-        _connectTimeoutLabel.Padding = new Padding(0, 7, 14, 7);
+        _connectTimeoutLabel.Padding = new Padding(0, 4, 14, 4);
         _connectTimeoutLabel.Margin = Padding.Empty;
         _connectTimeoutLabel.TextAlign = ContentAlignment.MiddleLeft;
         _connectTimeout.AccessibleName = "连接超时（秒）";
@@ -480,7 +480,7 @@ internal sealed partial class DatabaseConnectionDialog
         _connectTimeoutSurface.Name = "_connectTimeoutSurface";
         _connectTimeoutSurface.Dock = DockStyle.Top;
         _connectTimeoutSurface.Width = 220;
-        _connectTimeoutSurface.Margin = new Padding(0, 5, 0, 10);
+        _connectTimeoutSurface.Margin = new Padding(0, 3, 0, 5);
         _connectTimeoutSurface.TabIndex = 1;
         _connectTimeout.Dock = DockStyle.None;
         _connectTimeout.Margin = Padding.Empty;
@@ -489,7 +489,7 @@ internal sealed partial class DatabaseConnectionDialog
         _commandTimeout = new NumericUpDown();
         _commandTimeout.Name = "_commandTimeout";
         _commandTimeout.Dock = DockStyle.Fill;
-        _commandTimeout.Margin = new Padding(0, 5, 0, 10);
+        _commandTimeout.Margin = new Padding(0, 3, 0, 5);
         _commandTimeout.ThousandsSeparator = true;
         _commandTimeout.Minimum = 1;
         _commandTimeout.Maximum = 300;
@@ -502,7 +502,7 @@ internal sealed partial class DatabaseConnectionDialog
         _commandTimeoutLabel.ForeColor = UiTheme.Ink;
         _commandTimeoutLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _commandTimeoutLabel.Margin = new Padding(0, 4, 0, 4);
-        _commandTimeoutLabel.Padding = new Padding(0, 7, 14, 7);
+        _commandTimeoutLabel.Padding = new Padding(0, 4, 14, 4);
         _commandTimeoutLabel.Margin = Padding.Empty;
         _commandTimeoutLabel.TextAlign = ContentAlignment.MiddleLeft;
         _commandTimeout.AccessibleName = "命令超时（秒）";
@@ -513,7 +513,7 @@ internal sealed partial class DatabaseConnectionDialog
         _commandTimeoutSurface.Name = "_commandTimeoutSurface";
         _commandTimeoutSurface.Dock = DockStyle.Top;
         _commandTimeoutSurface.Width = 220;
-        _commandTimeoutSurface.Margin = new Padding(0, 5, 0, 10);
+        _commandTimeoutSurface.Margin = new Padding(0, 3, 0, 5);
         _commandTimeoutSurface.TabIndex = 2;
         _commandTimeout.Dock = DockStyle.None;
         _commandTimeout.Margin = Padding.Empty;
@@ -527,9 +527,9 @@ internal sealed partial class DatabaseConnectionDialog
         batchFieldsSection4.ForeColor = UiTheme.Ink;
         batchFieldsSection4.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         batchFieldsSection4.Margin = new Padding(0, 4, 0, 4);
-        batchFieldsSection4.BackColor = UiTheme.BlueSoft;
-        batchFieldsSection4.Padding = new Padding(12, 8, 12, 8);
-        batchFieldsSection4.Margin = new Padding(0, 12, 0, 8);
+        batchFieldsSection4.BackColor = UiTheme.SurfaceSubtle;
+        batchFieldsSection4.Padding = new Padding(10, 6, 10, 6);
+        batchFieldsSection4.Margin = new Padding(0, 8, 0, 6);
         batchFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         batchFields.Controls.Add(batchFieldsSection4, 0, 3);
         batchFields.SetColumnSpan(batchFieldsSection4, 2);
@@ -549,7 +549,7 @@ internal sealed partial class DatabaseConnectionDialog
         _batch = new NumericUpDown();
         _batch.Name = "_batch";
         _batch.Dock = DockStyle.Fill;
-        _batch.Margin = new Padding(0, 5, 0, 10);
+        _batch.Margin = new Padding(0, 3, 0, 5);
         _batch.ThousandsSeparator = true;
         _batch.Minimum = 1;
         _batch.Maximum = 5000;
@@ -562,7 +562,7 @@ internal sealed partial class DatabaseConnectionDialog
         _batchLabel.ForeColor = UiTheme.Ink;
         _batchLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _batchLabel.Margin = new Padding(0, 4, 0, 4);
-        _batchLabel.Padding = new Padding(0, 7, 14, 7);
+        _batchLabel.Padding = new Padding(0, 4, 14, 4);
         _batchLabel.Margin = Padding.Empty;
         _batchLabel.TextAlign = ContentAlignment.MiddleLeft;
         _batch.AccessibleName = "每批最大行数";
@@ -573,7 +573,7 @@ internal sealed partial class DatabaseConnectionDialog
         _batchSurface.Name = "_batchSurface";
         _batchSurface.Dock = DockStyle.Top;
         _batchSurface.Width = 220;
-        _batchSurface.Margin = new Padding(0, 5, 0, 10);
+        _batchSurface.Margin = new Padding(0, 3, 0, 5);
         _batchSurface.TabIndex = 5;
         _batch.Dock = DockStyle.None;
         _batch.Margin = Padding.Empty;
@@ -582,7 +582,7 @@ internal sealed partial class DatabaseConnectionDialog
         _flush = new NumericUpDown();
         _flush.Name = "_flush";
         _flush.Dock = DockStyle.Fill;
-        _flush.Margin = new Padding(0, 5, 0, 10);
+        _flush.Margin = new Padding(0, 3, 0, 5);
         _flush.ThousandsSeparator = true;
         _flush.Minimum = 50;
         _flush.Maximum = 60000;
@@ -595,7 +595,7 @@ internal sealed partial class DatabaseConnectionDialog
         _flushLabel.ForeColor = UiTheme.Ink;
         _flushLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _flushLabel.Margin = new Padding(0, 4, 0, 4);
-        _flushLabel.Padding = new Padding(0, 7, 14, 7);
+        _flushLabel.Padding = new Padding(0, 4, 14, 4);
         _flushLabel.Margin = Padding.Empty;
         _flushLabel.TextAlign = ContentAlignment.MiddleLeft;
         _flush.AccessibleName = "提交间隔（ms）";
@@ -606,7 +606,7 @@ internal sealed partial class DatabaseConnectionDialog
         _flushSurface.Name = "_flushSurface";
         _flushSurface.Dock = DockStyle.Top;
         _flushSurface.Width = 220;
-        _flushSurface.Margin = new Padding(0, 5, 0, 10);
+        _flushSurface.Margin = new Padding(0, 3, 0, 5);
         _flushSurface.TabIndex = 6;
         _flush.Dock = DockStyle.None;
         _flush.Margin = Padding.Empty;
@@ -615,7 +615,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacity = new NumericUpDown();
         _capacity.Name = "_capacity";
         _capacity.Dock = DockStyle.Fill;
-        _capacity.Margin = new Padding(0, 5, 0, 10);
+        _capacity.Margin = new Padding(0, 3, 0, 5);
         _capacity.ThousandsSeparator = true;
         _capacity.Minimum = 1;
         _capacity.Maximum = 1000000;
@@ -628,7 +628,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacityLabel.ForeColor = UiTheme.Ink;
         _capacityLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _capacityLabel.Margin = new Padding(0, 4, 0, 4);
-        _capacityLabel.Padding = new Padding(0, 7, 14, 7);
+        _capacityLabel.Padding = new Padding(0, 4, 14, 4);
         _capacityLabel.Margin = Padding.Empty;
         _capacityLabel.TextAlign = ContentAlignment.MiddleLeft;
         _capacity.AccessibleName = "队列最大行数";
@@ -639,7 +639,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacitySurface.Name = "_capacitySurface";
         _capacitySurface.Dock = DockStyle.Top;
         _capacitySurface.Width = 220;
-        _capacitySurface.Margin = new Padding(0, 5, 0, 10);
+        _capacitySurface.Margin = new Padding(0, 3, 0, 5);
         _capacitySurface.TabIndex = 7;
         _capacity.Dock = DockStyle.None;
         _capacity.Margin = Padding.Empty;
@@ -648,7 +648,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacityMb = new NumericUpDown();
         _capacityMb.Name = "_capacityMb";
         _capacityMb.Dock = DockStyle.Fill;
-        _capacityMb.Margin = new Padding(0, 5, 0, 10);
+        _capacityMb.Margin = new Padding(0, 3, 0, 5);
         _capacityMb.ThousandsSeparator = true;
         _capacityMb.Minimum = 1;
         _capacityMb.Maximum = 1024;
@@ -661,7 +661,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacityMbLabel.ForeColor = UiTheme.Ink;
         _capacityMbLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _capacityMbLabel.Margin = new Padding(0, 4, 0, 4);
-        _capacityMbLabel.Padding = new Padding(0, 7, 14, 7);
+        _capacityMbLabel.Padding = new Padding(0, 4, 14, 4);
         _capacityMbLabel.Margin = Padding.Empty;
         _capacityMbLabel.TextAlign = ContentAlignment.MiddleLeft;
         _capacityMb.AccessibleName = "队列最大大小（M）";
@@ -672,7 +672,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacityMbSurface.Name = "_capacityMbSurface";
         _capacityMbSurface.Dock = DockStyle.Top;
         _capacityMbSurface.Width = 220;
-        _capacityMbSurface.Margin = new Padding(0, 5, 0, 10);
+        _capacityMbSurface.Margin = new Padding(0, 3, 0, 5);
         _capacityMbSurface.TabIndex = 8;
         _capacityMb.Dock = DockStyle.None;
         _capacityMb.Margin = Padding.Empty;
@@ -681,7 +681,7 @@ internal sealed partial class DatabaseConnectionDialog
         _retryAttempts = new NumericUpDown();
         _retryAttempts.Name = "_retryAttempts";
         _retryAttempts.Dock = DockStyle.Fill;
-        _retryAttempts.Margin = new Padding(0, 5, 0, 10);
+        _retryAttempts.Margin = new Padding(0, 3, 0, 5);
         _retryAttempts.ThousandsSeparator = true;
         _retryAttempts.Minimum = 1;
         _retryAttempts.Maximum = 10;
@@ -694,7 +694,7 @@ internal sealed partial class DatabaseConnectionDialog
         _retryAttemptsLabel.ForeColor = UiTheme.Ink;
         _retryAttemptsLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _retryAttemptsLabel.Margin = new Padding(0, 4, 0, 4);
-        _retryAttemptsLabel.Padding = new Padding(0, 7, 14, 7);
+        _retryAttemptsLabel.Padding = new Padding(0, 4, 14, 4);
         _retryAttemptsLabel.Margin = Padding.Empty;
         _retryAttemptsLabel.TextAlign = ContentAlignment.MiddleLeft;
         _retryAttempts.AccessibleName = "每批最多尝试次数";
@@ -705,7 +705,7 @@ internal sealed partial class DatabaseConnectionDialog
         _retryAttemptsSurface.Name = "_retryAttemptsSurface";
         _retryAttemptsSurface.Dock = DockStyle.Top;
         _retryAttemptsSurface.Width = 220;
-        _retryAttemptsSurface.Margin = new Padding(0, 5, 0, 10);
+        _retryAttemptsSurface.Margin = new Padding(0, 3, 0, 5);
         _retryAttemptsSurface.TabIndex = 9;
         _retryAttempts.Dock = DockStyle.None;
         _retryAttempts.Margin = Padding.Empty;

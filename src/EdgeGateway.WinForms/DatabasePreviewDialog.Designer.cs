@@ -33,7 +33,7 @@ internal sealed partial class DatabasePreviewDialog
         summaryFieldsViewport.Name = "summaryFieldsViewport";
         summaryFieldsViewport.Dock = DockStyle.Fill;
         summaryFieldsViewport.AutoScroll = true;
-        summaryFieldsViewport.Padding = new Padding(14);
+        summaryFieldsViewport.Padding = new Padding(10);
         summaryFieldsViewport.Margin = Padding.Empty;
         summaryFields = new TableLayoutPanel();
         summaryFields.Name = "summaryFields";
@@ -89,7 +89,7 @@ internal sealed partial class DatabasePreviewDialog
         messages = new GatewayInput();
         messages.Name = "messages";
         messages.Dock = DockStyle.Fill;
-        messages.Margin = new Padding(0, 5, 0, 10);
+        messages.Margin = new Padding(0, 3, 0, 5);
         messages.MinimumSize = new Size(150, 30);
         messages.BorderStyle = BorderStyle.FixedSingle;
         messages.Multiline = true;
@@ -124,7 +124,9 @@ internal sealed partial class DatabasePreviewDialog
         valuesGrid.GridColor = UiTheme.Border;
         valuesGrid.DefaultCellStyle.SelectionBackColor = UiTheme.BlueSoft;
         valuesGrid.DefaultCellStyle.SelectionForeColor = UiTheme.Ink;
-        valuesGrid.ColumnHeadersDefaultCellStyle.BackColor = UiTheme.BlueSoft;
+        valuesGrid.ColumnHeadersDefaultCellStyle.BackColor = UiTheme.SurfaceSubtle;
+        valuesGrid.ColumnHeadersDefaultCellStyle.SelectionBackColor = UiTheme.SurfaceSubtle;
+        valuesGrid.ColumnHeadersDefaultCellStyle.SelectionForeColor = UiTheme.Ink;
         valuesGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         valuesGrid.Name = "DatabasePreviewValues";
         valuesGridColumnColumn = new DataGridViewTextBoxColumn();

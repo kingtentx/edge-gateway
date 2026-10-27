@@ -173,6 +173,50 @@ public sealed partial class MainForm
         if (!condition) throw new InvalidOperationException("Usability smoke: " + message);
     }
 
+    private void SmokeListSpace()
+    {
+        var originalSize = ClientSize;
+        var split = _devicesPageView.ListSplit;
+        var originalDistance = split.SplitterDistance;
+        var selectedDevice = SelectedDevice()?.Id;
+        var selectedTag = SelectedTag()?.Id;
+        try
+        {
+            CheckUsability(_deviceGrid.ClientSize.Height >= _deviceGrid.ColumnHeadersHeight + _deviceGrid.RowTemplate.Height * 3
+                && _tagGrid.ClientSize.Height >= _tagGrid.ColumnHeadersHeight + _tagGrid.RowTemplate.Height * 3,
+                "default lists must each offer at least three full rows.");
+            var target = Math.Clamp(originalDistance + UiTheme.Scale(this, 48), split.Panel1MinSize,
+                split.Height - split.SplitterWidth - split.Panel2MinSize);
+            // Exercise the same public WinForms events used by a native splitter drag.
+            split.OnSplitterMoving(new SplitterCancelEventArgs(1, target, 1, target));
+            split.SplitterDistance = target;
+            PerformLayoutRecursively(this);
+            CheckUsability(split.SplitterDistance == target && target > originalDistance, "drag did not enlarge the device list.");
+            RebindConfigurationViews(selectedDevice);
+            PerformLayoutRecursively(this);
+            CheckUsability(split.SplitterDistance == target && SelectedDevice()?.Id == selectedDevice && SelectedTag()?.Id == selectedTag,
+                "refresh lost the divider position or row identity.");
+            SaveEditorScreenshot(this, "skin", "lists-adjusted");
+            ClientSize = new Size(originalSize.Width, Math.Min(originalSize.Height, UiTheme.Scale(this, 600)));
+            PerformLayoutRecursively(this);
+            BringIntoViewAndAssert(_devicesPageView.AddDeviceButton, "short window device actions");
+            BringIntoViewAndAssert(_devicesPageView.AddTagButton, "short window point actions");
+            BringIntoViewAndAssert(_tagSearch, "short window point search");
+            CheckUsability(_tagGrid.ClientSize.Height >= _tagGrid.ColumnHeadersHeight + _tagGrid.RowTemplate.Height * 2,
+                "short window collapsed the point list.");
+            SaveEditorScreenshot(this, "skin", "short-window");
+            Console.WriteLine($"Skin list layout passed at actual {DeviceDpi} DPI: both grids >= 3 initial rows; divider adjustment and refresh retain selection; short window actions reachable.");
+        }
+        finally
+        {
+            ClientSize = originalSize;
+            typeof(SplitContainer).GetMethod("OnDoubleClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(split, [EventArgs.Empty]);
+            PerformLayoutRecursively(this);
+            ResetScrollPositions(_pages["devices"], _navigation["devices"]);
+        }
+    }
+
     private static ToolStripMenuItem MenuItem(CommandMenuButton button, string key) =>
         button.OpenedMenu.Items.OfType<ToolStripMenuItem>().Single(item => item.Name == key);
 

@@ -63,7 +63,7 @@ internal sealed partial class DeviceConfigurationDialog
         acquisitionViewport.Name = "acquisitionViewport";
         acquisitionViewport.Dock = DockStyle.Fill;
         acquisitionViewport.AutoScroll = true;
-        acquisitionViewport.Padding = new Padding(14);
+        acquisitionViewport.Padding = new Padding(10);
         acquisitionViewport.Margin = Padding.Empty;
         acquisition = new TableLayoutPanel();
         acquisition.Name = "acquisition";
@@ -88,16 +88,16 @@ internal sealed partial class DeviceConfigurationDialog
         acquisitionSection1.ForeColor = UiTheme.Ink;
         acquisitionSection1.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         acquisitionSection1.Margin = new Padding(0, 4, 0, 4);
-        acquisitionSection1.BackColor = UiTheme.BlueSoft;
-        acquisitionSection1.Padding = new Padding(12, 8, 12, 8);
-        acquisitionSection1.Margin = new Padding(0, 12, 0, 8);
+        acquisitionSection1.BackColor = UiTheme.SurfaceSubtle;
+        acquisitionSection1.Padding = new Padding(10, 6, 10, 6);
+        acquisitionSection1.Margin = new Padding(0, 8, 0, 6);
         acquisition.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         acquisition.Controls.Add(acquisitionSection1, 0, 0);
         acquisition.SetColumnSpan(acquisitionSection1, 2);
         _enabled = new AntdUI.Checkbox();
         _enabled.Name = "_enabled";
         _enabled.Dock = DockStyle.Fill;
-        _enabled.Margin = new Padding(0, 5, 0, 10);
+        _enabled.Margin = new Padding(0, 3, 0, 5);
         _enabled.AutoSize = true;
         _enabled.MinimumSize = new Size(0, 32);
         _enabled.Text = "启用设备";
@@ -109,7 +109,7 @@ internal sealed partial class DeviceConfigurationDialog
         _enabledLabel.ForeColor = UiTheme.Ink;
         _enabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _enabledLabel.Margin = new Padding(0, 4, 0, 4);
-        _enabledLabel.Padding = new Padding(0, 7, 14, 7);
+        _enabledLabel.Padding = new Padding(0, 4, 14, 4);
         _enabledLabel.Margin = Padding.Empty;
         _enabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _enabled.AccessibleName = "启用状态";
@@ -120,7 +120,7 @@ internal sealed partial class DeviceConfigurationDialog
         _name = new GatewayInput();
         _name.Name = "_name";
         _name.Dock = DockStyle.Fill;
-        _name.Margin = new Padding(0, 5, 0, 10);
+        _name.Margin = new Padding(0, 3, 0, 5);
         _name.MinimumSize = new Size(150, 30);
         _name.BorderStyle = BorderStyle.FixedSingle;
         _nameLabel = new Label();
@@ -131,7 +131,7 @@ internal sealed partial class DeviceConfigurationDialog
         _nameLabel.ForeColor = UiTheme.Ink;
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
-        _nameLabel.Padding = new Padding(0, 7, 14, 7);
+        _nameLabel.Padding = new Padding(0, 4, 14, 4);
         _nameLabel.Margin = Padding.Empty;
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "设备名称";
@@ -142,7 +142,7 @@ internal sealed partial class DeviceConfigurationDialog
         _nameSurface.Name = "_nameSurface";
         _nameSurface.Dock = DockStyle.Top;
         _nameSurface.Width = 220;
-        _nameSurface.Margin = new Padding(0, 5, 0, 10);
+        _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 2;
         _name.Dock = DockStyle.None;
         _name.Margin = Padding.Empty;
@@ -151,7 +151,7 @@ internal sealed partial class DeviceConfigurationDialog
         _group = new GatewayInput();
         _group.Name = "_group";
         _group.Dock = DockStyle.Fill;
-        _group.Margin = new Padding(0, 5, 0, 10);
+        _group.Margin = new Padding(0, 3, 0, 5);
         _group.MinimumSize = new Size(150, 30);
         _group.BorderStyle = BorderStyle.FixedSingle;
         _groupLabel = new Label();
@@ -162,7 +162,7 @@ internal sealed partial class DeviceConfigurationDialog
         _groupLabel.ForeColor = UiTheme.Ink;
         _groupLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _groupLabel.Margin = new Padding(0, 4, 0, 4);
-        _groupLabel.Padding = new Padding(0, 7, 14, 7);
+        _groupLabel.Padding = new Padding(0, 4, 14, 4);
         _groupLabel.Margin = Padding.Empty;
         _groupLabel.TextAlign = ContentAlignment.MiddleLeft;
         _group.AccessibleName = "设备分组";
@@ -173,7 +173,7 @@ internal sealed partial class DeviceConfigurationDialog
         _groupSurface.Name = "_groupSurface";
         _groupSurface.Dock = DockStyle.Top;
         _groupSurface.Width = 220;
-        _groupSurface.Margin = new Padding(0, 5, 0, 10);
+        _groupSurface.Margin = new Padding(0, 3, 0, 5);
         _groupSurface.TabIndex = 3;
         _group.Dock = DockStyle.None;
         _group.Margin = Padding.Empty;
@@ -187,9 +187,9 @@ internal sealed partial class DeviceConfigurationDialog
         acquisitionSection2.ForeColor = UiTheme.Ink;
         acquisitionSection2.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         acquisitionSection2.Margin = new Padding(0, 4, 0, 4);
-        acquisitionSection2.BackColor = UiTheme.BlueSoft;
-        acquisitionSection2.Padding = new Padding(12, 8, 12, 8);
-        acquisitionSection2.Margin = new Padding(0, 12, 0, 8);
+        acquisitionSection2.BackColor = UiTheme.SurfaceSubtle;
+        acquisitionSection2.Padding = new Padding(10, 6, 10, 6);
+        acquisitionSection2.Margin = new Padding(0, 8, 0, 6);
         acquisition.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         acquisition.Controls.Add(acquisitionSection2, 0, 4);
         acquisition.SetColumnSpan(acquisitionSection2, 2);
@@ -209,7 +209,7 @@ internal sealed partial class DeviceConfigurationDialog
         _driver = new ComboBox();
         _driver.Name = "_driver";
         _driver.Dock = DockStyle.Fill;
-        _driver.Margin = new Padding(0, 5, 0, 10);
+        _driver.Margin = new Padding(0, 3, 0, 5);
         _driver.DropDownStyle = ComboBoxStyle.DropDownList;
         _driver.IntegralHeight = false;
         _driver.DropDownHeight = 320;
@@ -222,7 +222,7 @@ internal sealed partial class DeviceConfigurationDialog
         _driverLabel.ForeColor = UiTheme.Ink;
         _driverLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _driverLabel.Margin = new Padding(0, 4, 0, 4);
-        _driverLabel.Padding = new Padding(0, 7, 14, 7);
+        _driverLabel.Padding = new Padding(0, 4, 14, 4);
         _driverLabel.Margin = Padding.Empty;
         _driverLabel.TextAlign = ContentAlignment.MiddleLeft;
         _driver.AccessibleName = "采集驱动";
@@ -233,7 +233,7 @@ internal sealed partial class DeviceConfigurationDialog
         _driverSurface.Name = "_driverSurface";
         _driverSurface.Dock = DockStyle.Top;
         _driverSurface.Width = 220;
-        _driverSurface.Margin = new Padding(0, 5, 0, 10);
+        _driverSurface.Margin = new Padding(0, 3, 0, 5);
         _driverSurface.TabIndex = 6;
         _driver.Dock = DockStyle.None;
         _driver.Margin = Padding.Empty;
@@ -242,7 +242,7 @@ internal sealed partial class DeviceConfigurationDialog
         _channel = new ComboBox();
         _channel.Name = "_channel";
         _channel.Dock = DockStyle.Fill;
-        _channel.Margin = new Padding(0, 5, 0, 10);
+        _channel.Margin = new Padding(0, 3, 0, 5);
         _channel.DropDownStyle = ComboBoxStyle.DropDownList;
         _channel.IntegralHeight = false;
         _channel.DropDownHeight = 320;
@@ -254,7 +254,7 @@ internal sealed partial class DeviceConfigurationDialog
         _channelLabel.ForeColor = UiTheme.Ink;
         _channelLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _channelLabel.Margin = new Padding(0, 4, 0, 4);
-        _channelLabel.Padding = new Padding(0, 7, 14, 7);
+        _channelLabel.Padding = new Padding(0, 4, 14, 4);
         _channelLabel.Margin = Padding.Empty;
         _channelLabel.TextAlign = ContentAlignment.MiddleLeft;
         _channel.AccessibleName = "通信通道";
@@ -265,7 +265,7 @@ internal sealed partial class DeviceConfigurationDialog
         _channelSurface.Name = "_channelSurface";
         _channelSurface.Dock = DockStyle.Top;
         _channelSurface.Width = 220;
-        _channelSurface.Margin = new Padding(0, 5, 0, 10);
+        _channelSurface.Margin = new Padding(0, 3, 0, 5);
         _channelSurface.TabIndex = 7;
         _channel.Dock = DockStyle.None;
         _channel.Margin = Padding.Empty;
@@ -274,7 +274,7 @@ internal sealed partial class DeviceConfigurationDialog
         _cycle = new NumericUpDown();
         _cycle.Name = "_cycle";
         _cycle.Dock = DockStyle.Fill;
-        _cycle.Margin = new Padding(0, 5, 0, 10);
+        _cycle.Margin = new Padding(0, 3, 0, 5);
         _cycle.ThousandsSeparator = true;
         _cycle.Minimum = 100;
         _cycle.Maximum = 3600000;
@@ -286,7 +286,7 @@ internal sealed partial class DeviceConfigurationDialog
         _cycleLabel.ForeColor = UiTheme.Ink;
         _cycleLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _cycleLabel.Margin = new Padding(0, 4, 0, 4);
-        _cycleLabel.Padding = new Padding(0, 7, 14, 7);
+        _cycleLabel.Padding = new Padding(0, 4, 14, 4);
         _cycleLabel.Margin = Padding.Empty;
         _cycleLabel.TextAlign = ContentAlignment.MiddleLeft;
         _cycle.AccessibleName = "采集周期 (ms)";
@@ -297,7 +297,7 @@ internal sealed partial class DeviceConfigurationDialog
         _cycleSurface.Name = "_cycleSurface";
         _cycleSurface.Dock = DockStyle.Top;
         _cycleSurface.Width = 220;
-        _cycleSurface.Margin = new Padding(0, 5, 0, 10);
+        _cycleSurface.Margin = new Padding(0, 3, 0, 5);
         _cycleSurface.TabIndex = 8;
         _cycle.Dock = DockStyle.None;
         _cycle.Margin = Padding.Empty;
@@ -306,7 +306,7 @@ internal sealed partial class DeviceConfigurationDialog
         _timeout = new NumericUpDown();
         _timeout.Name = "_timeout";
         _timeout.Dock = DockStyle.Fill;
-        _timeout.Margin = new Padding(0, 5, 0, 10);
+        _timeout.Margin = new Padding(0, 3, 0, 5);
         _timeout.ThousandsSeparator = true;
         _timeout.Minimum = 100;
         _timeout.Maximum = 120000;
@@ -318,7 +318,7 @@ internal sealed partial class DeviceConfigurationDialog
         _timeoutLabel.ForeColor = UiTheme.Ink;
         _timeoutLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _timeoutLabel.Margin = new Padding(0, 4, 0, 4);
-        _timeoutLabel.Padding = new Padding(0, 7, 14, 7);
+        _timeoutLabel.Padding = new Padding(0, 4, 14, 4);
         _timeoutLabel.Margin = Padding.Empty;
         _timeoutLabel.TextAlign = ContentAlignment.MiddleLeft;
         _timeout.AccessibleName = "通信超时 (ms)";
@@ -329,7 +329,7 @@ internal sealed partial class DeviceConfigurationDialog
         _timeoutSurface.Name = "_timeoutSurface";
         _timeoutSurface.Dock = DockStyle.Top;
         _timeoutSurface.Width = 220;
-        _timeoutSurface.Margin = new Padding(0, 5, 0, 10);
+        _timeoutSurface.Margin = new Padding(0, 3, 0, 5);
         _timeoutSurface.TabIndex = 9;
         _timeout.Dock = DockStyle.None;
         _timeout.Margin = Padding.Empty;
@@ -367,7 +367,7 @@ internal sealed partial class DeviceConfigurationDialog
         scanningViewport.Name = "scanningViewport";
         scanningViewport.Dock = DockStyle.Fill;
         scanningViewport.AutoScroll = true;
-        scanningViewport.Padding = new Padding(14);
+        scanningViewport.Padding = new Padding(10);
         scanningViewport.Margin = Padding.Empty;
         scanning = new TableLayoutPanel();
         scanning.Name = "scanning";
@@ -391,9 +391,9 @@ internal sealed partial class DeviceConfigurationDialog
         scanningSection5.ForeColor = UiTheme.Ink;
         scanningSection5.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         scanningSection5.Margin = new Padding(0, 4, 0, 4);
-        scanningSection5.BackColor = UiTheme.BlueSoft;
-        scanningSection5.Padding = new Padding(12, 8, 12, 8);
-        scanningSection5.Margin = new Padding(0, 12, 0, 8);
+        scanningSection5.BackColor = UiTheme.SurfaceSubtle;
+        scanningSection5.Padding = new Padding(10, 6, 10, 6);
+        scanningSection5.Margin = new Padding(0, 8, 0, 6);
         scanning.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         scanning.Controls.Add(scanningSection5, 0, 0);
         scanning.SetColumnSpan(scanningSection5, 2);
@@ -413,7 +413,7 @@ internal sealed partial class DeviceConfigurationDialog
         _scanMode = new ComboBox();
         _scanMode.Name = "_scanMode";
         _scanMode.Dock = DockStyle.Fill;
-        _scanMode.Margin = new Padding(0, 5, 0, 10);
+        _scanMode.Margin = new Padding(0, 3, 0, 5);
         _scanMode.DropDownStyle = ComboBoxStyle.DropDownList;
         _scanMode.IntegralHeight = false;
         _scanMode.DropDownHeight = 320;
@@ -426,7 +426,7 @@ internal sealed partial class DeviceConfigurationDialog
         _scanModeLabel.ForeColor = UiTheme.Ink;
         _scanModeLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _scanModeLabel.Margin = new Padding(0, 4, 0, 4);
-        _scanModeLabel.Padding = new Padding(0, 7, 14, 7);
+        _scanModeLabel.Padding = new Padding(0, 4, 14, 4);
         _scanModeLabel.Margin = Padding.Empty;
         _scanModeLabel.TextAlign = ContentAlignment.MiddleLeft;
         _scanMode.AccessibleName = "扫描模式";
@@ -437,7 +437,7 @@ internal sealed partial class DeviceConfigurationDialog
         _scanModeSurface.Name = "_scanModeSurface";
         _scanModeSurface.Dock = DockStyle.Top;
         _scanModeSurface.Width = 220;
-        _scanModeSurface.Margin = new Padding(0, 5, 0, 10);
+        _scanModeSurface.Margin = new Padding(0, 3, 0, 5);
         _scanModeSurface.TabIndex = 2;
         _scanMode.Dock = DockStyle.None;
         _scanMode.Margin = Padding.Empty;
@@ -446,7 +446,7 @@ internal sealed partial class DeviceConfigurationDialog
         _autoDemotion = new AntdUI.Checkbox();
         _autoDemotion.Name = "_autoDemotion";
         _autoDemotion.Dock = DockStyle.Fill;
-        _autoDemotion.Margin = new Padding(0, 5, 0, 10);
+        _autoDemotion.Margin = new Padding(0, 3, 0, 5);
         _autoDemotion.AutoSize = true;
         _autoDemotion.MinimumSize = new Size(0, 32);
         _autoDemotion.Text = "连续失败后降低重试频率";
@@ -458,7 +458,7 @@ internal sealed partial class DeviceConfigurationDialog
         _autoDemotionLabel.ForeColor = UiTheme.Ink;
         _autoDemotionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _autoDemotionLabel.Margin = new Padding(0, 4, 0, 4);
-        _autoDemotionLabel.Padding = new Padding(0, 7, 14, 7);
+        _autoDemotionLabel.Padding = new Padding(0, 4, 14, 4);
         _autoDemotionLabel.Margin = Padding.Empty;
         _autoDemotionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _autoDemotion.AccessibleName = "故障降速";
@@ -469,7 +469,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionCount = new NumericUpDown();
         _demotionCount.Name = "_demotionCount";
         _demotionCount.Dock = DockStyle.Fill;
-        _demotionCount.Margin = new Padding(0, 5, 0, 10);
+        _demotionCount.Margin = new Padding(0, 3, 0, 5);
         _demotionCount.ThousandsSeparator = true;
         _demotionCount.Minimum = 1;
         _demotionCount.Maximum = 30;
@@ -481,7 +481,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionCountLabel.ForeColor = UiTheme.Ink;
         _demotionCountLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _demotionCountLabel.Margin = new Padding(0, 4, 0, 4);
-        _demotionCountLabel.Padding = new Padding(0, 7, 14, 7);
+        _demotionCountLabel.Padding = new Padding(0, 4, 14, 4);
         _demotionCountLabel.Margin = Padding.Empty;
         _demotionCountLabel.TextAlign = ContentAlignment.MiddleLeft;
         _demotionCount.AccessibleName = "连续失败次数";
@@ -492,7 +492,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionCountSurface.Name = "_demotionCountSurface";
         _demotionCountSurface.Dock = DockStyle.Top;
         _demotionCountSurface.Width = 220;
-        _demotionCountSurface.Margin = new Padding(0, 5, 0, 10);
+        _demotionCountSurface.Margin = new Padding(0, 3, 0, 5);
         _demotionCountSurface.TabIndex = 4;
         _demotionCount.Dock = DockStyle.None;
         _demotionCount.Margin = Padding.Empty;
@@ -501,7 +501,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionInterval = new NumericUpDown();
         _demotionInterval.Name = "_demotionInterval";
         _demotionInterval.Dock = DockStyle.Fill;
-        _demotionInterval.Margin = new Padding(0, 5, 0, 10);
+        _demotionInterval.Margin = new Padding(0, 3, 0, 5);
         _demotionInterval.ThousandsSeparator = true;
         _demotionInterval.Minimum = 100;
         _demotionInterval.Maximum = 3600000;
@@ -513,7 +513,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionIntervalLabel.ForeColor = UiTheme.Ink;
         _demotionIntervalLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _demotionIntervalLabel.Margin = new Padding(0, 4, 0, 4);
-        _demotionIntervalLabel.Padding = new Padding(0, 7, 14, 7);
+        _demotionIntervalLabel.Padding = new Padding(0, 4, 14, 4);
         _demotionIntervalLabel.Margin = Padding.Empty;
         _demotionIntervalLabel.TextAlign = ContentAlignment.MiddleLeft;
         _demotionInterval.AccessibleName = "降速重试间隔 (ms)";
@@ -524,7 +524,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionIntervalSurface.Name = "_demotionIntervalSurface";
         _demotionIntervalSurface.Dock = DockStyle.Top;
         _demotionIntervalSurface.Width = 220;
-        _demotionIntervalSurface.Margin = new Padding(0, 5, 0, 10);
+        _demotionIntervalSurface.Margin = new Padding(0, 3, 0, 5);
         _demotionIntervalSurface.TabIndex = 5;
         _demotionInterval.Dock = DockStyle.None;
         _demotionInterval.Margin = Padding.Empty;

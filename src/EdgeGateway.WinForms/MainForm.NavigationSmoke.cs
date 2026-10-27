@@ -31,7 +31,7 @@ public sealed partial class MainForm
                 PerformLayoutRecursively(this);
                 if (_activePage != key || !_pages[key].Visible || !tabs.Visible)
                     throw new InvalidOperationException(key + ": navigation did not display the selected page.");
-                var expected = new Point(UiTheme.Scale(tabs, 18), UiTheme.Scale(tabs, 9));
+                var expected = new Point(UiTheme.Scale(tabs, 14), UiTheme.Scale(tabs, 6));
                 if (!tabs.IsHandleCreated || !IsNavigationWindow(tabs.Handle) || tabs.Padding != expected)
                     throw new InvalidOperationException(key + ": deferred tab creation lost its native window or current DPI padding.");
 

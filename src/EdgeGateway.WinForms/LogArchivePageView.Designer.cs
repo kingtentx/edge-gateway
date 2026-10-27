@@ -124,12 +124,14 @@ internal sealed partial class LogArchivePageView
         Grid.GridColor = UiTheme.Border;
         Grid.DefaultCellStyle.SelectionBackColor = UiTheme.BlueSoft;
         Grid.DefaultCellStyle.SelectionForeColor = UiTheme.Ink;
-        Grid.ColumnHeadersDefaultCellStyle.BackColor = UiTheme.BlueSoft;
+        Grid.ColumnHeadersDefaultCellStyle.BackColor = UiTheme.SurfaceSubtle;
+        Grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = UiTheme.SurfaceSubtle;
+        Grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = UiTheme.Ink;
         Grid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         From = new DateTimePicker();
         From.Name = "From";
         From.Dock = DockStyle.Fill;
-        From.Margin = new Padding(0, 5, 0, 10);
+        From.Margin = new Padding(0, 3, 0, 5);
         From.Format = DateTimePickerFormat.Custom;
         From.CustomFormat = "yyyy-MM-dd HH:mm:ss";
         FromFilter = new TableLayoutPanel();
@@ -174,7 +176,7 @@ internal sealed partial class LogArchivePageView
         To = new DateTimePicker();
         To.Name = "To";
         To.Dock = DockStyle.Fill;
-        To.Margin = new Padding(0, 5, 0, 10);
+        To.Margin = new Padding(0, 3, 0, 5);
         To.Format = DateTimePickerFormat.Custom;
         To.CustomFormat = "yyyy-MM-dd HH:mm:ss";
         ToFilter = new TableLayoutPanel();
@@ -219,7 +221,7 @@ internal sealed partial class LogArchivePageView
         Device = new GatewayInput();
         Device.Name = "Device";
         Device.Dock = DockStyle.Fill;
-        Device.Margin = new Padding(0, 5, 0, 10);
+        Device.Margin = new Padding(0, 3, 0, 5);
         Device.MinimumSize = new Size(150, 30);
         Device.BorderStyle = BorderStyle.FixedSingle;
         Device.MaxLength = 256;
@@ -266,7 +268,7 @@ internal sealed partial class LogArchivePageView
         TagInput = new GatewayInput();
         TagInput.Name = "Tag";
         TagInput.Dock = DockStyle.Fill;
-        TagInput.Margin = new Padding(0, 5, 0, 10);
+        TagInput.Margin = new Padding(0, 3, 0, 5);
         TagInput.MinimumSize = new Size(150, 30);
         TagInput.BorderStyle = BorderStyle.FixedSingle;
         TagInput.MaxLength = 256;
@@ -313,7 +315,7 @@ internal sealed partial class LogArchivePageView
         Quality = new ComboBox();
         Quality.Name = "Quality";
         Quality.Dock = DockStyle.Fill;
-        Quality.Margin = new Padding(0, 5, 0, 10);
+        Quality.Margin = new Padding(0, 3, 0, 5);
         Quality.DropDownStyle = ComboBoxStyle.DropDownList;
         Quality.IntegralHeight = false;
         Quality.DropDownHeight = 320;
@@ -359,7 +361,7 @@ internal sealed partial class LogArchivePageView
         Level = new ComboBox();
         Level.Name = "Level";
         Level.Dock = DockStyle.Fill;
-        Level.Margin = new Padding(0, 5, 0, 10);
+        Level.Margin = new Padding(0, 3, 0, 5);
         Level.DropDownStyle = ComboBoxStyle.DropDownList;
         Level.IntegralHeight = false;
         Level.DropDownHeight = 320;
@@ -405,7 +407,7 @@ internal sealed partial class LogArchivePageView
         Keyword = new GatewayInput();
         Keyword.Name = "Keyword";
         Keyword.Dock = DockStyle.Fill;
-        Keyword.Margin = new Padding(0, 5, 0, 10);
+        Keyword.Margin = new Padding(0, 3, 0, 5);
         Keyword.MinimumSize = new Size(150, 30);
         Keyword.BorderStyle = BorderStyle.FixedSingle;
         Keyword.MaxLength = 256;
@@ -452,7 +454,7 @@ internal sealed partial class LogArchivePageView
         Limit = new NumericUpDown();
         Limit.Name = "Limit";
         Limit.Dock = DockStyle.Fill;
-        Limit.Margin = new Padding(0, 5, 0, 10);
+        Limit.Margin = new Padding(0, 3, 0, 5);
         Limit.ThousandsSeparator = true;
         Limit.Minimum = 1;
         Limit.Maximum = 2000;
@@ -499,7 +501,7 @@ internal sealed partial class LogArchivePageView
         Budget = new NumericUpDown();
         Budget.Name = "Budget";
         Budget.Dock = DockStyle.Fill;
-        Budget.Margin = new Padding(0, 5, 0, 10);
+        Budget.Margin = new Padding(0, 3, 0, 5);
         Budget.ThousandsSeparator = true;
         Budget.Minimum = 1;
         Budget.Maximum = 64;
@@ -553,7 +555,7 @@ internal sealed partial class LogArchivePageView
         Search.Radius = 6;
         Search.WaveSize = 0;
         Search.Type = AntdUI.TTypeMini.Primary;
-        Search.Padding = new Padding(13, 6, 13, 6);
+        Search.Padding = new Padding(10, 4, 10, 4);
         Search.Margin = new Padding(0, 0, 8, 6);
         Search.Cursor = Cursors.Hand;
         actions.Controls.Add(Search);
@@ -567,7 +569,7 @@ internal sealed partial class LogArchivePageView
         Recent.Radius = 6;
         Recent.WaveSize = 0;
         Recent.Type = AntdUI.TTypeMini.Default;
-        Recent.Padding = new Padding(13, 6, 13, 6);
+        Recent.Padding = new Padding(10, 4, 10, 4);
         Recent.Margin = new Padding(0, 0, 8, 6);
         Recent.Cursor = Cursors.Hand;
         actions.Controls.Add(Recent);
@@ -581,7 +583,7 @@ internal sealed partial class LogArchivePageView
         Cancel.Radius = 6;
         Cancel.WaveSize = 0;
         Cancel.Type = AntdUI.TTypeMini.Default;
-        Cancel.Padding = new Padding(13, 6, 13, 6);
+        Cancel.Padding = new Padding(10, 4, 10, 4);
         Cancel.Margin = new Padding(0, 0, 8, 6);
         Cancel.Cursor = Cursors.Hand;
         actions.Controls.Add(Cancel);
@@ -595,7 +597,7 @@ internal sealed partial class LogArchivePageView
         Export.Radius = 6;
         Export.WaveSize = 0;
         Export.Type = AntdUI.TTypeMini.Default;
-        Export.Padding = new Padding(13, 6, 13, 6);
+        Export.Padding = new Padding(10, 4, 10, 4);
         Export.Margin = new Padding(0, 0, 8, 6);
         Export.Cursor = Cursors.Hand;
         actions.Controls.Add(Export);

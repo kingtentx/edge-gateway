@@ -17,7 +17,7 @@ internal sealed partial class DriverDetailsDialog
         detailsText = new GatewayInput();
         detailsText.Name = "detailsText";
         detailsText.Dock = DockStyle.Fill;
-        detailsText.Margin = new Padding(0, 5, 0, 10);
+        detailsText.Margin = new Padding(0, 3, 0, 5);
         detailsText.MinimumSize = new Size(150, 30);
         detailsText.BorderStyle = BorderStyle.FixedSingle;
         detailsText.Multiline = true;
@@ -36,7 +36,7 @@ internal sealed partial class DriverDetailsDialog
         closeButton.Radius = 6;
         closeButton.WaveSize = 0;
         closeButton.Type = AntdUI.TTypeMini.Default;
-        closeButton.Padding = new Padding(13, 6, 13, 6);
+        closeButton.Padding = new Padding(10, 4, 10, 4);
         closeButton.Margin = new Padding(0, 0, 8, 6);
         closeButton.Cursor = Cursors.Hand;
         actions = new FlowLayoutPanel();

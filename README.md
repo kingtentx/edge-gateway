@@ -1,6 +1,8 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
-界面采用 AntdUI 与原生 WinForms 的混合实现：固定结构在各自 Designer 中维护，驱动参数、数据库字段映射行、实时数据和曲线由代码生成或绑定。迁移范围与保留控件见 [界面重构](docs/ui-redesign-architecture.md)，实际验证与未验收项见 [本轮记录](docs/ui-redesign-verification.md)。
+界面采用 AntdUI 与原生 WinForms 的混合实现：固定结构在各自 Designer 中维护，驱动参数、数据库字段映射行、实时数据和曲线由代码生成或绑定。迁移范围与保留控件见 [界面重构](docs/ui-redesign-architecture.md)，首次迁移验证与未验收项见 [迁移记录](docs/ui-redesign-verification.md)。
+
+**2026-10-27 AntdUI Demo 浅色皮肤：** 统一白色图标导航、灰色表头和蓝色选中态；设备与点位列表支持拖动分隔条调整高度，配置表单减少留白并扩大默认可用面积。实现和本轮验证见 [浅色皮肤与列表空间](docs/ui-antdui-skin.md)。
 
 **2026-10-27 Debug 文件占用修复：** Debug 将采集宿主放在界面进程内，避免 VS 停止调试后残留 `--worker` 进程占用驱动 DLL、导致 MSB3027；Release 继续使用独立后台与托盘退出。已正常退出本机未采集的残留后台；本次尚未执行构建或测试。[原因与操作说明](docs/debug-worker-file-lock.md)。
 

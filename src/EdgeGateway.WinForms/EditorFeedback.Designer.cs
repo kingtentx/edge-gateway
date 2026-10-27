@@ -32,7 +32,7 @@ internal sealed partial class EditorFeedback
         _message = new GatewayInput();
         _message.Name = "EditorValidationMessage";
         _message.Dock = DockStyle.Fill;
-        _message.Margin = new Padding(0, 5, 0, 10);
+        _message.Margin = new Padding(0, 3, 0, 5);
         _message.MinimumSize = new Size(150, 30);
         _message.BorderStyle = BorderStyle.FixedSingle;
         _message.Multiline = true;
@@ -47,7 +47,7 @@ internal sealed partial class EditorFeedback
         this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         this.ColumnCount = 2;
         this.RowCount = 2;
-        this.Padding = new Padding(12, 8, 12, 8);
+        this.Padding = new Padding(10, 6, 10, 6);
         this.Margin = new Padding(0, 8, 0, 0);
         this.BackColor = Color.FromArgb(255, 245, 245);
         ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));

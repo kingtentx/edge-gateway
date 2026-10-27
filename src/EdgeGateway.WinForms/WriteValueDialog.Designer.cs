@@ -52,7 +52,7 @@ internal sealed partial class WriteValueDialog
         _layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         _layout.Name = "WriteLayout";
         _layout.RowCount = 4;
-        _layout.Padding = new Padding(20);
+        _layout.Padding = new Padding(16);
         heading = new TableLayoutPanel();
         heading.Name = "heading";
         heading.Dock = DockStyle.Top;
@@ -70,7 +70,7 @@ internal sealed partial class WriteValueDialog
         title.AutoSize = true;
         title.Dock = DockStyle.Fill;
         title.ForeColor = UiTheme.Ink;
-        title.Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold);
+        title.Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold);
         title.Margin = new Padding(0, 4, 0, 4);
         _description = new Label();
         _description.Name = "_description";
@@ -108,9 +108,9 @@ internal sealed partial class WriteValueDialog
         contentSection1.ForeColor = UiTheme.Ink;
         contentSection1.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         contentSection1.Margin = new Padding(0, 4, 0, 4);
-        contentSection1.BackColor = UiTheme.BlueSoft;
-        contentSection1.Padding = new Padding(12, 8, 12, 8);
-        contentSection1.Margin = new Padding(0, 12, 0, 8);
+        contentSection1.BackColor = UiTheme.SurfaceSubtle;
+        contentSection1.Padding = new Padding(10, 6, 10, 6);
+        contentSection1.Margin = new Padding(0, 8, 0, 6);
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.Controls.Add(contentSection1, 0, 0);
         content.SetColumnSpan(contentSection1, 2);
@@ -130,7 +130,7 @@ internal sealed partial class WriteValueDialog
         _value = new GatewayInput();
         _value.Name = "_value";
         _value.Dock = DockStyle.Fill;
-        _value.Margin = new Padding(0, 5, 0, 10);
+        _value.Margin = new Padding(0, 3, 0, 5);
         _value.MinimumSize = new Size(150, 30);
         _value.BorderStyle = BorderStyle.FixedSingle;
         _value.Name = "WriteValue";
@@ -142,7 +142,7 @@ internal sealed partial class WriteValueDialog
         _valueLabel.ForeColor = UiTheme.Ink;
         _valueLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _valueLabel.Margin = new Padding(0, 4, 0, 4);
-        _valueLabel.Padding = new Padding(0, 7, 14, 7);
+        _valueLabel.Padding = new Padding(0, 4, 14, 4);
         _valueLabel.Margin = Padding.Empty;
         _valueLabel.TextAlign = ContentAlignment.MiddleLeft;
         _value.AccessibleName = "新的工程值";
@@ -153,7 +153,7 @@ internal sealed partial class WriteValueDialog
         _valueSurface.Name = "_valueSurface";
         _valueSurface.Dock = DockStyle.Top;
         _valueSurface.Width = 220;
-        _valueSurface.Margin = new Padding(0, 5, 0, 10);
+        _valueSurface.Margin = new Padding(0, 3, 0, 5);
         _valueSurface.TabIndex = 2;
         _value.Dock = DockStyle.None;
         _value.Margin = Padding.Empty;
@@ -180,9 +180,9 @@ internal sealed partial class WriteValueDialog
         contentSection4.ForeColor = UiTheme.Ink;
         contentSection4.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         contentSection4.Margin = new Padding(0, 4, 0, 4);
-        contentSection4.BackColor = UiTheme.BlueSoft;
-        contentSection4.Padding = new Padding(12, 8, 12, 8);
-        contentSection4.Margin = new Padding(0, 12, 0, 8);
+        contentSection4.BackColor = UiTheme.SurfaceSubtle;
+        contentSection4.Padding = new Padding(10, 6, 10, 6);
+        contentSection4.Margin = new Padding(0, 8, 0, 6);
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.Controls.Add(contentSection4, 0, 4);
         content.SetColumnSpan(contentSection4, 2);
@@ -202,7 +202,7 @@ internal sealed partial class WriteValueDialog
         _verify = new AntdUI.Checkbox();
         _verify.Name = "_verify";
         _verify.Dock = DockStyle.Fill;
-        _verify.Margin = new Padding(0, 5, 0, 10);
+        _verify.Margin = new Padding(0, 3, 0, 5);
         _verify.AutoSize = true;
         _verify.MinimumSize = new Size(0, 32);
         _verify.Text = "写入后立即读回核对";
@@ -216,7 +216,7 @@ internal sealed partial class WriteValueDialog
         _verifyLabel.ForeColor = UiTheme.Ink;
         _verifyLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _verifyLabel.Margin = new Padding(0, 4, 0, 4);
-        _verifyLabel.Padding = new Padding(0, 7, 14, 7);
+        _verifyLabel.Padding = new Padding(0, 4, 14, 4);
         _verifyLabel.Margin = Padding.Empty;
         _verifyLabel.TextAlign = ContentAlignment.MiddleLeft;
         _verify.AccessibleName = "核对开关";
@@ -227,7 +227,7 @@ internal sealed partial class WriteValueDialog
         _verificationTimeout = new NumericUpDown();
         _verificationTimeout.Name = "_verificationTimeout";
         _verificationTimeout.Dock = DockStyle.Fill;
-        _verificationTimeout.Margin = new Padding(0, 5, 0, 10);
+        _verificationTimeout.Margin = new Padding(0, 3, 0, 5);
         _verificationTimeout.ThousandsSeparator = true;
         _verificationTimeout.Minimum = 50;
         _verificationTimeout.Maximum = 60000;
@@ -241,7 +241,7 @@ internal sealed partial class WriteValueDialog
         _verificationTimeoutLabel.ForeColor = UiTheme.Ink;
         _verificationTimeoutLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _verificationTimeoutLabel.Margin = new Padding(0, 4, 0, 4);
-        _verificationTimeoutLabel.Padding = new Padding(0, 7, 14, 7);
+        _verificationTimeoutLabel.Padding = new Padding(0, 4, 14, 4);
         _verificationTimeoutLabel.Margin = Padding.Empty;
         _verificationTimeoutLabel.TextAlign = ContentAlignment.MiddleLeft;
         _verificationTimeout.AccessibleName = "总超时 (ms)";
@@ -252,7 +252,7 @@ internal sealed partial class WriteValueDialog
         _verificationTimeoutSurface.Name = "_verificationTimeoutSurface";
         _verificationTimeoutSurface.Dock = DockStyle.Top;
         _verificationTimeoutSurface.Width = 220;
-        _verificationTimeoutSurface.Margin = new Padding(0, 5, 0, 10);
+        _verificationTimeoutSurface.Margin = new Padding(0, 3, 0, 5);
         _verificationTimeoutSurface.TabIndex = 7;
         _verificationTimeout.Dock = DockStyle.None;
         _verificationTimeout.Margin = Padding.Empty;
@@ -261,7 +261,7 @@ internal sealed partial class WriteValueDialog
         _absoluteTolerance = new GatewayInput();
         _absoluteTolerance.Name = "_absoluteTolerance";
         _absoluteTolerance.Dock = DockStyle.Fill;
-        _absoluteTolerance.Margin = new Padding(0, 5, 0, 10);
+        _absoluteTolerance.Margin = new Padding(0, 3, 0, 5);
         _absoluteTolerance.MinimumSize = new Size(150, 30);
         _absoluteTolerance.BorderStyle = BorderStyle.FixedSingle;
         _absoluteTolerance.Text = "0";
@@ -275,7 +275,7 @@ internal sealed partial class WriteValueDialog
         _absoluteToleranceLabel.ForeColor = UiTheme.Ink;
         _absoluteToleranceLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _absoluteToleranceLabel.Margin = new Padding(0, 4, 0, 4);
-        _absoluteToleranceLabel.Padding = new Padding(0, 7, 14, 7);
+        _absoluteToleranceLabel.Padding = new Padding(0, 4, 14, 4);
         _absoluteToleranceLabel.Margin = Padding.Empty;
         _absoluteToleranceLabel.TextAlign = ContentAlignment.MiddleLeft;
         _absoluteTolerance.AccessibleName = "绝对容差";
@@ -286,7 +286,7 @@ internal sealed partial class WriteValueDialog
         _absoluteToleranceSurface.Name = "_absoluteToleranceSurface";
         _absoluteToleranceSurface.Dock = DockStyle.Top;
         _absoluteToleranceSurface.Width = 220;
-        _absoluteToleranceSurface.Margin = new Padding(0, 5, 0, 10);
+        _absoluteToleranceSurface.Margin = new Padding(0, 3, 0, 5);
         _absoluteToleranceSurface.TabIndex = 8;
         _absoluteTolerance.Dock = DockStyle.None;
         _absoluteTolerance.Margin = Padding.Empty;
@@ -295,7 +295,7 @@ internal sealed partial class WriteValueDialog
         _relativeTolerance = new GatewayInput();
         _relativeTolerance.Name = "_relativeTolerance";
         _relativeTolerance.Dock = DockStyle.Fill;
-        _relativeTolerance.Margin = new Padding(0, 5, 0, 10);
+        _relativeTolerance.Margin = new Padding(0, 3, 0, 5);
         _relativeTolerance.MinimumSize = new Size(150, 30);
         _relativeTolerance.BorderStyle = BorderStyle.FixedSingle;
         _relativeTolerance.Text = "0";
@@ -309,7 +309,7 @@ internal sealed partial class WriteValueDialog
         _relativeToleranceLabel.ForeColor = UiTheme.Ink;
         _relativeToleranceLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _relativeToleranceLabel.Margin = new Padding(0, 4, 0, 4);
-        _relativeToleranceLabel.Padding = new Padding(0, 7, 14, 7);
+        _relativeToleranceLabel.Padding = new Padding(0, 4, 14, 4);
         _relativeToleranceLabel.Margin = Padding.Empty;
         _relativeToleranceLabel.TextAlign = ContentAlignment.MiddleLeft;
         _relativeTolerance.AccessibleName = "相对容差";
@@ -320,7 +320,7 @@ internal sealed partial class WriteValueDialog
         _relativeToleranceSurface.Name = "_relativeToleranceSurface";
         _relativeToleranceSurface.Dock = DockStyle.Top;
         _relativeToleranceSurface.Width = 220;
-        _relativeToleranceSurface.Margin = new Padding(0, 5, 0, 10);
+        _relativeToleranceSurface.Margin = new Padding(0, 3, 0, 5);
         _relativeToleranceSurface.TabIndex = 9;
         _relativeTolerance.Dock = DockStyle.None;
         _relativeTolerance.Margin = Padding.Empty;
@@ -366,7 +366,7 @@ internal sealed partial class WriteValueDialog
         _confirm.Radius = 6;
         _confirm.WaveSize = 0;
         _confirm.Type = AntdUI.TTypeMini.Primary;
-        _confirm.Padding = new Padding(13, 6, 13, 6);
+        _confirm.Padding = new Padding(10, 4, 10, 4);
         _confirm.Margin = new Padding(0, 0, 8, 6);
         _confirm.Cursor = Cursors.Hand;
         _confirm.Name = "WriteConfirm";
@@ -380,7 +380,7 @@ internal sealed partial class WriteValueDialog
         _cancel.Radius = 6;
         _cancel.WaveSize = 0;
         _cancel.Type = AntdUI.TTypeMini.Default;
-        _cancel.Padding = new Padding(13, 6, 13, 6);
+        _cancel.Padding = new Padding(10, 4, 10, 4);
         _cancel.Margin = new Padding(0, 0, 8, 6);
         _cancel.Cursor = Cursors.Hand;
         _cancel.Name = "WriteCancel";

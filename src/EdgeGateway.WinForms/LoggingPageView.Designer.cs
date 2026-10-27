@@ -118,7 +118,7 @@ internal sealed partial class LoggingPageView
         applyButton.Radius = 6;
         applyButton.WaveSize = 0;
         applyButton.Type = AntdUI.TTypeMini.Primary;
-        applyButton.Padding = new Padding(13, 6, 13, 6);
+        applyButton.Padding = new Padding(10, 4, 10, 4);
         applyButton.Margin = new Padding(0, 0, 8, 6);
         applyButton.Cursor = Cursors.Hand;
         applyButton.Name = "ApplyLoggingSettings";
@@ -132,7 +132,7 @@ internal sealed partial class LoggingPageView
         resetButton.Radius = 6;
         resetButton.WaveSize = 0;
         resetButton.Type = AntdUI.TTypeMini.Default;
-        resetButton.Padding = new Padding(13, 6, 13, 6);
+        resetButton.Padding = new Padding(10, 4, 10, 4);
         resetButton.Margin = new Padding(0, 0, 8, 6);
         resetButton.Cursor = Cursors.Hand;
         resetButton.Name = "ResetLoggingSettings";
@@ -210,9 +210,9 @@ internal sealed partial class LoggingPageView
         settingsFieldsSection1.ForeColor = UiTheme.Ink;
         settingsFieldsSection1.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         settingsFieldsSection1.Margin = new Padding(0, 4, 0, 4);
-        settingsFieldsSection1.BackColor = UiTheme.BlueSoft;
-        settingsFieldsSection1.Padding = new Padding(12, 8, 12, 8);
-        settingsFieldsSection1.Margin = new Padding(0, 12, 0, 8);
+        settingsFieldsSection1.BackColor = UiTheme.SurfaceSubtle;
+        settingsFieldsSection1.Padding = new Padding(10, 6, 10, 6);
+        settingsFieldsSection1.Margin = new Padding(0, 8, 0, 6);
         settingsFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         settingsFields.Controls.Add(settingsFieldsSection1, 0, 0);
         settingsFields.SetColumnSpan(settingsFieldsSection1, 2);
@@ -232,7 +232,7 @@ internal sealed partial class LoggingPageView
         MinimumLevelInput = new ComboBox();
         MinimumLevelInput.Name = "MinimumLevelInput";
         MinimumLevelInput.Dock = DockStyle.Fill;
-        MinimumLevelInput.Margin = new Padding(0, 5, 0, 10);
+        MinimumLevelInput.Margin = new Padding(0, 3, 0, 5);
         MinimumLevelInput.DropDownStyle = ComboBoxStyle.DropDownList;
         MinimumLevelInput.IntegralHeight = false;
         MinimumLevelInput.DropDownHeight = 320;
@@ -246,7 +246,7 @@ internal sealed partial class LoggingPageView
         MinimumLevelInputLabel.ForeColor = UiTheme.Ink;
         MinimumLevelInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         MinimumLevelInputLabel.Margin = new Padding(0, 4, 0, 4);
-        MinimumLevelInputLabel.Padding = new Padding(0, 7, 14, 7);
+        MinimumLevelInputLabel.Padding = new Padding(0, 4, 14, 4);
         MinimumLevelInputLabel.Margin = Padding.Empty;
         MinimumLevelInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         MinimumLevelInput.AccessibleName = "运行日志最低级别";
@@ -257,7 +257,7 @@ internal sealed partial class LoggingPageView
         MinimumLevelInputSurface.Name = "MinimumLevelInputSurface";
         MinimumLevelInputSurface.Dock = DockStyle.Top;
         MinimumLevelInputSurface.Width = 220;
-        MinimumLevelInputSurface.Margin = new Padding(0, 5, 0, 10);
+        MinimumLevelInputSurface.Margin = new Padding(0, 3, 0, 5);
         MinimumLevelInputSurface.TabIndex = 2;
         MinimumLevelInput.Dock = DockStyle.None;
         MinimumLevelInput.Margin = Padding.Empty;
@@ -266,7 +266,7 @@ internal sealed partial class LoggingPageView
         MaxFileSizeMbInput = new NumericUpDown();
         MaxFileSizeMbInput.Name = "MaxFileSizeMbInput";
         MaxFileSizeMbInput.Dock = DockStyle.Fill;
-        MaxFileSizeMbInput.Margin = new Padding(0, 5, 0, 10);
+        MaxFileSizeMbInput.Margin = new Padding(0, 3, 0, 5);
         MaxFileSizeMbInput.ThousandsSeparator = true;
         MaxFileSizeMbInput.Minimum = 1;
         MaxFileSizeMbInput.Maximum = 1024;
@@ -279,7 +279,7 @@ internal sealed partial class LoggingPageView
         MaxFileSizeMbInputLabel.ForeColor = UiTheme.Ink;
         MaxFileSizeMbInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         MaxFileSizeMbInputLabel.Margin = new Padding(0, 4, 0, 4);
-        MaxFileSizeMbInputLabel.Padding = new Padding(0, 7, 14, 7);
+        MaxFileSizeMbInputLabel.Padding = new Padding(0, 4, 14, 4);
         MaxFileSizeMbInputLabel.Margin = Padding.Empty;
         MaxFileSizeMbInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         MaxFileSizeMbInput.AccessibleName = "单文件最大大小（M）";
@@ -290,7 +290,7 @@ internal sealed partial class LoggingPageView
         MaxFileSizeMbInputSurface.Name = "MaxFileSizeMbInputSurface";
         MaxFileSizeMbInputSurface.Dock = DockStyle.Top;
         MaxFileSizeMbInputSurface.Width = 220;
-        MaxFileSizeMbInputSurface.Margin = new Padding(0, 5, 0, 10);
+        MaxFileSizeMbInputSurface.Margin = new Padding(0, 3, 0, 5);
         MaxFileSizeMbInputSurface.TabIndex = 3;
         MaxFileSizeMbInput.Dock = DockStyle.None;
         MaxFileSizeMbInput.Margin = Padding.Empty;
@@ -299,7 +299,7 @@ internal sealed partial class LoggingPageView
         RetainedFileCountInput = new NumericUpDown();
         RetainedFileCountInput.Name = "RetainedFileCountInput";
         RetainedFileCountInput.Dock = DockStyle.Fill;
-        RetainedFileCountInput.Margin = new Padding(0, 5, 0, 10);
+        RetainedFileCountInput.Margin = new Padding(0, 3, 0, 5);
         RetainedFileCountInput.ThousandsSeparator = true;
         RetainedFileCountInput.Minimum = 1;
         RetainedFileCountInput.Maximum = 1000;
@@ -312,7 +312,7 @@ internal sealed partial class LoggingPageView
         RetainedFileCountInputLabel.ForeColor = UiTheme.Ink;
         RetainedFileCountInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         RetainedFileCountInputLabel.Margin = new Padding(0, 4, 0, 4);
-        RetainedFileCountInputLabel.Padding = new Padding(0, 7, 14, 7);
+        RetainedFileCountInputLabel.Padding = new Padding(0, 4, 14, 4);
         RetainedFileCountInputLabel.Margin = Padding.Empty;
         RetainedFileCountInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         RetainedFileCountInput.AccessibleName = "最多保留文件数";
@@ -323,7 +323,7 @@ internal sealed partial class LoggingPageView
         RetainedFileCountInputSurface.Name = "RetainedFileCountInputSurface";
         RetainedFileCountInputSurface.Dock = DockStyle.Top;
         RetainedFileCountInputSurface.Width = 220;
-        RetainedFileCountInputSurface.Margin = new Padding(0, 5, 0, 10);
+        RetainedFileCountInputSurface.Margin = new Padding(0, 3, 0, 5);
         RetainedFileCountInputSurface.TabIndex = 4;
         RetainedFileCountInput.Dock = DockStyle.None;
         RetainedFileCountInput.Margin = Padding.Empty;
@@ -332,7 +332,7 @@ internal sealed partial class LoggingPageView
         RetainedDaysInput = new NumericUpDown();
         RetainedDaysInput.Name = "RetainedDaysInput";
         RetainedDaysInput.Dock = DockStyle.Fill;
-        RetainedDaysInput.Margin = new Padding(0, 5, 0, 10);
+        RetainedDaysInput.Margin = new Padding(0, 3, 0, 5);
         RetainedDaysInput.ThousandsSeparator = true;
         RetainedDaysInput.Minimum = 1;
         RetainedDaysInput.Maximum = 3650;
@@ -345,7 +345,7 @@ internal sealed partial class LoggingPageView
         RetainedDaysInputLabel.ForeColor = UiTheme.Ink;
         RetainedDaysInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         RetainedDaysInputLabel.Margin = new Padding(0, 4, 0, 4);
-        RetainedDaysInputLabel.Padding = new Padding(0, 7, 14, 7);
+        RetainedDaysInputLabel.Padding = new Padding(0, 4, 14, 4);
         RetainedDaysInputLabel.Margin = Padding.Empty;
         RetainedDaysInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         RetainedDaysInput.AccessibleName = "最多保留天数";
@@ -356,7 +356,7 @@ internal sealed partial class LoggingPageView
         RetainedDaysInputSurface.Name = "RetainedDaysInputSurface";
         RetainedDaysInputSurface.Dock = DockStyle.Top;
         RetainedDaysInputSurface.Width = 220;
-        RetainedDaysInputSurface.Margin = new Padding(0, 5, 0, 10);
+        RetainedDaysInputSurface.Margin = new Padding(0, 3, 0, 5);
         RetainedDaysInputSurface.TabIndex = 5;
         RetainedDaysInput.Dock = DockStyle.None;
         RetainedDaysInput.Margin = Padding.Empty;
@@ -370,9 +370,9 @@ internal sealed partial class LoggingPageView
         settingsFieldsSection3.ForeColor = UiTheme.Ink;
         settingsFieldsSection3.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         settingsFieldsSection3.Margin = new Padding(0, 4, 0, 4);
-        settingsFieldsSection3.BackColor = UiTheme.BlueSoft;
-        settingsFieldsSection3.Padding = new Padding(12, 8, 12, 8);
-        settingsFieldsSection3.Margin = new Padding(0, 12, 0, 8);
+        settingsFieldsSection3.BackColor = UiTheme.SurfaceSubtle;
+        settingsFieldsSection3.Padding = new Padding(10, 6, 10, 6);
+        settingsFieldsSection3.Margin = new Padding(0, 8, 0, 6);
         settingsFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         settingsFields.Controls.Add(settingsFieldsSection3, 0, 6);
         settingsFields.SetColumnSpan(settingsFieldsSection3, 2);
@@ -392,7 +392,7 @@ internal sealed partial class LoggingPageView
         SamplesInput = new AntdUI.Checkbox();
         SamplesInput.Name = "SamplesInput";
         SamplesInput.Dock = DockStyle.Fill;
-        SamplesInput.Margin = new Padding(0, 5, 0, 10);
+        SamplesInput.Margin = new Padding(0, 3, 0, 5);
         SamplesInput.AutoSize = true;
         SamplesInput.MinimumSize = new Size(0, 32);
         SamplesInput.Text = "将每个采样结果写入采样日志";
@@ -405,7 +405,7 @@ internal sealed partial class LoggingPageView
         SamplesInputLabel.ForeColor = UiTheme.Ink;
         SamplesInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         SamplesInputLabel.Margin = new Padding(0, 4, 0, 4);
-        SamplesInputLabel.Padding = new Padding(0, 7, 14, 7);
+        SamplesInputLabel.Padding = new Padding(0, 4, 14, 4);
         SamplesInputLabel.Margin = Padding.Empty;
         SamplesInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         SamplesInput.AccessibleName = "记录采样数据";
@@ -416,7 +416,7 @@ internal sealed partial class LoggingPageView
         SampleMaxFileSizeMbInput = new NumericUpDown();
         SampleMaxFileSizeMbInput.Name = "SampleMaxFileSizeMbInput";
         SampleMaxFileSizeMbInput.Dock = DockStyle.Fill;
-        SampleMaxFileSizeMbInput.Margin = new Padding(0, 5, 0, 10);
+        SampleMaxFileSizeMbInput.Margin = new Padding(0, 3, 0, 5);
         SampleMaxFileSizeMbInput.ThousandsSeparator = true;
         SampleMaxFileSizeMbInput.Minimum = 1;
         SampleMaxFileSizeMbInput.Maximum = 1024;
@@ -429,7 +429,7 @@ internal sealed partial class LoggingPageView
         SampleMaxFileSizeMbInputLabel.ForeColor = UiTheme.Ink;
         SampleMaxFileSizeMbInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         SampleMaxFileSizeMbInputLabel.Margin = new Padding(0, 4, 0, 4);
-        SampleMaxFileSizeMbInputLabel.Padding = new Padding(0, 7, 14, 7);
+        SampleMaxFileSizeMbInputLabel.Padding = new Padding(0, 4, 14, 4);
         SampleMaxFileSizeMbInputLabel.Margin = Padding.Empty;
         SampleMaxFileSizeMbInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         SampleMaxFileSizeMbInput.AccessibleName = "单文件最大大小（M）";
@@ -440,7 +440,7 @@ internal sealed partial class LoggingPageView
         SampleMaxFileSizeMbInputSurface.Name = "SampleMaxFileSizeMbInputSurface";
         SampleMaxFileSizeMbInputSurface.Dock = DockStyle.Top;
         SampleMaxFileSizeMbInputSurface.Width = 220;
-        SampleMaxFileSizeMbInputSurface.Margin = new Padding(0, 5, 0, 10);
+        SampleMaxFileSizeMbInputSurface.Margin = new Padding(0, 3, 0, 5);
         SampleMaxFileSizeMbInputSurface.TabIndex = 9;
         SampleMaxFileSizeMbInput.Dock = DockStyle.None;
         SampleMaxFileSizeMbInput.Margin = Padding.Empty;
@@ -449,7 +449,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedFileCountInput = new NumericUpDown();
         SampleRetainedFileCountInput.Name = "SampleRetainedFileCountInput";
         SampleRetainedFileCountInput.Dock = DockStyle.Fill;
-        SampleRetainedFileCountInput.Margin = new Padding(0, 5, 0, 10);
+        SampleRetainedFileCountInput.Margin = new Padding(0, 3, 0, 5);
         SampleRetainedFileCountInput.ThousandsSeparator = true;
         SampleRetainedFileCountInput.Minimum = 1;
         SampleRetainedFileCountInput.Maximum = 1000;
@@ -462,7 +462,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedFileCountInputLabel.ForeColor = UiTheme.Ink;
         SampleRetainedFileCountInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         SampleRetainedFileCountInputLabel.Margin = new Padding(0, 4, 0, 4);
-        SampleRetainedFileCountInputLabel.Padding = new Padding(0, 7, 14, 7);
+        SampleRetainedFileCountInputLabel.Padding = new Padding(0, 4, 14, 4);
         SampleRetainedFileCountInputLabel.Margin = Padding.Empty;
         SampleRetainedFileCountInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         SampleRetainedFileCountInput.AccessibleName = "最多保留文件数";
@@ -473,7 +473,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedFileCountInputSurface.Name = "SampleRetainedFileCountInputSurface";
         SampleRetainedFileCountInputSurface.Dock = DockStyle.Top;
         SampleRetainedFileCountInputSurface.Width = 220;
-        SampleRetainedFileCountInputSurface.Margin = new Padding(0, 5, 0, 10);
+        SampleRetainedFileCountInputSurface.Margin = new Padding(0, 3, 0, 5);
         SampleRetainedFileCountInputSurface.TabIndex = 10;
         SampleRetainedFileCountInput.Dock = DockStyle.None;
         SampleRetainedFileCountInput.Margin = Padding.Empty;
@@ -482,7 +482,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedDaysInput = new NumericUpDown();
         SampleRetainedDaysInput.Name = "SampleRetainedDaysInput";
         SampleRetainedDaysInput.Dock = DockStyle.Fill;
-        SampleRetainedDaysInput.Margin = new Padding(0, 5, 0, 10);
+        SampleRetainedDaysInput.Margin = new Padding(0, 3, 0, 5);
         SampleRetainedDaysInput.ThousandsSeparator = true;
         SampleRetainedDaysInput.Minimum = 1;
         SampleRetainedDaysInput.Maximum = 3650;
@@ -495,7 +495,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedDaysInputLabel.ForeColor = UiTheme.Ink;
         SampleRetainedDaysInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         SampleRetainedDaysInputLabel.Margin = new Padding(0, 4, 0, 4);
-        SampleRetainedDaysInputLabel.Padding = new Padding(0, 7, 14, 7);
+        SampleRetainedDaysInputLabel.Padding = new Padding(0, 4, 14, 4);
         SampleRetainedDaysInputLabel.Margin = Padding.Empty;
         SampleRetainedDaysInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         SampleRetainedDaysInput.AccessibleName = "最多保留天数";
@@ -506,7 +506,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedDaysInputSurface.Name = "SampleRetainedDaysInputSurface";
         SampleRetainedDaysInputSurface.Dock = DockStyle.Top;
         SampleRetainedDaysInputSurface.Width = 220;
-        SampleRetainedDaysInputSurface.Margin = new Padding(0, 5, 0, 10);
+        SampleRetainedDaysInputSurface.Margin = new Padding(0, 3, 0, 5);
         SampleRetainedDaysInputSurface.TabIndex = 11;
         SampleRetainedDaysInput.Dock = DockStyle.None;
         SampleRetainedDaysInput.Margin = Padding.Empty;
@@ -520,9 +520,9 @@ internal sealed partial class LoggingPageView
         settingsFieldsSection5.ForeColor = UiTheme.Ink;
         settingsFieldsSection5.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         settingsFieldsSection5.Margin = new Padding(0, 4, 0, 4);
-        settingsFieldsSection5.BackColor = UiTheme.BlueSoft;
-        settingsFieldsSection5.Padding = new Padding(12, 8, 12, 8);
-        settingsFieldsSection5.Margin = new Padding(0, 12, 0, 8);
+        settingsFieldsSection5.BackColor = UiTheme.SurfaceSubtle;
+        settingsFieldsSection5.Padding = new Padding(10, 6, 10, 6);
+        settingsFieldsSection5.Margin = new Padding(0, 8, 0, 6);
         settingsFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         settingsFields.Controls.Add(settingsFieldsSection5, 0, 12);
         settingsFields.SetColumnSpan(settingsFieldsSection5, 2);
@@ -542,7 +542,7 @@ internal sealed partial class LoggingPageView
         MinimumFreeDiskSpaceMbInput = new NumericUpDown();
         MinimumFreeDiskSpaceMbInput.Name = "MinimumFreeDiskSpaceMbInput";
         MinimumFreeDiskSpaceMbInput.Dock = DockStyle.Fill;
-        MinimumFreeDiskSpaceMbInput.Margin = new Padding(0, 5, 0, 10);
+        MinimumFreeDiskSpaceMbInput.Margin = new Padding(0, 3, 0, 5);
         MinimumFreeDiskSpaceMbInput.ThousandsSeparator = true;
         MinimumFreeDiskSpaceMbInput.Minimum = 16;
         MinimumFreeDiskSpaceMbInput.Maximum = 1048576;
@@ -555,7 +555,7 @@ internal sealed partial class LoggingPageView
         MinimumFreeDiskSpaceMbInputLabel.ForeColor = UiTheme.Ink;
         MinimumFreeDiskSpaceMbInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         MinimumFreeDiskSpaceMbInputLabel.Margin = new Padding(0, 4, 0, 4);
-        MinimumFreeDiskSpaceMbInputLabel.Padding = new Padding(0, 7, 14, 7);
+        MinimumFreeDiskSpaceMbInputLabel.Padding = new Padding(0, 4, 14, 4);
         MinimumFreeDiskSpaceMbInputLabel.Margin = Padding.Empty;
         MinimumFreeDiskSpaceMbInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         MinimumFreeDiskSpaceMbInput.AccessibleName = "最低剩余空间（M）";
@@ -566,7 +566,7 @@ internal sealed partial class LoggingPageView
         MinimumFreeDiskSpaceMbInputSurface.Name = "MinimumFreeDiskSpaceMbInputSurface";
         MinimumFreeDiskSpaceMbInputSurface.Dock = DockStyle.Top;
         MinimumFreeDiskSpaceMbInputSurface.Width = 220;
-        MinimumFreeDiskSpaceMbInputSurface.Margin = new Padding(0, 5, 0, 10);
+        MinimumFreeDiskSpaceMbInputSurface.Margin = new Padding(0, 3, 0, 5);
         MinimumFreeDiskSpaceMbInputSurface.TabIndex = 14;
         MinimumFreeDiskSpaceMbInput.Dock = DockStyle.None;
         MinimumFreeDiskSpaceMbInput.Margin = Padding.Empty;
@@ -575,7 +575,7 @@ internal sealed partial class LoggingPageView
         DiskResumeMarginMbInput = new NumericUpDown();
         DiskResumeMarginMbInput.Name = "DiskResumeMarginMbInput";
         DiskResumeMarginMbInput.Dock = DockStyle.Fill;
-        DiskResumeMarginMbInput.Margin = new Padding(0, 5, 0, 10);
+        DiskResumeMarginMbInput.Margin = new Padding(0, 3, 0, 5);
         DiskResumeMarginMbInput.ThousandsSeparator = true;
         DiskResumeMarginMbInput.Minimum = 1;
         DiskResumeMarginMbInput.Maximum = 65536;
@@ -588,7 +588,7 @@ internal sealed partial class LoggingPageView
         DiskResumeMarginMbInputLabel.ForeColor = UiTheme.Ink;
         DiskResumeMarginMbInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         DiskResumeMarginMbInputLabel.Margin = new Padding(0, 4, 0, 4);
-        DiskResumeMarginMbInputLabel.Padding = new Padding(0, 7, 14, 7);
+        DiskResumeMarginMbInputLabel.Padding = new Padding(0, 4, 14, 4);
         DiskResumeMarginMbInputLabel.Margin = Padding.Empty;
         DiskResumeMarginMbInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         DiskResumeMarginMbInput.AccessibleName = "恢复余量（M）";
@@ -599,7 +599,7 @@ internal sealed partial class LoggingPageView
         DiskResumeMarginMbInputSurface.Name = "DiskResumeMarginMbInputSurface";
         DiskResumeMarginMbInputSurface.Dock = DockStyle.Top;
         DiskResumeMarginMbInputSurface.Width = 220;
-        DiskResumeMarginMbInputSurface.Margin = new Padding(0, 5, 0, 10);
+        DiskResumeMarginMbInputSurface.Margin = new Padding(0, 3, 0, 5);
         DiskResumeMarginMbInputSurface.TabIndex = 15;
         DiskResumeMarginMbInput.Dock = DockStyle.None;
         DiskResumeMarginMbInput.Margin = Padding.Empty;
@@ -631,7 +631,7 @@ internal sealed partial class LoggingPageView
         openLogsButton.Radius = 6;
         openLogsButton.WaveSize = 0;
         openLogsButton.Type = AntdUI.TTypeMini.Default;
-        openLogsButton.Padding = new Padding(13, 6, 13, 6);
+        openLogsButton.Padding = new Padding(10, 4, 10, 4);
         openLogsButton.Margin = new Padding(0, 0, 8, 6);
         openLogsButton.Cursor = Cursors.Hand;
         openLogsButton.Name = "OpenLogDirectory";

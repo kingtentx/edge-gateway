@@ -49,7 +49,9 @@ internal sealed partial class DriverPluginDialog
         _grid.GridColor = UiTheme.Border;
         _grid.DefaultCellStyle.SelectionBackColor = UiTheme.BlueSoft;
         _grid.DefaultCellStyle.SelectionForeColor = UiTheme.Ink;
-        _grid.ColumnHeadersDefaultCellStyle.BackColor = UiTheme.BlueSoft;
+        _grid.ColumnHeadersDefaultCellStyle.BackColor = UiTheme.SurfaceSubtle;
+        _grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = UiTheme.SurfaceSubtle;
+        _grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = UiTheme.Ink;
         _grid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         _grid.Name = "DriverAssemblies";
         _gridColumnName = new DataGridViewTextBoxColumn();
@@ -142,7 +144,7 @@ internal sealed partial class DriverPluginDialog
         upload.Radius = 6;
         upload.WaveSize = 0;
         upload.Type = AntdUI.TTypeMini.Primary;
-        upload.Padding = new Padding(13, 6, 13, 6);
+        upload.Padding = new Padding(10, 4, 10, 4);
         upload.Margin = new Padding(0, 0, 8, 6);
         upload.Cursor = Cursors.Hand;
         upload.Name = "UploadDriverDll";
@@ -157,7 +159,7 @@ internal sealed partial class DriverPluginDialog
         _details.Radius = 6;
         _details.WaveSize = 0;
         _details.Type = AntdUI.TTypeMini.Default;
-        _details.Padding = new Padding(13, 6, 13, 6);
+        _details.Padding = new Padding(10, 4, 10, 4);
         _details.Margin = new Padding(0, 0, 8, 6);
         _details.Cursor = Cursors.Hand;
         _details.Name = "DriverDetails";
@@ -172,7 +174,7 @@ internal sealed partial class DriverPluginDialog
         _update.Radius = 6;
         _update.WaveSize = 0;
         _update.Type = AntdUI.TTypeMini.Default;
-        _update.Padding = new Padding(13, 6, 13, 6);
+        _update.Padding = new Padding(10, 4, 10, 4);
         _update.Margin = new Padding(0, 0, 8, 6);
         _update.Cursor = Cursors.Hand;
         _update.Name = "UpdateDriverDll";
@@ -187,7 +189,7 @@ internal sealed partial class DriverPluginDialog
         _uninstall.Radius = 6;
         _uninstall.WaveSize = 0;
         _uninstall.Type = AntdUI.TTypeMini.Default;
-        _uninstall.Padding = new Padding(13, 6, 13, 6);
+        _uninstall.Padding = new Padding(10, 4, 10, 4);
         _uninstall.Margin = new Padding(0, 0, 8, 6);
         _uninstall.Cursor = Cursors.Hand;
         _uninstall.Name = "UninstallDriverPlugin";
@@ -202,7 +204,7 @@ internal sealed partial class DriverPluginDialog
         refresh.Radius = 6;
         refresh.WaveSize = 0;
         refresh.Type = AntdUI.TTypeMini.Default;
-        refresh.Padding = new Padding(13, 6, 13, 6);
+        refresh.Padding = new Padding(10, 4, 10, 4);
         refresh.Margin = new Padding(0, 0, 8, 6);
         refresh.Cursor = Cursors.Hand;
         refresh.Name = "RefreshDrivers";
@@ -217,7 +219,7 @@ internal sealed partial class DriverPluginDialog
         open.Radius = 6;
         open.WaveSize = 0;
         open.Type = AntdUI.TTypeMini.Default;
-        open.Padding = new Padding(13, 6, 13, 6);
+        open.Padding = new Padding(10, 4, 10, 4);
         open.Margin = new Padding(0, 0, 8, 6);
         open.Cursor = Cursors.Hand;
         open.Name = "OpenDrivers";
@@ -232,7 +234,7 @@ internal sealed partial class DriverPluginDialog
         close.Radius = 6;
         close.WaveSize = 0;
         close.Type = AntdUI.TTypeMini.Default;
-        close.Padding = new Padding(13, 6, 13, 6);
+        close.Padding = new Padding(10, 4, 10, 4);
         close.Margin = new Padding(0, 0, 8, 6);
         close.Cursor = Cursors.Hand;
         close.Name = "CloseDrivers";

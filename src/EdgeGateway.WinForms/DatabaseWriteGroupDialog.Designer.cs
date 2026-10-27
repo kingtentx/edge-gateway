@@ -81,7 +81,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFieldsViewport.Name = "writeFieldsViewport";
         writeFieldsViewport.Dock = DockStyle.Fill;
         writeFieldsViewport.AutoScroll = true;
-        writeFieldsViewport.Padding = new Padding(14);
+        writeFieldsViewport.Padding = new Padding(10);
         writeFieldsViewport.Margin = Padding.Empty;
         writeFields = new TableLayoutPanel();
         writeFields.Name = "writeFields";
@@ -105,16 +105,16 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFieldsSection1.ForeColor = UiTheme.Ink;
         writeFieldsSection1.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         writeFieldsSection1.Margin = new Padding(0, 4, 0, 4);
-        writeFieldsSection1.BackColor = UiTheme.BlueSoft;
-        writeFieldsSection1.Padding = new Padding(12, 8, 12, 8);
-        writeFieldsSection1.Margin = new Padding(0, 12, 0, 8);
+        writeFieldsSection1.BackColor = UiTheme.SurfaceSubtle;
+        writeFieldsSection1.Padding = new Padding(10, 6, 10, 6);
+        writeFieldsSection1.Margin = new Padding(0, 8, 0, 6);
         writeFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         writeFields.Controls.Add(writeFieldsSection1, 0, 0);
         writeFields.SetColumnSpan(writeFieldsSection1, 2);
         _name = new GatewayInput();
         _name.Name = "_name";
         _name.Dock = DockStyle.Fill;
-        _name.Margin = new Padding(0, 5, 0, 10);
+        _name.Margin = new Padding(0, 3, 0, 5);
         _name.MinimumSize = new Size(150, 30);
         _name.BorderStyle = BorderStyle.FixedSingle;
         _name.Name = "DatabaseGroupName";
@@ -126,7 +126,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _nameLabel.ForeColor = UiTheme.Ink;
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
-        _nameLabel.Padding = new Padding(0, 7, 14, 7);
+        _nameLabel.Padding = new Padding(0, 4, 14, 4);
         _nameLabel.Margin = Padding.Empty;
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "写入组名称";
@@ -137,7 +137,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _nameSurface.Name = "_nameSurface";
         _nameSurface.Dock = DockStyle.Top;
         _nameSurface.Width = 220;
-        _nameSurface.Margin = new Padding(0, 5, 0, 10);
+        _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 1;
         _name.Dock = DockStyle.None;
         _name.Margin = Padding.Empty;
@@ -146,7 +146,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _enabled = new AntdUI.Checkbox();
         _enabled.Name = "_enabled";
         _enabled.Dock = DockStyle.Fill;
-        _enabled.Margin = new Padding(0, 5, 0, 10);
+        _enabled.Margin = new Padding(0, 3, 0, 5);
         _enabled.AutoSize = true;
         _enabled.MinimumSize = new Size(0, 32);
         _enabled.Text = "启用该写入组";
@@ -159,7 +159,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _enabledLabel.ForeColor = UiTheme.Ink;
         _enabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _enabledLabel.Margin = new Padding(0, 4, 0, 4);
-        _enabledLabel.Padding = new Padding(0, 7, 14, 7);
+        _enabledLabel.Padding = new Padding(0, 4, 14, 4);
         _enabledLabel.Margin = Padding.Empty;
         _enabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _enabled.AccessibleName = "写入开关";
@@ -170,7 +170,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _connection = new ComboBox();
         _connection.Name = "_connection";
         _connection.Dock = DockStyle.Fill;
-        _connection.Margin = new Padding(0, 5, 0, 10);
+        _connection.Margin = new Padding(0, 3, 0, 5);
         _connection.DropDownStyle = ComboBoxStyle.DropDownList;
         _connection.IntegralHeight = false;
         _connection.DropDownHeight = 320;
@@ -183,7 +183,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _connectionLabel.ForeColor = UiTheme.Ink;
         _connectionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _connectionLabel.Margin = new Padding(0, 4, 0, 4);
-        _connectionLabel.Padding = new Padding(0, 7, 14, 7);
+        _connectionLabel.Padding = new Padding(0, 4, 14, 4);
         _connectionLabel.Margin = Padding.Empty;
         _connectionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _connection.AccessibleName = "数据库连接";
@@ -194,7 +194,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _connectionSurface.Name = "_connectionSurface";
         _connectionSurface.Dock = DockStyle.Top;
         _connectionSurface.Width = 220;
-        _connectionSurface.Margin = new Padding(0, 5, 0, 10);
+        _connectionSurface.Margin = new Padding(0, 3, 0, 5);
         _connectionSurface.TabIndex = 3;
         _connection.Dock = DockStyle.None;
         _connection.Margin = Padding.Empty;
@@ -203,7 +203,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mode = new ComboBox();
         _mode.Name = "_mode";
         _mode.Dock = DockStyle.Fill;
-        _mode.Margin = new Padding(0, 5, 0, 10);
+        _mode.Margin = new Padding(0, 3, 0, 5);
         _mode.DropDownStyle = ComboBoxStyle.DropDownList;
         _mode.IntegralHeight = false;
         _mode.DropDownHeight = 320;
@@ -217,7 +217,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _modeLabel.ForeColor = UiTheme.Ink;
         _modeLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _modeLabel.Margin = new Padding(0, 4, 0, 4);
-        _modeLabel.Padding = new Padding(0, 7, 14, 7);
+        _modeLabel.Padding = new Padding(0, 4, 14, 4);
         _modeLabel.Margin = Padding.Empty;
         _modeLabel.TextAlign = ContentAlignment.MiddleLeft;
         _mode.AccessibleName = "数据格式";
@@ -228,7 +228,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _modeSurface.Name = "_modeSurface";
         _modeSurface.Dock = DockStyle.Top;
         _modeSurface.Width = 220;
-        _modeSurface.Margin = new Padding(0, 5, 0, 10);
+        _modeSurface.Margin = new Padding(0, 3, 0, 5);
         _modeSurface.TabIndex = 4;
         _mode.Dock = DockStyle.None;
         _mode.Margin = Padding.Empty;
@@ -237,7 +237,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _schema = new GatewayInput();
         _schema.Name = "_schema";
         _schema.Dock = DockStyle.Fill;
-        _schema.Margin = new Padding(0, 5, 0, 10);
+        _schema.Margin = new Padding(0, 3, 0, 5);
         _schema.MinimumSize = new Size(150, 30);
         _schema.BorderStyle = BorderStyle.FixedSingle;
         _schema.PlaceholderText = "PostgreSQL 常用 public；Oracle 使用所属用户";
@@ -250,7 +250,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _schemaLabel.ForeColor = UiTheme.Ink;
         _schemaLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _schemaLabel.Margin = new Padding(0, 4, 0, 4);
-        _schemaLabel.Padding = new Padding(0, 7, 14, 7);
+        _schemaLabel.Padding = new Padding(0, 4, 14, 4);
         _schemaLabel.Margin = Padding.Empty;
         _schemaLabel.TextAlign = ContentAlignment.MiddleLeft;
         _schema.AccessibleName = "Schema / 所属用户";
@@ -261,7 +261,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _schemaSurface.Name = "_schemaSurface";
         _schemaSurface.Dock = DockStyle.Top;
         _schemaSurface.Width = 220;
-        _schemaSurface.Margin = new Padding(0, 5, 0, 10);
+        _schemaSurface.Margin = new Padding(0, 3, 0, 5);
         _schemaSurface.TabIndex = 5;
         _schema.Dock = DockStyle.None;
         _schema.Margin = Padding.Empty;
@@ -270,7 +270,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _table = new GatewayInput();
         _table.Name = "_table";
         _table.Dock = DockStyle.Fill;
-        _table.Margin = new Padding(0, 5, 0, 10);
+        _table.Margin = new Padding(0, 3, 0, 5);
         _table.MinimumSize = new Size(150, 30);
         _table.BorderStyle = BorderStyle.FixedSingle;
         _table.Name = "DatabaseTable";
@@ -282,7 +282,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _tableLabel.ForeColor = UiTheme.Ink;
         _tableLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _tableLabel.Margin = new Padding(0, 4, 0, 4);
-        _tableLabel.Padding = new Padding(0, 7, 14, 7);
+        _tableLabel.Padding = new Padding(0, 4, 14, 4);
         _tableLabel.Margin = Padding.Empty;
         _tableLabel.TextAlign = ContentAlignment.MiddleLeft;
         _table.AccessibleName = "表名";
@@ -293,7 +293,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _tableSurface.Name = "_tableSurface";
         _tableSurface.Dock = DockStyle.Top;
         _tableSurface.Width = 220;
-        _tableSurface.Margin = new Padding(0, 5, 0, 10);
+        _tableSurface.Margin = new Padding(0, 3, 0, 5);
         _tableSurface.TabIndex = 6;
         _table.Dock = DockStyle.None;
         _table.Margin = Padding.Empty;
@@ -302,7 +302,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _tables = new ComboBox();
         _tables.Name = "_tables";
         _tables.Dock = DockStyle.Fill;
-        _tables.Margin = new Padding(0, 5, 0, 10);
+        _tables.Margin = new Padding(0, 3, 0, 5);
         _tables.DropDownStyle = ComboBoxStyle.DropDownList;
         _tables.IntegralHeight = false;
         _tables.DropDownHeight = 320;
@@ -315,7 +315,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _tablesLabel.ForeColor = UiTheme.Ink;
         _tablesLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _tablesLabel.Margin = new Padding(0, 4, 0, 4);
-        _tablesLabel.Padding = new Padding(0, 7, 14, 7);
+        _tablesLabel.Padding = new Padding(0, 4, 14, 4);
         _tablesLabel.Margin = Padding.Empty;
         _tablesLabel.TextAlign = ContentAlignment.MiddleLeft;
         _tables.AccessibleName = "已有数据表";
@@ -326,7 +326,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _tablesSurface.Name = "_tablesSurface";
         _tablesSurface.Dock = DockStyle.Top;
         _tablesSurface.Width = 220;
-        _tablesSurface.Margin = new Padding(0, 5, 0, 10);
+        _tablesSurface.Margin = new Padding(0, 3, 0, 5);
         _tablesSurface.TabIndex = 7;
         _tables.Dock = DockStyle.None;
         _tables.Margin = Padding.Empty;
@@ -342,7 +342,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         listTablesButton.Radius = 6;
         listTablesButton.WaveSize = 0;
         listTablesButton.Type = AntdUI.TTypeMini.Default;
-        listTablesButton.Padding = new Padding(13, 6, 13, 6);
+        listTablesButton.Padding = new Padding(10, 4, 10, 4);
         listTablesButton.Margin = new Padding(0, 0, 8, 6);
         listTablesButton.Cursor = Cursors.Hand;
         listTablesButton.Name = "ReadDatabaseTables";
@@ -367,7 +367,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _loadColumns.Radius = 6;
         _loadColumns.WaveSize = 0;
         _loadColumns.Type = AntdUI.TTypeMini.Default;
-        _loadColumns.Padding = new Padding(13, 6, 13, 6);
+        _loadColumns.Padding = new Padding(10, 4, 10, 4);
         _loadColumns.Margin = new Padding(0, 0, 8, 6);
         _loadColumns.Cursor = Cursors.Hand;
         _loadColumns.Name = "ReadDatabaseColumns";
@@ -382,7 +382,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _createTable.Radius = 6;
         _createTable.WaveSize = 0;
         _createTable.Type = AntdUI.TTypeMini.Default;
-        _createTable.Padding = new Padding(13, 6, 13, 6);
+        _createTable.Padding = new Padding(10, 4, 10, 4);
         _createTable.Margin = new Padding(0, 0, 8, 6);
         _createTable.Cursor = Cursors.Hand;
         _createTable.Name = "CreateDatabasePointTable";
@@ -397,7 +397,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         previewButton.Radius = 6;
         previewButton.WaveSize = 0;
         previewButton.Type = AntdUI.TTypeMini.Default;
-        previewButton.Padding = new Padding(13, 6, 13, 6);
+        previewButton.Padding = new Padding(10, 4, 10, 4);
         previewButton.Margin = new Padding(0, 0, 8, 6);
         previewButton.Cursor = Cursors.Hand;
         previewButton.Name = "PreviewDatabaseWrite";
@@ -427,9 +427,9 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFieldsSection3.ForeColor = UiTheme.Ink;
         writeFieldsSection3.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         writeFieldsSection3.Margin = new Padding(0, 4, 0, 4);
-        writeFieldsSection3.BackColor = UiTheme.BlueSoft;
-        writeFieldsSection3.Padding = new Padding(12, 8, 12, 8);
-        writeFieldsSection3.Margin = new Padding(0, 12, 0, 8);
+        writeFieldsSection3.BackColor = UiTheme.SurfaceSubtle;
+        writeFieldsSection3.Padding = new Padding(10, 6, 10, 6);
+        writeFieldsSection3.Margin = new Padding(0, 8, 0, 6);
         writeFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         writeFields.Controls.Add(writeFieldsSection3, 0, 11);
         writeFields.SetColumnSpan(writeFieldsSection3, 2);
@@ -449,7 +449,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _interval = new NumericUpDown();
         _interval.Name = "_interval";
         _interval.Dock = DockStyle.Fill;
-        _interval.Margin = new Padding(0, 5, 0, 10);
+        _interval.Margin = new Padding(0, 3, 0, 5);
         _interval.ThousandsSeparator = true;
         _interval.Minimum = 100;
         _interval.Maximum = 3600000;
@@ -462,7 +462,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _intervalLabel.ForeColor = UiTheme.Ink;
         _intervalLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _intervalLabel.Margin = new Padding(0, 4, 0, 4);
-        _intervalLabel.Padding = new Padding(0, 7, 14, 7);
+        _intervalLabel.Padding = new Padding(0, 4, 14, 4);
         _intervalLabel.Margin = Padding.Empty;
         _intervalLabel.TextAlign = ContentAlignment.MiddleLeft;
         _interval.AccessibleName = "最小写入间隔（ms）";
@@ -473,7 +473,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _intervalSurface.Name = "_intervalSurface";
         _intervalSurface.Dock = DockStyle.Top;
         _intervalSurface.Width = 220;
-        _intervalSurface.Margin = new Padding(0, 5, 0, 10);
+        _intervalSurface.Margin = new Padding(0, 3, 0, 5);
         _intervalSurface.TabIndex = 13;
         _interval.Dock = DockStyle.None;
         _interval.Margin = Padding.Empty;
@@ -482,7 +482,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _maxAge = new NumericUpDown();
         _maxAge.Name = "_maxAge";
         _maxAge.Dock = DockStyle.Fill;
-        _maxAge.Margin = new Padding(0, 5, 0, 10);
+        _maxAge.Margin = new Padding(0, 3, 0, 5);
         _maxAge.ThousandsSeparator = true;
         _maxAge.Minimum = 100;
         _maxAge.Maximum = 86400000;
@@ -495,7 +495,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _maxAgeLabel.ForeColor = UiTheme.Ink;
         _maxAgeLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _maxAgeLabel.Margin = new Padding(0, 4, 0, 4);
-        _maxAgeLabel.Padding = new Padding(0, 7, 14, 7);
+        _maxAgeLabel.Padding = new Padding(0, 4, 14, 4);
         _maxAgeLabel.Margin = Padding.Empty;
         _maxAgeLabel.TextAlign = ContentAlignment.MiddleLeft;
         _maxAge.AccessibleName = "点位最大数据年龄（ms）";
@@ -506,7 +506,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _maxAgeSurface.Name = "_maxAgeSurface";
         _maxAgeSurface.Dock = DockStyle.Top;
         _maxAgeSurface.Width = 220;
-        _maxAgeSurface.Margin = new Padding(0, 5, 0, 10);
+        _maxAgeSurface.Margin = new Padding(0, 3, 0, 5);
         _maxAgeSurface.TabIndex = 14;
         _maxAge.Dock = DockStyle.None;
         _maxAge.Margin = Padding.Empty;
@@ -515,7 +515,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _goodOnly = new AntdUI.Checkbox();
         _goodOnly.Name = "_goodOnly";
         _goodOnly.Dock = DockStyle.Fill;
-        _goodOnly.Margin = new Padding(0, 5, 0, 10);
+        _goodOnly.Margin = new Padding(0, 3, 0, 5);
         _goodOnly.AutoSize = true;
         _goodOnly.MinimumSize = new Size(0, 32);
         _goodOnly.Text = "仅在关联点位全部为 Good 时写入整行";
@@ -528,7 +528,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _goodOnlyLabel.ForeColor = UiTheme.Ink;
         _goodOnlyLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _goodOnlyLabel.Margin = new Padding(0, 4, 0, 4);
-        _goodOnlyLabel.Padding = new Padding(0, 7, 14, 7);
+        _goodOnlyLabel.Padding = new Padding(0, 4, 14, 4);
         _goodOnlyLabel.Margin = Padding.Empty;
         _goodOnlyLabel.TextAlign = ContentAlignment.MiddleLeft;
         _goodOnly.AccessibleName = "写入质量要求";
@@ -555,7 +555,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _allPoints = new AntdUI.Checkbox();
         _allPoints.Name = "_allPoints";
         _allPoints.Dock = DockStyle.Fill;
-        _allPoints.Margin = new Padding(0, 5, 0, 10);
+        _allPoints.Margin = new Padding(0, 3, 0, 5);
         _allPoints.AutoSize = true;
         _allPoints.MinimumSize = new Size(0, 32);
         _allPoints.Text = "全部启用点位（后续新增点位也写入）";
@@ -563,7 +563,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _pointSearch = new GatewayInput();
         _pointSearch.Name = "_pointSearch";
         _pointSearch.Dock = DockStyle.Fill;
-        _pointSearch.Margin = new Padding(0, 5, 0, 10);
+        _pointSearch.Margin = new Padding(0, 3, 0, 5);
         _pointSearch.MinimumSize = new Size(150, 30);
         _pointSearch.BorderStyle = BorderStyle.FixedSingle;
         _pointSearch.PlaceholderText = "搜索设备或点位";
@@ -620,7 +620,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _switchPointMapping.Radius = 6;
         _switchPointMapping.WaveSize = 0;
         _switchPointMapping.Type = AntdUI.TTypeMini.Primary;
-        _switchPointMapping.Padding = new Padding(13, 6, 13, 6);
+        _switchPointMapping.Padding = new Padding(10, 4, 10, 4);
         _switchPointMapping.Margin = new Padding(0, 0, 8, 6);
         _switchPointMapping.Cursor = Cursors.Hand;
         _switchPointMapping.Name = "UsePointMapping";
@@ -635,7 +635,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mappingLoadColumns.Radius = 6;
         _mappingLoadColumns.WaveSize = 0;
         _mappingLoadColumns.Type = AntdUI.TTypeMini.Default;
-        _mappingLoadColumns.Padding = new Padding(13, 6, 13, 6);
+        _mappingLoadColumns.Padding = new Padding(10, 4, 10, 4);
         _mappingLoadColumns.Margin = new Padding(0, 0, 8, 6);
         _mappingLoadColumns.Cursor = Cursors.Hand;
         _mappingLoadColumns.Name = "RefreshMappingColumns";
@@ -682,7 +682,9 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mapping.GridColor = UiTheme.Border;
         _mapping.DefaultCellStyle.SelectionBackColor = UiTheme.BlueSoft;
         _mapping.DefaultCellStyle.SelectionForeColor = UiTheme.Ink;
-        _mapping.ColumnHeadersDefaultCellStyle.BackColor = UiTheme.BlueSoft;
+        _mapping.ColumnHeadersDefaultCellStyle.BackColor = UiTheme.SurfaceSubtle;
+        _mapping.ColumnHeadersDefaultCellStyle.SelectionBackColor = UiTheme.SurfaceSubtle;
+        _mapping.ColumnHeadersDefaultCellStyle.SelectionForeColor = UiTheme.Ink;
         _mapping.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         _mapping.Name = "DatabaseColumnMappings";
         _mapping.ReadOnly = false;

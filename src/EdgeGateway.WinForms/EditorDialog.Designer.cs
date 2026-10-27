@@ -25,7 +25,7 @@ public partial class EditorDialog
         _layout.Dock = DockStyle.Fill;
         _layout.ColumnCount = 1;
         _layout.RowCount = 4;
-        _layout.Padding = new Padding(20);
+        _layout.Padding = new Padding(16);
         _layout.Margin = Padding.Empty;
         _heading = new TableLayoutPanel();
         _heading.Name = "EditorHeading";
@@ -51,7 +51,7 @@ public partial class EditorDialog
         _title.AutoSize = true;
         _title.Dock = DockStyle.Fill;
         _title.ForeColor = UiTheme.Ink;
-        _title.Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold);
+        _title.Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold);
         _title.Margin = new Padding(0, 4, 0, 4);
         _title.Name = "EditorHeadingTitle";
         _description = new Label();
@@ -91,7 +91,7 @@ public partial class EditorDialog
         _confirm.Radius = 6;
         _confirm.WaveSize = 0;
         _confirm.Type = AntdUI.TTypeMini.Primary;
-        _confirm.Padding = new Padding(13, 6, 13, 6);
+        _confirm.Padding = new Padding(10, 4, 10, 4);
         _confirm.Margin = new Padding(0, 0, 8, 6);
         _confirm.Cursor = Cursors.Hand;
         _confirm.Name = "EditorConfirm";
@@ -105,7 +105,7 @@ public partial class EditorDialog
         _cancel.Radius = 6;
         _cancel.WaveSize = 0;
         _cancel.Type = AntdUI.TTypeMini.Default;
-        _cancel.Padding = new Padding(13, 6, 13, 6);
+        _cancel.Padding = new Padding(10, 4, 10, 4);
         _cancel.Margin = new Padding(0, 0, 8, 6);
         _cancel.Cursor = Cursors.Hand;
         _cancel.Name = "EditorCancel";

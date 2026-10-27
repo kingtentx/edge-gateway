@@ -72,7 +72,7 @@ internal sealed partial class OverviewPageView
         titleLabel.Text = "运行总览";
         titleLabel.AutoSize = true;
         titleLabel.Dock = DockStyle.Fill;
-        titleLabel.Font = new Font("Microsoft YaHei UI", 21F, FontStyle.Bold);
+        titleLabel.Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Bold);
         titleLabel.ForeColor = UiTheme.Ink;
         titleLabel.Margin = new Padding(0, 0, 0, 2);
         dashboardHost = new Panel();
@@ -87,7 +87,7 @@ internal sealed partial class OverviewPageView
         Name = "OverviewPageView";
         Dock = DockStyle.Fill;
         BackColor = UiTheme.Background;
-        Padding = new Padding(20);
+        Padding = new Padding(16);
         contentLayout.Name = "OverviewContent";
         contentLayout.Dock = DockStyle.Fill;
         contentLayout.ColumnCount = 1;
@@ -634,7 +634,7 @@ internal sealed partial class OverviewPageView
         devicesButton.Radius = 6;
         devicesButton.WaveSize = 0;
         devicesButton.Type = AntdUI.TTypeMini.Default;
-        devicesButton.Padding = new Padding(13, 6, 13, 6);
+        devicesButton.Padding = new Padding(10, 4, 10, 4);
         devicesButton.Margin = new Padding(0, 0, 8, 6);
         devicesButton.Cursor = Cursors.Hand;
         links.Controls.Add(devicesButton);
@@ -648,7 +648,7 @@ internal sealed partial class OverviewPageView
         realtimeButton.Radius = 6;
         realtimeButton.WaveSize = 0;
         realtimeButton.Type = AntdUI.TTypeMini.Default;
-        realtimeButton.Padding = new Padding(13, 6, 13, 6);
+        realtimeButton.Padding = new Padding(10, 4, 10, 4);
         realtimeButton.Margin = new Padding(0, 0, 8, 6);
         realtimeButton.Cursor = Cursors.Hand;
         links.Controls.Add(realtimeButton);
@@ -662,7 +662,7 @@ internal sealed partial class OverviewPageView
         diagnosticsButton.Radius = 6;
         diagnosticsButton.WaveSize = 0;
         diagnosticsButton.Type = AntdUI.TTypeMini.Default;
-        diagnosticsButton.Padding = new Padding(13, 6, 13, 6);
+        diagnosticsButton.Padding = new Padding(10, 4, 10, 4);
         diagnosticsButton.Margin = new Padding(0, 0, 8, 6);
         diagnosticsButton.Cursor = Cursors.Hand;
         links.Controls.Add(diagnosticsButton);

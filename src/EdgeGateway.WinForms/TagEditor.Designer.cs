@@ -104,7 +104,7 @@ internal sealed partial class TagEditor
         _basicViewport.Name = "_basicViewport";
         _basicViewport.Dock = DockStyle.Fill;
         _basicViewport.AutoScroll = true;
-        _basicViewport.Padding = new Padding(14);
+        _basicViewport.Padding = new Padding(10);
         _basicViewport.Margin = Padding.Empty;
         _basic = new TableLayoutPanel();
         _basic.Name = "_basic";
@@ -128,16 +128,16 @@ internal sealed partial class TagEditor
         _basicSection1.ForeColor = UiTheme.Ink;
         _basicSection1.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         _basicSection1.Margin = new Padding(0, 4, 0, 4);
-        _basicSection1.BackColor = UiTheme.BlueSoft;
-        _basicSection1.Padding = new Padding(12, 8, 12, 8);
-        _basicSection1.Margin = new Padding(0, 12, 0, 8);
+        _basicSection1.BackColor = UiTheme.SurfaceSubtle;
+        _basicSection1.Padding = new Padding(10, 6, 10, 6);
+        _basicSection1.Margin = new Padding(0, 8, 0, 6);
         _basic.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _basic.Controls.Add(_basicSection1, 0, 0);
         _basic.SetColumnSpan(_basicSection1, 2);
         _name = new GatewayInput();
         _name.Name = "_name";
         _name.Dock = DockStyle.Fill;
-        _name.Margin = new Padding(0, 5, 0, 10);
+        _name.Margin = new Padding(0, 3, 0, 5);
         _name.MinimumSize = new Size(150, 30);
         _name.BorderStyle = BorderStyle.FixedSingle;
         _name.Name = "TagName";
@@ -149,7 +149,7 @@ internal sealed partial class TagEditor
         _nameLabel.ForeColor = UiTheme.Ink;
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
-        _nameLabel.Padding = new Padding(0, 7, 14, 7);
+        _nameLabel.Padding = new Padding(0, 4, 14, 4);
         _nameLabel.Margin = Padding.Empty;
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "点位名称";
@@ -160,7 +160,7 @@ internal sealed partial class TagEditor
         _nameSurface.Name = "_nameSurface";
         _nameSurface.Dock = DockStyle.Top;
         _nameSurface.Width = 220;
-        _nameSurface.Margin = new Padding(0, 5, 0, 10);
+        _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 1;
         _name.Dock = DockStyle.None;
         _name.Margin = Padding.Empty;
@@ -169,7 +169,7 @@ internal sealed partial class TagEditor
         _readMethod = new ComboBox();
         _readMethod.Name = "_readMethod";
         _readMethod.Dock = DockStyle.Fill;
-        _readMethod.Margin = new Padding(0, 5, 0, 10);
+        _readMethod.Margin = new Padding(0, 3, 0, 5);
         _readMethod.DropDownStyle = ComboBoxStyle.DropDownList;
         _readMethod.IntegralHeight = false;
         _readMethod.DropDownHeight = 320;
@@ -182,7 +182,7 @@ internal sealed partial class TagEditor
         _readMethodLabel.ForeColor = UiTheme.Ink;
         _readMethodLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _readMethodLabel.Margin = new Padding(0, 4, 0, 4);
-        _readMethodLabel.Padding = new Padding(0, 7, 14, 7);
+        _readMethodLabel.Padding = new Padding(0, 4, 14, 4);
         _readMethodLabel.Margin = Padding.Empty;
         _readMethodLabel.TextAlign = ContentAlignment.MiddleLeft;
         _readMethod.AccessibleName = "读取方法";
@@ -193,7 +193,7 @@ internal sealed partial class TagEditor
         _readMethodSurface.Name = "_readMethodSurface";
         _readMethodSurface.Dock = DockStyle.Top;
         _readMethodSurface.Width = 220;
-        _readMethodSurface.Margin = new Padding(0, 5, 0, 10);
+        _readMethodSurface.Margin = new Padding(0, 3, 0, 5);
         _readMethodSurface.TabIndex = 2;
         _readMethod.Dock = DockStyle.None;
         _readMethod.Margin = Padding.Empty;
@@ -202,7 +202,7 @@ internal sealed partial class TagEditor
         _address = new GatewayInput();
         _address.Name = "_address";
         _address.Dock = DockStyle.Fill;
-        _address.Margin = new Padding(0, 5, 0, 10);
+        _address.Margin = new Padding(0, 3, 0, 5);
         _address.MinimumSize = new Size(150, 30);
         _address.BorderStyle = BorderStyle.FixedSingle;
         _address.Name = "TagAddress";
@@ -214,7 +214,7 @@ internal sealed partial class TagEditor
         _addressLabel.ForeColor = UiTheme.Ink;
         _addressLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _addressLabel.Margin = new Padding(0, 4, 0, 4);
-        _addressLabel.Padding = new Padding(0, 7, 14, 7);
+        _addressLabel.Padding = new Padding(0, 4, 14, 4);
         _addressLabel.Margin = Padding.Empty;
         _addressLabel.TextAlign = ContentAlignment.MiddleLeft;
         _address.AccessibleName = "点位地址";
@@ -225,7 +225,7 @@ internal sealed partial class TagEditor
         _addressSurface.Name = "_addressSurface";
         _addressSurface.Dock = DockStyle.Top;
         _addressSurface.Width = 220;
-        _addressSurface.Margin = new Padding(0, 5, 0, 10);
+        _addressSurface.Margin = new Padding(0, 3, 0, 5);
         _addressSurface.TabIndex = 3;
         _address.Dock = DockStyle.None;
         _address.Margin = Padding.Empty;
@@ -234,7 +234,7 @@ internal sealed partial class TagEditor
         _type = new ComboBox();
         _type.Name = "_type";
         _type.Dock = DockStyle.Fill;
-        _type.Margin = new Padding(0, 5, 0, 10);
+        _type.Margin = new Padding(0, 3, 0, 5);
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
         _type.IntegralHeight = false;
         _type.DropDownHeight = 320;
@@ -247,7 +247,7 @@ internal sealed partial class TagEditor
         _typeLabel.ForeColor = UiTheme.Ink;
         _typeLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _typeLabel.Margin = new Padding(0, 4, 0, 4);
-        _typeLabel.Padding = new Padding(0, 7, 14, 7);
+        _typeLabel.Padding = new Padding(0, 4, 14, 4);
         _typeLabel.Margin = Padding.Empty;
         _typeLabel.TextAlign = ContentAlignment.MiddleLeft;
         _type.AccessibleName = "数据类型";
@@ -258,7 +258,7 @@ internal sealed partial class TagEditor
         _typeSurface.Name = "_typeSurface";
         _typeSurface.Dock = DockStyle.Top;
         _typeSurface.Width = 220;
-        _typeSurface.Margin = new Padding(0, 5, 0, 10);
+        _typeSurface.Margin = new Padding(0, 3, 0, 5);
         _typeSurface.TabIndex = 4;
         _type.Dock = DockStyle.None;
         _type.Margin = Padding.Empty;
@@ -267,7 +267,7 @@ internal sealed partial class TagEditor
         _endian = new ComboBox();
         _endian.Name = "_endian";
         _endian.Dock = DockStyle.Fill;
-        _endian.Margin = new Padding(0, 5, 0, 10);
+        _endian.Margin = new Padding(0, 3, 0, 5);
         _endian.DropDownStyle = ComboBoxStyle.DropDownList;
         _endian.IntegralHeight = false;
         _endian.DropDownHeight = 320;
@@ -280,7 +280,7 @@ internal sealed partial class TagEditor
         _endianLabel.ForeColor = UiTheme.Ink;
         _endianLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _endianLabel.Margin = new Padding(0, 4, 0, 4);
-        _endianLabel.Padding = new Padding(0, 7, 14, 7);
+        _endianLabel.Padding = new Padding(0, 4, 14, 4);
         _endianLabel.Margin = Padding.Empty;
         _endianLabel.TextAlign = ContentAlignment.MiddleLeft;
         _endian.AccessibleName = "协议字节序";
@@ -291,7 +291,7 @@ internal sealed partial class TagEditor
         _endianSurface.Name = "_endianSurface";
         _endianSurface.Dock = DockStyle.Top;
         _endianSurface.Width = 220;
-        _endianSurface.Margin = new Padding(0, 5, 0, 10);
+        _endianSurface.Margin = new Padding(0, 3, 0, 5);
         _endianSurface.TabIndex = 5;
         _endian.Dock = DockStyle.None;
         _endian.Margin = Padding.Empty;
@@ -300,7 +300,7 @@ internal sealed partial class TagEditor
         _area = new ComboBox();
         _area.Name = "_area";
         _area.Dock = DockStyle.Fill;
-        _area.Margin = new Padding(0, 5, 0, 10);
+        _area.Margin = new Padding(0, 3, 0, 5);
         _area.DropDownStyle = ComboBoxStyle.DropDownList;
         _area.IntegralHeight = false;
         _area.DropDownHeight = 320;
@@ -313,7 +313,7 @@ internal sealed partial class TagEditor
         _areaLabel.ForeColor = UiTheme.Ink;
         _areaLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _areaLabel.Margin = new Padding(0, 4, 0, 4);
-        _areaLabel.Padding = new Padding(0, 7, 14, 7);
+        _areaLabel.Padding = new Padding(0, 4, 14, 4);
         _areaLabel.Margin = Padding.Empty;
         _areaLabel.TextAlign = ContentAlignment.MiddleLeft;
         _area.AccessibleName = "Modbus 寄存区";
@@ -324,7 +324,7 @@ internal sealed partial class TagEditor
         _areaSurface.Name = "_areaSurface";
         _areaSurface.Dock = DockStyle.Top;
         _areaSurface.Width = 220;
-        _areaSurface.Margin = new Padding(0, 5, 0, 10);
+        _areaSurface.Margin = new Padding(0, 3, 0, 5);
         _areaSurface.TabIndex = 6;
         _area.Dock = DockStyle.None;
         _area.Margin = Padding.Empty;
@@ -333,7 +333,7 @@ internal sealed partial class TagEditor
         _byteOrder = new ComboBox();
         _byteOrder.Name = "_byteOrder";
         _byteOrder.Dock = DockStyle.Fill;
-        _byteOrder.Margin = new Padding(0, 5, 0, 10);
+        _byteOrder.Margin = new Padding(0, 3, 0, 5);
         _byteOrder.DropDownStyle = ComboBoxStyle.DropDownList;
         _byteOrder.IntegralHeight = false;
         _byteOrder.DropDownHeight = 320;
@@ -346,7 +346,7 @@ internal sealed partial class TagEditor
         _byteOrderLabel.ForeColor = UiTheme.Ink;
         _byteOrderLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _byteOrderLabel.Margin = new Padding(0, 4, 0, 4);
-        _byteOrderLabel.Padding = new Padding(0, 7, 14, 7);
+        _byteOrderLabel.Padding = new Padding(0, 4, 14, 4);
         _byteOrderLabel.Margin = Padding.Empty;
         _byteOrderLabel.TextAlign = ContentAlignment.MiddleLeft;
         _byteOrder.AccessibleName = "字节序";
@@ -357,7 +357,7 @@ internal sealed partial class TagEditor
         _byteOrderSurface.Name = "_byteOrderSurface";
         _byteOrderSurface.Dock = DockStyle.Top;
         _byteOrderSurface.Width = 220;
-        _byteOrderSurface.Margin = new Padding(0, 5, 0, 10);
+        _byteOrderSurface.Margin = new Padding(0, 3, 0, 5);
         _byteOrderSurface.TabIndex = 7;
         _byteOrder.Dock = DockStyle.None;
         _byteOrder.Margin = Padding.Empty;
@@ -366,7 +366,7 @@ internal sealed partial class TagEditor
         _unit = new GatewayInput();
         _unit.Name = "_unit";
         _unit.Dock = DockStyle.Fill;
-        _unit.Margin = new Padding(0, 5, 0, 10);
+        _unit.Margin = new Padding(0, 3, 0, 5);
         _unit.MinimumSize = new Size(150, 30);
         _unit.BorderStyle = BorderStyle.FixedSingle;
         _unit.Name = "TagUnit";
@@ -378,7 +378,7 @@ internal sealed partial class TagEditor
         _unitLabel.ForeColor = UiTheme.Ink;
         _unitLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _unitLabel.Margin = new Padding(0, 4, 0, 4);
-        _unitLabel.Padding = new Padding(0, 7, 14, 7);
+        _unitLabel.Padding = new Padding(0, 4, 14, 4);
         _unitLabel.Margin = Padding.Empty;
         _unitLabel.TextAlign = ContentAlignment.MiddleLeft;
         _unit.AccessibleName = "单位";
@@ -389,7 +389,7 @@ internal sealed partial class TagEditor
         _unitSurface.Name = "_unitSurface";
         _unitSurface.Dock = DockStyle.Top;
         _unitSurface.Width = 220;
-        _unitSurface.Margin = new Padding(0, 5, 0, 10);
+        _unitSurface.Margin = new Padding(0, 3, 0, 5);
         _unitSurface.TabIndex = 8;
         _unit.Dock = DockStyle.None;
         _unit.Margin = Padding.Empty;
@@ -403,9 +403,9 @@ internal sealed partial class TagEditor
         _basicSection2.ForeColor = UiTheme.Ink;
         _basicSection2.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         _basicSection2.Margin = new Padding(0, 4, 0, 4);
-        _basicSection2.BackColor = UiTheme.BlueSoft;
-        _basicSection2.Padding = new Padding(12, 8, 12, 8);
-        _basicSection2.Margin = new Padding(0, 12, 0, 8);
+        _basicSection2.BackColor = UiTheme.SurfaceSubtle;
+        _basicSection2.Padding = new Padding(10, 6, 10, 6);
+        _basicSection2.Margin = new Padding(0, 8, 0, 6);
         _basic.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _basic.Controls.Add(_basicSection2, 0, 9);
         _basic.SetColumnSpan(_basicSection2, 2);
@@ -425,7 +425,7 @@ internal sealed partial class TagEditor
         _enabled = new AntdUI.Checkbox();
         _enabled.Name = "_enabled";
         _enabled.Dock = DockStyle.Fill;
-        _enabled.Margin = new Padding(0, 5, 0, 10);
+        _enabled.Margin = new Padding(0, 3, 0, 5);
         _enabled.AutoSize = true;
         _enabled.MinimumSize = new Size(0, 32);
         _enabled.Text = "启用采集";
@@ -438,7 +438,7 @@ internal sealed partial class TagEditor
         _enabledLabel.ForeColor = UiTheme.Ink;
         _enabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _enabledLabel.Margin = new Padding(0, 4, 0, 4);
-        _enabledLabel.Padding = new Padding(0, 7, 14, 7);
+        _enabledLabel.Padding = new Padding(0, 4, 14, 4);
         _enabledLabel.Margin = Padding.Empty;
         _enabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _enabled.AccessibleName = "启用状态";
@@ -449,7 +449,7 @@ internal sealed partial class TagEditor
         _uploadEnabled = new AntdUI.Checkbox();
         _uploadEnabled.Name = "_uploadEnabled";
         _uploadEnabled.Dock = DockStyle.Fill;
-        _uploadEnabled.Margin = new Padding(0, 5, 0, 10);
+        _uploadEnabled.Margin = new Padding(0, 3, 0, 5);
         _uploadEnabled.AutoSize = true;
         _uploadEnabled.MinimumSize = new Size(0, 32);
         _uploadEnabled.Text = "允许上传到平台";
@@ -462,7 +462,7 @@ internal sealed partial class TagEditor
         _uploadEnabledLabel.ForeColor = UiTheme.Ink;
         _uploadEnabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _uploadEnabledLabel.Margin = new Padding(0, 4, 0, 4);
-        _uploadEnabledLabel.Padding = new Padding(0, 7, 14, 7);
+        _uploadEnabledLabel.Padding = new Padding(0, 4, 14, 4);
         _uploadEnabledLabel.Margin = Padding.Empty;
         _uploadEnabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _uploadEnabled.AccessibleName = "上传平台";
@@ -473,7 +473,7 @@ internal sealed partial class TagEditor
         _writable = new AntdUI.Checkbox();
         _writable.Name = "_writable";
         _writable.Dock = DockStyle.Fill;
-        _writable.Margin = new Padding(0, 5, 0, 10);
+        _writable.Margin = new Padding(0, 3, 0, 5);
         _writable.AutoSize = true;
         _writable.MinimumSize = new Size(0, 32);
         _writable.Text = "允许手动写入此点位";
@@ -486,7 +486,7 @@ internal sealed partial class TagEditor
         _writableLabel.ForeColor = UiTheme.Ink;
         _writableLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _writableLabel.Margin = new Padding(0, 4, 0, 4);
-        _writableLabel.Padding = new Padding(0, 7, 14, 7);
+        _writableLabel.Padding = new Padding(0, 4, 14, 4);
         _writableLabel.Margin = Padding.Empty;
         _writableLabel.TextAlign = ContentAlignment.MiddleLeft;
         _writable.AccessibleName = "写入权限";
@@ -497,7 +497,7 @@ internal sealed partial class TagEditor
         _writeMethod = new ComboBox();
         _writeMethod.Name = "_writeMethod";
         _writeMethod.Dock = DockStyle.Fill;
-        _writeMethod.Margin = new Padding(0, 5, 0, 10);
+        _writeMethod.Margin = new Padding(0, 3, 0, 5);
         _writeMethod.DropDownStyle = ComboBoxStyle.DropDownList;
         _writeMethod.IntegralHeight = false;
         _writeMethod.DropDownHeight = 320;
@@ -510,7 +510,7 @@ internal sealed partial class TagEditor
         _writeMethodLabel.ForeColor = UiTheme.Ink;
         _writeMethodLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _writeMethodLabel.Margin = new Padding(0, 4, 0, 4);
-        _writeMethodLabel.Padding = new Padding(0, 7, 14, 7);
+        _writeMethodLabel.Padding = new Padding(0, 4, 14, 4);
         _writeMethodLabel.Margin = Padding.Empty;
         _writeMethodLabel.TextAlign = ContentAlignment.MiddleLeft;
         _writeMethod.AccessibleName = "写入方法";
@@ -521,7 +521,7 @@ internal sealed partial class TagEditor
         _writeMethodSurface.Name = "_writeMethodSurface";
         _writeMethodSurface.Dock = DockStyle.Top;
         _writeMethodSurface.Width = 220;
-        _writeMethodSurface.Margin = new Padding(0, 5, 0, 10);
+        _writeMethodSurface.Margin = new Padding(0, 3, 0, 5);
         _writeMethodSurface.TabIndex = 14;
         _writeMethod.Dock = DockStyle.None;
         _writeMethod.Margin = Padding.Empty;
@@ -559,7 +559,7 @@ internal sealed partial class TagEditor
         calculationViewport.Name = "calculationViewport";
         calculationViewport.Dock = DockStyle.Fill;
         calculationViewport.AutoScroll = true;
-        calculationViewport.Padding = new Padding(14);
+        calculationViewport.Padding = new Padding(10);
         calculationViewport.Margin = Padding.Empty;
         calculation = new TableLayoutPanel();
         calculation.Name = "calculation";
@@ -583,9 +583,9 @@ internal sealed partial class TagEditor
         calculationSection5.ForeColor = UiTheme.Ink;
         calculationSection5.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         calculationSection5.Margin = new Padding(0, 4, 0, 4);
-        calculationSection5.BackColor = UiTheme.BlueSoft;
-        calculationSection5.Padding = new Padding(12, 8, 12, 8);
-        calculationSection5.Margin = new Padding(0, 12, 0, 8);
+        calculationSection5.BackColor = UiTheme.SurfaceSubtle;
+        calculationSection5.Padding = new Padding(10, 6, 10, 6);
+        calculationSection5.Margin = new Padding(0, 8, 0, 6);
         calculation.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         calculation.Controls.Add(calculationSection5, 0, 0);
         calculation.SetColumnSpan(calculationSection5, 2);
@@ -605,7 +605,7 @@ internal sealed partial class TagEditor
         _scale = new GatewayInput();
         _scale.Name = "_scale";
         _scale.Dock = DockStyle.Fill;
-        _scale.Margin = new Padding(0, 5, 0, 10);
+        _scale.Margin = new Padding(0, 3, 0, 5);
         _scale.MinimumSize = new Size(150, 30);
         _scale.BorderStyle = BorderStyle.FixedSingle;
         _scale.Name = "TagScale";
@@ -617,7 +617,7 @@ internal sealed partial class TagEditor
         _scaleLabel.ForeColor = UiTheme.Ink;
         _scaleLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _scaleLabel.Margin = new Padding(0, 4, 0, 4);
-        _scaleLabel.Padding = new Padding(0, 7, 14, 7);
+        _scaleLabel.Padding = new Padding(0, 4, 14, 4);
         _scaleLabel.Margin = Padding.Empty;
         _scaleLabel.TextAlign = ContentAlignment.MiddleLeft;
         _scale.AccessibleName = "倍率";
@@ -628,7 +628,7 @@ internal sealed partial class TagEditor
         _scaleSurface.Name = "_scaleSurface";
         _scaleSurface.Dock = DockStyle.Top;
         _scaleSurface.Width = 220;
-        _scaleSurface.Margin = new Padding(0, 5, 0, 10);
+        _scaleSurface.Margin = new Padding(0, 3, 0, 5);
         _scaleSurface.TabIndex = 2;
         _scale.Dock = DockStyle.None;
         _scale.Margin = Padding.Empty;
@@ -637,7 +637,7 @@ internal sealed partial class TagEditor
         _offset = new GatewayInput();
         _offset.Name = "_offset";
         _offset.Dock = DockStyle.Fill;
-        _offset.Margin = new Padding(0, 5, 0, 10);
+        _offset.Margin = new Padding(0, 3, 0, 5);
         _offset.MinimumSize = new Size(150, 30);
         _offset.BorderStyle = BorderStyle.FixedSingle;
         _offset.Name = "TagOffset";
@@ -649,7 +649,7 @@ internal sealed partial class TagEditor
         _offsetLabel.ForeColor = UiTheme.Ink;
         _offsetLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _offsetLabel.Margin = new Padding(0, 4, 0, 4);
-        _offsetLabel.Padding = new Padding(0, 7, 14, 7);
+        _offsetLabel.Padding = new Padding(0, 4, 14, 4);
         _offsetLabel.Margin = Padding.Empty;
         _offsetLabel.TextAlign = ContentAlignment.MiddleLeft;
         _offset.AccessibleName = "偏移量";
@@ -660,7 +660,7 @@ internal sealed partial class TagEditor
         _offsetSurface.Name = "_offsetSurface";
         _offsetSurface.Dock = DockStyle.Top;
         _offsetSurface.Width = 220;
-        _offsetSurface.Margin = new Padding(0, 5, 0, 10);
+        _offsetSurface.Margin = new Padding(0, 3, 0, 5);
         _offsetSurface.TabIndex = 3;
         _offset.Dock = DockStyle.None;
         _offset.Margin = Padding.Empty;
@@ -669,7 +669,7 @@ internal sealed partial class TagEditor
         _expression = new GatewayInput();
         _expression.Name = "_expression";
         _expression.Dock = DockStyle.Fill;
-        _expression.Margin = new Padding(0, 5, 0, 10);
+        _expression.Margin = new Padding(0, 3, 0, 5);
         _expression.MinimumSize = new Size(150, 30);
         _expression.BorderStyle = BorderStyle.FixedSingle;
         _expression.Name = "TagExpression";
@@ -681,7 +681,7 @@ internal sealed partial class TagEditor
         _expressionLabel.ForeColor = UiTheme.Ink;
         _expressionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _expressionLabel.Margin = new Padding(0, 4, 0, 4);
-        _expressionLabel.Padding = new Padding(0, 7, 14, 7);
+        _expressionLabel.Padding = new Padding(0, 4, 14, 4);
         _expressionLabel.Margin = Padding.Empty;
         _expressionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _expression.AccessibleName = "计算表达式（可空）";
@@ -692,7 +692,7 @@ internal sealed partial class TagEditor
         _expressionSurface.Name = "_expressionSurface";
         _expressionSurface.Dock = DockStyle.Top;
         _expressionSurface.Width = 220;
-        _expressionSurface.Margin = new Padding(0, 5, 0, 10);
+        _expressionSurface.Margin = new Padding(0, 3, 0, 5);
         _expressionSurface.TabIndex = 4;
         _expression.Dock = DockStyle.None;
         _expression.Margin = Padding.Empty;
@@ -707,9 +707,9 @@ internal sealed partial class TagEditor
         calculationSection7.ForeColor = UiTheme.Ink;
         calculationSection7.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         calculationSection7.Margin = new Padding(0, 4, 0, 4);
-        calculationSection7.BackColor = UiTheme.BlueSoft;
-        calculationSection7.Padding = new Padding(12, 8, 12, 8);
-        calculationSection7.Margin = new Padding(0, 12, 0, 8);
+        calculationSection7.BackColor = UiTheme.SurfaceSubtle;
+        calculationSection7.Padding = new Padding(10, 6, 10, 6);
+        calculationSection7.Margin = new Padding(0, 8, 0, 6);
         calculation.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         calculation.Controls.Add(calculationSection7, 0, 5);
         calculation.SetColumnSpan(calculationSection7, 2);
@@ -729,7 +729,7 @@ internal sealed partial class TagEditor
         previewInput = new GatewayInput();
         previewInput.Name = "previewInput";
         previewInput.Dock = DockStyle.Fill;
-        previewInput.Margin = new Padding(0, 5, 0, 10);
+        previewInput.Margin = new Padding(0, 3, 0, 5);
         previewInput.MinimumSize = new Size(150, 30);
         previewInput.BorderStyle = BorderStyle.FixedSingle;
         previewInput.Text = "1";
@@ -742,7 +742,7 @@ internal sealed partial class TagEditor
         previewInputLabel.ForeColor = UiTheme.Ink;
         previewInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         previewInputLabel.Margin = new Padding(0, 4, 0, 4);
-        previewInputLabel.Padding = new Padding(0, 7, 14, 7);
+        previewInputLabel.Padding = new Padding(0, 4, 14, 4);
         previewInputLabel.Margin = Padding.Empty;
         previewInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         previewInput.AccessibleName = "试算 x";
@@ -753,7 +753,7 @@ internal sealed partial class TagEditor
         previewInputSurface.Name = "previewInputSurface";
         previewInputSurface.Dock = DockStyle.Top;
         previewInputSurface.Width = 220;
-        previewInputSurface.Margin = new Padding(0, 5, 0, 10);
+        previewInputSurface.Margin = new Padding(0, 3, 0, 5);
         previewInputSurface.TabIndex = 7;
         previewInput.Dock = DockStyle.None;
         previewInput.Margin = Padding.Empty;
@@ -769,7 +769,7 @@ internal sealed partial class TagEditor
         previewButton.Radius = 6;
         previewButton.WaveSize = 0;
         previewButton.Type = AntdUI.TTypeMini.Default;
-        previewButton.Padding = new Padding(13, 6, 13, 6);
+        previewButton.Padding = new Padding(10, 4, 10, 4);
         previewButton.Margin = new Padding(0, 0, 8, 6);
         previewButton.Cursor = Cursors.Hand;
         previewButtonLabel = new Label();
@@ -780,7 +780,7 @@ internal sealed partial class TagEditor
         previewButtonLabel.ForeColor = UiTheme.Ink;
         previewButtonLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         previewButtonLabel.Margin = new Padding(0, 4, 0, 4);
-        previewButtonLabel.Padding = new Padding(0, 7, 14, 7);
+        previewButtonLabel.Padding = new Padding(0, 4, 14, 4);
         previewButtonLabel.Margin = Padding.Empty;
         previewButtonLabel.TextAlign = ContentAlignment.MiddleLeft;
         previewButton.AccessibleName = "表达式试算";
@@ -805,7 +805,7 @@ internal sealed partial class TagEditor
         previewResultLabel.ForeColor = UiTheme.Ink;
         previewResultLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         previewResultLabel.Margin = new Padding(0, 4, 0, 4);
-        previewResultLabel.Padding = new Padding(0, 7, 14, 7);
+        previewResultLabel.Padding = new Padding(0, 4, 14, 4);
         previewResultLabel.Margin = Padding.Empty;
         previewResultLabel.TextAlign = ContentAlignment.MiddleLeft;
         previewResult.AccessibleName = "试算结果";
@@ -821,16 +821,16 @@ internal sealed partial class TagEditor
         calculationSection9.ForeColor = UiTheme.Ink;
         calculationSection9.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         calculationSection9.Margin = new Padding(0, 4, 0, 4);
-        calculationSection9.BackColor = UiTheme.BlueSoft;
-        calculationSection9.Padding = new Padding(12, 8, 12, 8);
-        calculationSection9.Margin = new Padding(0, 12, 0, 8);
+        calculationSection9.BackColor = UiTheme.SurfaceSubtle;
+        calculationSection9.Padding = new Padding(10, 6, 10, 6);
+        calculationSection9.Margin = new Padding(0, 8, 0, 6);
         calculation.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         calculation.Controls.Add(calculationSection9, 0, 10);
         calculation.SetColumnSpan(calculationSection9, 2);
         _low = new GatewayInput();
         _low.Name = "_low";
         _low.Dock = DockStyle.Fill;
-        _low.Margin = new Padding(0, 5, 0, 10);
+        _low.Margin = new Padding(0, 3, 0, 5);
         _low.MinimumSize = new Size(150, 30);
         _low.BorderStyle = BorderStyle.FixedSingle;
         _low.Name = "TagLowLimit";
@@ -842,7 +842,7 @@ internal sealed partial class TagEditor
         _lowLabel.ForeColor = UiTheme.Ink;
         _lowLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _lowLabel.Margin = new Padding(0, 4, 0, 4);
-        _lowLabel.Padding = new Padding(0, 7, 14, 7);
+        _lowLabel.Padding = new Padding(0, 4, 14, 4);
         _lowLabel.Margin = Padding.Empty;
         _lowLabel.TextAlign = ContentAlignment.MiddleLeft;
         _low.AccessibleName = "报警下限（可空）";
@@ -853,7 +853,7 @@ internal sealed partial class TagEditor
         _lowSurface.Name = "_lowSurface";
         _lowSurface.Dock = DockStyle.Top;
         _lowSurface.Width = 220;
-        _lowSurface.Margin = new Padding(0, 5, 0, 10);
+        _lowSurface.Margin = new Padding(0, 3, 0, 5);
         _lowSurface.TabIndex = 11;
         _low.Dock = DockStyle.None;
         _low.Margin = Padding.Empty;
@@ -862,7 +862,7 @@ internal sealed partial class TagEditor
         _high = new GatewayInput();
         _high.Name = "_high";
         _high.Dock = DockStyle.Fill;
-        _high.Margin = new Padding(0, 5, 0, 10);
+        _high.Margin = new Padding(0, 3, 0, 5);
         _high.MinimumSize = new Size(150, 30);
         _high.BorderStyle = BorderStyle.FixedSingle;
         _high.Name = "TagHighLimit";
@@ -874,7 +874,7 @@ internal sealed partial class TagEditor
         _highLabel.ForeColor = UiTheme.Ink;
         _highLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _highLabel.Margin = new Padding(0, 4, 0, 4);
-        _highLabel.Padding = new Padding(0, 7, 14, 7);
+        _highLabel.Padding = new Padding(0, 4, 14, 4);
         _highLabel.Margin = Padding.Empty;
         _highLabel.TextAlign = ContentAlignment.MiddleLeft;
         _high.AccessibleName = "报警上限（可空）";
@@ -885,7 +885,7 @@ internal sealed partial class TagEditor
         _highSurface.Name = "_highSurface";
         _highSurface.Dock = DockStyle.Top;
         _highSurface.Width = 220;
-        _highSurface.Margin = new Padding(0, 5, 0, 10);
+        _highSurface.Margin = new Padding(0, 3, 0, 5);
         _highSurface.TabIndex = 12;
         _high.Dock = DockStyle.None;
         _high.Margin = Padding.Empty;
@@ -894,7 +894,7 @@ internal sealed partial class TagEditor
         _description = new GatewayInput();
         _description.Name = "_description";
         _description.Dock = DockStyle.Fill;
-        _description.Margin = new Padding(0, 5, 0, 10);
+        _description.Margin = new Padding(0, 3, 0, 5);
         _description.MinimumSize = new Size(150, 30);
         _description.BorderStyle = BorderStyle.FixedSingle;
         _description.Multiline = true;
@@ -909,7 +909,7 @@ internal sealed partial class TagEditor
         _descriptionLabel.ForeColor = UiTheme.Ink;
         _descriptionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _descriptionLabel.Margin = new Padding(0, 4, 0, 4);
-        _descriptionLabel.Padding = new Padding(0, 7, 14, 7);
+        _descriptionLabel.Padding = new Padding(0, 4, 14, 4);
         _descriptionLabel.Margin = Padding.Empty;
         _descriptionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _description.AccessibleName = "点位说明";
@@ -951,7 +951,7 @@ internal sealed partial class TagEditor
         reportingViewport.Name = "reportingViewport";
         reportingViewport.Dock = DockStyle.Fill;
         reportingViewport.AutoScroll = true;
-        reportingViewport.Padding = new Padding(14);
+        reportingViewport.Padding = new Padding(10);
         reportingViewport.Margin = Padding.Empty;
         reporting = new TableLayoutPanel();
         reporting.Name = "reporting";
@@ -975,16 +975,16 @@ internal sealed partial class TagEditor
         reportingSection12.ForeColor = UiTheme.Ink;
         reportingSection12.Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
         reportingSection12.Margin = new Padding(0, 4, 0, 4);
-        reportingSection12.BackColor = UiTheme.BlueSoft;
-        reportingSection12.Padding = new Padding(12, 8, 12, 8);
-        reportingSection12.Margin = new Padding(0, 12, 0, 8);
+        reportingSection12.BackColor = UiTheme.SurfaceSubtle;
+        reportingSection12.Padding = new Padding(10, 6, 10, 6);
+        reportingSection12.Margin = new Padding(0, 8, 0, 6);
         reporting.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         reporting.Controls.Add(reportingSection12, 0, 0);
         reporting.SetColumnSpan(reportingSection12, 2);
         _scanInterval = new NumericUpDown();
         _scanInterval.Name = "_scanInterval";
         _scanInterval.Dock = DockStyle.Fill;
-        _scanInterval.Margin = new Padding(0, 5, 0, 10);
+        _scanInterval.Margin = new Padding(0, 3, 0, 5);
         _scanInterval.ThousandsSeparator = true;
         _scanInterval.Minimum = 0;
         _scanInterval.Maximum = 3600000;
@@ -997,7 +997,7 @@ internal sealed partial class TagEditor
         _scanIntervalLabel.ForeColor = UiTheme.Ink;
         _scanIntervalLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _scanIntervalLabel.Margin = new Padding(0, 4, 0, 4);
-        _scanIntervalLabel.Padding = new Padding(0, 7, 14, 7);
+        _scanIntervalLabel.Padding = new Padding(0, 4, 14, 4);
         _scanIntervalLabel.Margin = Padding.Empty;
         _scanIntervalLabel.TextAlign = ContentAlignment.MiddleLeft;
         _scanInterval.AccessibleName = "点位扫描周期 (ms)";
@@ -1008,7 +1008,7 @@ internal sealed partial class TagEditor
         _scanIntervalSurface.Name = "_scanIntervalSurface";
         _scanIntervalSurface.Dock = DockStyle.Top;
         _scanIntervalSurface.Width = 220;
-        _scanIntervalSurface.Margin = new Padding(0, 5, 0, 10);
+        _scanIntervalSurface.Margin = new Padding(0, 3, 0, 5);
         _scanIntervalSurface.TabIndex = 1;
         _scanInterval.Dock = DockStyle.None;
         _scanInterval.Margin = Padding.Empty;
@@ -1017,7 +1017,7 @@ internal sealed partial class TagEditor
         _deadband = new GatewayInput();
         _deadband.Name = "_deadband";
         _deadband.Dock = DockStyle.Fill;
-        _deadband.Margin = new Padding(0, 5, 0, 10);
+        _deadband.Margin = new Padding(0, 3, 0, 5);
         _deadband.MinimumSize = new Size(150, 30);
         _deadband.BorderStyle = BorderStyle.FixedSingle;
         _deadband.Name = "TagDeadband";
@@ -1029,7 +1029,7 @@ internal sealed partial class TagEditor
         _deadbandLabel.ForeColor = UiTheme.Ink;
         _deadbandLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _deadbandLabel.Margin = new Padding(0, 4, 0, 4);
-        _deadbandLabel.Padding = new Padding(0, 7, 14, 7);
+        _deadbandLabel.Padding = new Padding(0, 4, 14, 4);
         _deadbandLabel.Margin = Padding.Empty;
         _deadbandLabel.TextAlign = ContentAlignment.MiddleLeft;
         _deadband.AccessibleName = "变化上报绝对死区";
@@ -1040,7 +1040,7 @@ internal sealed partial class TagEditor
         _deadbandSurface.Name = "_deadbandSurface";
         _deadbandSurface.Dock = DockStyle.Top;
         _deadbandSurface.Width = 220;
-        _deadbandSurface.Margin = new Padding(0, 5, 0, 10);
+        _deadbandSurface.Margin = new Padding(0, 3, 0, 5);
         _deadbandSurface.TabIndex = 2;
         _deadband.Dock = DockStyle.None;
         _deadband.Margin = Padding.Empty;

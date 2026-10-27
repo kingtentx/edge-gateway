@@ -59,7 +59,7 @@ internal sealed class SurfaceCard : TableLayoutPanel
     {
         e.Graphics.Clear(Parent?.BackColor ?? UiTheme.Background);
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        using var path = ModernButton.RoundedPath(new RectangleF(1, 1, Math.Max(1, Width - 2), Math.Max(1, Height - 2)), UiTheme.Scale(this, 12));
+        using var path = ModernButton.RoundedPath(new RectangleF(1, 1, Math.Max(1, Width - 2), Math.Max(1, Height - 2)), UiTheme.Scale(this, 8));
         using var fill = new SolidBrush(BackColor); e.Graphics.FillPath(fill, path);
         using var border = new Pen(UiTheme.Border, Math.Max(1, UiTheme.Scale(this, 1))); e.Graphics.DrawPath(border, path);
         using var accent = new SolidBrush(Accent);
@@ -140,11 +140,11 @@ internal sealed class DpiDataGridView : DataGridView
                 ColumnHeadersDefaultCellStyle.Font = _headerFont;
                 previous?.Dispose();
             }
-            DefaultCellStyle.Padding = UiTheme.Scale(this, new Padding(10, 5, 10, 5));
+            DefaultCellStyle.Padding = UiTheme.Scale(this, new Padding(8, 3, 8, 3));
             ColumnHeadersDefaultCellStyle.Padding = UiTheme.Scale(this, new Padding(10, 0, 10, 0));
             var textHeight = TextRenderer.MeasureText("采集 Ag", DefaultCellStyle.Font ?? Font).Height;
-            var rowHeight = Math.Max(UiTheme.Scale(this, 38), textHeight + DefaultCellStyle.Padding.Vertical + UiTheme.Scale(this, 2));
-            ColumnHeadersHeight = Math.Max(UiTheme.Scale(this, 40), TextRenderer.MeasureText("设备 Ag", ColumnHeadersDefaultCellStyle.Font ?? Font).Height + UiTheme.Scale(this, 12));
+            var rowHeight = Math.Max(UiTheme.Scale(this, 34), textHeight + DefaultCellStyle.Padding.Vertical + UiTheme.Scale(this, 2));
+            ColumnHeadersHeight = Math.Max(UiTheme.Scale(this, 36), TextRenderer.MeasureText("设备 Ag", ColumnHeadersDefaultCellStyle.Font ?? Font).Height + UiTheme.Scale(this, 8));
             RowTemplate.Height = rowHeight;
             foreach (DataGridViewRow row in Rows) if (row.Height != rowHeight) row.Height = rowHeight;
             foreach (var pair in _logicalColumnWidths)

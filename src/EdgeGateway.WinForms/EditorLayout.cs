@@ -12,8 +12,8 @@ internal static class EditorLayout
             Name = "EditorSection_" + table.RowCount, Dock = DockStyle.Fill,
             AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 1, RowCount = string.IsNullOrWhiteSpace(description) ? 1 : 2,
-            BackColor = UiTheme.Background, Padding = new Padding(12, 8, 12, 8),
-            Margin = new Padding(0, table.RowCount == 0 ? 0 : 14, 0, 10)
+            BackColor = UiTheme.SurfaceSubtle, Padding = new Padding(10, 6, 10, 6),
+            Margin = new Padding(0, table.RowCount == 0 ? 0 : 8, 0, 6)
         };
         section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -57,7 +57,7 @@ internal static class EditorLayout
         public EditorTabs()
         {
             DrawMode = TabDrawMode.OwnerDrawFixed;
-            Padding = new Point(18, 9);
+            Padding = new Point(14, 6);
         }
 
         protected override void OnDrawItem(DrawItemEventArgs e)
@@ -117,7 +117,7 @@ internal static class EditorLayout
         {
             if (_creatingHandle || !IsHandleCreated || IsDisposed || _dpiHost is { IsDpiLayoutReady: false }) return;
             // TabControl.Padding is a Point; the framework does not own this metric.
-            var padding = new Point(UiTheme.Scale(this, 18), UiTheme.Scale(this, 9));
+            var padding = new Point(UiTheme.Scale(this, 14), UiTheme.Scale(this, 6));
             if (Padding != padding) Padding = padding;
         }
 

@@ -7,6 +7,10 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DevicesPageView : UserControl
 {
     private bool _arranging;
+    private bool _sizingSplit;
+    private bool _movingSplit;
+    private double _deviceShare = .4;
+    internal SplitContainer ListSplit => listSplit;
     internal TableLayoutPanel ContentLayout => contentLayout;
     internal Control DeviceToolbarHost => deviceToolbarHost;
     internal Control DeviceFiltersHost => deviceFiltersHost;
@@ -26,6 +30,15 @@ internal sealed partial class DevicesPageView : UserControl
     public DevicesPageView()
     {
         InitializeComponent();
+        listSplit.SplitterMoving += (_, _) => _movingSplit = true;
+        listSplit.SplitterMoved += (_, _) =>
+        {
+            if (!_movingSplit || _sizingSplit || !IsHandleCreated || FindForm() is DpiAwareForm { IsDpiLayoutReady: false }) return;
+            _movingSplit = false;
+            _deviceShare = (double)listSplit.SplitterDistance / Math.Max(1, listSplit.ClientSize.Height - listSplit.SplitterWidth);
+        };
+        listSplit.SizeChanged += (_, _) => ArrangeSplit();
+        listSplit.DoubleClick += (_, _) => { _deviceShare = .4; ArrangeSplit(); };
     }
 
     protected override void OnLayout(LayoutEventArgs e)
@@ -36,6 +49,16 @@ internal sealed partial class DevicesPageView : UserControl
         _arranging = true;
         try
         {
+            var contentWidth = Math.Max(1, ClientSize.Width - Padding.Horizontal);
+            var fixedHeight = titleLabel.Height + titleLabel.Margin.Vertical
+                + descriptionLabel.Height + descriptionLabel.Margin.Vertical
+                + deviceToolbarHost.Height + deviceFiltersHost.Height;
+            var minimumHeight = Math.Max(UiTheme.Scale(this, 620) - Padding.Vertical,
+                fixedHeight + tagHeaderLayout.Height + UiTheme.Scale(this, 240));
+            var contentHeight = Math.Max(ClientSize.Height - Padding.Vertical, minimumHeight);
+            AutoScrollMinSize = new Size(0, minimumHeight + Padding.Vertical);
+            contentLayout.SetBounds(Padding.Left + AutoScrollPosition.X, Padding.Top + AutoScrollPosition.Y,
+                contentWidth, contentHeight);
             // A nested auto-sized table can measure a wrapping toolbar at a very
             // narrow provisional width and reserve several empty rows. Measure
             // against the real available width before distributing grid space.
@@ -44,8 +67,27 @@ internal sealed partial class DevicesPageView : UserControl
             height = Math.Max(UiTheme.Scale(this, 44), height);
             if (tagHeaderLayout.RowStyles[2].Height != height)
                 tagHeaderLayout.RowStyles[2].Height = height;
+            ArrangeSplit();
         }
         finally { _arranging = false; }
+    }
+
+    private void ArrangeSplit()
+    {
+        if (_sizingSplit || !IsHandleCreated || FindForm() is DpiAwareForm { IsDpiLayoutReady: false }) return;
+        _sizingSplit = true;
+        try
+        {
+            var available = listSplit.ClientSize.Height - listSplit.SplitterWidth;
+            var topMinimum = UiTheme.Scale(this, 110);
+            var bottomMinimum = tagHeaderLayout.Height + UiTheme.Scale(this, 110);
+            if (available < topMinimum + bottomMinimum) return;
+            // Update minima after DPI/layout has settled, never during design-time scaling.
+            listSplit.Panel1MinSize = topMinimum;
+            listSplit.Panel2MinSize = bottomMinimum;
+            listSplit.SplitterDistance = Math.Clamp((int)Math.Round(available * _deviceShare), topMinimum, available - bottomMinimum);
+        }
+        finally { _sizingSplit = false; }
     }
 
 }
