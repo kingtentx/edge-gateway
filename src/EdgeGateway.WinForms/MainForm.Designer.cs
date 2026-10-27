@@ -17,6 +17,17 @@ public sealed partial class MainForm
     private Label brandTitleLabel = null!;
     private Label brandCaptionLabel = null!;
 
+    private AntdUI.Menu navigationMenu = null!;
+    private GatewayButton collapseNavigationButton = null!;
+    private AntdUI.MenuItem navigationOverviewItem = null!;
+    private AntdUI.MenuItem navigationDevicesItem = null!;
+    private AntdUI.MenuItem navigationRealtimeItem = null!;
+    private AntdUI.MenuItem navigationHistoryItem = null!;
+    private AntdUI.MenuItem navigationDiagnosticsItem = null!;
+    private AntdUI.MenuItem navigationDatabaseItem = null!;
+    private AntdUI.MenuItem navigationCloudItem = null!;
+    private AntdUI.MenuItem navigationLogsItem = null!;
+
     private void InitializeComponent()
     {
         applicationShell = new TableLayoutPanel();
@@ -25,14 +36,71 @@ public sealed partial class MainForm
         navigationBrandPanel = new FlowLayoutPanel();
         brandTitleLabel = new Label();
         brandCaptionLabel = new Label();
-        navigationOverviewButton = new GatewayButton();
-        navigationDevicesButton = new GatewayButton();
-        navigationRealtimeButton = new GatewayButton();
-        navigationHistoryButton = new GatewayButton();
-        navigationDiagnosticsButton = new GatewayButton();
-        navigationDatabaseButton = new GatewayButton();
-        navigationCloudButton = new GatewayButton();
-        navigationLogsButton = new GatewayButton();
+        navigationMenu = new AntdUI.Menu();
+        collapseNavigationButton = new GatewayButton();
+        navigationOverviewItem = new AntdUI.MenuItem();
+        navigationOverviewItem.Name = "overview";
+        navigationOverviewItem.Text = "运行总览";
+        navigationOverviewItem.IconSvg = "DashboardOutlined";
+        navigationMenu.Items.Add(navigationOverviewItem);
+        navigationDevicesItem = new AntdUI.MenuItem();
+        navigationDevicesItem.Name = "devices";
+        navigationDevicesItem.Text = "设备与点位";
+        navigationDevicesItem.IconSvg = "ApartmentOutlined";
+        navigationMenu.Items.Add(navigationDevicesItem);
+        navigationRealtimeItem = new AntdUI.MenuItem();
+        navigationRealtimeItem.Name = "realtime";
+        navigationRealtimeItem.Text = "实时监控";
+        navigationRealtimeItem.IconSvg = "FundOutlined";
+        navigationMenu.Items.Add(navigationRealtimeItem);
+        navigationHistoryItem = new AntdUI.MenuItem();
+        navigationHistoryItem.Name = "history";
+        navigationHistoryItem.Text = "历史与趋势";
+        navigationHistoryItem.IconSvg = "LineChartOutlined";
+        navigationMenu.Items.Add(navigationHistoryItem);
+        navigationDiagnosticsItem = new AntdUI.MenuItem();
+        navigationDiagnosticsItem.Name = "diagnostics";
+        navigationDiagnosticsItem.Text = "通信诊断";
+        navigationDiagnosticsItem.IconSvg = "ApiOutlined";
+        navigationMenu.Items.Add(navigationDiagnosticsItem);
+        navigationDatabaseItem = new AntdUI.MenuItem();
+        navigationDatabaseItem.Name = "database";
+        navigationDatabaseItem.Text = "数据库";
+        navigationDatabaseItem.IconSvg = "DatabaseOutlined";
+        navigationMenu.Items.Add(navigationDatabaseItem);
+        navigationCloudItem = new AntdUI.MenuItem();
+        navigationCloudItem.Name = "cloud";
+        navigationCloudItem.Text = "平台与系统";
+        navigationCloudItem.IconSvg = "CloudOutlined";
+        navigationMenu.Items.Add(navigationCloudItem);
+        navigationLogsItem = new AntdUI.MenuItem();
+        navigationLogsItem.Name = "logs";
+        navigationLogsItem.Text = "运行日志";
+        navigationLogsItem.IconSvg = "FileTextOutlined";
+        navigationMenu.Items.Add(navigationLogsItem);
+        navigationMenu.Name = "NavigationMenu";
+        navigationMenu.Dock = DockStyle.Fill;
+        navigationMenu.Margin = Padding.Empty;
+        navigationMenu.Padding = new Padding(4);
+        navigationMenu.Radius = 6;
+        navigationMenu.Gap = 6;
+        navigationMenu.IconRatio = 1F;
+        navigationMenu.BackColor = Color.White;
+        navigationMenu.ForeColor = UiTheme.Ink;
+        navigationMenu.BackActive = UiTheme.BlueSoft;
+        navigationMenu.ForeActive = UiTheme.Blue;
+        navigationMenu.Unique = true;
+        navigationMenu.TabStop = true;
+        collapseNavigationButton.Name = "CollapseNavigation";
+        collapseNavigationButton.AccessibleName = "收起导航菜单";
+        collapseNavigationButton.IconSvg = "MenuFoldOutlined";
+        collapseNavigationButton.Ghost = true;
+        collapseNavigationButton.Dock = DockStyle.Fill;
+        collapseNavigationButton.Height = 40;
+        collapseNavigationButton.Margin = Padding.Empty;
+        collapseNavigationButton.WaveSize = 0;
+        navigationContentPanel.Controls.Add(navigationMenu, 0, 1);
+        navigationContentPanel.Controls.Add(collapseNavigationButton, 0, 2);
         applicationBody = new TableLayoutPanel();
         applicationHeader = new TableLayoutPanel();
         headerStatusPanel = new FlowLayoutPanel();
@@ -82,36 +150,21 @@ public sealed partial class MainForm
         //
         // navigationContentPanel
         //
-        navigationContentPanel.AutoSize = true;
+        navigationContentPanel.AutoSize = false;
         navigationContentPanel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         navigationContentPanel.BackColor = Color.White;
         navigationContentPanel.ColumnCount = 1;
         navigationContentPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         navigationContentPanel.Controls.Add(navigationBrandPanel, 0, 0);
-        navigationContentPanel.Controls.Add(navigationOverviewButton, 0, 1);
-        navigationContentPanel.Controls.Add(navigationDevicesButton, 0, 2);
-        navigationContentPanel.Controls.Add(navigationRealtimeButton, 0, 3);
-        navigationContentPanel.Controls.Add(navigationHistoryButton, 0, 4);
-        navigationContentPanel.Controls.Add(navigationDiagnosticsButton, 0, 5);
-        navigationContentPanel.Controls.Add(navigationDatabaseButton, 0, 6);
-        navigationContentPanel.Controls.Add(navigationCloudButton, 0, 7);
-        navigationContentPanel.Controls.Add(navigationLogsButton, 0, 8);
-        navigationContentPanel.Dock = DockStyle.Top;
+        navigationContentPanel.Dock = DockStyle.Fill;
         navigationContentPanel.Location = new Point(0, 0);
         navigationContentPanel.Margin = new Padding(0);
         navigationContentPanel.Name = "navigationContentPanel";
-        navigationContentPanel.Padding = new Padding(8, 16, 8, 12);
-        navigationContentPanel.RowCount = 10;
-        navigationContentPanel.RowStyles.Add(new RowStyle());
-        navigationContentPanel.RowStyles.Add(new RowStyle());
-        navigationContentPanel.RowStyles.Add(new RowStyle());
-        navigationContentPanel.RowStyles.Add(new RowStyle());
-        navigationContentPanel.RowStyles.Add(new RowStyle());
-        navigationContentPanel.RowStyles.Add(new RowStyle());
-        navigationContentPanel.RowStyles.Add(new RowStyle());
-        navigationContentPanel.RowStyles.Add(new RowStyle());
-        navigationContentPanel.RowStyles.Add(new RowStyle());
-        navigationContentPanel.RowStyles.Add(new RowStyle());
+        navigationContentPanel.Padding = new Padding(4, 12, 4, 4);
+        navigationContentPanel.RowCount = 3;
+        navigationContentPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        navigationContentPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        navigationContentPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         navigationContentPanel.Size = new Size(206, 531);
         navigationContentPanel.TabIndex = 0;
         //
@@ -151,174 +204,6 @@ public sealed partial class MainForm
         brandCaptionLabel.Size = new Size(132, 20);
         brandCaptionLabel.TabIndex = 1;
         brandCaptionLabel.Text = "工业数据 · 本地连接";
-        //
-        // navigationOverviewButton
-        //
-        navigationOverviewButton.Cursor = Cursors.Hand;
-        navigationOverviewButton.DefaultBack = Color.White;
-        navigationOverviewButton.IconSvg = "DashboardOutlined";
-        navigationOverviewButton.Radius = 6;
-        navigationOverviewButton.TextAlign = ContentAlignment.MiddleLeft;
-        navigationOverviewButton.BackHover = UiTheme.SurfaceSubtle;
-        navigationOverviewButton.BackActive = UiTheme.BlueSoft;
-        navigationOverviewButton.Dock = DockStyle.Fill;
-        navigationOverviewButton.ForeColor = UiTheme.Ink;
-        navigationOverviewButton.Location = new Point(12, 83);
-        navigationOverviewButton.Margin = new Padding(0, 0, 0, 4);
-        navigationOverviewButton.MinimumSize = new Size(0, 42);
-        navigationOverviewButton.Name = "navigationOverviewButton";
-        navigationOverviewButton.Padding = new Padding(12, 0, 8, 0);
-        navigationOverviewButton.Size = new Size(184, 42);
-        navigationOverviewButton.TabIndex = 0;
-        navigationOverviewButton.Text = "运行总览";
-        navigationOverviewButton.TextAlign = ContentAlignment.MiddleLeft;
-        //
-        // navigationDevicesButton
-        //
-        navigationDevicesButton.Cursor = Cursors.Hand;
-        navigationDevicesButton.DefaultBack = Color.White;
-        navigationDevicesButton.IconSvg = "ApartmentOutlined";
-        navigationDevicesButton.Radius = 6;
-        navigationDevicesButton.TextAlign = ContentAlignment.MiddleLeft;
-        navigationDevicesButton.BackHover = UiTheme.SurfaceSubtle;
-        navigationDevicesButton.BackActive = UiTheme.BlueSoft;
-        navigationDevicesButton.Dock = DockStyle.Fill;
-        navigationDevicesButton.ForeColor = UiTheme.Ink;
-        navigationDevicesButton.Location = new Point(12, 137);
-        navigationDevicesButton.Margin = new Padding(0, 0, 0, 4);
-        navigationDevicesButton.MinimumSize = new Size(0, 42);
-        navigationDevicesButton.Name = "navigationDevicesButton";
-        navigationDevicesButton.Padding = new Padding(12, 0, 8, 0);
-        navigationDevicesButton.Size = new Size(184, 42);
-        navigationDevicesButton.TabIndex = 1;
-        navigationDevicesButton.Text = "设备与点位";
-        navigationDevicesButton.TextAlign = ContentAlignment.MiddleLeft;
-        //
-        // navigationRealtimeButton
-        //
-        navigationRealtimeButton.Cursor = Cursors.Hand;
-        navigationRealtimeButton.DefaultBack = Color.White;
-        navigationRealtimeButton.IconSvg = "FundOutlined";
-        navigationRealtimeButton.Radius = 6;
-        navigationRealtimeButton.TextAlign = ContentAlignment.MiddleLeft;
-        navigationRealtimeButton.BackHover = UiTheme.SurfaceSubtle;
-        navigationRealtimeButton.BackActive = UiTheme.BlueSoft;
-        navigationRealtimeButton.Dock = DockStyle.Fill;
-        navigationRealtimeButton.ForeColor = UiTheme.Ink;
-        navigationRealtimeButton.Location = new Point(12, 191);
-        navigationRealtimeButton.Margin = new Padding(0, 0, 0, 4);
-        navigationRealtimeButton.MinimumSize = new Size(0, 42);
-        navigationRealtimeButton.Name = "navigationRealtimeButton";
-        navigationRealtimeButton.Padding = new Padding(12, 0, 8, 0);
-        navigationRealtimeButton.Size = new Size(184, 42);
-        navigationRealtimeButton.TabIndex = 2;
-        navigationRealtimeButton.Text = "实时监控";
-        navigationRealtimeButton.TextAlign = ContentAlignment.MiddleLeft;
-        //
-        // navigationHistoryButton
-        //
-        navigationHistoryButton.Cursor = Cursors.Hand;
-        navigationHistoryButton.DefaultBack = Color.White;
-        navigationHistoryButton.IconSvg = "LineChartOutlined";
-        navigationHistoryButton.Radius = 6;
-        navigationHistoryButton.TextAlign = ContentAlignment.MiddleLeft;
-        navigationHistoryButton.BackHover = UiTheme.SurfaceSubtle;
-        navigationHistoryButton.BackActive = UiTheme.BlueSoft;
-        navigationHistoryButton.Dock = DockStyle.Fill;
-        navigationHistoryButton.ForeColor = UiTheme.Ink;
-        navigationHistoryButton.Location = new Point(12, 245);
-        navigationHistoryButton.Margin = new Padding(0, 0, 0, 4);
-        navigationHistoryButton.MinimumSize = new Size(0, 42);
-        navigationHistoryButton.Name = "navigationHistoryButton";
-        navigationHistoryButton.Padding = new Padding(12, 0, 8, 0);
-        navigationHistoryButton.Size = new Size(184, 42);
-        navigationHistoryButton.TabIndex = 3;
-        navigationHistoryButton.Text = "历史与趋势";
-        navigationHistoryButton.TextAlign = ContentAlignment.MiddleLeft;
-        //
-        // navigationDiagnosticsButton
-        //
-        navigationDiagnosticsButton.Cursor = Cursors.Hand;
-        navigationDiagnosticsButton.DefaultBack = Color.White;
-        navigationDiagnosticsButton.IconSvg = "ApiOutlined";
-        navigationDiagnosticsButton.Radius = 6;
-        navigationDiagnosticsButton.TextAlign = ContentAlignment.MiddleLeft;
-        navigationDiagnosticsButton.BackHover = UiTheme.SurfaceSubtle;
-        navigationDiagnosticsButton.BackActive = UiTheme.BlueSoft;
-        navigationDiagnosticsButton.Dock = DockStyle.Fill;
-        navigationDiagnosticsButton.ForeColor = UiTheme.Ink;
-        navigationDiagnosticsButton.Location = new Point(12, 299);
-        navigationDiagnosticsButton.Margin = new Padding(0, 0, 0, 4);
-        navigationDiagnosticsButton.MinimumSize = new Size(0, 42);
-        navigationDiagnosticsButton.Name = "navigationDiagnosticsButton";
-        navigationDiagnosticsButton.Padding = new Padding(12, 0, 8, 0);
-        navigationDiagnosticsButton.Size = new Size(184, 42);
-        navigationDiagnosticsButton.TabIndex = 4;
-        navigationDiagnosticsButton.Text = "通信诊断";
-        navigationDiagnosticsButton.TextAlign = ContentAlignment.MiddleLeft;
-        //
-        // navigationDatabaseButton
-        //
-        navigationDatabaseButton.Cursor = Cursors.Hand;
-        navigationDatabaseButton.DefaultBack = Color.White;
-        navigationDatabaseButton.IconSvg = "DatabaseOutlined";
-        navigationDatabaseButton.Radius = 6;
-        navigationDatabaseButton.TextAlign = ContentAlignment.MiddleLeft;
-        navigationDatabaseButton.BackHover = UiTheme.SurfaceSubtle;
-        navigationDatabaseButton.BackActive = UiTheme.BlueSoft;
-        navigationDatabaseButton.Dock = DockStyle.Fill;
-        navigationDatabaseButton.ForeColor = UiTheme.Ink;
-        navigationDatabaseButton.Location = new Point(12, 353);
-        navigationDatabaseButton.Margin = new Padding(0, 0, 0, 4);
-        navigationDatabaseButton.MinimumSize = new Size(0, 42);
-        navigationDatabaseButton.Name = "navigationDatabaseButton";
-        navigationDatabaseButton.Padding = new Padding(12, 0, 8, 0);
-        navigationDatabaseButton.Size = new Size(184, 42);
-        navigationDatabaseButton.TabIndex = 5;
-        navigationDatabaseButton.Text = "数据库";
-        navigationDatabaseButton.TextAlign = ContentAlignment.MiddleLeft;
-        //
-        // navigationCloudButton
-        //
-        navigationCloudButton.Cursor = Cursors.Hand;
-        navigationCloudButton.DefaultBack = Color.White;
-        navigationCloudButton.IconSvg = "CloudOutlined";
-        navigationCloudButton.Radius = 6;
-        navigationCloudButton.TextAlign = ContentAlignment.MiddleLeft;
-        navigationCloudButton.BackHover = UiTheme.SurfaceSubtle;
-        navigationCloudButton.BackActive = UiTheme.BlueSoft;
-        navigationCloudButton.Dock = DockStyle.Fill;
-        navigationCloudButton.ForeColor = UiTheme.Ink;
-        navigationCloudButton.Location = new Point(12, 407);
-        navigationCloudButton.Margin = new Padding(0, 0, 0, 4);
-        navigationCloudButton.MinimumSize = new Size(0, 42);
-        navigationCloudButton.Name = "navigationCloudButton";
-        navigationCloudButton.Padding = new Padding(12, 0, 8, 0);
-        navigationCloudButton.Size = new Size(184, 42);
-        navigationCloudButton.TabIndex = 6;
-        navigationCloudButton.Text = "平台与系统";
-        navigationCloudButton.TextAlign = ContentAlignment.MiddleLeft;
-        //
-        // navigationLogsButton
-        //
-        navigationLogsButton.Cursor = Cursors.Hand;
-        navigationLogsButton.DefaultBack = Color.White;
-        navigationLogsButton.IconSvg = "FileTextOutlined";
-        navigationLogsButton.Radius = 6;
-        navigationLogsButton.TextAlign = ContentAlignment.MiddleLeft;
-        navigationLogsButton.BackHover = UiTheme.SurfaceSubtle;
-        navigationLogsButton.BackActive = UiTheme.BlueSoft;
-        navigationLogsButton.Dock = DockStyle.Fill;
-        navigationLogsButton.ForeColor = UiTheme.Ink;
-        navigationLogsButton.Location = new Point(12, 461);
-        navigationLogsButton.Margin = new Padding(0, 0, 0, 4);
-        navigationLogsButton.MinimumSize = new Size(0, 42);
-        navigationLogsButton.Name = "navigationLogsButton";
-        navigationLogsButton.Padding = new Padding(12, 0, 8, 0);
-        navigationLogsButton.Size = new Size(184, 42);
-        navigationLogsButton.TabIndex = 7;
-        navigationLogsButton.Text = "运行日志";
-        navigationLogsButton.TextAlign = ContentAlignment.MiddleLeft;
         //
         // applicationBody
         //
@@ -473,12 +358,4 @@ public sealed partial class MainForm
         ResumeLayout(false);
     }
 
-    private GatewayButton navigationOverviewButton = null!;
-    private GatewayButton navigationDevicesButton = null!;
-    private GatewayButton navigationRealtimeButton = null!;
-    private GatewayButton navigationHistoryButton = null!;
-    private GatewayButton navigationDiagnosticsButton = null!;
-    private GatewayButton navigationDatabaseButton = null!;
-    private GatewayButton navigationCloudButton = null!;
-    private GatewayButton navigationLogsButton = null!;
 }

@@ -1,3 +1,9 @@
 global using Button = AntdUI.Button;
 global using CheckBox = AntdUI.Checkbox;
 global using TextBox = EdgeGateway.WinForms.GatewayInput;
+global using ComboBox = EdgeGateway.WinForms.GatewaySelect;
+global using NumericUpDown = EdgeGateway.WinForms.GatewayNumber;
+global using DateTimePicker = EdgeGateway.WinForms.GatewayDatePicker;
+global using TabControl = EdgeGateway.WinForms.GatewayTabs;
+global using TabPage = EdgeGateway.WinForms.GatewayTabPage;
+global using CheckedListBox = EdgeGateway.WinForms.GatewayCheckList;

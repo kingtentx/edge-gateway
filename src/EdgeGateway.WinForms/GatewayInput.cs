@@ -3,7 +3,7 @@ using System.ComponentModel;
 namespace EdgeGateway.WinForms;
 
 /// <summary>AntdUI text editor with the desktop form's existing binding vocabulary.</summary>
-public sealed class GatewayInput : AntdUI.Input
+public class GatewayInput : AntdUI.Input
 {
     public GatewayInput()
     {

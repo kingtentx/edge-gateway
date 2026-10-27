@@ -85,7 +85,7 @@ ConfigureWindow(new Size(1384, 861), new Size(1008, 661));
 
 ## 5. 保持视觉一致性
 
-单行文本、密码、下拉、数值和日期字段统一通过 `UiTheme.InputSurface` / `InputFrame` 使用与普通操作按钮相同的 38 逻辑像素高度（字体确需更多空间时同步按按钮测量规则增长）。表单字段、筛选字段和工具栏在各自公共入口接入，不逐页硬设原生编辑器高度。框架负责输入区一次 DPI 缩放；原生编辑器保留自己的字体高度，输入区只安排水平空间及垂直居中，保留密码掩码、输入事件、校验焦点、原生下拉和上下箭头。多行内容、复选框、表格单元格及导航按钮保留各自布局。新增单行字段必须进入公共入口；烟测同时检查内部编辑器和完整输入区的裁剪、居中及按钮高度。
+单行文本、密码、下拉、数值和日期字段统一通过 `UiTheme.InputSurface` / `InputFrame` 使用与普通操作按钮相同的 38 逻辑像素高度（字体确需更多空间时同步按按钮测量规则增长）。表单字段、筛选字段和工具栏在各自公共入口接入，不逐页硬设原生编辑器高度。框架负责输入区一次 DPI 缩放；AntdUI Input、Select、InputNumber、DatePicker 填满输入容器，由官方控件绘制边框、下拉、数字箭头和焦点态，容器不再叠加第二层输入边框。保留密码掩码、原始选项值、输入事件和校验焦点。多行内容、复选框、表格单元格及导航按钮保留各自布局。新增单行字段必须进入公共入口；烟测同时检查内部编辑器和完整输入区的裁剪、居中及按钮高度。
 
 使用集中主题管理字体、色板、间距、圆角、图标与按钮状态。按用户 2026-10-27 指定的 AntdUI-Demo 浅色风格，使用白色图标导航、浅灰工作区与表头、白色内容卡片、蓝色选中态和细分隔线；主操作、普通操作、危险操作的颜色语义一致。主窗体、设备编辑、点位编辑和写入弹窗使用同一套组件。参考提交和本轮验证见 [AntdUI 浅色皮肤](../../../../docs/ui-antdui-skin.md)。设备和点位表格通过 Designer 中的分隔容器调整高度，刷新保留用户比例；短窗口通过页面滚动保留列表操作空间，不缩小正文字号。
 
@@ -127,3 +127,5 @@ FontAwesome.Sharp 等第三方图标用于导航和操作识别，保留文字�
 失败时保存截图及控件边界、所属容器、DPI 和工作区。不要为通过烟测移除禁用字段、扩大可见边界、隐去命令或跳过长参数驱动。布局修复不得更改设备协议、点位语义或现有数据。
 
 持续维护时以固定 .NET 8 源码及微软文档为依据：[ContainerControl 自动缩放](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/ContainerControl.cs)、[Control 缩放与字体](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/Control.cs)、[Form DPI 事件](https://github.com/dotnet/winforms/blob/v8.0.32/src/System.Windows.Forms/src/System/Windows/Forms/Form.cs)。升级运行时或 UI 依赖后，重新检查相关行为与现有验证记录。
+
+2026-10-27 官方控件替换：固定 Menu/MenuItem、Tabs/TabPage 和输入字段仍在 Designer 创建；不恢复嵌套原生下拉或 owner-draw TabControl。AntdUI 页签通过下一次 UI 消息激活页面，跨页错误定位须等待该激活，再聚焦和滚动。映射表自定义编辑器须调用基类 InitializeEditingControl 完成 WinForms 编辑面板接线。首页刷新保留滚动位置，滚轮只路由到指针所在且同窗体的可见视口。隔离桌面验证分层弹窗时使用真实 HWND 边界与 AntdUI PrintBit，不能用 Form.Width/DrawToBitmap 的占位尺寸代替。详见 [官方控件与交互修复](../../../../docs/ui-antdui-controls.md)。

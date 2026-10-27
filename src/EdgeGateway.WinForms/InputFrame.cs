@@ -41,8 +41,8 @@ internal sealed partial class InputFrame : AntdUI.Panel
         editor.Anchor = AnchorStyles.Top | AnchorStyles.Left;
         editor.Margin = Padding.Empty;
         editor.MinimumSize = Size.Empty;
-        if (editor is TextBox text) text.BorderStyle = System.Windows.Forms.BorderStyle.None;
-        if (editor is NumericUpDown number) number.BorderStyle = System.Windows.Forms.BorderStyle.None;
+        // AntdUI owns the complete field chrome, including its popup arrow and focus ring.
+        if (editor is AntdUI.Input input) { BorderWidth = 0; input.BorderWidth = 1; }
         editor.Enter += OnEditorAppearanceChanged;
         editor.Leave += OnEditorAppearanceChanged;
         editor.EnabledChanged += OnEditorAppearanceChanged;
@@ -68,7 +68,7 @@ internal sealed partial class InputFrame : AntdUI.Panel
     private void UpdateSurface()
     {
         if (_editor is null) return;
-        BackColor = _editor.BackColor;
+        BackColor = _editor is AntdUI.Input ? Color.Transparent : _editor.BackColor;
         BorderColor = _editor.ContainsFocus ? UiTheme.Blue : UiTheme.Border;
         Invalidate();
     }
@@ -97,10 +97,15 @@ internal sealed partial class InputFrame : AntdUI.Panel
         _arranging = true;
         try
         {
+            if (_editor is AntdUI.Input)
+            {
+                var bounds = new Rectangle(Point.Empty, ClientSize);
+                if (_editor.Bounds != bounds) _editor.Bounds = bounds;
+                return;
+            }
             var inset = UiTheme.Scale(this, 8);
             // Native editors own their font-dependent height and handle lifecycle;
             // the surface only sizes the available width and centers the editor.
-            if (_editor is AntdUI.Input) _editor.Height = Math.Max(1, ClientSize.Height - UiTheme.Scale(this, 2));
             var top = Math.Max(0, (ClientSize.Height - _editor.Height) / 2);
             var width = Math.Max(1, ClientSize.Width - inset * 2);
             // Even an unchanged SetBounds can ask an AutoSize ancestor to lay out

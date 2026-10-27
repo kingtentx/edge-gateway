@@ -116,8 +116,12 @@ public sealed partial class MainForm
             editor.ShowMappingForSmoke();
             EditorValidationException? nameError = null;
             try { await editor.ApplyAndAcceptForSmokeAsync(); } catch (EditorValidationException exception) { nameError = exception; }
+            // The official Tabs queues page activation and the validation focus for
+            // the next UI turn; observe the settled page without changing its bounds.
+            var focusDeadline = Stopwatch.StartNew();
+            while (!nameInput.Focused && focusDeadline.Elapsed < TimeSpan.FromSeconds(1)) await Task.Delay(25);
             Check(nameError?.Field == nameInput && nameError.Message.Contains("已存在") && nameInput.Focused,
-                "duplicate group name did not reveal and focus the name input from the mapping tab.");
+                $"duplicate group name did not reveal and focus the name input from the mapping tab: errorField={nameError?.Field.Name}; focused={nameInput.Focused}; canFocus={nameInput.CanFocus}; selected={editor.SelectedSmokeTab?.Text}; active={editor.ActiveControl?.Name}.");
             Check(editor.Visible && editor.DialogResult != DialogResult.OK && _application.GetConfiguration().DatabaseWriteGroups.Count == 2,
                 "rejected save closed the dialog or changed the saved groups.");
             nameInput.Text = group.Name;
@@ -367,7 +371,7 @@ public sealed partial class MainForm
             while (!_application.GetLatest().Any(sample => sample.Timestamp > beforeSample) && timer.Elapsed < TimeSpan.FromSeconds(5)) await Task.Delay(25);
             Check(_application.GetLatest().Any(sample => sample.Timestamp > beforeSample), "device did not continue producing samples after logging apply.");
             foreach (var input in _loggingFields.Values) BringIntoViewAndAssert(input, "logging settings " + input.Name);
-            ResetScrollPositions(_pages["logs"], _navigation["overview"]); _logTabs.SelectedIndex = 0;
+            ResetScrollPositions(_pages["logs"], navigationMenu); _logTabs.SelectedIndex = 0;
             SaveEditorScreenshot(this, "recording", "log-settings");
             _logTabs.SelectedIndex = 2;
             foreach (var control in _sampleArchive.Inputs)
@@ -461,6 +465,30 @@ public sealed partial class MainForm
             var bounds = list.GetItemRectangle(index);
             if (!list.ContainsFocus || !list.ClientRectangle.Contains(bounds))
                 throw new InvalidOperationException(context + ": point item cannot be focused and fully displayed.");
+            var pointId = ((DatabaseUiText.PointItem)list.Items[index]).Id;
+            var selectedIds = editor.CommitForSmoke().TagIds;
+            var selectedBefore = selectedIds.Contains(pointId);
+            var checkbox = list.Controls.OfType<AntdUI.Checkbox>().Single(control => control.Visible && Equals(control.Tag, index));
+            checkbox.Checked = !selectedBefore;
+            bool selectedAfter;
+            try { selectedAfter = editor.CommitForSmoke().TagIds.Contains(pointId); }
+            catch (EditorValidationException exception) when (selectedBefore && selectedIds.Count == 1
+                && exception.Field.Name == "DatabaseAllEnabledPoints")
+            { selectedAfter = false; } // Unchecking the last point must keep the existing empty-selection validation.
+            if (selectedAfter == selectedBefore)
+                throw new InvalidOperationException(context + ": AntdUI checkbox did not update the saved point selection.");
+            checkbox.Checked = selectedBefore;
+            if (!editor.CommitForSmoke().TagIds.ToHashSet().SetEquals(selectedIds))
+                throw new InvalidOperationException(context + ": restoring an AntdUI checkbox lost the point draft.");
+            if (list.Items.Count > 1)
+            {
+                checkbox.Focus();
+                var key = index == list.Items.Count - 1 ? Keys.Up : Keys.Down;
+                typeof(Control).GetMethod("OnKeyDown", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                    .Invoke(checkbox, [new KeyEventArgs(key)]);
+                if (list.SelectedIndex != index + (key == Keys.Up ? -1 : 1) || !list.Focused)
+                    throw new InvalidOperationException(context + ": point list keyboard navigation failed after clicking a checkbox.");
+            }
         }
     }
 

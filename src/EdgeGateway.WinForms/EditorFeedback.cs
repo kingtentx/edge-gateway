@@ -39,11 +39,20 @@ internal sealed partial class EditorFeedback : TableLayoutPanel
         foreach (var page in pages)
             if (page.Parent is TabControl tabs) tabs.SelectedTab = page;
         var form = _field.FindForm();
-        form?.PerformLayout();
-        if (_field.Enabled && _field.CanSelect) _field.Focus();
-        for (var parent = _field.Parent; parent is not null && parent != form; parent = parent.Parent)
-            if (parent is ScrollableControl { AutoScroll: true } scroll) scroll.ScrollControlIntoView(_field);
-        if (_field is TextBox text && text.Enabled) text.SelectAll();
+        var target = _field;
+        void FocusField()
+        {
+            if (target.IsDisposed || _field != target || form?.IsDisposed == true) return;
+            form?.PerformLayout();
+            if (target.Enabled && target.CanSelect) target.Focus();
+            for (var parent = target.Parent; parent is not null && parent != form; parent = parent.Parent)
+                if (parent is ScrollableControl { AutoScroll: true } scroll) scroll.ScrollControlIntoView(target);
+            if (target is TextBox text && text.Enabled) text.SelectAll();
+        }
+        // AntdUI activates pages on the next UI message; locate only after that
+        // activation, otherwise a validation error on another tab cannot be focused.
+        if (form is { IsHandleCreated: true } && pages.Any(page => !page.Showed)) form.BeginInvoke((Action)FocusField);
+        else FocusField();
     }
 
     protected override void OnLayout(LayoutEventArgs levent)

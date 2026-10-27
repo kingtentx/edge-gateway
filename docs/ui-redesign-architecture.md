@@ -44,7 +44,7 @@
 
 `Editors.cs` 和 `DatabaseEditors.cs` 按具体窗体拆分，项目文件声明窗体类型与 Designer 从属关系。公共 `EditorDialog`、`EditorFeedback` 和输入容器也使用自己的 Designer；具体窗体提供不访问服务的无参构造。
 
-采用 AntdUI 2.4.16：按钮使用 `AntdUI.Button` 的派生 `GatewayButton`，文本输入使用 `GatewayInput : AntdUI.Input`，复选框使用 `AntdUI.Checkbox`，输入边框使用 `InputFrame : AntdUI.Panel`。导航由 AntdUI 绘制，图标仍使用 FontAwesome。保留原生 ComboBox、NumericUpDown、DateTimePicker、TabControl 和可编辑 DataGridView，维持选项、数字/日期、键盘和表格编辑语义；这不是“全部控件类型均替换成 AntdUI”的声明。许可证和包归属已同步到 `LICENSES` 与 `THIRD-PARTY-NOTICES.md`。
+采用 AntdUI 2.4.16：按钮、文本和密码、复选框分别基于 `Button`、`Input`、`Checkbox`；下拉、数值、日期和页签通过 `GatewaySelect`、`GatewayNumber`、`GatewayDatePicker`、`GatewayTabs` 继承官方 `Select`、`InputNumber`、`DatePicker`、`Tabs`。左侧为 Designer 中声明的 `AntdUI.Menu` 和八个固定菜单项，支持收缩为图标列。`GlobalUsings.cs` 的别名保留字段绑定接口，控件没有嵌入原生 ComboBox 或 NumericUpDown。输入容器只负责布局，边框和弹层由 AntdUI 绘制。表格继续使用 DataGridView，字段映射中的下拉和文本编辑器使用 AntdUI；点位选择列表按可见数据行创建 AntdUI Checkbox。详情及本轮验证见 [官方控件与交互修复](ui-antdui-controls.md)。许可证和包归属见 `LICENSES` 与 `THIRD-PARTY-NOTICES.md`。
 
 固定表单直接持有输入容器和编辑器，后台不再用 `InputSurface` 重新包装固定控件。动态驱动专属字段继续使用公共字段入口。实时数据、外库 schema 映射行、曲线点和插件元数据继续动态生成；配置保存仍等待应用层提交成功，错误保留原弹窗和输入。
 

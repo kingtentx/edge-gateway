@@ -64,7 +64,7 @@ public sealed partial class MainForm
                 _logTabs.SelectedIndex = 0;
                 foreach (var input in _loggingFields.Values) BringIntoViewAndAssert(input, "logging settings " + name + " " + input.Name);
                 BringIntoViewAndAssert(_loggingApply, "logging apply " + name);
-                ResetScrollPositions(_pages["logs"], _navigation["overview"]);
+                ResetScrollPositions(_pages["logs"], navigationMenu);
                 SaveSmokeScreenshot(this, Path.Combine(directory, $"logging-{name}-settings.png"));
                 foreach (var view in new[] { _eventArchive, _sampleArchive })
                 {

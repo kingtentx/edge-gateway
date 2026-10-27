@@ -27,7 +27,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly string? _smokeScreenshotPath;
     private Panel _pageHost = null!;
     private readonly Dictionary<string, Control> _pages = [];
-    private readonly Dictionary<string, AntdUI.Button> _navigation = [];
+    private readonly Dictionary<string, AntdUI.MenuItem> _navigation = [];
     private readonly List<Control> _configurationCommands = [];
     private readonly List<Control> _stoppedConfigurationCommands = [];
     private readonly System.Windows.Forms.Timer _refreshTimer = new() { Interval = 1000 };
@@ -114,19 +114,24 @@ public sealed partial class MainForm : DpiAwareForm
         var brandTitle = brandTitleLabel;
         var brandCaption = brandCaptionLabel;
 
-        _navigation.Add("overview", navigationOverviewButton);
-        _navigation.Add("devices", navigationDevicesButton);
-        _navigation.Add("realtime", navigationRealtimeButton);
-        _navigation.Add("history", navigationHistoryButton);
-        _navigation.Add("diagnostics", navigationDiagnosticsButton);
-        _navigation.Add("database", navigationDatabaseButton);
-        _navigation.Add("cloud", navigationCloudButton);
-        _navigation.Add("logs", navigationLogsButton);
-        foreach (var item in _navigation)
+        _navigation.Add("overview", navigationOverviewItem);
+        _navigation.Add("devices", navigationDevicesItem);
+        _navigation.Add("realtime", navigationRealtimeItem);
+        _navigation.Add("history", navigationHistoryItem);
+        _navigation.Add("diagnostics", navigationDiagnosticsItem);
+        _navigation.Add("database", navigationDatabaseItem);
+        _navigation.Add("cloud", navigationCloudItem);
+        _navigation.Add("logs", navigationLogsItem);
+        navigationMenu.ItemClick += (_, e) => { if (!_selectingNavigation && e.Item.Name is { } key) ShowPage(key); };
+        collapseNavigationButton.Click += (_, _) =>
         {
-            var key = item.Key;
-            item.Value.Click += (_, _) => ShowPage(key);
-        }
+            navigationMenu.Collapsed = !navigationMenu.Collapsed;
+            brandTitleLabel.Visible = brandCaptionLabel.Visible = !navigationMenu.Collapsed;
+            navigationBrandPanel.Visible = !navigationMenu.Collapsed;
+            collapseNavigationButton.IconSvg = navigationMenu.Collapsed ? "MenuUnfoldOutlined" : "MenuFoldOutlined";
+            collapseNavigationButton.AccessibleName = navigationMenu.Collapsed ? "展开导航菜单" : "收起导航菜单";
+            applicationShell.PerformLayout();
+        };
 
         bool arranging = false;
         bool? compactHeader = null;
@@ -137,14 +142,8 @@ public sealed partial class MainForm : DpiAwareForm
             try
             {
                 var compactNavigation = shell.ClientSize.Width < UiTheme.Scale(shell, 1000);
-                // PreferredSize and current margins/padding are already physical pixels.
-                // Always reserve this monitor's scrollbar width so scrolling cannot
-                // truncate a label or make the column alternate between two widths.
-                var navigationButtonWidth = _navigation.Values.Max(button => button.GetPreferredSize(Size.Empty).Width + button.Margin.Horizontal);
-                var requiredSidebarWidth = navigationButtonWidth + sidebar.Padding.Horizontal + sidebar.Margin.Horizontal
-                    + navigationViewport.Padding.Horizontal + navigationViewport.Margin.Horizontal
-                    + SystemInformation.GetVerticalScrollBarWidthForDpi(navigationViewport.DeviceDpi);
-                var sidebarWidth = Math.Max(UiTheme.Scale(shell, compactNavigation ? 172 : 192), requiredSidebarWidth);
+                // Keep a stable logical rail width; AntdUI owns menu scrolling.
+                var sidebarWidth = UiTheme.Scale(shell, navigationMenu.Collapsed ? 56 : compactNavigation ? 172 : 192);
                 if (shell.ColumnStyles[0].Width != sidebarWidth) shell.ColumnStyles[0].Width = sidebarWidth;
                 brandTitle.Text = compactNavigation ? "EDGE" : "EDGE GATEWAY";
                 brandCaption.Text = compactNavigation ? "采集网关" : "工业数据 · 本地连接";
@@ -169,6 +168,7 @@ public sealed partial class MainForm : DpiAwareForm
             }
             finally { arranging = false; }
         }
+        collapseNavigationButton.Click += (_, _) => ArrangeShell();
         shell.SizeChanged += (_, _) => ArrangeShell();
         shell.HandleCreated += (_, _) => ArrangeShell();
         shell.DpiChangedAfterParent += (_, _) => { compactHeader = null; ArrangeShell(); };
@@ -193,16 +193,16 @@ public sealed partial class MainForm : DpiAwareForm
         _pages.Add(key, page); _pageHost.Controls.Add(page);
     }
 
+    private bool _selectingNavigation;
+
     private void ShowPage(string key)
     {
         _activePage = key;
         foreach (var page in _pages) page.Value.Visible = page.Key == key;
         _pages[key].BringToFront();
-        foreach (var nav in _navigation)
-        {
-            nav.Value.DefaultBack = nav.Key == key ? UiTheme.BlueSoft : Color.White;
-            nav.Value.ForeColor = nav.Key == key ? UiTheme.Blue : UiTheme.Ink;
-        }
+        _selectingNavigation = true;
+        try { navigationMenu.Select(_navigation[key], false); }
+        finally { _selectingNavigation = false; }
         // Hidden grids may create their bound rows only when first displayed.
         // Refresh commands now rather than waiting for the next polling tick.
         UpdateCommands();
@@ -257,8 +257,10 @@ public sealed partial class MainForm : DpiAwareForm
             try
             {
                 await RefreshSnapshotsAsync();
+                await SmokeInitialOverviewScrollAsync();
                 await SmokeOverviewAsync();
                 SmokeDeferredPageNavigation();
+                await SmokeAntdNavigationAndSelectAsync();
                 var originalSize = Size;
                 Width = MinimumSize.Width;
                 PerformLayoutRecursively(this);
@@ -271,7 +273,7 @@ public sealed partial class MainForm : DpiAwareForm
                     PerformLayoutRecursively(this);
                     AssertHeaderStatusFits();
                     AssertPageToolbarsFit(_pages[key], key);
-                    ResetScrollPositions(_pages[key], _navigation["overview"]);
+                    ResetScrollPositions(_pages[key], navigationMenu);
                     if (key == "devices")
                     {
                         VerifyPointRowsForSmoke("baseline devices", verifyInitialViewport: true);
@@ -315,9 +317,12 @@ public sealed partial class MainForm : DpiAwareForm
 
     private static void PerformLayoutRecursively(Control root)
     {
+        // AntdUI queues tab-page activation through BeginInvoke. Complete that UI
+        // turn before checking the selected page's actual bounds.
+        if (root is Form { Visible: true }) System.Windows.Forms.Application.DoEvents();
         root.PerformLayout();
         foreach (Control child in root.Controls)
-            if (child.Visible) PerformLayoutRecursively(child);
+            if (child.Visible && child is not AntdUI.TabPage { Showed: false }) PerformLayoutRecursively(child);
         root.PerformLayout();
     }
 
@@ -426,6 +431,13 @@ public sealed partial class MainForm : DpiAwareForm
         var requested = Path.GetFullPath(_smokeScreenshotPath);
         var identifier = new string(driverId.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '-').ToArray());
         var output = Path.Combine(Path.GetDirectoryName(requested)!, Path.GetFileNameWithoutExtension(requested) + "-" + kind + "-" + identifier + ".png");
+        if (editor is AntdUI.ILayeredForm layered)
+        {
+            // Layered popups render through UpdateLayeredWindow, outside DrawToBitmap.
+            using var rendered = layered.PrintBit() ?? throw new InvalidOperationException("AntdUI popup produced no rendered image.");
+            rendered.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+            return;
+        }
         using var bitmap = new Bitmap(editor.Width, editor.Height);
         DrawSmokeWindow(editor, bitmap, Path.GetFileName(output));
         bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
@@ -441,6 +453,7 @@ public sealed partial class MainForm : DpiAwareForm
 
     private static void AssertPageToolbarsFit(Control root, string page)
     {
+        if (root is AntdUI.TabPage { Showed: false }) return;
         if (root is TextBox or System.Windows.Forms.TextBoxBase or ComboBox or NumericUpDown or DateTimePicker or CheckBox)
         {
             BringIntoViewAndAssert(root, page + " input");

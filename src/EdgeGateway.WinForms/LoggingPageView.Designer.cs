@@ -69,7 +69,7 @@ internal sealed partial class LoggingPageView
         logTabs = new EditorLayout.EditorTabs();
         logTabs.Name = "LoggingTabs";
         logTabs.Dock = DockStyle.Fill;
-        logTabs.Multiline = true;
+
         settingsTab = new TabPage("日志设置");
         settingsTab.Name = "LoggingSettingsTab";
         settingsTab.BackColor = Color.White;

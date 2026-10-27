@@ -223,6 +223,7 @@ if ($Scenario -eq 'UiRedesign') {
     $errorText = [IO.File]::ReadAllText((Join-Path $outputRoot 'ui-smoke.stderr.log'))
     if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw ('UI smoke wrote errors: ' + $errorText) }
     $markers = @(
+        'Initial overview scroll passed', 'AntdUI controls passed:',
         'Overview health smoke passed:', 'Deferred tab navigation passed:',
         'WinForms editor smoke passed: 15 drivers',
         'Device configuration smoke passed: 15 dedicated driver windows',

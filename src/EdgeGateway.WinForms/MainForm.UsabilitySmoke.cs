@@ -95,7 +95,7 @@ public sealed partial class MainForm
             CheckUsability(!_dirty && ((TextBox)_cloudFields["host"]).Text == fixture.Mqtt.Host && !_cloudApply.Enabled
                 && ((TextBox)_cloudFields["typeKey"]).Text == fixture.Mqtt.ThingsCloudTypeKey,
                 "reset did not restore the saved platform configuration.");
-            ResetScrollPositions(_pages["cloud"], _navigation["overview"]);
+            ResetScrollPositions(_pages["cloud"], navigationMenu);
             SaveEditorScreenshot(this, "usability", "platform");
 
             ShowPage("realtime"); SelectChoice(_realtimeDevice, a.Id);
@@ -213,7 +213,7 @@ public sealed partial class MainForm
             typeof(SplitContainer).GetMethod("OnDoubleClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .Invoke(split, [EventArgs.Empty]);
             PerformLayoutRecursively(this);
-            ResetScrollPositions(_pages["devices"], _navigation["devices"]);
+            ResetScrollPositions(_pages["devices"], navigationMenu);
         }
     }
 

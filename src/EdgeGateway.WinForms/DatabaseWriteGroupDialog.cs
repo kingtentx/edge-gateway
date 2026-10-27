@@ -148,7 +148,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         {
             if (e.Control is ComboBox combo)
                 combo.DropDownWidth = Math.Min(Screen.FromControl(this).WorkingArea.Width, Math.Max(combo.Width, UiTheme.Scale(this, 360)));
-            if (e.Control is System.Windows.Forms.TextBox text && _mapping.CurrentCell?.OwningColumn.Name == "Constant")
+            if (e.Control is GatewayInput text && _mapping.CurrentCell?.OwningColumn.Name == "Constant")
             {
                 text.BorderStyle = BorderStyle.FixedSingle;
                 text.BackColor = UiTheme.InputBackground;

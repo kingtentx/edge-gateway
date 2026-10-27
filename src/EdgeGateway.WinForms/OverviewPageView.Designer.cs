@@ -696,6 +696,7 @@ internal sealed partial class OverviewPageView
         viewport.Name = "viewport";
         viewport.Dock = DockStyle.Fill;
         viewport.Name = "OverviewViewport";
+        viewport.RouteContentWheel = true;
         viewport.Controls.Add(dashboardContent);
         dashboardHost.Controls.Add(viewport);
         _serverDiskRows.RowCount = 0;

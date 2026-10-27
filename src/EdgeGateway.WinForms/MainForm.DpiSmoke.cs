@@ -78,8 +78,9 @@ public sealed partial class MainForm
                     AssertHeaderStatusFits();
                     foreach (var navigation in _navigation.Values)
                     {
-                        BringIntoViewAndAssert(navigation, name + " navigation");
-                        AssertButtonContentFits(navigation, name + " navigation text");
+                        navigationMenu.Focus(navigation, true);
+                        AssertVisibleBounds(navigationMenu, name + " navigation");
+                        AssertNavigationItemFits(navigation, name);
                     }
                     foreach (var key in _pages.Keys)
                     {
@@ -121,7 +122,7 @@ public sealed partial class MainForm
                             result.LoggingInputMetrics = _loggingFields.Values.Select(ControlMetric.From).ToList();
                             _logTabs.SelectedIndex = 0;
                         }
-                        ResetScrollPositions(_pages[key], _navigation["overview"]);
+                        ResetScrollPositions(_pages[key], navigationMenu);
                         result.CheckedPages.Add(key);
                         if (key == "overview")
                         {
@@ -486,7 +487,7 @@ public sealed partial class MainForm
         {
             EditorDialog editor => editor.SmokeCommands.Last(),
             WriteValueDialog editor => editor.SmokeCommands.Last(),
-            MainForm main => main._navigation["overview"],
+            MainForm main => main.navigationMenu,
             _ => form
         };
         var focusTarget = control.Enabled && control.CanSelect ? control : stableFocus;

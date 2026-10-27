@@ -35,7 +35,7 @@ public sealed partial class MainForm
         private readonly Stopwatch _clock = Stopwatch.StartNew();
         private readonly Dictionary<Control, WatchedWindow> _watched = [];
         private readonly Queue<object> _messages = new();
-        private readonly Control _navigation = main._navigation["overview"];
+        private readonly Control _navigation = main.navigationMenu;
         private readonly Control? _deviceCommand = Descendants(main._pages["devices"]).OfType<Button>().FirstOrDefault();
         private StreamWriter? _writer;
         private string _stage = "initialization";

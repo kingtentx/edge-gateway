@@ -77,7 +77,7 @@ public partial class EditorDialog
         Tabs = new EditorLayout.EditorTabs();
         Tabs.Name = "EditorTabs";
         Tabs.Dock = DockStyle.Fill;
-        Tabs.Multiline = true;
+
         Tabs.Margin = Padding.Empty;
         _feedback = new EditorFeedback();
         _feedback.Name = "EditorValidation";

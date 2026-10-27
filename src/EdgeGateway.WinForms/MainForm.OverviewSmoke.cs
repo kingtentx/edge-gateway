@@ -39,7 +39,7 @@ public sealed partial class MainForm
         }
         finally { RefreshOverview(summary); RefreshServerResources(actual); }
         VerifyOverviewCards("baseline overview");
-        ResetScrollPositions(_pages["overview"], _navigation["overview"]);
+        ResetScrollPositions(_pages["overview"], navigationMenu);
         Console.WriteLine("Overview health smoke passed: four device metrics, no device list, live host memory/disks, resource warnings/unavailable states and layout reachability.");
     }
 

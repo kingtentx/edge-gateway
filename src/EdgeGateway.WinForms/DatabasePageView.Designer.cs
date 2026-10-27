@@ -81,7 +81,7 @@ internal sealed partial class DatabasePageView
         databaseTabs = new EditorLayout.EditorTabs();
         databaseTabs.Name = "DatabaseTabs";
         databaseTabs.Dock = DockStyle.Fill;
-        databaseTabs.Multiline = true;
+
         databaseTabs.Margin = Padding.Empty;
         connectionsTab = new TabPage("数据库连接");
         connectionsTab.Name = "DatabaseConnectionsTab";

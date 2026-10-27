@@ -274,7 +274,7 @@ internal sealed partial class PlatformPageView
         platformTabs.Name = "PlatformTabs";
         platformTabs.Dock = DockStyle.Fill;
         platformTabs.Margin = Padding.Empty;
-        platformTabs.Multiline = true;
+
         platformTabs.SelectedIndex = 0;
         connectionTab.Name = "PlatformTab_connection";
         connectionTab.Text = "平台连接";

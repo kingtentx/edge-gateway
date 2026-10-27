@@ -15,41 +15,45 @@ public sealed partial class MainForm
         var pages = new[] { ("database", _databaseTabs), ("cloud", _cloudTabs), ("logs", _logTabs) };
         try
         {
-            // A deliberately stale metric makes this lifecycle regression reproducible
-            // at 96 DPI as well. This does not change or simulate the window's DPI.
+            // Every AntdUI page must survive deferred creation and repeated selection.
             foreach (var (_, tabs) in pages)
             {
                 if (tabs.IsHandleCreated)
                     throw new InvalidOperationException(tabs.Name + ": navigation regression must run before first display.");
-                tabs.Padding = Point.Empty;
             }
 
             for (var pass = 0; pass < 3; pass++)
             foreach (var (key, tabs) in pages)
             {
-                _navigation[key].PerformClick();
+                navigationMenu.Select(_navigation[key]);
                 PerformLayoutRecursively(this);
                 if (_activePage != key || !_pages[key].Visible || !tabs.Visible)
                     throw new InvalidOperationException(key + ": navigation did not display the selected page.");
-                var expected = new Point(UiTheme.Scale(tabs, 14), UiTheme.Scale(tabs, 6));
-                if (!tabs.IsHandleCreated || !IsNavigationWindow(tabs.Handle) || tabs.Padding != expected)
-                    throw new InvalidOperationException(key + ": deferred tab creation lost its native window or current DPI padding.");
+                if (!tabs.IsHandleCreated || !IsNavigationWindow(tabs.Handle) || tabs is not AntdUI.Tabs)
+                    throw new InvalidOperationException(key + ": deferred AntdUI tab creation failed.");
 
                 var handle = tabs.Handle;
                 foreach (TabPage tab in tabs.TabPages)
                 {
                     tabs.SelectedTab = tab;
+                    System.Windows.Forms.Application.DoEvents();
                     PerformLayoutRecursively(tabs);
                     if (!tab.Visible || !tab.IsHandleCreated || !IsNavigationWindow(tab.Handle) || tabs.Handle != handle)
                         throw new InvalidOperationException(key + ": tab selection lost its native window or recreated the tab control.");
+                    AssertVisibleBounds(tab, key + " AntdUI tab content");
                 }
                 tabs.SelectedIndex = 0;
-                _navigation["overview"].PerformClick();
+                var command = typeof(GatewayTabs).GetMethod("ProcessCmdKey", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+                command.Invoke(tabs, [new Message(), Keys.Control | Keys.Tab]);
+                if (tabs.SelectedIndex != 1) throw new InvalidOperationException(key + ": Ctrl+Tab did not select the next AntdUI tab.");
+                command.Invoke(tabs, [new Message(), Keys.Control | Keys.Shift | Keys.Tab]);
+                if (tabs.SelectedIndex != 0) throw new InvalidOperationException(key + ": Ctrl+Shift+Tab did not restore the first AntdUI tab.");
+                navigationMenu.Select(_navigation["overview"]);
             }
             SmokeCredentialInputs();
-            Console.WriteLine($"Deferred tab navigation passed: database/platform/logs first display with stale padding, three menu cycles and all tabs, masked literal credential inputs at actual {DeviceDpi} DPI.");
+            Console.WriteLine($"Deferred tab navigation passed: AntdUI database/platform/logs first display, three menu cycles, Ctrl+Tab in both directions and all page bounds, masked literal credential inputs at actual {DeviceDpi} DPI.");
         }
-        finally { _navigation[originalPage].PerformClick(); }
+        finally { navigationMenu.Select(_navigation[originalPage]); }
     }
 
     private void SmokeCredentialInputs()
@@ -77,7 +81,7 @@ public sealed partial class MainForm
         var wasDirty = _dirty;
         try
         {
-            _navigation["cloud"].PerformClick();
+            navigationMenu.Select(_navigation["cloud"]);
             passwordInput.Text = tokenInput.Text = literal;
             if (!passwordInput.UseSystemPasswordChar || !tokenInput.UseSystemPasswordChar
                 || CloudDraft.Mqtt.Password != literal || CloudDraft.Mqtt.AccessToken != literal)

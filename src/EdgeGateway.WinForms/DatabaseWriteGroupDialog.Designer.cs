@@ -721,7 +721,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mappingColumnDataType.ReadOnly = true;
         _mappingColumnDataType.Name = "DataType";
         _mapping.Columns.Add(_mappingColumnDataType);
-        _mappingColumnSource = new DataGridViewComboBoxColumn();
+        _mappingColumnSource = new GatewayGridSelectColumn();
         _mappingColumnSource.Name = "_mappingColumnSource";
         _mappingColumnSource.DataPropertyName = "Source";
         _mappingColumnSource.HeaderText = "值来源";
@@ -732,7 +732,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mappingColumnSource.DisplayMember = "Text";
         _mappingColumnSource.Name = "Source";
         _mapping.Columns.Add(_mappingColumnSource);
-        _mappingColumnPoint = new DataGridViewComboBoxColumn();
+        _mappingColumnPoint = new GatewayGridSelectColumn();
         _mappingColumnPoint.Name = "_mappingColumnPoint";
         _mappingColumnPoint.DataPropertyName = "Point";
         _mappingColumnPoint.HeaderText = "绑定点位";
@@ -743,7 +743,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mappingColumnPoint.DisplayMember = "Text";
         _mappingColumnPoint.Name = "Point";
         _mapping.Columns.Add(_mappingColumnPoint);
-        _mappingColumnFieldType = new DataGridViewComboBoxColumn();
+        _mappingColumnFieldType = new GatewayGridSelectColumn();
         _mappingColumnFieldType.Name = "_mappingColumnFieldType";
         _mappingColumnFieldType.DataPropertyName = "FieldType";
         _mappingColumnFieldType.HeaderText = "转换类型";
@@ -754,7 +754,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mappingColumnFieldType.DisplayMember = "Text";
         _mappingColumnFieldType.Name = "FieldType";
         _mapping.Columns.Add(_mappingColumnFieldType);
-        _mappingColumnConstant = new DataGridViewTextBoxColumn();
+        _mappingColumnConstant = new GatewayGridInputColumn();
         _mappingColumnConstant.Name = "_mappingColumnConstant";
         _mappingColumnConstant.DataPropertyName = "Constant";
         _mappingColumnConstant.HeaderText = "手动常量";
