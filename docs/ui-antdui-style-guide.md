@@ -44,6 +44,10 @@
 
 固定结构、按钮、字段和列在对应 Designer 中真实创建并挂入控件树，代码只绑定事件/状态。公共样式适配器不能用来绕过此要求。动态驱动参数、数据库 schema 映射行、设备数据与曲线仍可由代码生成。详见 [设计器边界](ui-redesign-architecture.md) 和 [DPI 规范](../.agents/skills/develop-edge-gateway/references/winforms-dpi.md)。
 
+## 表单宽度
+
+2026-10-28：页面和弹窗的单行输入改为按字段类型限制宽度，并为地址、主题及表达式显式放宽；保留 AntdUI 默认样式、左侧标签和输入高度。尺寸规则、覆盖范围及本轮验证见 [表单输入宽度](ui-form-widths.md)。
+
 ## 本轮验证
 
 用户已授权 Release 编译及隔离后台八页面、配置弹窗、设备行按钮定向检查，允许在该范围修复重跑。产物目录为 `artifacts/antd-default-buttons-20261027`。

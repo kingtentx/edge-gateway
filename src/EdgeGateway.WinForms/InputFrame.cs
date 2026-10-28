@@ -8,6 +8,29 @@ internal sealed partial class InputFrame : AntdUI.Panel
     private Font? _measuredFont;
     private int _measuredDpi;
     private int _textHeight;
+    private int _contentWidth;
+
+    /// <summary>Optional logical-pixel width for fields containing longer values; zero uses the editor type.</summary>
+    [System.ComponentModel.DefaultValue(0)]
+    public int ContentWidth
+    {
+        get => _contentWidth;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            if (_contentWidth == value) return;
+            _contentWidth = value;
+            ArrangeEditor();
+        }
+    }
+
+    internal int LogicalWidthLimit => ContentWidth > 0 ? ContentWidth : _editor switch
+    {
+        NumericUpDown => 200,
+        DateTimePicker => 240,
+        ComboBox => 320,
+        _ => 360
+    };
 
     public InputFrame()
     {
@@ -92,6 +115,12 @@ internal sealed partial class InputFrame : AntdUI.Panel
         ArrangeEditor();
     }
 
+    protected override void OnDpiChangedAfterParent(EventArgs e)
+    {
+        base.OnDpiChangedAfterParent(e);
+        ArrangeEditor();
+    }
+
     private void ArrangeEditor()
     {
         if (_editor is null || _editor.Parent != this || _arranging
@@ -99,6 +128,10 @@ internal sealed partial class InputFrame : AntdUI.Panel
         _arranging = true;
         try
         {
+            // Keep the actual surface compact, so focus/click bounds match the visible input.
+            // Recompute from logical units after initial scaling and every DPI transition.
+            var maximum = new Size(UiTheme.Scale(this, LogicalWidthLimit), 0);
+            if (MaximumSize != maximum) MaximumSize = maximum;
             if (_editor is AntdUI.Input)
             {
                 var bounds = new Rectangle(Point.Empty, ClientSize);

@@ -275,7 +275,11 @@ public sealed partial class MainForm
             try
             {
                 FitSmokeDialog(editor, area); VerifyEditorLayout(editor, result.Name + " database write group");
+                // The switch-to-custom button only exists visually in standard mode.
+                // Visit that mode before checking every command, then restore the mapping fixture.
+                editor.SelectModeForSmoke(DatabaseStorageMode.PointRows);
                 foreach (var button in Descendants(editor).OfType<Button>()) BringIntoViewAndAssert(button, result.Name + " database write-group command");
+                editor.SelectModeForSmoke(group.Mode);
                 VerifyDatabasePointSelectionForSmoke(editor, result.Name + " database point selection");
                 result.DatabasePointSelectionVerified = true;
                 result.DatabaseMappingCellsChecked = VerifyDatabaseMappingForSmoke(editor, result.Name + " database column mapping");
@@ -517,9 +521,23 @@ public sealed partial class MainForm
                 throw new InvalidOperationException(context + ": switch has a redundant caption: " + toggle.Name);
         }
         if (control is not (TextBox { Multiline: false } or ComboBox or NumericUpDown or DateTimePicker)) return;
+        // The pagination size selector is a standalone official Select in a fixed-height footer,
+        // rather than a labeled form field. Check its real bounds using that contract.
+        if (control is ComboBox && control.Parent is TableLayoutPanel footer
+            && footer.Controls.OfType<AntdUI.Pagination>().Any())
+        {
+            AssertVisibleBounds(control, context + " pagination size selector");
+            if (control.Width > UiTheme.Scale(control, 136) + 1
+                || Math.Abs(control.Height - UiTheme.Scale(control, UiTheme.ActionHeight)) > 1)
+                throw new InvalidOperationException(context + ": pagination size selector has incorrect dimensions: " + control.Bounds);
+            return;
+        }
         if (control.Parent is not InputFrame surface)
             throw new InvalidOperationException(context + ": single-line editor is missing its button-height surface: " + control.Name);
         AssertVisibleBounds(surface, context + " input surface");
+        if (surface.Width > UiTheme.Scale(surface, surface.LogicalWidthLimit) + 1
+            || control.Width > surface.ClientSize.Width)
+            throw new InvalidOperationException(context + ": editor exceeds its compact field width: " + control.Name);
         if (control is AntdUI.Input && (surface.Back != Color.Transparent || surface.BorderWidth != 0))
             throw new InvalidOperationException(context + ": input surface paints duplicate chrome: " + control.Name);
         var expected = Math.Max(UiTheme.Scale(control, UiTheme.ActionHeight),

@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**2026-10-28 表单宽度：** 各页面和配置弹窗的单行输入按类型采用紧凑宽度，长地址、主题和表达式显式放宽，窄窗口继续收缩；保持 AntdUI 默认样式和 Designer 固定结构。[实现与验证](docs/ui-form-widths.md)。
+
 **2026-10-28 列表分页：** 设备、点位、实时、历史、日志与管理/预览列表接入 AntdUI Pagination 默认样式；固定分页条在 Designer 创建，导出仍使用完整查询快照。实现范围和本轮验证见 [列表分页](docs/ui-pagination.md)。
 
 **2026-10-27 界面开发规范：** 全部界面使用 AntdUI-Demo 规范样式；按钮统一采用官方基础 Default / Primary 及默认交互状态。组件规范、参考版本与验证见 [AntdUI-Demo 样式规范](docs/ui-antdui-style-guide.md)。

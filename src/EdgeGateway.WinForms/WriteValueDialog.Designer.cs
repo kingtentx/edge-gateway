@@ -157,6 +157,7 @@ internal sealed partial class WriteValueDialog
         _valueSurface.TabIndex = 2;
         _value.Dock = DockStyle.None;
         _value.Margin = Padding.Empty;
+        _valueSurface.ContentWidth = 560;
         _valueSurface.Controls.Add(_value);
         content.Controls.Add(_valueSurface, 1, 2);
         valueHelp = new Label();
@@ -290,6 +291,7 @@ internal sealed partial class WriteValueDialog
         _absoluteToleranceSurface.TabIndex = 8;
         _absoluteTolerance.Dock = DockStyle.None;
         _absoluteTolerance.Margin = Padding.Empty;
+        _absoluteToleranceSurface.ContentWidth = 200;
         _absoluteToleranceSurface.Controls.Add(_absoluteTolerance);
         content.Controls.Add(_absoluteToleranceSurface, 1, 8);
         _relativeTolerance = new GatewayInput();
@@ -324,6 +326,7 @@ internal sealed partial class WriteValueDialog
         _relativeToleranceSurface.TabIndex = 9;
         _relativeTolerance.Dock = DockStyle.None;
         _relativeTolerance.Margin = Padding.Empty;
+        _relativeToleranceSurface.ContentWidth = 200;
         _relativeToleranceSurface.Controls.Add(_relativeTolerance);
         content.Controls.Add(_relativeToleranceSurface, 1, 9);
         contentHint6 = new Label();
