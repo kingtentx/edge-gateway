@@ -7,6 +7,9 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class LoggingPageView
 {
     private System.ComponentModel.IContainer? components;
+    private TableLayoutPanel pageLayout = null!;
+    private Label titleLabel = null!;
+    private Label descriptionLabel = null!;
     private TabControl logTabs = null!;
     private TabPage settingsTab = null!;
     private TabPage eventLogsTab = null!;
@@ -66,6 +69,32 @@ internal sealed partial class LoggingPageView
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
+        pageLayout = new TableLayoutPanel();
+        pageLayout.Name = "LoggingPageContent";
+        pageLayout.Dock = DockStyle.Fill;
+        pageLayout.Margin = Padding.Empty;
+        pageLayout.ColumnCount = 1;
+        pageLayout.RowCount = 3;
+        pageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        pageLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        pageLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        pageLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        titleLabel = new Label();
+        titleLabel.Name = "LoggingPageTitle";
+        titleLabel.Text = "运行日志";
+        titleLabel.AutoSize = true;
+        titleLabel.Dock = DockStyle.Fill;
+        titleLabel.Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Bold);
+        titleLabel.ForeColor = UiTheme.Ink;
+        titleLabel.Margin = new Padding(0, 0, 0, 2);
+        descriptionLabel = new Label();
+        descriptionLabel.Name = "LoggingPageDescription";
+        descriptionLabel.Text = "设置日志保留策略，查询运行事件与采样数据。";
+        descriptionLabel.AutoSize = true;
+        descriptionLabel.Dock = DockStyle.Fill;
+        descriptionLabel.Font = new Font("Microsoft YaHei UI", 10F);
+        descriptionLabel.ForeColor = UiTheme.Muted;
+        descriptionLabel.Margin = new Padding(0, 0, 0, 8);
         logTabs = new EditorLayout.EditorTabs();
         logTabs.Name = "LoggingTabs";
         logTabs.Dock = DockStyle.Fill;
@@ -157,6 +186,7 @@ internal sealed partial class LoggingPageView
         Name = "LoggingPageView";
         Dock = DockStyle.Fill;
         BackColor = UiTheme.Background;
+        Padding = new Padding(16);
         settingsContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         settingsContent.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         settingsContent.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -185,7 +215,10 @@ internal sealed partial class LoggingPageView
         logTabs.TabPages.Add(settingsTab);
         logTabs.TabPages.Add(eventLogsTab);
         logTabs.TabPages.Add(sampleLogsTab);
-        Controls.Add(logTabs);
+        pageLayout.Controls.Add(titleLabel, 0, 0);
+        pageLayout.Controls.Add(descriptionLabel, 0, 1);
+        pageLayout.Controls.Add(logTabs, 0, 2);
+        Controls.Add(pageLayout);
         settingsFooter.ResumeLayout(false);
         settingsFooter.PerformLayout();
         settingsContent.ResumeLayout(false);

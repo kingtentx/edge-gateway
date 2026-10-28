@@ -3,9 +3,9 @@ namespace EdgeGateway.WinForms;
 /// <summary>Keeps AntdUI's own auto sizing consistent with WinForms layout constraints.</summary>
 public class GatewayButton : AntdUI.Button
 {
-    // AntdUI-Demo's basic Default / Primary examples disable the wave and leave
-    // every color, border and interaction state to AntdUI's defaults.
-    public GatewayButton() => WaveSize = 0;
+    // Use the official outline so Default actions remain distinct on white surfaces.
+    // AntdUI continues to own all colors and interaction states.
+    public GatewayButton() { WaveSize = 0; BorderWidth = 1; }
 
     public override Size PSize
     {

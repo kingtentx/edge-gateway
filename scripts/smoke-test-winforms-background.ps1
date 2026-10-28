@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -131,6 +131,7 @@ namespace EdgeGateway {
                     Attributes = attributes
                 };
                 var arguments = scenario == "UiRedesign" ? " --smoke-test --screenshot "
+                    : scenario == "ButtonAppearance" ? " --smoke-button-appearance --screenshot "
                     : scenario == "FormWidths" ? " --smoke-form-widths --screenshot "
                     : scenario == "HistorySources" ? " --smoke-history-sources --screenshot "
                     : scenario == "Pagination" ? " --smoke-pagination --screenshot "
@@ -191,6 +192,14 @@ $code = [EdgeGateway.BackgroundUiSmoke]::Run($applicationPath, $repositoryRoot, 
 if ($code -ne 0) {
     Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log')
     throw "Background WinForms smoke failed: $code"
+}
+if ($Scenario -eq 'ButtonAppearance') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'ButtonAppearance smoke wrote errors.' }
+    if ($outputText -notmatch 'ButtonAppearance smoke passed:') { throw 'ButtonAppearance completion marker is missing.' }
+    Write-Output "ButtonAppearance smoke passed: $outputRoot"
+    exit 0
 }
 if ($Scenario -eq 'FormWidths') {
     $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw

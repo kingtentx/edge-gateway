@@ -27,6 +27,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly bool _paginationSmoke;
     private readonly bool _historySourcesSmoke;
     private readonly bool _formWidthsSmoke;
+    private readonly bool _buttonAppearanceSmoke;
     private readonly bool _navigationSmoke;
     private readonly bool _serverResourcesSmoke;
     private readonly bool _workbookSmoke;
@@ -62,7 +63,7 @@ public sealed partial class MainForm : DpiAwareForm
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
         bool serverResourcesSmoke = false, bool workbookSmoke = false, bool leaveWorkerRunning = false, bool loggingSmoke = false,
-        bool databaseRefreshSmoke = false, bool pageRefreshSmoke = false, bool navigationSmoke = false, bool paginationSmoke = false, bool historySourcesSmoke = false, bool formWidthsSmoke = false)
+        bool databaseRefreshSmoke = false, bool pageRefreshSmoke = false, bool navigationSmoke = false, bool paginationSmoke = false, bool historySourcesSmoke = false, bool formWidthsSmoke = false, bool buttonAppearanceSmoke = false)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
@@ -72,10 +73,11 @@ public sealed partial class MainForm : DpiAwareForm
         _loggingSmoke = loggingSmoke;
         _workbookSmoke = workbookSmoke;
         _leaveWorkerRunning = leaveWorkerRunning;
-        _smokeTest = formWidthsSmoke || historySourcesSmoke || paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
+        _smokeTest = buttonAppearanceSmoke || formWidthsSmoke || historySourcesSmoke || paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
         _paginationSmoke = paginationSmoke;
         _historySourcesSmoke = historySourcesSmoke;
         _formWidthsSmoke = formWidthsSmoke;
+        _buttonAppearanceSmoke = buttonAppearanceSmoke;
         _navigationSmoke = navigationSmoke;
         _pageRefreshSmoke = pageRefreshSmoke;
         _databaseRefreshSmoke = databaseRefreshSmoke;
@@ -251,6 +253,15 @@ public sealed partial class MainForm : DpiAwareForm
 
     private async void OnShown(object? sender, EventArgs e)
     {
+        if (_buttonAppearanceSmoke)
+        {
+            try { await SmokeButtonAppearanceAsync(); }
+            catch (Exception exception)
+            {
+                SmokeTestFailed = true; TrySaveSmokeFailure(this, "button-appearance-failed"); Console.Error.WriteLine(exception);
+            }
+            _allowClose = true; Close(); return;
+        }
         if (_formWidthsSmoke)
         {
             try { await SmokeFormWidthsAsync(); }

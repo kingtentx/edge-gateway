@@ -545,18 +545,17 @@ public sealed partial class MainForm
             var inset = UiTheme.Scale(DataGridView, 5);
             var bounds = Rectangle.Inflate(cellBounds, -inset, -inset);
             if (bounds.Width <= 2 || bounds.Height <= 2) return;
-            // DataGridView keeps its native cell/accessibility/keyboard contract. The
-            // cell renderer uses the same tokens as AntdUI's borderless basic buttons;
-            // do not introduce a second palette for row commands.
+            // Start/stop use AntdUI's semantic Success/Error tokens as requested;
+            // keep the library's disabled colors and the native keyboard contract.
             static Color ButtonColor(AntdUI.Colour token) => AntdUI.Style.Get(token, nameof(AntdUI.Button));
             var focused = DataGridView.Focused && DataGridView.CurrentCellAddress == new Point(ColumnIndex, rowIndex);
             if (!focused) _keyboardPressed = false;
             var pressed = (_hovered && (Control.MouseButtons & MouseButtons.Left) != 0) || (focused && _keyboardPressed);
             var background = ButtonColor(!ActionEnabled ? AntdUI.Colour.FillTertiary
-                : StartsDevice ? (pressed ? AntdUI.Colour.PrimaryActive : _hovered ? AntdUI.Colour.PrimaryHover : AntdUI.Colour.Primary)
-                : AntdUI.Colour.DefaultBg);
+                : StartsDevice ? (pressed ? AntdUI.Colour.SuccessActive : _hovered ? AntdUI.Colour.SuccessHover : AntdUI.Colour.Success)
+                : (pressed ? AntdUI.Colour.ErrorActive : _hovered ? AntdUI.Colour.ErrorHover : AntdUI.Colour.Error));
             var foreground = ButtonColor(!ActionEnabled ? AntdUI.Colour.TextQuaternary
-                : StartsDevice ? AntdUI.Colour.PrimaryColor : AntdUI.Colour.DefaultColor);
+                : StartsDevice ? AntdUI.Colour.SuccessColor : AntdUI.Colour.ErrorColor);
             var radius = Math.Min(UiTheme.Scale(DataGridView, 6), Math.Min(bounds.Width, bounds.Height) / 2);
             using var path = new GraphicsPath();
             var diameter = Math.Max(2, radius * 2);
@@ -569,11 +568,6 @@ public sealed partial class MainForm
             var smoothing = graphics.SmoothingMode;
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
             graphics.FillPath(fill, path);
-            if (ActionEnabled && !StartsDevice && (pressed || _hovered))
-            {
-                using var stateFill = new SolidBrush(ButtonColor(pressed ? AntdUI.Colour.Fill : AntdUI.Colour.FillSecondary));
-                graphics.FillPath(stateFill, path);
-            }
             graphics.SmoothingMode = smoothing;
             // GDI+ preserves the alpha in AntdUI's disabled foreground token.
             using var textBrush = new SolidBrush(foreground);

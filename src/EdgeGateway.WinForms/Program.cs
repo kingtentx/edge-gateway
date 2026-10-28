@@ -11,6 +11,7 @@ internal static class Program
     {
         ApplicationConfiguration.Initialize();
         System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
+        var buttonAppearanceSmoke = args.Contains("--smoke-button-appearance", StringComparer.OrdinalIgnoreCase);
         var formWidthsSmoke = args.Contains("--smoke-form-widths", StringComparer.OrdinalIgnoreCase);
         var historySourcesSmoke = args.Contains("--smoke-history-sources", StringComparer.OrdinalIgnoreCase);
         var paginationSmoke = args.Contains("--smoke-pagination", StringComparer.OrdinalIgnoreCase);
@@ -22,7 +23,7 @@ internal static class Program
         var serverResourcesSmoke = args.Contains("--smoke-server-resources", StringComparer.OrdinalIgnoreCase);
         var loggingSmoke = args.Contains("--smoke-logging", StringComparer.OrdinalIgnoreCase);
         var workbookSmoke = args.Contains("--smoke-workbooks", StringComparer.OrdinalIgnoreCase);
-        var smokeTest = formWidthsSmoke || historySourcesSmoke || paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
+        var smokeTest = buttonAppearanceSmoke || formWidthsSmoke || historySourcesSmoke || paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
         var screenshotIndex = Array.FindIndex(args, x => x.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
         var screenshotPath = screenshotIndex >= 0 && screenshotIndex + 1 < args.Length ? args[screenshotIndex + 1] : null;
         var runtimeRoot = smokeTest
@@ -73,7 +74,7 @@ internal static class Program
             host = GatewayHost.CreateAsync(dataDirectory, pluginDirectory: driverDirectory,
                 enableVerificationFaults: smokeTest, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
             using var window = new MainForm(host.Application, smokeTest, screenshotPath, layoutMatrix,
-                host.BeginConfigurationWriteFailureForVerification, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke, loggingSmoke: loggingSmoke, databaseRefreshSmoke: databaseRefreshSmoke, pageRefreshSmoke: pageRefreshSmoke, navigationSmoke: navigationSmoke, paginationSmoke: paginationSmoke, historySourcesSmoke: historySourcesSmoke, formWidthsSmoke: formWidthsSmoke);
+                host.BeginConfigurationWriteFailureForVerification, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke, loggingSmoke: loggingSmoke, databaseRefreshSmoke: databaseRefreshSmoke, pageRefreshSmoke: pageRefreshSmoke, navigationSmoke: navigationSmoke, paginationSmoke: paginationSmoke, historySourcesSmoke: historySourcesSmoke, formWidthsSmoke: formWidthsSmoke, buttonAppearanceSmoke: buttonAppearanceSmoke);
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }

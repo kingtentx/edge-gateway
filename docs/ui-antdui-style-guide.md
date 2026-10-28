@@ -1,6 +1,6 @@
 # AntdUI-Demo 界面样式规范
 
-更新日期：2026-10-27。此规范按用户最新要求，替代此前增强按钮悬停色、红色停止按钮等自定义皮肤约定。
+更新日期：2026-10-28。普通按钮增加官方边框；按用户本次明确要求，设备启动使用官方绿色 Success、停止使用官方红色 Error。其余按钮继续采用 Default / Primary。
 
 ## 样式依据
 
@@ -9,10 +9,10 @@
 ## 按钮
 
 - 所有页面、弹窗、工具栏、菜单触发按钮、导航折叠按钮及行内操作统一遵循此规范。
-- 普通操作使用 `Type=Default`；新增、保存、应用、查询、启动等已有主操作使用 `Type=Primary`。删除保留明确文案和确认流程，不通过匹配“删除”字符串自动染红；新增危险样式须有明确产品需求并使用官方类型。
-- 普通控件使用 `GatewayButton : AntdUI.Button`，保留官方圆角 6、边框宽度 0、非 Ghost；基础 Demo 的 `WaveSize=0` 在共享基类中统一。不要自行设置 Back、Fore、DefaultBack、DefaultBorderColor、BackHover、BackActive、ForeHover、ForeActive，也不要通过 WinForms BackColor / ForeColor 叠加按钮皮肤。
+- 普通操作使用 `Type=Default`；新增、保存、应用、查询等已有主操作使用 `Type=Primary`。删除保留明确文案和确认流程，不通过匹配“删除”字符串自动染红；新增危险样式须有明确产品需求并使用官方类型。
+- 普通控件使用 `GatewayButton : AntdUI.Button`，保留官方圆角 6、边框宽度 1、非 Ghost；`BorderWidth=1` 与基础 Demo 的 `WaveSize=0` 在共享基类中统一，普通白底按钮也能区分可点击轮廓。不要自行设置 Back、Fore、DefaultBack、DefaultBorderColor、BackHover、BackActive、ForeHover、ForeActive，也不要通过 WinForms BackColor / ForeColor 叠加按钮皮肤。
 - 默认、悬停、按下、禁用及焦点状态交由官方按钮处理，不通过鼠标事件切换自定义配色或模拟普通按钮。保留 Enter / Space、Tab、默认按钮、取消和无障碍语义。图标使用官方主题色，保持现有 DPI 与资源释放规则。
-- 设备表保留 DataGridView 的稳定 ID、行命令、键盘与无障碍合同。其按钮单元格使用 AntdUI 官方 Default / Primary 主题令牌绘制，默认按钮不增加描边，停止为 Default；禁用前景保留透明度，默认悬停/按下色叠加于 DefaultBg。禁止为行按钮单独写一套 RGB 色板。该适配器不是独立 AntdUI 控件，保留原生表格键盘焦点框。
+- 设备表保留 DataGridView 的稳定 ID、行命令、键盘与无障碍合同。其启停按钮单元格使用 AntdUI 官方 Success / Error 主题令牌绘制：启动绿色、停止红色，悬停/按下使用对应 Hover / Active，文字使用对应 Color；禁用继续采用 FillTertiary / TextQuaternary 灰色并保留透明度。禁止为行按钮单独写一套 RGB 色板。该适配器不是独立 AntdUI 控件，保留原生表格键盘焦点框。
 - 38 逻辑像素操作高度、中文 10 pt 正文、工具栏换行和可点击面积继续按项目 DPI 规范维护；不为照搬 Demo 示例窗口尺寸缩小字号或裁切文字。
 
 ## 其他组件与设计器
@@ -31,7 +31,7 @@
 
 | 界面元素 | 规范 |
 |---|---|
-| 按钮与操作区 | 官方 Button 的基础 Default / Primary；同类操作状态一致 |
+| 按钮与操作区 | 官方 Button 的基础 Default / Primary、统一 1 逻辑像素边框；设备启停为 Success / Error |
 | 文本、密码、数值、下拉、日期 | 对应 Input、InputNumber、Select、DatePicker；容器不叠加第二层底色或边框 |
 | 布尔表单 | Switch；沿用官方开关形态，保留字段标签、键盘与无障碍语义 |
 | 导航与页签 | Menu 与 Tabs 基础样式；侧栏收缩保持图标坐标，页签保持统一的选中和焦点状态 |
@@ -48,7 +48,11 @@
 
 2026-10-28：页面和弹窗的单行输入改为按字段类型限制宽度，并为地址、主题及表达式显式放宽；保留 AntdUI 默认样式、左侧标签和输入高度。尺寸规则、覆盖范围及本轮验证见 [表单输入宽度](ui-form-widths.md)。
 
-## 本轮验证
+## 按钮轮廓与日志标题（2026-10-28）
+
+日志页面在三个页签上方统一显示“运行日志”标题与简短说明，固定控件在 LoggingPageView.Designer.cs 中创建。按钮轮廓、启停颜色及本轮验证记录见 [按钮与日志标题调整](ui-button-appearance.md)。
+
+## 历史验证（2026-10-27）
 
 用户已授权 Release 编译及隔离后台八页面、配置弹窗、设备行按钮定向检查，允许在该范围修复重跑。产物目录为 `artifacts/antd-default-buttons-20261027`。
 
