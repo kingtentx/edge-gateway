@@ -1,6 +1,6 @@
-# AntdUI-Demo 界面样式规范
+﻿# AntdUI-Demo 界面样式规范
 
-更新日期：2026-10-28。普通按钮增加官方边框；按用户本次明确要求，设备启动使用官方绿色 Success、停止使用官方红色 Error。其余按钮继续采用 Default / Primary。
+更新日期：2026-10-29。普通按钮增加官方边框；按用户本次明确要求，设备启动使用官方绿色 Success、停止使用官方红色 Error。其余按钮继续采用 Default / Primary。
 
 ## 样式依据
 
@@ -12,12 +12,12 @@
 - 普通操作使用 `Type=Default`；新增、保存、应用、查询等已有主操作使用 `Type=Primary`。删除保留明确文案和确认流程，不通过匹配“删除”字符串自动染红；新增危险样式须有明确产品需求并使用官方类型。
 - 普通控件使用 `GatewayButton : AntdUI.Button`，保留官方圆角 6、边框宽度 1、非 Ghost；`BorderWidth=1` 与基础 Demo 的 `WaveSize=0` 在共享基类中统一，普通白底按钮也能区分可点击轮廓。不要自行设置 Back、Fore、DefaultBack、DefaultBorderColor、BackHover、BackActive、ForeHover、ForeActive，也不要通过 WinForms BackColor / ForeColor 叠加按钮皮肤。
 - 默认、悬停、按下、禁用及焦点状态交由官方按钮处理，不通过鼠标事件切换自定义配色或模拟普通按钮。保留 Enter / Space、Tab、默认按钮、取消和无障碍语义。图标使用官方主题色，保持现有 DPI 与资源释放规则。
-- 设备表保留 DataGridView 的稳定 ID、行命令、键盘与无障碍合同。其启停按钮单元格使用 AntdUI 官方 Success / Error 主题令牌绘制：启动绿色、停止红色，悬停/按下使用对应 Hover / Active，文字使用对应 Color；禁用继续采用 FillTertiary / TextQuaternary 灰色并保留透明度。禁止为行按钮单独写一套 RGB 色板。该适配器不是独立 AntdUI 控件，保留原生表格键盘焦点框。
+- 全部业务表格使用 `GatewayTable : AntdUI.Table`，设备启停直接使用官方 `CellButton` 的 Success / Error；配置与查看点位为 `CellLink`，字段映射开关为 `CellSwitch`。不再保留原生 DataGridView 或自行绘制行按钮。绑定适配层保留稳定 ID、选择、分页、滚动、键盘及无障碍行/单元格树。
 - 38 逻辑像素操作高度、中文 10 pt 正文、工具栏换行和可点击面积继续按项目 DPI 规范维护；不为照搬 Demo 示例窗口尺寸缩小字号或裁切文字。
 
 ## 下拉操作与对齐（2026-10-28）
 
-菜单触发按钮使用官方 `ShowArrow=true` / `IsLink=true` 的下拉箭头；操作项改用真正的 `AntdUI.ContextMenuStrip`，保留默认圆角、留白、分隔和悬停，快捷键单独在右侧显示。禁用项显示简短原因，无障碍描述保留完整原因。方向键、Enter、Escape 和打开时捕获的设备身份继续有效。启停单元格用 GDI TextRenderer 水平/垂直居中，保持官方语义颜色。
+菜单触发按钮使用官方 `ShowArrow=true` / `IsLink=true` 的下拉箭头；操作项改用真正的 `AntdUI.ContextMenuStrip`，保留默认圆角、留白、分隔和悬停，快捷键单独在右侧显示。禁用项显示简短原因，无障碍描述保留完整原因。方向键、Enter、Escape 和打开时捕获的设备身份继续有效。启停单元格由官方 CellButton 负责文字居中和全部状态绘制。
 
 普通单行表单统一 240 逻辑像素上限，长字段 400；Select 弹出列表跟随输入宽度。实现及本轮验证见 [菜单和表单对齐](ui-menu-form-alignment.md)。
 
@@ -41,10 +41,10 @@
 | 文本、密码、数值、下拉、日期 | 对应 Input、InputNumber、Select、DatePicker；容器不叠加第二层底色或边框 |
 | 布尔表单 | Switch；沿用官方开关形态，保留字段标签、键盘与无障碍语义 |
 | 导航与页签 | Menu 与 Tabs 基础样式；侧栏收缩保持图标坐标，页签保持统一的选中和焦点状态 |
-| 表格与动态行 | 对齐官方 Table 的表头、选择、禁用与行操作风格；现有 DataGridView 宿主保留稳定 ID、选择、滚动及键盘合同，不新增独立色板 |
+| 表格与动态行 | 真实 AntdUI.Table / CellButton / CellLink / CellSwitch；输入编辑使用真实 Select / Input，禁止自绘单元格皮肤 |
 | 分组、详情与弹窗 | 官方 Demo 的基础表单布局与配色，统一标题层级、间距、底部确认/取消区；不将 Demo 中自定义效果展示作为默认样式 |
 
-现有原生窗口标题栏、滚动条、文件选择器和 DataGridView 等宿主不是 AntdUI 控件，不宣称它们已全部替换。后续迁移控件须单独保持交互、设计器和 DPI 边界；不得为了统一样式移除业务功能或把固定控件改为运行时创建。
+窗口采用 AntdUI.Window 和 Designer 中的 PageHeader，确认/提示采用 AntdUI.Modal；标签、卡片、曲线、容量条、Logo 宿主、提示和托盘菜单分别使用 Label、Panel、Chart、Progress、Avatar、TooltipComponent 和 ContextMenuStrip。原生 UserControl / Panel / TableLayoutPanel / FlowLayoutPanel 仅作为布局与滚动宿主；系统文件对话框和 NotifyIcon 保留 Windows 集成。品牌图标是资源图形，非控件皮肤。清单及本次验证见 [全页面控件迁移](ui-antdui-migration.md)。
 
 导航、输入、下拉、数值、开关、日期与页签使用 AntdUI 对应组件和 Demo 的基础样式，不在原生控件外套仿制边框。页面使用浅灰工作区、白色内容区、官方蓝色选中态；输入容器只负责尺寸，背景透明，由输入控件绘制输入区。开关旁不重复显示说明文字，保留字段标签及无障碍名称；数字输入和界面数值文本不使用千分位。
 

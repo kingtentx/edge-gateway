@@ -7,3 +7,6 @@ global using DateTimePicker = EdgeGateway.WinForms.GatewayDatePicker;
 global using TabControl = EdgeGateway.WinForms.GatewayTabs;
 global using TabPage = EdgeGateway.WinForms.GatewayTabPage;
 global using CheckedListBox = EdgeGateway.WinForms.GatewayCheckList;
+
+global using Label = EdgeGateway.WinForms.GatewayLabel;
+global using MessageBox = EdgeGateway.WinForms.GatewayMessageBox;

@@ -62,14 +62,14 @@ internal sealed partial class DatabaseWriteGroupDialog
     private Label _mappingHint = null!;
     private Label _mappingStatus = null!;
     private Panel mappingBody = null!;
-    private DpiDataGridView _mapping = null!;
+    private GatewayTable _mapping = null!;
     private GatewayGridSwitchColumn _mappingColumnInclude = null!;
-    private DataGridViewTextBoxColumn _mappingColumnColumn = null!;
-    private DataGridViewTextBoxColumn _mappingColumnDataType = null!;
-    private DataGridViewComboBoxColumn _mappingColumnSource = null!;
-    private DataGridViewComboBoxColumn _mappingColumnPoint = null!;
-    private DataGridViewComboBoxColumn _mappingColumnFieldType = null!;
-    private DataGridViewTextBoxColumn _mappingColumnConstant = null!;
+    private GatewayTableColumn _mappingColumnColumn = null!;
+    private GatewayTableColumn _mappingColumnDataType = null!;
+    private GatewayGridSelectColumn _mappingColumnSource = null!;
+    private GatewayGridSelectColumn _mappingColumnPoint = null!;
+    private GatewayGridSelectColumn _mappingColumnFieldType = null!;
+    private GatewayTableColumn _mappingColumnConstant = null!;
     private Label _mappingEmpty = null!;
 
     private void InitializeComponent()
@@ -682,7 +682,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         mappingBody.Name = "mappingBody";
         mappingBody.Dock = DockStyle.Fill;
         mappingBody.Margin = Padding.Empty;
-        _mapping = new DpiDataGridView();
+        _mapping = new GatewayTable();
         _mapping.Name = "_mapping";
         _mapping.Dock = DockStyle.Fill;
         _mapping.BackgroundColor = Color.White;
@@ -722,7 +722,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mappingColumnInclude.ToolTipText = "打开开关：使用采样来源。关闭开关：写入手动常量。若不写入此列，请选择“不写入”。";
         _mappingColumnInclude.Name = "Include";
         _mapping.Columns.Add(_mappingColumnInclude);
-        _mappingColumnColumn = new DataGridViewTextBoxColumn();
+        _mappingColumnColumn = new GatewayTableColumn();
         _mappingColumnColumn.Name = "_mappingColumnColumn";
         _mappingColumnColumn.DataPropertyName = "Column";
         _mappingColumnColumn.HeaderText = "表字段";
@@ -732,7 +732,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _mappingColumnColumn.ReadOnly = true;
         _mappingColumnColumn.Name = "Column";
         _mapping.Columns.Add(_mappingColumnColumn);
-        _mappingColumnDataType = new DataGridViewTextBoxColumn();
+        _mappingColumnDataType = new GatewayTableColumn();
         _mappingColumnDataType.Name = "_mappingColumnDataType";
         _mappingColumnDataType.DataPropertyName = "DataType";
         _mappingColumnDataType.HeaderText = "数据库类型 / 要求";

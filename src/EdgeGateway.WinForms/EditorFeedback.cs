@@ -1,4 +1,4 @@
-namespace EdgeGateway.WinForms;
+﻿namespace EdgeGateway.WinForms;
 
 /// <summary>Persistent, non-modal feedback shared by configuration and write dialogs.</summary>
 internal sealed partial class EditorFeedback : TableLayoutPanel
@@ -11,7 +11,7 @@ internal sealed partial class EditorFeedback : TableLayoutPanel
     public EditorFeedback() { InitializeComponent(); }
     public EditorFeedback(string name) : this()
     { Name = name; MessageControlName = name + "Message"; LocateControlName = name + "Locate"; }
-    private void OnLocateClicked(object? sender, LinkLabelLinkClickedEventArgs e) => RevealField();
+    private void OnLocateClicked(object? sender, EventArgs e) => RevealField();
 
     public void Clear()
     {
@@ -59,7 +59,7 @@ internal sealed partial class EditorFeedback : TableLayoutPanel
     {
         if (_heading is not null)
             _heading.MaximumSize = new Size(Math.Max(1, ClientSize.Width - Padding.Horizontal
-                - (_locate.Visible ? _locate.PreferredWidth + _locate.Margin.Horizontal : 0)), 0);
+                - (_locate.Visible ? _locate.PreferredSize.Width + _locate.Margin.Horizontal : 0)), 0);
         base.OnLayout(levent);
     }
 }

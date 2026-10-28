@@ -54,7 +54,7 @@ internal static class UiTheme
         }, Cursor = Cursors.Hand
     };
 
-    public static TableLayoutPanel Card(Color? accent = null) => new SurfaceCard { Accent = accent ?? Blue, BackColor = Color.White };
+    public static SurfaceCard Card(Color? accent = null) => new SurfaceCard { Accent = accent ?? Blue, BackColor = Color.White };
 
     internal static IconChar ActionIcon(string text) => text switch
     {
@@ -160,42 +160,17 @@ internal static class UiTheme
         Margin = new Padding(0, 4, 0, 4), UseMnemonic = false
     };
 
-    public static DataGridView Grid()
-    {
-        var grid = new DpiDataGridView
-        {
-            Dock = DockStyle.Fill, BackgroundColor = Color.White, BorderStyle = BorderStyle.None,
-            ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
-            AllowUserToResizeRows = false, AutoGenerateColumns = false,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect, MultiSelect = false,
-            RowHeadersVisible = false, EnableHeadersVisualStyles = false,
-            ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-            CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-            GridColor = Color.FromArgb(239, 243, 249), ShowCellErrors = true
-        };
-        grid.DefaultCellStyle.ForeColor = Ink;
-        grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(228, 238, 255);
-        grid.DefaultCellStyle.SelectionForeColor = Color.FromArgb(30, 77, 155);
-        grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(250, 252, 255);
-        grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(237, 243, 251);
-        grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(76, 94, 119);
-        grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = grid.ColumnHeadersDefaultCellStyle.BackColor;
-        grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = grid.ColumnHeadersDefaultCellStyle.ForeColor;
-        grid.DataError += (_, e) => e.ThrowException = false;
-        return grid;
-    }
+    public static GatewayTable Grid() => new() { Dock = DockStyle.Fill, ReadOnly = true };
 
-    public static void AddColumn(DataGridView grid, string property, string caption, int minimumWidth = 90, float weight = 100)
+    public static void AddColumn(GatewayTable grid, string property, string caption, int minimumWidth = 90, float weight = 100)
     {
-        var column = new DataGridViewTextBoxColumn
+        var column = new GatewayTableColumn
         {
             DataPropertyName = property, Name = property, HeaderText = caption,
             MinimumWidth = minimumWidth, FillWeight = weight, SortMode = DataGridViewColumnSortMode.NotSortable
         };
         grid.Columns.Add(column);
-        if (grid is DpiDataGridView dpiGrid) dpiGrid.RegisterColumn(column, minimumWidth);
+        if (grid is GatewayTable dpiGrid) dpiGrid.RegisterColumn(column, minimumWidth);
     }
 
     public static FlowLayoutPanel Toolbar(params Control[] controls)
@@ -240,13 +215,13 @@ internal static class UiTheme
         };
         titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        var help = new LinkLabel
+        var help = new GatewayButton
         {
             Text = "说明", AutoSize = true, Visible = false, Anchor = AnchorStyles.Right,
-            LinkColor = Blue, ActiveLinkColor = Blue, Margin = new Padding(10, 5, 0, 0),
+            Margin = new Padding(10, 5, 0, 0),
             AccessibleName = title + "页面说明"
         };
-        help.LinkClicked += (_, _) => MessageBox.Show(panel.FindForm(), description, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        help.Click += (_, _) => MessageBox.Show(panel.FindForm(), description, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
         titleRow.Controls.Add(heading, 0, 0); titleRow.Controls.Add(help, 1, 0);
         panel.Controls.Add(titleRow, 0, 0); panel.Controls.Add(subtitle, 0, 1);
         panel.Controls.Add(toolbar, 0, 2); panel.Controls.Add(content, 0, 3);
@@ -258,7 +233,7 @@ internal static class UiTheme
             panel.Padding = Scale(panel, compact ? new Padding(14, 8, 14, 12) : new Padding(22, 16, 22, 18));
             var width = Math.Max(1, panel.ClientSize.Width - panel.Padding.Horizontal);
             subtitle.Visible = hasDescription && !shortViewport; help.Visible = hasDescription && shortViewport;
-            heading.MaximumSize = new Size(Math.Max(1, width - (help.Visible ? help.PreferredWidth + help.Margin.Horizontal : 0)), 0);
+            heading.MaximumSize = new Size(Math.Max(1, width - (help.Visible ? help.PreferredSize.Width + help.Margin.Horizontal : 0)), 0);
             subtitle.MaximumSize = new Size(width, 0);
             heading.Margin = Scale(panel, new Padding(0, 0, 0, compact ? 2 : 4));
             subtitle.Margin = Scale(panel, new Padding(0, 0, 0, compact ? 2 : 6));

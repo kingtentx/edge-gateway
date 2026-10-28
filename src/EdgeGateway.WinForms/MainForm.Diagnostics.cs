@@ -5,7 +5,7 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private DataGridView _telemetryDiagnosticsGrid = null!;
+    private GatewayTable _telemetryDiagnosticsGrid = null!;
     private DiagnosticsPageView _diagnosticsPageView = null!;
     private readonly BindingList<DiagnosticRow> _telemetryDiagnosticRows = [];
 
@@ -74,7 +74,7 @@ public sealed partial class MainForm
             rows.Add(new(name + " · 故障降速", device.DemotedUntil is null ? "未降速" : "下一次重试 " + Time(device.DemotedUntil), device.LastError ?? "当前无通信错误", $"device:{device.DeviceId}:demotion"));
         }
         UpdateTelemetryDiagnosticRows(rows);
-        foreach (DataGridViewRow row in _telemetryDiagnosticsGrid.Rows)
+        foreach (GatewayTableRow row in _telemetryDiagnosticsGrid.Rows)
             if (row.DataBoundItem is DiagnosticRow data && row.Cells["Value"].ToolTipText != data.Value)
                 row.Cells["Value"].ToolTipText = data.Value;
     }

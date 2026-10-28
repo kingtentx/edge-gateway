@@ -1,4 +1,4 @@
-using EdgeGateway.Model;
+﻿using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
 
@@ -35,7 +35,7 @@ public sealed partial class MainForm
             await SmokePointDialogRowAsync(a, b);
             RebindConfigurationViews(a.Id);
             CheckUsability(_tagHeading.Text.Contains(a.Name, StringComparison.Ordinal), "point context omitted its device.");
-            var selected = _tagGrid.Rows.Cast<DataGridViewRow>().Single(row => row.DataBoundItem is TagRow tag && tag.Id == a.Tags[22].Id);
+            var selected = _tagGrid.Rows.Cast<GatewayTableRow>().Single(row => row.DataBoundItem is TagRow tag && tag.Id == a.Tags[22].Id);
             _tagGrid.CurrentCell = selected.Cells["Address"];
             var tagId = SelectedTag()!.Id;
             BindTags();
@@ -177,7 +177,7 @@ public sealed partial class MainForm
     {
         Exception? failure = null;
         var observed = false;
-        var targetRow = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(row => ((DeviceRow)row.DataBoundItem).Id == target.Id);
+        var targetRow = _deviceGrid.Rows.Cast<GatewayTableRow>().Single(row => ((DeviceRow)row.DataBoundItem!).Id == target.Id);
         using var timer = new System.Windows.Forms.Timer { Interval = 40 };
         timer.Tick += async (_, _) =>
         {

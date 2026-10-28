@@ -6,8 +6,8 @@ namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
-    private DataGridView _realtimeGrid = null!;
-    private DataGridView _historyGrid = null!;
+    private GatewayTable _realtimeGrid = null!;
+    private GatewayTable _historyGrid = null!;
     private ComboBox _realtimeDevice = null!;
     private TextBox _realtimeSearch = null!;
     private ComboBox _historySource = null!;
@@ -292,7 +292,7 @@ public sealed partial class MainForm
     private static SampleRow ToRow(TelemetrySample sample) => new(sample, sample.DeviceName, sample.TagName, sample.Address, ValueText(sample.Value), ValueText(sample.RawValue), sample.Unit, QualityText(sample.Quality), sample.Timestamp.ToLocalTime().ToString("MM-dd HH:mm:ss.fff"), sample.Error ?? "");
     private static void SampleCellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
     {
-        if (sender is DataGridView grid && e.RowIndex >= 0 && grid.Rows[e.RowIndex].DataBoundItem is SampleRow row && grid.Columns[e.ColumnIndex].Name == "Quality")
+        if (sender is GatewayTable grid && e.RowIndex >= 0 && grid.Rows[e.RowIndex].DataBoundItem is SampleRow row && grid.Columns[e.ColumnIndex].Name == "Quality")
             e.CellStyle!.ForeColor = row.Sample.Quality == SampleQuality.Good ? UiTheme.Green : row.Sample.Quality == SampleQuality.Bad ? UiTheme.Red : Color.FromArgb(180, 83, 9);
     }
     private sealed record SampleRow(TelemetrySample Sample, string Device, string Tag, string Address, string Value, string RawValue, string Unit, string Quality, string Time, string Error);

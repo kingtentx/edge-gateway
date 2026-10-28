@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
 namespace EdgeGateway.WinForms;
 
@@ -11,8 +11,7 @@ public class GatewayInput : AntdUI.Input
         Height = UiTheme.ActionHeight;
         Radius = 6;
         BorderWidth = 1;
-        BorderColor = UiTheme.Border;
-        BorderActive = UiTheme.Blue;
+
         BackColor = Color.White;
         ForeColor = UiTheme.Ink;
     }

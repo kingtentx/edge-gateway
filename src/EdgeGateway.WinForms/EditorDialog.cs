@@ -19,9 +19,6 @@ public partial class EditorDialog : DpiAwareForm
     internal IReadOnlyList<Control> SmokeCommands => _readOnlyView ? new Control[] { _cancel } : new Control[] { _confirm, _cancel };
     public EditorDialog() : this("配置", "") { }
 
-    private void OnActionsPaint(object? sender, PaintEventArgs e)
-    { using var pen = new Pen(UiTheme.Border); e.Graphics.DrawLine(pen, 0, 0, _buttons.Width, 0); }
-
     protected EditorDialog(string title, string hint)
     {
         Text = title;
@@ -38,7 +35,7 @@ public partial class EditorDialog : DpiAwareForm
         _title.Text = title;
         _description.Text = hint;
         _help.AccessibleDescription = hint;
-        _help.LinkClicked += (_, _) => MessageBox.Show(this, _description.Text, "配置说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        _help.Click += (_, _) => MessageBox.Show(this, _description.Text, "配置说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
         _confirm.Click += async (_, _) =>
         {
             if (_applying) return;

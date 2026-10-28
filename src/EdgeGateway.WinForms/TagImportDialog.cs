@@ -11,7 +11,7 @@ internal sealed partial class TagImportDialog : EditorDialog
     private readonly IReadOnlyList<TagConfiguration> _existing;
     private readonly Func<IReadOnlyList<TagConfiguration>, IReadOnlyList<string>> _validate;
     private IReadOnlyList<string> _validationErrors = [];
-    internal TagCsvImportMode Mode => _mode.SelectedIndex == 1 ? TagCsvImportMode.UpdateByName : TagCsvImportMode.Append;
+    internal new TagCsvImportMode Mode => _mode.SelectedIndex == 1 ? TagCsvImportMode.UpdateByName : TagCsvImportMode.Append;
     internal TagCsvImportResult Result { get; private set; } = null!;
 
     public TagImportDialog() : base("导入设备点位", "预览并确认导入。")

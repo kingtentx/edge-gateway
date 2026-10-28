@@ -1,4 +1,4 @@
-using EdgeGateway.Model;
+﻿using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
 
@@ -44,10 +44,10 @@ public sealed partial class MainForm
             if (resets != 0 || !ReferenceEquals(source, _realtimeGrid.DataSource) || !ReferenceEquals(selectedRow, _realtimeGrid.Rows[25])
                 || state != GridViewState.Capture(_realtimeGrid, row => ((SampleRow)row).Sample.TagId)
                 || !Equals(_realtimeGrid.Rows[25].Cells["Value"].Value, "42"))
-                throw new InvalidOperationException($"Realtime polling rebuilt rows, lost reading position or failed to update values (source changes={resets}).");
+                throw new InvalidOperationException($"Realtime polling rebuilt rows, lost reading position or failed to update values (source changes={resets}; row same={ReferenceEquals(selectedRow, _realtimeGrid.Rows[25])}; before={state}; after={GridViewState.Capture(_realtimeGrid, row => ((SampleRow)row).Sample.TagId)}; value={_realtimeGrid.Rows[25].Cells["Value"].Value}).");
             _realtimeSearch.Text = "点位 001";
             RefreshRealtime(samples);
-            if (_realtimeGrid.Rows.Count != 1 || ((SampleRow)_realtimeGrid.Rows[0].DataBoundItem).Sample.TagId != device.Tags[0].Id)
+            if (_realtimeGrid.Rows.Count != 1 || ((SampleRow)_realtimeGrid.Rows[0].DataBoundItem!).Sample.TagId != device.Tags[0].Id)
                 throw new InvalidOperationException("Realtime filter did not update row structure.");
             _realtimeSearch.Clear();
             await _application.StartDeviceAsync(device.Id);
@@ -77,11 +77,11 @@ public sealed partial class MainForm
     private async Task VerifyPageRefreshStabilityAsync(Control page, string context)
     {
         var controls = Descendants(page).Prepend(page).Where(control => control.Visible
-            && control is not Label && (control is TableLayoutPanel or DataGridView or TabControl or Button or TextBox or ComboBox)).ToArray();
+            && control is not Label && (control is TableLayoutPanel or GatewayTable or TabControl or Button or TextBox or ComboBox)).ToArray();
         var bounds = controls.ToDictionary(control => control, control => control.Bounds);
         var scrolls = Descendants(page).OfType<ScrollableControl>().Where(scroll => scroll.Visible && scroll.AutoScroll)
             .ToDictionary(scroll => scroll, scroll => scroll.AutoScrollPosition);
-        var grids = Descendants(page).OfType<DataGridView>().ToArray();
+        var grids = Descendants(page).OfType<GatewayTable>().ToArray();
         var failures = new HashSet<string>();
         void Changed(object? sender, EventArgs e)
         {

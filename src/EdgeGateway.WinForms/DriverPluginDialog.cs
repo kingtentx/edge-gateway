@@ -120,7 +120,7 @@ internal sealed partial class DriverPluginDialog : DpiAwareForm
         catch (Exception ex)
         {
             ShowFeedback("操作失败：" + ex.GetBaseException().Message);
-            ShowMessage(_status.Text, MessageBoxIcon.Error);
+            ShowMessage(_status.Text ?? "操作失败", MessageBoxIcon.Error);
         }
         finally { SetBusy(false); }
     }

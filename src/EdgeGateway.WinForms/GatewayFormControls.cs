@@ -60,7 +60,7 @@ public class GatewaySelect : AntdUI.Select
     public GatewaySelect()
     {
         List = true; ListAutoWidth = false; MaxCount = 8;
-        Radius = 6; Height = 38; BorderWidth = 1; BorderColor = UiTheme.Border;
+        Radius = 6; Height = 38; BorderWidth = 1;
         base.ExpandDropChanged += (_, e) => { if (e.Value) DropDown?.Invoke(this, EventArgs.Empty); };
     }
     [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -82,7 +82,7 @@ public class GatewayNumber : AntdUI.InputNumber, ISupportInitialize
 {
     public GatewayNumber()
     {
-        Radius = 6; Height = 38; BorderWidth = 1; BorderColor = UiTheme.Border;
+        Radius = 6; Height = 38; BorderWidth = 1;
         Minimum = 0; Maximum = 100; WheelModifyEnabled = false; ThousandsSeparator = false;
     }
     public new decimal Minimum { get => base.Minimum ?? decimal.MinValue; set => base.Minimum = value; }
@@ -96,7 +96,7 @@ public class GatewayDatePicker : AntdUI.DatePicker
 {
     public GatewayDatePicker()
     {
-        Radius = 6; Height = 38; BorderWidth = 1; BorderColor = UiTheme.Border;
+        Radius = 6; Height = 38; BorderWidth = 1;
         base.Value = DateTime.Today; AllowClear = false;
     }
     public new DateTime Value { get => base.Value ?? throw new InvalidOperationException("请选择有效日期。"); set => base.Value = value; }

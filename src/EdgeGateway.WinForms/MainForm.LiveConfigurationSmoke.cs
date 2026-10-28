@@ -62,7 +62,7 @@ public sealed partial class MainForm
             await AssertContinues(a, stamp, "adding C interrupted A.");
 
             RebindConfigurationViews(a);
-            var rowB = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(row => row.DataBoundItem is DeviceRow data && data.Id == b);
+            var rowB = _deviceGrid.Rows.Cast<GatewayTableRow>().Single(row => row.DataBoundItem is DeviceRow data && data.Id == b);
             stamp = Latest(a);
             await SmokeDeviceConfigurationModalAsync(() => DeviceGridActionAsync(
                 new DataGridViewCellEventArgs(_deviceGrid.Columns["Name"].Index, rowB.Index), doubleClick: true), editor =>

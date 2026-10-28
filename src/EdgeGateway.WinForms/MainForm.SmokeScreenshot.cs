@@ -30,7 +30,21 @@ public sealed partial class MainForm
         var beforeBounds = window.Bounds;
         if (!window.Visible || !IsSmokeWindowVisible(handle))
             throw new InvalidOperationException(context + ": window was already hidden before capture.");
-        try { window.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size)); }
+        try
+        {
+            if (window is AntdUI.Window or AntdUI.BorderlessForm)
+            {
+                // These forms extend their client area into the caption. DrawToBitmap
+                // requests PRF_NONCLIENT and adds a fictitious system title bar over the
+                // AntdUI header on the isolated desktop. Capture the real client and
+                // child HWNDs, without requesting a second non-client frame.
+                using var graphics = Graphics.FromImage(bitmap);
+                var dc = graphics.GetHdc();
+                try { SendControlSmokeMessage(handle, 0x0317, dc, new IntPtr(0x14)); }
+                finally { graphics.ReleaseHdc(dc); }
+            }
+            else window.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size));
+        }
         finally
         {
             if (window.IsDisposed || !window.IsHandleCreated || window.Handle != handle)

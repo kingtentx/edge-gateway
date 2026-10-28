@@ -39,6 +39,8 @@ public sealed partial class MainForm
                 "Log query did not populate the trend snapshot.");
             Require(_queriedHistory.Count(s => s.Quality == SampleQuality.Bad && s.Value is null) == 1,
                 "Bad sample was replaced by a good value.");
+            Require(_trend.Datasets.Count == 2 && _trend.Datasets.Sum(series => series.DataPoints.Count) == 22,
+                "Official chart joined across a bad sample or lost valid points.");
             PerformLayoutRecursively(this);
             Require(_historyPageView.ContentLayout.RowStyles[0].SizeType == SizeType.AutoSize
                 && _trend.Height > UiTheme.Scale(_trend, 100), "Trend damaged the title or chart layout.");

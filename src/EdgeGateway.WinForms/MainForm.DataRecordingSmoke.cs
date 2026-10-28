@@ -1,4 +1,4 @@
-using EdgeGateway.Model;
+﻿using EdgeGateway.Model;
 using System.Diagnostics;
 
 namespace EdgeGateway.WinForms;
@@ -87,7 +87,7 @@ public sealed partial class MainForm
                 new("_TIMESTAMP", "timestamp", true), new("_QUALITY", "int", true), new("optional_note", "varchar", true, HasDefault: true)];
             editor.LoadColumnsForSmoke(columns);
             var grid = editor.SmokeMapping;
-            var switchCell = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY")).Cells["Include"];
+            var switchCell = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY")).Cells["Include"];
             BringIntoViewAndAssert(grid, "mapping switch");
             grid.CurrentCell = switchCell;
             var switchBefore = (bool)switchCell.Value!;
@@ -104,9 +104,9 @@ public sealed partial class MainForm
             grid.EndEdit();
             Check((bool)switchCell.Value! == switchBefore, "mapping switch Space did not restore sampling.");
             Check(!grid.Columns["Point"].Visible, "point mode still asks each field for a fixed point binding.");
-            var generated = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "id"));
+            var generated = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "id"));
             Check(generated.ReadOnly && generated.Cells["Include"].Value is false, "auto-increment id is writable.");
-            var optional = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "optional_note"));
+            var optional = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "optional_note"));
             Check(optional.Cells["Include"].Value is false && !optional.Cells["Constant"].ReadOnly,
                 "an initially unchecked optional field cannot accept a manual constant.");
             optional.Cells["Constant"].Value = "line-A";
@@ -122,19 +122,19 @@ public sealed partial class MainForm
             };
             foreach (var (column, source, type) in choices)
             {
-                var row = grid.Rows.Cast<DataGridViewRow>().Single(item => Equals(item.Cells["Column"].Value, column));
+                var row = grid.Rows.Cast<GatewayTableRow>().Single(item => Equals(item.Cells["Column"].Value, column));
                 row.Cells["Include"].Value = true;
                 foreach (var (name, value) in new[] { ("Source", (object)source), ("FieldType", (object)type) })
                 {
                     grid.CurrentCell = row.Cells[name];
                     FocusForSmoke(grid, grid, editor, "custom point " + name);
-                    Check(grid.BeginEdit(true) && grid.EditingControl is ComboBox, "mapping dropdown cannot enter edit mode.");
+                    Check(grid.BeginEdit(true) && grid.EditingControl is ComboBox, $"mapping dropdown cannot enter edit mode: {column}/{name}; current={grid.CurrentCell?.OwningColumn.Name}; gridRO={grid.ReadOnly}; rowRO={row.ReadOnly}; columnRO={row.Cells[name].OwningColumn.ReadOnly}; cellRO={row.Cells[name].ReadOnly}; editor={grid.EditingControl?.GetType().Name}.");
                     ((ComboBox)grid.EditingControl!).SelectedValue = value;
                     grid.NotifyCurrentCellDirty(true); grid.CommitEdit(DataGridViewDataErrorContexts.Commit); grid.EndEdit();
                     Check(Equals(row.Cells[name].Value, value), "mapping dropdown value was not retained.");
                 }
             }
-            var quality = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
+            var quality = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
             rejected = false;
             try { editor.CommitForSmoke(); } catch (EditorValidationException exception) { rejected = exception.Message.Contains("Good / Bad / Uncertain"); }
             Check(rejected, "quality text was allowed into an integer database column.");
@@ -164,7 +164,7 @@ public sealed partial class MainForm
                 "point selection, field sources, or typed constant did not round-trip.");
             editor.LoadColumnsForSmoke(columns);
             Check(RecordingSmokeJson(valueBeforeRefresh) == RecordingSmokeJson(editor.CommitForSmoke()), "refresh lost mapping drafts.");
-            quality = grid.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
+            quality = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
             Check(quality.Cells["Include"].Value is false && !quality.Cells["Constant"].ReadOnly,
                 "refresh re-enabled sampling or disabled an unchecked constant.");
             using (var reopened = new DatabaseWriteGroupDialog(valueBeforeRefresh, [connection], [device], _application))
@@ -196,14 +196,14 @@ public sealed partial class MainForm
             table.Text = group.Table; editor.LoadColumnsForSmoke(columns);
             VerifyEditorLayout(editor, "custom point mapping");
             var rowForLayout = grid.Rows[1];
-            foreach (DataGridViewColumn column in grid.Columns.Cast<DataGridViewColumn>().Where(column => column.Visible))
+            foreach (GatewayTableColumn column in grid.Columns.Cast<GatewayTableColumn>().Where(column => column.Visible))
             {
                 grid.CurrentCell = rowForLayout.Cells[column.Index];
                 FocusForSmoke(grid, grid, editor, "custom point cell " + column.Name);
                 grid.FirstDisplayedScrollingColumnIndex = column.Index;
                 var full = grid.GetCellDisplayRectangle(column.Index, rowForLayout.Index, false);
                 Check(full.Width > 0 && full == grid.GetCellDisplayRectangle(column.Index, rowForLayout.Index, true),
-                    "mapping cell is clipped: " + column.Name);
+                    $"mapping cell is clipped: {column.Name}; full={full}; clipped={grid.GetCellDisplayRectangle(column.Index, rowForLayout.Index, true)}; viewport={grid.ClientRectangle}; scroll={grid.ScrollBar.ValueX}/{grid.ScrollBar.MaxX}; show={grid.ScrollBar.ShowX}/{grid.ScrollBar.ShowY}.");
             }
             grid.EndEdit();
             var savedDraft = editor.CommitForSmoke();
@@ -212,7 +212,7 @@ public sealed partial class MainForm
             {
                 reopened.Show(this); reopened.LoadColumnsForSmoke(columns); reopened.ShowMappingForSmoke();
                 VerifyEditorLayout(reopened, "reopened manual mapping");
-                var manualRow = reopened.SmokeMapping.Rows.Cast<DataGridViewRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
+                var manualRow = reopened.SmokeMapping.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
                 foreach (var column in new[] { "Include", "Source", "Constant" })
                 {
                     reopened.SmokeMapping.CurrentCell = manualRow.Cells[column];
@@ -373,7 +373,7 @@ public sealed partial class MainForm
                     VerifyEditorLayout(editor, "custom column mapping");
                     VerifyDatabaseMappingForSmoke(editor, "custom column mapping");
                     VerifyDatabaseOptionBindingsForSmoke(editor, device.Tags[0].Id);
-                    var temperature = editor.SmokeMapping.Rows.Cast<DataGridViewRow>().Single(row => (string)row.Cells["Column"].Value == "temperature");
+                    var temperature = editor.SmokeMapping.Rows.Cast<GatewayTableRow>().Single(row => (string)row.Cells["Column"].Value! == "temperature");
                     temperature.Cells["Source"].Value = (DatabaseValueSource)(-1); rejected = false;
                     try { editor.CommitForSmoke(); } catch (EditorValidationException) { rejected = true; }
                     Check(rejected, "custom mapping accepted an omitted non-null, non-default field.");
@@ -472,11 +472,11 @@ public sealed partial class MainForm
     private static void VerifyDatabaseOptionBindingsForSmoke(DatabaseWriteGroupDialog editor, Guid pointId)
     {
         editor.ShowMappingForSmoke(); var grid = editor.SmokeMapping;
-        var temperature = grid.Rows.Cast<DataGridViewRow>().Single(row => (string)row.Cells["Column"].Value == "temperature");
-        var note = grid.Rows.Cast<DataGridViewRow>().Single(row => (string)row.Cells["Column"].Value == "note");
+        var temperature = grid.Rows.Cast<GatewayTableRow>().Single(row => (string)row.Cells["Column"].Value! == "temperature");
+        var note = grid.Rows.Cast<GatewayTableRow>().Single(row => (string)row.Cells["Column"].Value! == "note");
         // Keep one genuine point binding while checking non-point value sources.
         note.Cells["Source"].Value = DatabaseValueSource.EngineeringValue; note.Cells["Point"].Value = pointId;
-        void Select(DataGridViewRow row, string column, object value)
+        void Select(GatewayTableRow row, string column, object value)
         {
             var cell = row.Cells[column]; grid.CurrentCell = cell;
             FocusForSmoke(grid, grid, editor, "database option " + column);
@@ -504,7 +504,7 @@ public sealed partial class MainForm
             { DatabaseFieldType.Boolean => "true", DatabaseFieldType.Timestamp => "2026-10-24T12:00:00Z", DatabaseFieldType.Decimal or DatabaseFieldType.Double => "12.5", _ => "12" };
             var captured = editor.CommitForSmoke().Columns.Single(column => column.Column == "temperature");
             var expectedType = type == DatabaseFieldType.Auto ? DatabaseFieldType.Double : type;
-            if (captured.FieldType != expectedType || captured.ConstantValue != (string)temperature.Cells["Constant"].Value)
+            if (captured.FieldType != expectedType || captured.ConstantValue != (string)temperature.Cells["Constant"].Value!)
                 throw new InvalidOperationException("Database conversion/constant binding did not round-trip: " + type);
         }
         Select(temperature, "Source", DatabaseValueSource.EngineeringValue); Select(temperature, "Point", pointId);
@@ -557,8 +557,8 @@ public sealed partial class MainForm
     {
         editor.SelectModeForSmoke(DatabaseStorageMode.ColumnMapping); editor.ShowMappingForSmoke();
         var grid = editor.SmokeMapping; BringIntoViewAndAssert(grid, context + " mapping grid");
-        var row = grid.Rows.Cast<DataGridViewRow>().Single(item => (string)item.Cells["Column"].Value == "temperature");
-        foreach (DataGridViewCell cell in row.Cells)
+        var row = grid.Rows.Cast<GatewayTableRow>().Single(item => (string)item.Cells["Column"].Value! == "temperature");
+        foreach (GatewayTableCell cell in row.Cells)
         {
             FocusForSmoke(grid, grid, editor, context + " mapping " + cell.OwningColumn.Name);
             PerformLayoutRecursively(editor); grid.CurrentCell = null; grid.CurrentCell = cell;

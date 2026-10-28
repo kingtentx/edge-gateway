@@ -68,6 +68,14 @@ public sealed partial class MainForm
         if (_serverCpuChart.Readings.Count != 61 || _serverCpuChart.Readings[0].Timestamp != now.AddSeconds(-60)
             || _serverCpuChart.Readings.Any(reading => reading.Percent is null))
             throw new InvalidOperationException("Resource trend did not retain the exact continuous time window.");
+        if (_serverCpuChart.Datasets.Count != 1 || _serverCpuChart.Datasets[0].DataPoints.Count != 61)
+            throw new InvalidOperationException("Official CPU chart did not receive the complete continuous series.");
+        using (var gapChart = new ServerUsageTrend())
+        {
+            gapChart.ReplaceReadings([new(now.AddSeconds(-8), 20), new(now.AddSeconds(-7), null), new(now.AddSeconds(-6), 30), new(now, 40)]);
+            if (gapChart.Datasets.Count != 3 || gapChart.Datasets.Sum(series => series.DataPoints.Count) != 3)
+                throw new InvalidOperationException("Official resource chart joined missing values or a long time gap.");
+        }
         var recoveredHistory = Enumerable.Range(-60, 61).Select(second => new ServerResourceReading(
             now.AddSeconds(second), 45 + 25 * Math.Sin(second / 6d), 55 + second / 20d)).ToArray();
         ShowServerResourceFailure("示例：界面连接暂时中断");
@@ -96,8 +104,9 @@ public sealed partial class MainForm
                 FitToWorkingArea(testWorkArea: area);
                 await Task.Yield(); PerformLayoutRecursively(this);
                 VerifyOverviewCards("server resources " + name);
-                var cpuPanel = _serverCpuChart.Parent!;
-                var memoryPanel = _serverMemoryChart.Parent!;
+                // Official Panel owns an inner layout table; the card is the grid item.
+                var cpuPanel = _serverCpuChart.Parent!.Parent!;
+                var memoryPanel = _serverMemoryChart.Parent!.Parent!;
                 var resourceGrid = (TableLayoutPanel)cpuPanel.Parent!;
                 if (name == "wide" && (resourceGrid.GetColumn(cpuPanel) != 0 || resourceGrid.GetColumn(memoryPanel) != 1
                     || resourceGrid.GetRow(cpuPanel) != resourceGrid.GetRow(memoryPanel)))

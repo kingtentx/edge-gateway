@@ -19,8 +19,8 @@ public sealed partial class MainForm
     private const string DeviceConfigurationColumnName = "DeviceConfiguration";
     private const string DeviceStartColumnName = "DeviceStart";
     private const string DeviceStopColumnName = "DeviceStop";
-    private DataGridView _deviceGrid = null!;
-    private DataGridView _tagGrid = null!;
+    private GatewayTable _deviceGrid = null!;
+    private GatewayTable _tagGrid = null!;
 
     private TextBox _tagSearch = null!;
     private Label _deviceSummary = null!;
@@ -272,10 +272,10 @@ public sealed partial class MainForm
 
     private void UpdateDeviceConfigurationCommands()
     {
-        if (_deviceGrid.Columns[DeviceConfigurationColumnName] is not DataGridViewLinkColumn column) return;
+        if (_deviceGrid.Columns[DeviceConfigurationColumnName] is not GatewayTableLinkColumn column) return;
         column.Text = "配置";
         var statuses = _application.GetDeviceStatuses().ToDictionary(x => x.DeviceId);
-        foreach (DataGridViewRow row in _deviceGrid.Rows)
+        foreach (GatewayTableRow row in _deviceGrid.Rows)
         {
             if (row.DataBoundItem is not DeviceRow data) continue;
             var device = _configuration.Devices.FirstOrDefault(x => x.Id == data.Id);
@@ -299,14 +299,17 @@ public sealed partial class MainForm
                 stop.ActionEnabled = !_busy && !_closing && running;
                 stop.ToolTipText = running ? "仅停止本行设备，其他设备继续采集。" : "该设备已停止。";
             }
-            if (row.Cells[DeviceConfigurationColumnName] is not DataGridViewLinkCell cell) continue;
+            if (row.Cells[DeviceConfigurationColumnName] is not GatewayTableLinkCell cell) continue;
             cell.LinkColor = _busy || _closing ? UiTheme.Muted : UiTheme.Blue;
+            cell.Enabled = !_busy && !_closing;
+            if (row.Cells[DevicePointsColumnName] is GatewayTableLinkCell points) points.Enabled = cell.Enabled;
             cell.ActiveLinkColor = cell.VisitedLinkColor = cell.LinkColor;
             cell.ToolTipText = running
                 ? "配置此设备；保存变更后仅重新连接此设备，其他设备继续采集。"
                 : "配置该行设备的启用状态、名称、分组、采集驱动及通信参数。";
         }
         _deviceGrid.Invalidate();
+        _deviceGrid.RepaintRows();
     }
 
     private DeviceConfiguration? SelectedDevice() => _deviceGrid.CurrentRow?.DataBoundItem is DeviceRow row
@@ -474,117 +477,12 @@ public sealed partial class MainForm
     private sealed record DeviceRow(Guid Id, string Name, string Channel, string Group, string Driver, string Enabled, string State, int PointCount, int Cycle);
     private sealed record TagRow(Guid Id, string Name, string Address, string Method, string Type, string Area, string ByteOrder, string Scaling, string Unit, string Access, string Enabled, string Upload, string Scan, string Deadband);
 
-    internal sealed class DeviceActionButtonCell : DataGridViewButtonCell
+    internal sealed class DeviceActionButtonCell : GatewayTableButtonCell
     {
-        public DeviceActionButtonCell() { }
-        private bool _hovered;
-        private bool _keyboardPressed;
-        protected override void OnKeyDown(KeyEventArgs e, int rowIndex)
-        {
-            if (e.KeyCode == Keys.Space) _keyboardPressed = true;
-            base.OnKeyDown(e, rowIndex);
-            DataGridView?.InvalidateCell(this);
-        }
-        protected override void OnKeyUp(KeyEventArgs e, int rowIndex)
-        {
-            _keyboardPressed = false;
-            base.OnKeyUp(e, rowIndex);
-            DataGridView?.InvalidateCell(this);
-        }
-        protected override void OnLeave(int rowIndex, bool throughMouseClick)
-        {
-            _keyboardPressed = false;
-            base.OnLeave(rowIndex, throughMouseClick);
-        }
-        protected override void OnMouseEnter(int rowIndex)
-        {
-            _hovered = true;
-            base.OnMouseEnter(rowIndex);
-            if (rowIndex >= 0 && ColumnIndex >= 0) DataGridView?.InvalidateCell(ColumnIndex, rowIndex);
-        }
-        protected override void OnMouseLeave(int rowIndex)
-        {
-            _hovered = false;
-            base.OnMouseLeave(rowIndex);
-            if (rowIndex >= 0 && ColumnIndex >= 0) DataGridView?.InvalidateCell(ColumnIndex, rowIndex);
-        }
-
-        public bool ActionEnabled { get; set; }
+        public bool ActionEnabled { get => Enabled; set => Enabled = value; }
         public bool StartsDevice { get; set; }
-
-        protected override AccessibleObject CreateAccessibilityInstance() => new DeviceActionAccessibleObject(this);
-
-        private sealed class DeviceActionAccessibleObject(DeviceActionButtonCell owner)
-            : DataGridViewButtonCellAccessibleObject(owner)
-        {
-            public override AccessibleStates State => base.State | (owner.ActionEnabled ? AccessibleStates.None : AccessibleStates.Unavailable);
-            public override string DefaultAction => owner.ActionEnabled ? base.DefaultAction : "";
-            public override void DoDefaultAction()
-            {
-                if (owner.ActionEnabled) base.DoDefaultAction();
-            }
-        }
-
-        public override object Clone()
-        {
-            var clone = (DeviceActionButtonCell)base.Clone();
-            clone.ActionEnabled = ActionEnabled;
-            clone.StartsDevice = StartsDevice;
-            return clone;
-        }
-
-        protected override void Paint(Graphics graphics, Rectangle clipBounds, Rectangle cellBounds,
-            int rowIndex, DataGridViewElementStates elementState, object? value, object? formattedValue,
-            string? errorText, DataGridViewCellStyle cellStyle, DataGridViewAdvancedBorderStyle advancedBorderStyle,
-            DataGridViewPaintParts paintParts)
-        {
-            base.Paint(graphics, clipBounds, cellBounds, rowIndex, elementState, value, formattedValue,
-                errorText, cellStyle, advancedBorderStyle,
-                paintParts & ~(DataGridViewPaintParts.ContentForeground | DataGridViewPaintParts.ContentBackground | DataGridViewPaintParts.Focus));
-            if ((paintParts & DataGridViewPaintParts.ContentForeground) == 0 || DataGridView is null) return;
-            var inset = UiTheme.Scale(DataGridView, 5);
-            var bounds = Rectangle.Inflate(cellBounds, -inset, -inset);
-            if (bounds.Width <= 2 || bounds.Height <= 2) return;
-            // Start/stop use AntdUI's semantic Success/Error tokens as requested;
-            // keep the library's disabled colors and the native keyboard contract.
-            static Color ButtonColor(AntdUI.Colour token) => AntdUI.Style.Get(token, nameof(AntdUI.Button));
-            var focused = DataGridView.Focused && DataGridView.CurrentCellAddress == new Point(ColumnIndex, rowIndex);
-            if (!focused) _keyboardPressed = false;
-            var pressed = (_hovered && (Control.MouseButtons & MouseButtons.Left) != 0) || (focused && _keyboardPressed);
-            var background = ButtonColor(!ActionEnabled ? AntdUI.Colour.FillTertiary
-                : StartsDevice ? (pressed ? AntdUI.Colour.SuccessActive : _hovered ? AntdUI.Colour.SuccessHover : AntdUI.Colour.Success)
-                : (pressed ? AntdUI.Colour.ErrorActive : _hovered ? AntdUI.Colour.ErrorHover : AntdUI.Colour.Error));
-            var foreground = ButtonColor(!ActionEnabled ? AntdUI.Colour.TextQuaternary
-                : StartsDevice ? AntdUI.Colour.SuccessColor : AntdUI.Colour.ErrorColor);
-            var radius = Math.Min(UiTheme.Scale(DataGridView, 6), Math.Min(bounds.Width, bounds.Height) / 2);
-            using var path = new GraphicsPath();
-            var diameter = Math.Max(2, radius * 2);
-            path.AddArc(bounds.X, bounds.Y, diameter, diameter, 180, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Y, diameter, diameter, 270, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(bounds.X, bounds.Bottom - diameter, diameter, diameter, 90, 90);
-            path.CloseFigure();
-            using var fill = new SolidBrush(background);
-            var smoothing = graphics.SmoothingMode;
-            graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            graphics.FillPath(fill, path);
-            graphics.SmoothingMode = smoothing;
-            // Match the grid's GDI text metrics. GDI+ line spacing placed these short
-            // captions above the visual center at high DPI. Flatten alpha explicitly
-            // because TextRenderer does not composite AntdUI's disabled text token.
-            static Color Blend(Color color, Color under) => Color.FromArgb(
-                (color.R * color.A + under.R * (255 - color.A)) / 255,
-                (color.G * color.A + under.G * (255 - color.A)) / 255,
-                (color.B * color.A + under.B * (255 - color.A)) / 255);
-            var cellBackground = (elementState & DataGridViewElementStates.Selected) != 0
-                ? cellStyle.SelectionBackColor : cellStyle.BackColor;
-            var textColor = Blend(foreground, Blend(background, cellBackground));
-            TextRenderer.DrawText(graphics, formattedValue?.ToString() ?? "", cellStyle.Font ?? DataGridView.Font,
-                bounds, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter
-                | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding
-                | TextFormatFlags.PreserveGraphicsClipping);
-            if (focused)
-                ControlPaint.DrawFocusRectangle(graphics, Rectangle.Inflate(bounds, -2, -2), foreground, background);
-        }
+        public override object Clone() => new DeviceActionButtonCell { ActionEnabled = ActionEnabled, StartsDevice = StartsDevice };
+        internal override AntdUI.ICell CreatePresentation() => new AntdUI.CellButton(OwningColumn.Name, FormattedValue?.ToString() ?? "",
+            StartsDevice ? AntdUI.TTypeMini.Success : AntdUI.TTypeMini.Error) { Enabled = ActionEnabled, Tooltip = ToolTipText };
     }
 }

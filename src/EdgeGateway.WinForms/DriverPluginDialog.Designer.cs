@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -6,14 +6,14 @@ namespace EdgeGateway.WinForms;
 
 internal sealed partial class DriverPluginDialog
 {
-    private DpiDataGridView _grid = null!;
-    private DataGridViewTextBoxColumn _gridColumnName = null!;
-    private DataGridViewTextBoxColumn _gridColumnSource = null!;
-    private DataGridViewTextBoxColumn _gridColumnStatus = null!;
-    private DataGridViewTextBoxColumn _gridColumnDriverIds = null!;
-    private DataGridViewTextBoxColumn _gridColumnVersion = null!;
-    private DataGridViewTextBoxColumn _gridColumnAssemblyName = null!;
-    private DataGridViewTextBoxColumn _gridColumnSha256 = null!;
+    private GatewayTable _grid = null!;
+    private GatewayTableColumn _gridColumnName = null!;
+    private GatewayTableColumn _gridColumnSource = null!;
+    private GatewayTableColumn _gridColumnStatus = null!;
+    private GatewayTableColumn _gridColumnDriverIds = null!;
+    private GatewayTableColumn _gridColumnVersion = null!;
+    private GatewayTableColumn _gridColumnAssemblyName = null!;
+    private GatewayTableColumn _gridColumnSha256 = null!;
     private Label _status = null!;
     private FlowLayoutPanel _actions = null!;
     private AntdUI.Button upload = null!;
@@ -33,7 +33,7 @@ internal sealed partial class DriverPluginDialog
     private void InitializeComponent()
     {
         SuspendLayout();
-        _grid = new DpiDataGridView();
+        _grid = new GatewayTable();
         _grid.Name = "_grid";
         _grid.Dock = DockStyle.Fill;
         _grid.BackgroundColor = Color.White;
@@ -59,7 +59,7 @@ internal sealed partial class DriverPluginDialog
         _grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = UiTheme.Ink;
         _grid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         _grid.Name = "DriverAssemblies";
-        _gridColumnName = new DataGridViewTextBoxColumn();
+        _gridColumnName = new GatewayTableColumn();
         _gridColumnName.Name = "_gridColumnName";
         _gridColumnName.DataPropertyName = "Name";
         _gridColumnName.HeaderText = "驱动名称";
@@ -68,7 +68,7 @@ internal sealed partial class DriverPluginDialog
         _gridColumnName.SortMode = DataGridViewColumnSortMode.NotSortable;
         _gridColumnName.Name = "Name";
         _grid.Columns.Add(_gridColumnName);
-        _gridColumnSource = new DataGridViewTextBoxColumn();
+        _gridColumnSource = new GatewayTableColumn();
         _gridColumnSource.Name = "_gridColumnSource";
         _gridColumnSource.DataPropertyName = "Source";
         _gridColumnSource.HeaderText = "来源";
@@ -77,7 +77,7 @@ internal sealed partial class DriverPluginDialog
         _gridColumnSource.SortMode = DataGridViewColumnSortMode.NotSortable;
         _gridColumnSource.Name = "Source";
         _grid.Columns.Add(_gridColumnSource);
-        _gridColumnStatus = new DataGridViewTextBoxColumn();
+        _gridColumnStatus = new GatewayTableColumn();
         _gridColumnStatus.Name = "_gridColumnStatus";
         _gridColumnStatus.DataPropertyName = "Status";
         _gridColumnStatus.HeaderText = "状态";
@@ -86,7 +86,7 @@ internal sealed partial class DriverPluginDialog
         _gridColumnStatus.SortMode = DataGridViewColumnSortMode.NotSortable;
         _gridColumnStatus.Name = "Status";
         _grid.Columns.Add(_gridColumnStatus);
-        _gridColumnDriverIds = new DataGridViewTextBoxColumn();
+        _gridColumnDriverIds = new GatewayTableColumn();
         _gridColumnDriverIds.Name = "_gridColumnDriverIds";
         _gridColumnDriverIds.DataPropertyName = "DriverIds";
         _gridColumnDriverIds.HeaderText = "驱动标识";
@@ -95,7 +95,7 @@ internal sealed partial class DriverPluginDialog
         _gridColumnDriverIds.SortMode = DataGridViewColumnSortMode.NotSortable;
         _gridColumnDriverIds.Name = "DriverIds";
         _grid.Columns.Add(_gridColumnDriverIds);
-        _gridColumnVersion = new DataGridViewTextBoxColumn();
+        _gridColumnVersion = new GatewayTableColumn();
         _gridColumnVersion.Name = "_gridColumnVersion";
         _gridColumnVersion.DataPropertyName = "Version";
         _gridColumnVersion.HeaderText = "版本";
@@ -104,7 +104,7 @@ internal sealed partial class DriverPluginDialog
         _gridColumnVersion.SortMode = DataGridViewColumnSortMode.NotSortable;
         _gridColumnVersion.Name = "Version";
         _grid.Columns.Add(_gridColumnVersion);
-        _gridColumnAssemblyName = new DataGridViewTextBoxColumn();
+        _gridColumnAssemblyName = new GatewayTableColumn();
         _gridColumnAssemblyName.Name = "_gridColumnAssemblyName";
         _gridColumnAssemblyName.DataPropertyName = "AssemblyName";
         _gridColumnAssemblyName.HeaderText = "程序集";
@@ -113,7 +113,7 @@ internal sealed partial class DriverPluginDialog
         _gridColumnAssemblyName.SortMode = DataGridViewColumnSortMode.NotSortable;
         _gridColumnAssemblyName.Name = "AssemblyName";
         _grid.Columns.Add(_gridColumnAssemblyName);
-        _gridColumnSha256 = new DataGridViewTextBoxColumn();
+        _gridColumnSha256 = new GatewayTableColumn();
         _gridColumnSha256.Name = "_gridColumnSha256";
         _gridColumnSha256.DataPropertyName = "Sha256";
         _gridColumnSha256.HeaderText = "SHA-256";
@@ -294,6 +294,7 @@ internal sealed partial class DriverPluginDialog
         _gridPaginationTotal.AutoSize = true;
         _gridPaginationTotal.Dock = DockStyle.Fill;
         _gridPaginationTotal.TextAlign = ContentAlignment.MiddleLeft;
+        _gridPaginationTotal.AutoSizeMode = AntdUI.TAutoSize.Width;
         _gridPaginationTotal.Margin = new Padding(0, 0, 16, 0);
         _gridPaginationSize = new ComboBox();
         _gridPaginationSize.Name = "_gridPaginationSize";

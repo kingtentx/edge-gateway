@@ -164,7 +164,7 @@ public sealed partial class MainForm
             if (text.Width > bounds.Width - 2 * inset || text.Height > bounds.Height - 2 * inset)
                 throw new InvalidOperationException($"{context}: {name} text {text} does not fit its cell {bounds.Size}.");
         }
-        foreach (DataGridViewRow item in _deviceGrid.Rows)
+        foreach (GatewayTableRow item in _deviceGrid.Rows)
         {
             if (item.DataBoundItem is not DeviceRow data) continue;
             var device = _configuration.Devices.Single(x => x.Id == data.Id);

@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -16,11 +16,11 @@ internal sealed partial class DeviceWorkbookImportDialog
     private InputFrame _modeSurface = null!;
     private Label _summary = null!;
     private Label fieldsSection3 = null!;
-    private DpiDataGridView _preview = null!;
-    private DataGridViewTextBoxColumn _previewColumnChange = null!;
-    private DataGridViewTextBoxColumn _previewColumnName = null!;
-    private DataGridViewTextBoxColumn _previewColumnDriverId = null!;
-    private DataGridViewTextBoxColumn _previewColumnTagCount = null!;
+    private GatewayTable _preview = null!;
+    private GatewayTableColumn _previewColumnChange = null!;
+    private GatewayTableColumn _previewColumnName = null!;
+    private GatewayTableColumn _previewColumnDriverId = null!;
+    private GatewayTableColumn _previewColumnTagCount = null!;
     private Label fieldsSection4 = null!;
     private GatewayInput _errors = null!;
     private Label fieldsHint5 = null!;
@@ -144,7 +144,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         fields.Controls.Add(fieldsSection3, 0, 4);
         fields.SetColumnSpan(fieldsSection3, 2);
-        _preview = new DpiDataGridView();
+        _preview = new GatewayTable();
         _preview.Name = "_preview";
         _preview.Dock = DockStyle.Fill;
         _preview.BackgroundColor = Color.White;
@@ -172,7 +172,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         _preview.Name = "DeviceWorkbookPreview";
         _preview.Dock = DockStyle.Top;
         _preview.Height = 250;
-        _previewColumnChange = new DataGridViewTextBoxColumn();
+        _previewColumnChange = new GatewayTableColumn();
         _previewColumnChange.Name = "_previewColumnChange";
         _previewColumnChange.DataPropertyName = "Change";
         _previewColumnChange.HeaderText = "变更";
@@ -181,7 +181,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         _previewColumnChange.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnChange.Name = "Change";
         _preview.Columns.Add(_previewColumnChange);
-        _previewColumnName = new DataGridViewTextBoxColumn();
+        _previewColumnName = new GatewayTableColumn();
         _previewColumnName.Name = "_previewColumnName";
         _previewColumnName.DataPropertyName = "Name";
         _previewColumnName.HeaderText = "设备名称";
@@ -190,7 +190,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         _previewColumnName.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnName.Name = "Name";
         _preview.Columns.Add(_previewColumnName);
-        _previewColumnDriverId = new DataGridViewTextBoxColumn();
+        _previewColumnDriverId = new GatewayTableColumn();
         _previewColumnDriverId.Name = "_previewColumnDriverId";
         _previewColumnDriverId.DataPropertyName = "DriverId";
         _previewColumnDriverId.HeaderText = "驱动";
@@ -199,7 +199,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         _previewColumnDriverId.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnDriverId.Name = "DriverId";
         _preview.Columns.Add(_previewColumnDriverId);
-        _previewColumnTagCount = new DataGridViewTextBoxColumn();
+        _previewColumnTagCount = new GatewayTableColumn();
         _previewColumnTagCount.Name = "_previewColumnTagCount";
         _previewColumnTagCount.DataPropertyName = "TagCount";
         _previewColumnTagCount.HeaderText = "保存后点位数";
@@ -244,6 +244,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         _previewPaginationTotal.AutoSize = true;
         _previewPaginationTotal.Dock = DockStyle.Fill;
         _previewPaginationTotal.TextAlign = ContentAlignment.MiddleLeft;
+        _previewPaginationTotal.AutoSizeMode = AntdUI.TAutoSize.Width;
         _previewPaginationTotal.Margin = new Padding(0, 0, 16, 0);
         _previewPaginationSize = new ComboBox();
         _previewPaginationSize.Name = "_previewPaginationSize";

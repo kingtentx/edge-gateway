@@ -4,7 +4,7 @@ namespace EdgeGateway.WinForms;
 /// Common DPI policy for all windows. WinForms owns scaling; this class only constrains
 /// window geometry to the active monitor's work area (including taskbar and negative origins).
 /// </summary>
-public class DpiAwareForm : Form
+public partial class DpiAwareForm : AntdUI.Window
 {
     private Size _logicalMinimumClientSize = new(480, 280);
     private bool _initializing = true;
@@ -23,6 +23,18 @@ public class DpiAwareForm : Form
         AutoScaleDimensions = new SizeF(96, 96);
         Font = new Font("Microsoft YaHei UI", 10F);
         DoubleBuffered = true;
+        InitializeWindowComponents();
+    }
+
+    protected override void OnControlAdded(ControlEventArgs e)
+    {
+        base.OnControlAdded(e);
+        windowHeader?.SendToBack();
+    }
+    protected override void OnTextChanged(EventArgs e)
+    {
+        base.OnTextChanged(e);
+        if (windowHeader is not null) windowHeader.Text = Text;
     }
 
     protected void ConfigureWindow(Size logicalClientSize, Size logicalMinimumClientSize)
@@ -51,6 +63,8 @@ public class DpiAwareForm : Form
     protected override void OnLoad(EventArgs e)
     {
         _initializing = false;
+        windowHeader.MaximizeBox = MaximizeBox;
+        windowHeader.MinimizeBox = MinimizeBox;
         base.OnLoad(e);
         FitToWorkingArea(center: true);
         CompleteDpiLayout();

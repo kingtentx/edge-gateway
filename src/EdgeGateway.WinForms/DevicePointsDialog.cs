@@ -4,7 +4,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DevicePointsDialog : DpiAwareForm
 {
     private bool _arranging;
-    internal DataGridView TagGrid => tagGrid;
+    internal GatewayTable TagGrid => tagGrid;
     internal GatewayInput TagSearch => tagSearch;
     internal Label TagHeading => tagHeadingLabel;
     internal Label TagSummary => tagSummaryLabel;

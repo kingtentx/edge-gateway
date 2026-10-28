@@ -4,23 +4,23 @@ namespace EdgeGateway.WinForms;
 
 /// <summary>Retains a stable row, column and scroll position while a UI snapshot is replaced.</summary>
 internal sealed record GridViewState(object? SelectedKey, string? ColumnName, object? FirstVisibleKey,
-    int FirstVisibleIndex, int HorizontalOffset)
+    int FirstVisibleIndex, int HorizontalOffset, int VerticalOffset)
 {
-    internal static GridViewState Capture(DataGridView grid, Func<object, object?> key)
+    internal static GridViewState Capture(GatewayTable grid, Func<object, object?> key)
     {
         var first = grid.FirstDisplayedScrollingRowIndex;
         return new(grid.CurrentRow?.DataBoundItem is { } item ? key(item) : null,
             grid.CurrentCell?.OwningColumn?.Name,
             first >= 0 && first < grid.Rows.Count && grid.Rows[first].DataBoundItem is { } firstItem ? key(firstItem) : null,
-            first, grid.HorizontalScrollingOffset);
+            first, grid.HorizontalScrollingOffset, grid.VerticalScrollingOffset);
     }
 
-    internal void Restore(DataGridView grid, Func<object, object?> key, object? preferredKey = null)
+    internal void Restore(GatewayTable grid, Func<object, object?> key, object? preferredKey = null)
     {
         if (grid.Rows.Count == 0) { grid.ClearSelection(); return; }
         var wanted = preferredKey ?? SelectedKey;
-        DataGridViewRow? selected = null, first = null;
-        foreach (DataGridViewRow row in grid.Rows)
+        GatewayTableRow? selected = null, first = null;
+        foreach (GatewayTableRow row in grid.Rows)
         {
             if (row.DataBoundItem is not { } data) continue;
             var rowKey = key(data);
@@ -28,7 +28,7 @@ internal sealed record GridViewState(object? SelectedKey, string? ColumnName, ob
             if (FirstVisibleKey is not null && Equals(rowKey, FirstVisibleKey)) first = row;
         }
         var column = ColumnName is not null && grid.Columns.Contains(ColumnName) && grid.Columns[ColumnName].Visible
-            ? grid.Columns[ColumnName] : grid.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).MinBy(c => c.DisplayIndex);
+            ? grid.Columns[ColumnName] : grid.Columns.Cast<GatewayTableColumn>().Where(c => c.Visible).MinBy(c => c.DisplayIndex);
         if (column is not null && (selected ?? grid.CurrentRow ?? grid.Rows[0]) is { } target)
         {
             grid.ClearSelection();
@@ -40,16 +40,19 @@ internal sealed record GridViewState(object? SelectedKey, string? ColumnName, ob
             ? selected.Index : first?.Index ?? Math.Clamp(FirstVisibleIndex, 0, grid.Rows.Count - 1);
         if (grid.IsHandleCreated && grid.Visible && grid.ClientSize.Height > grid.ColumnHeadersHeight
             && !grid.Rows[firstIndex].Frozen && grid.Rows[firstIndex].Visible)
-            grid.FirstDisplayedScrollingRowIndex = firstIndex;
+        {
+            if (preferredKey is null && firstIndex == FirstVisibleIndex) grid.VerticalScrollingOffset = VerticalOffset;
+            else grid.FirstDisplayedScrollingRowIndex = firstIndex;
+        }
         grid.HorizontalScrollingOffset = Math.Max(0, HorizontalOffset);
     }
 
-    internal static void Rebind<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
+    internal static void Rebind<T>(GatewayTable grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
     {
         if (!GridPagination.Bind(grid, rows, key, preferredKey, false)) RebindPage(grid, rows, key, preferredKey);
     }
 
-    internal static void RebindPage<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
+    internal static void RebindPage<T>(GatewayTable grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
     {
         object? Key(object item) => item is T row ? key(row) : null;
         var state = Capture(grid, Key);
@@ -58,24 +61,29 @@ internal sealed record GridViewState(object? SelectedKey, string? ColumnName, ob
     }
 
     /// <summary>Polling keeps bound rows alive until stable identities or their order change.</summary>
-    internal static void UpdateRows<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
+    internal static void UpdateRows<T>(GatewayTable grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
     {
         if (!GridPagination.Bind(grid, rows, key, preferredKey, true)) UpdatePageRows(grid, rows, key, preferredKey);
     }
 
-    internal static void UpdatePageRows<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
+    internal static void UpdatePageRows<T>(GatewayTable grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
     {
         object? RowKey(object item) => item is T value ? key(value) : null;
         if (grid.DataSource is BindingList<T> bound && bound.Count == rows.Count
             && bound.Select(key).SequenceEqual(rows.Select(key)))
         {
             GridViewState? state = preferredKey is not null ? Capture(grid, RowKey) : null;
-            for (var index = 0; index < rows.Count; index++)
+            grid.BeginRowsUpdate();
+            try
             {
-                if (EqualityComparer<T>.Default.Equals(bound[index], rows[index])) continue;
-                state ??= Capture(grid, RowKey);
-                bound[index] = rows[index];
+                for (var index = 0; index < rows.Count; index++)
+                {
+                    if (EqualityComparer<T>.Default.Equals(bound[index], rows[index])) continue;
+                    state ??= Capture(grid, RowKey);
+                    bound[index] = rows[index];
+                }
             }
+            finally { grid.EndRowsUpdate(); }
             state?.Restore(grid, RowKey, preferredKey);
             return;
         }

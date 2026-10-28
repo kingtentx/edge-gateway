@@ -13,7 +13,7 @@ internal sealed partial class HistoryPageView : UserControl
     internal NumericUpDown ResultLimit => resultLimit;
     internal Label QuerySummary => querySummary;
     internal TrendChart TrendChart => trendChart;
-    internal DataGridView HistoryGrid => historyGrid;
+    internal GatewayTable HistoryGrid => historyGrid;
     internal Control ToolbarHost => toolbarHost;
     internal TableLayoutPanel ContentLayout => contentLayout;
 

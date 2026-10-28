@@ -11,12 +11,12 @@ internal sealed partial class DiagnosticsPageView
     private Label titleLabel = null!;
     private Label descriptionLabel = null!;
     private FlowLayoutPanel toolbarHost = null!;
-    private DpiDataGridView diagnosticsGrid = null!;
+    private GatewayTable diagnosticsGrid = null!;
 
 
-    internal DataGridViewTextBoxColumn diagnosticsGridColumnItem = null!;
-    internal DataGridViewTextBoxColumn diagnosticsGridColumnValue = null!;
-    internal DataGridViewTextBoxColumn diagnosticsGridColumnMeaning = null!;
+    internal GatewayTableColumn diagnosticsGridColumnItem = null!;
+    internal GatewayTableColumn diagnosticsGridColumnValue = null!;
+    internal GatewayTableColumn diagnosticsGridColumnMeaning = null!;
     internal AntdUI.Button refreshButton = null!;
     internal AntdUI.Button exportButton = null!;
 
@@ -49,7 +49,7 @@ internal sealed partial class DiagnosticsPageView
         toolbarHost.FlowDirection = FlowDirection.LeftToRight;
         toolbarHost.Margin = Padding.Empty;
         toolbarHost.Padding = new Padding(0, 4, 0, 4);
-        diagnosticsGrid = new DpiDataGridView();
+        diagnosticsGrid = new GatewayTable();
         diagnosticsGrid.Name = "diagnosticsGrid";
         diagnosticsGrid.Dock = DockStyle.Fill;
         diagnosticsGrid.BackgroundColor = Color.White;
@@ -100,7 +100,7 @@ diagnosticsGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         Controls.Add(contentLayout);
         contentLayout.ResumeLayout(false);
         contentLayout.PerformLayout();
-        diagnosticsGridColumnItem = new DataGridViewTextBoxColumn();
+        diagnosticsGridColumnItem = new GatewayTableColumn();
         diagnosticsGridColumnItem.Name = "diagnosticsGridColumnItem";
         diagnosticsGridColumnItem.DataPropertyName = "Item";
         diagnosticsGridColumnItem.HeaderText = "诊断项目";
@@ -109,7 +109,7 @@ diagnosticsGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         diagnosticsGridColumnItem.SortMode = DataGridViewColumnSortMode.NotSortable;
         diagnosticsGridColumnItem.Name = "Item";
         diagnosticsGrid.Columns.Add(diagnosticsGridColumnItem);
-        diagnosticsGridColumnValue = new DataGridViewTextBoxColumn();
+        diagnosticsGridColumnValue = new GatewayTableColumn();
         diagnosticsGridColumnValue.Name = "diagnosticsGridColumnValue";
         diagnosticsGridColumnValue.DataPropertyName = "Value";
         diagnosticsGridColumnValue.HeaderText = "当前值 / 最近事件";
@@ -118,7 +118,7 @@ diagnosticsGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         diagnosticsGridColumnValue.SortMode = DataGridViewColumnSortMode.NotSortable;
         diagnosticsGridColumnValue.Name = "Value";
         diagnosticsGrid.Columns.Add(diagnosticsGridColumnValue);
-        diagnosticsGridColumnMeaning = new DataGridViewTextBoxColumn();
+        diagnosticsGridColumnMeaning = new GatewayTableColumn();
         diagnosticsGridColumnMeaning.Name = "diagnosticsGridColumnMeaning";
         diagnosticsGridColumnMeaning.DataPropertyName = "Meaning";
         diagnosticsGridColumnMeaning.HeaderText = "说明";

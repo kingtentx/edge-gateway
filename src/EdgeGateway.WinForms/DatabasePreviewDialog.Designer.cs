@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -14,13 +14,13 @@ internal sealed partial class DatabasePreviewDialog
     private Label observedAt = null!;
     private GatewayInput messages = null!;
     private TabPage valuesTab = null!;
-    private DpiDataGridView valuesGrid = null!;
-    private DataGridViewTextBoxColumn valuesGridColumnColumn = null!;
-    private DataGridViewTextBoxColumn valuesGridColumnDatabaseType = null!;
-    private DataGridViewTextBoxColumn valuesGridColumnSource = null!;
-    private DataGridViewTextBoxColumn valuesGridColumnValue = null!;
-    private DataGridViewTextBoxColumn valuesGridColumnSampleTime = null!;
-    private DataGridViewTextBoxColumn valuesGridColumnError = null!;
+    private GatewayTable valuesGrid = null!;
+    private GatewayTableColumn valuesGridColumnColumn = null!;
+    private GatewayTableColumn valuesGridColumnDatabaseType = null!;
+    private GatewayTableColumn valuesGridColumnSource = null!;
+    private GatewayTableColumn valuesGridColumnValue = null!;
+    private GatewayTableColumn valuesGridColumnSampleTime = null!;
+    private GatewayTableColumn valuesGridColumnError = null!;
 
     private AntdUI.Pagination valuesGridPagination = null!;
     private Label valuesGridPaginationTotal = null!;
@@ -108,7 +108,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesTab.Name = "valuesTab";
         valuesTab.Text = "字段与值";
         valuesTab.BackColor = Color.White;
-        valuesGrid = new DpiDataGridView();
+        valuesGrid = new GatewayTable();
         valuesGrid.Name = "valuesGrid";
         valuesGrid.Dock = DockStyle.Fill;
         valuesGrid.BackgroundColor = Color.White;
@@ -134,7 +134,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGrid.ColumnHeadersDefaultCellStyle.SelectionForeColor = UiTheme.Ink;
         valuesGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         valuesGrid.Name = "DatabasePreviewValues";
-        valuesGridColumnColumn = new DataGridViewTextBoxColumn();
+        valuesGridColumnColumn = new GatewayTableColumn();
         valuesGridColumnColumn.Name = "valuesGridColumnColumn";
         valuesGridColumnColumn.DataPropertyName = "Column";
         valuesGridColumnColumn.HeaderText = "目标字段";
@@ -143,7 +143,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridColumnColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
         valuesGridColumnColumn.Name = "Column";
         valuesGrid.Columns.Add(valuesGridColumnColumn);
-        valuesGridColumnDatabaseType = new DataGridViewTextBoxColumn();
+        valuesGridColumnDatabaseType = new GatewayTableColumn();
         valuesGridColumnDatabaseType.Name = "valuesGridColumnDatabaseType";
         valuesGridColumnDatabaseType.DataPropertyName = "DatabaseType";
         valuesGridColumnDatabaseType.HeaderText = "数据库类型";
@@ -152,7 +152,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridColumnDatabaseType.SortMode = DataGridViewColumnSortMode.NotSortable;
         valuesGridColumnDatabaseType.Name = "DatabaseType";
         valuesGrid.Columns.Add(valuesGridColumnDatabaseType);
-        valuesGridColumnSource = new DataGridViewTextBoxColumn();
+        valuesGridColumnSource = new GatewayTableColumn();
         valuesGridColumnSource.Name = "valuesGridColumnSource";
         valuesGridColumnSource.DataPropertyName = "Source";
         valuesGridColumnSource.HeaderText = "来源 / 转换";
@@ -161,7 +161,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridColumnSource.SortMode = DataGridViewColumnSortMode.NotSortable;
         valuesGridColumnSource.Name = "Source";
         valuesGrid.Columns.Add(valuesGridColumnSource);
-        valuesGridColumnValue = new DataGridViewTextBoxColumn();
+        valuesGridColumnValue = new GatewayTableColumn();
         valuesGridColumnValue.Name = "valuesGridColumnValue";
         valuesGridColumnValue.DataPropertyName = "Value";
         valuesGridColumnValue.HeaderText = "转换后值";
@@ -170,7 +170,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridColumnValue.SortMode = DataGridViewColumnSortMode.NotSortable;
         valuesGridColumnValue.Name = "Value";
         valuesGrid.Columns.Add(valuesGridColumnValue);
-        valuesGridColumnSampleTime = new DataGridViewTextBoxColumn();
+        valuesGridColumnSampleTime = new GatewayTableColumn();
         valuesGridColumnSampleTime.Name = "valuesGridColumnSampleTime";
         valuesGridColumnSampleTime.DataPropertyName = "SampleTime";
         valuesGridColumnSampleTime.HeaderText = "源采样时间";
@@ -179,7 +179,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridColumnSampleTime.SortMode = DataGridViewColumnSortMode.NotSortable;
         valuesGridColumnSampleTime.Name = "SampleTime";
         valuesGrid.Columns.Add(valuesGridColumnSampleTime);
-        valuesGridColumnError = new DataGridViewTextBoxColumn();
+        valuesGridColumnError = new GatewayTableColumn();
         valuesGridColumnError.Name = "valuesGridColumnError";
         valuesGridColumnError.DataPropertyName = "Error";
         valuesGridColumnError.HeaderText = "问题";
@@ -223,6 +223,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridPaginationTotal.AutoSize = true;
         valuesGridPaginationTotal.Dock = DockStyle.Fill;
         valuesGridPaginationTotal.TextAlign = ContentAlignment.MiddleLeft;
+        valuesGridPaginationTotal.AutoSizeMode = AntdUI.TAutoSize.Width;
         valuesGridPaginationTotal.Margin = new Padding(0, 0, 16, 0);
         valuesGridPaginationSize = new ComboBox();
         valuesGridPaginationSize.Name = "valuesGridPaginationSize";

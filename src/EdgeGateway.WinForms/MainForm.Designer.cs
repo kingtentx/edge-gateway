@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 public sealed partial class MainForm
 {
     private TableLayoutPanel navigationHeaderPanel = null!;
-    private PictureBox navigationApplicationIcon = null!;
+    private AntdUI.Avatar navigationApplicationIcon = null!;
     private TableLayoutPanel applicationShell = null!;
     private Panel navigationViewportPanel = null!;
     private TableLayoutPanel navigationContentPanel = null!;
@@ -33,7 +33,7 @@ public sealed partial class MainForm
     private void InitializeComponent()
     {
         navigationHeaderPanel = new TableLayoutPanel();
-        navigationApplicationIcon = new PictureBox();
+        navigationApplicationIcon = new AntdUI.Avatar();
         applicationShell = new TableLayoutPanel();
         navigationViewportPanel = new Panel();
         navigationContentPanel = new TableLayoutPanel();
@@ -172,7 +172,7 @@ public sealed partial class MainForm
         navigationHeaderPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         navigationApplicationIcon.Name = "NavigationApplicationIcon";
         navigationApplicationIcon.AccessibleName = "Edge Gateway 应用图标";
-        navigationApplicationIcon.SizeMode = PictureBoxSizeMode.Zoom;
+        navigationApplicationIcon.ImageFit = AntdUI.TFit.Contain;
         navigationApplicationIcon.Dock = DockStyle.Fill;
         navigationApplicationIcon.Margin = new Padding(14);
         navigationApplicationIcon.TabStop = false;

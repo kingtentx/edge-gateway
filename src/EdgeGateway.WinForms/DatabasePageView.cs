@@ -4,8 +4,8 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DatabasePageView : UserControl
 {
     internal TabControl DatabaseTabs => databaseTabs;
-    internal DataGridView ConnectionsGrid => connectionsGrid;
-    internal DataGridView GroupsGrid => groupsGrid;
+    internal GatewayTable ConnectionsGrid => connectionsGrid;
+    internal GatewayTable GroupsGrid => groupsGrid;
     internal Label DatabaseState => databaseStateLabel;
     internal Control ConnectionsToolbarHost => connectionsToolbarHost;
     internal Control GroupsToolbarHost => groupsToolbarHost;

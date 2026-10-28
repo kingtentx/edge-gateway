@@ -1,4 +1,4 @@
-namespace EdgeGateway.WinForms;
+﻿namespace EdgeGateway.WinForms;
 
 public sealed partial class MainForm
 {
@@ -40,16 +40,16 @@ public sealed partial class MainForm
                                 channels: _configuration.Channels, groups: DeviceGroupNames());
                             var groupInput = Descendants(deviceEditor).OfType<ComboBox>().Single(input => input.Name == "DeviceConfiguration_Group");
                             CheckUsability(groupInput.Items.Contains(name + "已编辑"), "saved groups missing from device editor.");
-                            var referenced = manager.catalogGrid.Rows.Cast<DataGridViewRow>()
-                                .First(row => ((ConfigurationCatalogRow)row.DataBoundItem).DeviceCount > 0);
+                            var referenced = manager.catalogGrid.Rows.Cast<GatewayTableRow>()
+                                .First(row => ((ConfigurationCatalogRow)row.DataBoundItem!).DeviceCount > 0);
                             manager.catalogGrid.CurrentCell = referenced.Cells[0];
                             CheckUsability(!manager.deleteButton.Enabled && manager.editButton.Enabled, "referenced group deletion is available.");
                         }
                         SaveEditorScreenshot(manager, "catalog", groups ? "groups" : "channels");
                         // Focus checks use the newly created, unreferenced row; the referenced
                         // row's delete command was deliberately disabled and checked above.
-                        manager.catalogGrid.CurrentCell = manager.catalogGrid.Rows.Cast<DataGridViewRow>()
-                            .Single(row => ((ConfigurationCatalogRow)row.DataBoundItem).Name == name + "已编辑").Cells[0];
+                        manager.catalogGrid.CurrentCell = manager.catalogGrid.Rows.Cast<GatewayTableRow>()
+                            .Single(row => ((ConfigurationCatalogRow)row.DataBoundItem!).Name == name + "已编辑").Cells[0];
                         manager.ClientSize = new Size(UiTheme.Scale(manager, 620), UiTheme.Scale(manager, 400));
                         PerformLayoutRecursively(manager);
                         foreach (var button in new[] { manager.addButton, manager.editButton, manager.deleteButton, manager.closeButton })

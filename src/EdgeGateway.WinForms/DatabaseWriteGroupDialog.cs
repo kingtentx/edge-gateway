@@ -18,7 +18,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
     private const DatabaseValueSource OmittedSource = (DatabaseValueSource)(-1);
     private readonly Dictionary<string, DatabaseValueSource> _samplingSources = new(StringComparer.Ordinal);
     internal DatabaseWriteGroupConfiguration Value { get; private set; } = null!;
-    internal DataGridView SmokeMapping => _mapping;
+    internal GatewayTable SmokeMapping => _mapping;
     internal CheckedListBox SmokePointList => _pointList;
 
     public DatabaseWriteGroupDialog() : base("数据库写入组", "配置写入目标、点位选择与字段映射。")
@@ -119,7 +119,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         _mappingEmpty.Text = standard ? "已有自定义表？点击上方“使用自定义逐点映射”。"
             : "尚未读取表字段。\n请先在“写入设置”选择数据库和表名，\n再点击上方“读取 / 刷新字段”。";
         if (_mappingEmpty.Visible) _mappingEmpty.BringToFront();
-        foreach (DataGridViewRow row in _mapping.Rows) UpdateMappingRow(row);
+        foreach (GatewayTableRow row in _mapping.Rows) UpdateMappingRow(row);
     }
     private void BindPoints()
     {
@@ -135,15 +135,14 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
 
     private void ConfigureMappingGrid()
     {
-        ((DataGridViewComboBoxColumn)_mapping.Columns["Source"]).DataSource = Enumerable.Append(Enum.GetValues<DatabaseValueSource>(), OmittedSource).Select(value => new DatabaseUiText.EnumItem<DatabaseValueSource>(value, DatabaseUiText.Source(value))).ToArray();
-        ((DataGridViewComboBoxColumn)_mapping.Columns["Point"]).DataSource = new[] { new DatabaseUiText.PointItem(Guid.Empty, "不绑定点位") }.Concat(_points).ToArray();
-        ((DataGridViewComboBoxColumn)_mapping.Columns["FieldType"]).DataSource = Enum.GetValues<DatabaseFieldType>().Select(value => new DatabaseUiText.EnumItem<DatabaseFieldType>(value, DatabaseUiText.FieldType(value))).ToArray();
+        ((GatewayGridSelectColumn)_mapping.Columns["Source"]).DataSource = Enumerable.Append(Enum.GetValues<DatabaseValueSource>(), OmittedSource).Select(value => new DatabaseUiText.EnumItem<DatabaseValueSource>(value, DatabaseUiText.Source(value))).ToArray();
+        ((GatewayGridSelectColumn)_mapping.Columns["Point"]).DataSource = new[] { new DatabaseUiText.PointItem(Guid.Empty, "不绑定点位") }.Concat(_points).ToArray();
+        ((GatewayGridSelectColumn)_mapping.Columns["FieldType"]).DataSource = Enum.GetValues<DatabaseFieldType>().Select(value => new DatabaseUiText.EnumItem<DatabaseFieldType>(value, DatabaseUiText.FieldType(value))).ToArray();
         // Combo/check columns also need logical minimum widths registered for DPI scaling.
-        if (_mapping is DpiDataGridView dpiGrid)
-            foreach (DataGridViewColumn column in _mapping.Columns) dpiGrid.RegisterColumn(column, column.MinimumWidth);
+        if (_mapping is GatewayTable dpiGrid)
+            foreach (GatewayTableColumn column in _mapping.Columns) dpiGrid.RegisterColumn(column, column.MinimumWidth);
         _mapping.Columns["Include"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
         _mapping.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
-        _mapping.CellPainting += PaintConstantInput;
         _mapping.EditingControlShowing += (_, e) =>
         {
             if (e.Control is ComboBox combo)
@@ -189,41 +188,12 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
                 {
                     // Finish the checkbox/dropdown notification before moving the editor.
                     // Do not steal focus if the operator has already moved elsewhere.
-                    if (IsDisposed || _mapping.IsDisposed || !_mapping.ContainsFocus || row.DataGridView != _mapping
+                    if (IsDisposed || _mapping.IsDisposed || !_mapping.ContainsFocus || row.GatewayTable != _mapping
                         || _mapping.CurrentRow != row || _mapping.CurrentCell?.OwningColumn.Name is not ("Include" or "Source")
                         || row.Cells["Source"].Value is not DatabaseValueSource.Constant || row.Cells["Constant"].ReadOnly) return;
                     _mapping.EndEdit(); _mapping.CurrentCell = row.Cells["Constant"]; _mapping.BeginEdit(true);
                 }));
         };
-    }
-
-    private void PaintConstantInput(object? sender, DataGridViewCellPaintingEventArgs e)
-    {
-        if (e.RowIndex < 0 || e.ColumnIndex != _mapping.Columns["Constant"].Index
-            || _mapping.Rows[e.RowIndex].Cells[e.ColumnIndex].ReadOnly
-            || e.Graphics is not { } graphics || e.CellStyle is not { } style) return;
-        e.Paint(e.ClipBounds, e.PaintParts & ~(DataGridViewPaintParts.ContentForeground | DataGridViewPaintParts.Focus));
-        var inset = UiTheme.Scale(_mapping, 4);
-        var frame = Rectangle.Inflate(e.CellBounds, -inset, -inset);
-        if (frame.Width > 0 && frame.Height > 0)
-        {
-            var saved = graphics.Save();
-            try
-            {
-                graphics.SetClip(Rectangle.Intersect(e.ClipBounds, e.CellBounds), System.Drawing.Drawing2D.CombineMode.Intersect);
-                using var fill = new SolidBrush(UiTheme.InputBackground);
-                var focused = _mapping.ContainsFocus && _mapping.CurrentCell == _mapping.Rows[e.RowIndex].Cells[e.ColumnIndex];
-                using var border = new Pen(focused ? UiTheme.Blue : Color.FromArgb(153, 170, 192), Math.Max(1, _mapping.DeviceDpi / 96f));
-                graphics.FillRectangle(fill, frame); graphics.DrawRectangle(border, frame);
-                var value = e.FormattedValue?.ToString() ?? "";
-                var textBounds = Rectangle.Inflate(frame, -UiTheme.Scale(_mapping, 6), 0);
-                TextRenderer.DrawText(graphics, value.Length == 0 ? "请输入常量" : value, style.Font ?? _mapping.Font,
-                    textBounds, value.Length == 0 ? UiTheme.Muted : UiTheme.Ink,
-                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
-            }
-            finally { graphics.Restore(saved); }
-        }
-        e.Handled = true;
     }
 
     private void BindMappingRows(IReadOnlyList<DatabaseColumnMapping> mappings, IReadOnlyList<DatabaseColumnInfo> columns)
@@ -250,7 +220,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         _mappingEmpty.Visible = _mapping.Rows.Count == 0;
     }
 
-    private void UpdateMappingRow(DataGridViewRow row)
+    private void UpdateMappingRow(GatewayTableRow row)
     {
         if (row.Cells["Source"].Value is not DatabaseValueSource source) return;
         var generated = row.Tag is DatabaseColumnInfo { IsGenerated: true };
@@ -271,7 +241,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         if (!_mapping.EndEdit()) throw new EditorValidationException("字段映射输入无效，请完成当前单元格编辑。", _mapping);
         var mappings = new List<DatabaseColumnMapping>();
         var pointMapping = _mode.SelectedItem is DatabaseStorageMode.PointMapping;
-        foreach (DataGridViewRow row in _mapping.Rows)
+        foreach (GatewayTableRow row in _mapping.Rows)
         {
             if (row.Tag is not DatabaseColumnInfo column || column.IsGenerated) continue;
             var source = row.Cells["Source"].Value is DatabaseValueSource selected ? selected : DatabaseValueSource.EngineeringValue;

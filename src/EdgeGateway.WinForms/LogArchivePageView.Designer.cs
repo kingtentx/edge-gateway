@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -10,7 +10,7 @@ internal sealed partial class LogArchivePageView
     internal FlowLayoutPanel filterBar = null!;
     internal FlowLayoutPanel actions = null!;
     internal Label State = null!;
-    internal DpiDataGridView Grid = null!;
+    internal GatewayTable Grid = null!;
     private AntdUI.Pagination archivePagination = null!;
     private Label archivePaginationTotal = null!;
     private ComboBox archivePaginationSize = null!;
@@ -56,18 +56,18 @@ internal sealed partial class LogArchivePageView
     internal AntdUI.Button Recent = null!;
     internal AntdUI.Button Cancel = null!;
     internal AntdUI.Button Export = null!;
-    internal DataGridViewTextBoxColumn GridColumnTimestamp = null!;
-    internal DataGridViewTextBoxColumn GridColumnLevel = null!;
-    internal DataGridViewTextBoxColumn GridColumnMessage = null!;
-    internal DataGridViewTextBoxColumn GridColumnDevice = null!;
-    internal DataGridViewTextBoxColumn GridColumnTag = null!;
-    internal DataGridViewTextBoxColumn GridColumnAddress = null!;
-    internal DataGridViewTextBoxColumn GridColumnRawValue = null!;
-    internal DataGridViewTextBoxColumn GridColumnValue = null!;
-    internal DataGridViewTextBoxColumn GridColumnQuality = null!;
-    internal DataGridViewTextBoxColumn GridColumnUnit = null!;
-    internal DataGridViewTextBoxColumn GridColumnError = null!;
-    internal DataGridViewTextBoxColumn GridColumnFileName = null!;
+    internal GatewayTableColumn GridColumnTimestamp = null!;
+    internal GatewayTableColumn GridColumnLevel = null!;
+    internal GatewayTableColumn GridColumnMessage = null!;
+    internal GatewayTableColumn GridColumnDevice = null!;
+    internal GatewayTableColumn GridColumnTag = null!;
+    internal GatewayTableColumn GridColumnAddress = null!;
+    internal GatewayTableColumn GridColumnRawValue = null!;
+    internal GatewayTableColumn GridColumnValue = null!;
+    internal GatewayTableColumn GridColumnQuality = null!;
+    internal GatewayTableColumn GridColumnUnit = null!;
+    internal GatewayTableColumn GridColumnError = null!;
+    internal GatewayTableColumn GridColumnFileName = null!;
 
     internal void InitializeComponent()
     {
@@ -108,7 +108,7 @@ internal sealed partial class LogArchivePageView
         State.ForeColor = UiTheme.Muted;
         State.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         State.Margin = new Padding(0, 4, 0, 4);
-        Grid = new DpiDataGridView();
+        Grid = new GatewayTable();
         Grid.Name = "Grid";
         Grid.Dock = DockStyle.Fill;
         Grid.BackgroundColor = Color.White;
@@ -606,7 +606,7 @@ internal sealed partial class LogArchivePageView
         Export.Margin = new Padding(0, 0, 8, 6);
         Export.Cursor = Cursors.Hand;
         actions.Controls.Add(Export);
-        GridColumnTimestamp = new DataGridViewTextBoxColumn();
+        GridColumnTimestamp = new GatewayTableColumn();
         GridColumnTimestamp.Name = "GridColumnTimestamp";
         GridColumnTimestamp.DataPropertyName = "Timestamp";
         GridColumnTimestamp.HeaderText = "时间";
@@ -615,7 +615,7 @@ internal sealed partial class LogArchivePageView
         GridColumnTimestamp.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnTimestamp.Name = "Timestamp";
         Grid.Columns.Add(GridColumnTimestamp);
-        GridColumnLevel = new DataGridViewTextBoxColumn();
+        GridColumnLevel = new GatewayTableColumn();
         GridColumnLevel.Name = "GridColumnLevel";
         GridColumnLevel.DataPropertyName = "Level";
         GridColumnLevel.HeaderText = "级别";
@@ -624,7 +624,7 @@ internal sealed partial class LogArchivePageView
         GridColumnLevel.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnLevel.Name = "Level";
         Grid.Columns.Add(GridColumnLevel);
-        GridColumnMessage = new DataGridViewTextBoxColumn();
+        GridColumnMessage = new GatewayTableColumn();
         GridColumnMessage.Name = "GridColumnMessage";
         GridColumnMessage.DataPropertyName = "Message";
         GridColumnMessage.HeaderText = "日志内容";
@@ -633,7 +633,7 @@ internal sealed partial class LogArchivePageView
         GridColumnMessage.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnMessage.Name = "Message";
         Grid.Columns.Add(GridColumnMessage);
-        GridColumnDevice = new DataGridViewTextBoxColumn();
+        GridColumnDevice = new GatewayTableColumn();
         GridColumnDevice.Name = "GridColumnDevice";
         GridColumnDevice.DataPropertyName = "Device";
         GridColumnDevice.HeaderText = "设备";
@@ -642,7 +642,7 @@ internal sealed partial class LogArchivePageView
         GridColumnDevice.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnDevice.Name = "Device";
         Grid.Columns.Add(GridColumnDevice);
-        GridColumnTag = new DataGridViewTextBoxColumn();
+        GridColumnTag = new GatewayTableColumn();
         GridColumnTag.Name = "GridColumnTag";
         GridColumnTag.DataPropertyName = "Tag";
         GridColumnTag.HeaderText = "点位";
@@ -651,7 +651,7 @@ internal sealed partial class LogArchivePageView
         GridColumnTag.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnTag.Name = "Tag";
         Grid.Columns.Add(GridColumnTag);
-        GridColumnAddress = new DataGridViewTextBoxColumn();
+        GridColumnAddress = new GatewayTableColumn();
         GridColumnAddress.Name = "GridColumnAddress";
         GridColumnAddress.DataPropertyName = "Address";
         GridColumnAddress.HeaderText = "地址";
@@ -660,7 +660,7 @@ internal sealed partial class LogArchivePageView
         GridColumnAddress.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnAddress.Name = "Address";
         Grid.Columns.Add(GridColumnAddress);
-        GridColumnRawValue = new DataGridViewTextBoxColumn();
+        GridColumnRawValue = new GatewayTableColumn();
         GridColumnRawValue.Name = "GridColumnRawValue";
         GridColumnRawValue.DataPropertyName = "RawValue";
         GridColumnRawValue.HeaderText = "原始值";
@@ -669,7 +669,7 @@ internal sealed partial class LogArchivePageView
         GridColumnRawValue.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnRawValue.Name = "RawValue";
         Grid.Columns.Add(GridColumnRawValue);
-        GridColumnValue = new DataGridViewTextBoxColumn();
+        GridColumnValue = new GatewayTableColumn();
         GridColumnValue.Name = "GridColumnValue";
         GridColumnValue.DataPropertyName = "Value";
         GridColumnValue.HeaderText = "工程值";
@@ -678,7 +678,7 @@ internal sealed partial class LogArchivePageView
         GridColumnValue.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnValue.Name = "Value";
         Grid.Columns.Add(GridColumnValue);
-        GridColumnQuality = new DataGridViewTextBoxColumn();
+        GridColumnQuality = new GatewayTableColumn();
         GridColumnQuality.Name = "GridColumnQuality";
         GridColumnQuality.DataPropertyName = "Quality";
         GridColumnQuality.HeaderText = "质量";
@@ -687,7 +687,7 @@ internal sealed partial class LogArchivePageView
         GridColumnQuality.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnQuality.Name = "Quality";
         Grid.Columns.Add(GridColumnQuality);
-        GridColumnUnit = new DataGridViewTextBoxColumn();
+        GridColumnUnit = new GatewayTableColumn();
         GridColumnUnit.Name = "GridColumnUnit";
         GridColumnUnit.DataPropertyName = "Unit";
         GridColumnUnit.HeaderText = "单位";
@@ -696,7 +696,7 @@ internal sealed partial class LogArchivePageView
         GridColumnUnit.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnUnit.Name = "Unit";
         Grid.Columns.Add(GridColumnUnit);
-        GridColumnError = new DataGridViewTextBoxColumn();
+        GridColumnError = new GatewayTableColumn();
         GridColumnError.Name = "GridColumnError";
         GridColumnError.DataPropertyName = "Error";
         GridColumnError.HeaderText = "错误说明";
@@ -705,7 +705,7 @@ internal sealed partial class LogArchivePageView
         GridColumnError.SortMode = DataGridViewColumnSortMode.NotSortable;
         GridColumnError.Name = "Error";
         Grid.Columns.Add(GridColumnError);
-        GridColumnFileName = new DataGridViewTextBoxColumn();
+        GridColumnFileName = new GatewayTableColumn();
         GridColumnFileName.Name = "GridColumnFileName";
         GridColumnFileName.DataPropertyName = "FileName";
         GridColumnFileName.HeaderText = "来源文件";
@@ -756,6 +756,7 @@ internal sealed partial class LogArchivePageView
         archivePaginationTotal.AutoSize = true;
         archivePaginationTotal.Dock = DockStyle.Fill;
         archivePaginationTotal.TextAlign = ContentAlignment.MiddleLeft;
+        archivePaginationTotal.AutoSizeMode = AntdUI.TAutoSize.Width;
         archivePaginationTotal.Margin = new Padding(0, 0, 16, 0);
         archivePaginationSize = new ComboBox();
         archivePaginationSize.Name = "archivePaginationSize";

@@ -9,6 +9,7 @@ public sealed partial class MainForm
         if (!_smokeTest || _application.IsRunning)
             throw new InvalidOperationException("ButtonAppearance requires an isolated stopped host.");
         _refreshTimer.Stop();
+        SmokeAntdMigration();
         var original = Clone(_configuration);
         var originalSize = Size;
         try

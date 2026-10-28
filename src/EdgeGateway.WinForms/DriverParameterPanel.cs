@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed class DriverParameterPanel : UserControl
 {
     private EditorLayout.FieldViewport? _page;
-    private readonly ToolTip _tips = new() { AutoPopDelay = 15000 };
+    private readonly AntdUI.TooltipComponent _tips = new();
     private readonly Dictionary<string, (DriverParameterDescriptor Metadata, Control Input)> _fields = new(StringComparer.Ordinal);
     private Dictionary<string, string> _original = [];
     private bool _readOnly;
@@ -58,13 +58,13 @@ internal sealed class DriverParameterPanel : UserControl
                 "PollIntervalMs" => $"在“{basicTabName}”的采集周期中修改。", _ => ""
             };
             var help = $"{parameter.Key} · {parameter.TypeName}\n{parameter.Description}\n{bindingHint}".Trim();
-            _tips.SetToolTip(input, help);
+            _tips.SetTip(input, help);
             input.AccessibleDescription = help;
             EditorDialog.Field(table, parameter.Name + (bound is null ? "" : "（绑定）"), input);
             // A disabled enum/numeric field does not receive mouse events. Keep its
             // complete description available on the enabled caption in read-only views.
             if (table.GetControlFromPosition(0, table.RowCount - 1) is Control caption)
-                _tips.SetToolTip(caption, help);
+                _tips.SetTip(caption, help);
             if (!string.IsNullOrWhiteSpace(bindingHint)) EditorLayout.FieldNote(table, bindingHint);
             else if (!string.IsNullOrWhiteSpace(parameter.Description)) EditorLayout.FieldNote(table, parameter.Description);
             _fields.Add(parameter.Key, (parameter, input));

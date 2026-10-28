@@ -1,68 +1,32 @@
 namespace EdgeGateway.WinForms;
 
-/// <summary>Keep typed DataGridView binding while using the official AntdUI dropdown editor.</summary>
-public class GatewayGridSelectColumn : DataGridViewComboBoxColumn
+public class GatewayGridSelectColumn : GatewayTableColumn
 {
-    public GatewayGridSelectColumn() => CellTemplate = new GatewayGridSelectCell();
-}
-
-public class GatewayGridSelectCell : DataGridViewComboBoxCell
-{
-    public override Type EditType => typeof(GatewayGridSelectEditor);
-    public override void InitializeEditingControl(int rowIndex, object initialFormattedValue, DataGridViewCellStyle style)
+    public object? DataSource { get; set; }
+    public string DisplayMember { get; set; } = "";
+    public string ValueMember { get; set; } = "";
+    internal string Display(object? value)
     {
-        base.InitializeEditingControl(rowIndex, initialFormattedValue, style);
-        if (DataGridView?.EditingControl is GatewayGridSelectEditor editor)
-            editor.Bind(DataSource, DisplayMember, ValueMember, Value);
+        if (DataSource is System.Collections.IEnumerable items)
+            foreach (var item in items)
+                if (Equals(Member(item, ValueMember), value)) return Member(item, DisplayMember)?.ToString() ?? "";
+        return value?.ToString() ?? "";
     }
-}
-
-public class GatewayGridSelectEditor : GatewaySelect, IDataGridViewEditingControl
-{
-    private bool _binding;
-    private string _valueMember = "", _displayMember = "";
-    public GatewayGridSelectEditor()
-    {
-        Format += (_, e) => e.Value = Member(e.ListItem, _displayMember)?.ToString() ?? "";
-        SelectedIndexChanged += (_, _) =>
-        {
-            if (_binding) return;
-            EditingControlValueChanged = true;
-            EditingControlDataGridView?.NotifyCurrentCellDirty(true);
-        };
-    }
-    private static object? Member(object? item, string name) => item is null || name.Length == 0 ? item
+    internal static object? Member(object? item, string name) => item is null || name.Length == 0 ? item
         : System.ComponentModel.TypeDescriptor.GetProperties(item)[name]?.GetValue(item);
-    internal void Bind(object? source, string displayMember, string valueMember, object? value)
+}
+
+public class GatewayGridSelectEditor : GatewaySelect
+{
+    private string valueMember = "", displayMember = "";
+    public GatewayGridSelectEditor() => Format += (_, e) => e.Value = GatewayGridSelectColumn.Member(e.ListItem, displayMember)?.ToString() ?? "";
+    internal void Bind(object? source, string display, string value, object? selected)
     {
-        _binding = true;
-        try
-        {
-            _displayMember = displayMember; _valueMember = valueMember;
-            DataSource = source; SelectedValue = value; EditingControlValueChanged = false;
-        }
-        finally { _binding = false; }
+        displayMember = display; valueMember = value; DataSource = source; SelectedValue = selected;
     }
     public override object? SelectedValue
     {
-        get => Member(base.SelectedValue, _valueMember);
-        set => base.SelectedValue = Items.FirstOrDefault(item => Equals(Member(item, _valueMember), value));
+        get => GatewayGridSelectColumn.Member(base.SelectedValue, valueMember);
+        set => base.SelectedValue = Items.FirstOrDefault(item => Equals(GatewayGridSelectColumn.Member(item, valueMember), value));
     }
-    public DataGridView? EditingControlDataGridView { get; set; }
-    public object EditingControlFormattedValue
-    {
-        get => Text;
-        set => base.SelectedValue = Items.FirstOrDefault(item => Member(item, _displayMember)?.ToString() == value?.ToString());
-    }
-    public int EditingControlRowIndex { get; set; }
-    public bool EditingControlValueChanged { get; set; }
-    public Cursor EditingPanelCursor => Cursors.Default;
-    public bool RepositionEditingControlOnValueChange => false;
-    public void ApplyCellStyleToEditingControl(DataGridViewCellStyle style)
-    { Font = style.Font; ForeColor = style.ForeColor; BackColor = Color.White; }
-    public bool EditingControlWantsInputKey(Keys keyData, bool dataGridViewWantsInputKey) =>
-        (keyData & Keys.KeyCode) is Keys.Up or Keys.Down or Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown
-        || !dataGridViewWantsInputKey;
-    public object GetEditingControlFormattedValue(DataGridViewDataErrorContexts context) => Text;
-    public void PrepareEditingControlForEdit(bool selectAll) { if (selectAll) SelectAll(); }
 }

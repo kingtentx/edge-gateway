@@ -55,9 +55,9 @@ public sealed partial class MainForm
         var cards = _overviewPageView.cards; var health = _overviewPageView.health;
         var resourceGrid = _overviewPageView.resourceGrid; var resources = _overviewPageView.resources;
         var links = _overviewPageView.links; var viewport = _overviewPageView.viewport;
-        TableLayoutPanel[] primary = [_overviewPageView.metricCard0, _overviewPageView.metricCard1, _overviewPageView.metricCard2, _overviewPageView.metricCard3];
-        TableLayoutPanel[] healthPanels = [_overviewPageView.collectionCard, _overviewPageView.deliveryCard];
-        TableLayoutPanel[] resourcePanels = [_overviewPageView.cpuCard, _overviewPageView.memoryCard];
+        Control[] primary = [_overviewPageView.metricCard0, _overviewPageView.metricCard1, _overviewPageView.metricCard2, _overviewPageView.metricCard3];
+        Control[] healthPanels = [_overviewPageView.collectionCard, _overviewPageView.deliveryCard];
+        Control[] resourcePanels = [_overviewPageView.cpuCard, _overviewPageView.memoryCard];
         TableLayoutPanel[] resourceSummaries = [_overviewPageView.cpuSummary, _overviewPageView.memorySummary];
         _overviewPageView.devicesButton.Click += (_, _) => ShowPage("devices");
         _overviewPageView.realtimeButton.Click += (_, _) => ShowPage("realtime");
@@ -65,7 +65,7 @@ public sealed partial class MainForm
         viewport.BindLayout(content, () => cards.PreferredSize.Height
             + _overviewDeviceSummary.PreferredHeight + _overviewDeviceSummary.Margin.Vertical + health.PreferredSize.Height
             + links.PreferredSize.Height + resources.PreferredSize.Height + resources.Margin.Vertical);
-        _feedbackTip.SetToolTip(_serverIdentity, "最近 60 秒趋势，每秒刷新；鼠标移到曲线上查看读数。磁盘显示容量使用率。");
+        _feedbackTip.SetTip(_serverIdentity, "最近 60 秒趋势，每秒刷新；鼠标移到曲线上查看读数。磁盘显示容量使用率。");
         var arranging = false;
         void Arrange()
         {
@@ -97,7 +97,7 @@ public sealed partial class MainForm
         return _overviewPageView;
     }
 
-    private static void ArrangeOverviewGrid(TableLayoutPanel grid, IReadOnlyList<TableLayoutPanel> panels, int columns, int gap = 12)
+    private static void ArrangeOverviewGrid(TableLayoutPanel grid, IReadOnlyList<Control> panels, int columns, int gap = 12)
     {
         if (grid.ColumnCount != columns || grid.Controls.Count != panels.Count || grid.ColumnStyles.Count != columns)
         {

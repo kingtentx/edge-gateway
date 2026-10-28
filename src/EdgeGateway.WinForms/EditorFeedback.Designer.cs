@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class EditorFeedback
 {
     private Label _heading = null!;
-    private LinkLabel _locate = null!;
+    private GatewayButton _locate = null!;
     private GatewayInput _message = null!;
 
     private void InitializeComponent()
@@ -21,14 +21,13 @@ internal sealed partial class EditorFeedback
         _heading.ForeColor = UiTheme.Red;
         _heading.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
         _heading.Margin = new Padding(0, 4, 0, 4);
-        _locate = new LinkLabel();
+        _locate = new GatewayButton();
         _locate.Name = "EditorValidationLocate";
         _locate.Text = "定位到字段";
         _locate.AutoSize = true;
         _locate.Anchor = AnchorStyles.Right;
         _locate.Margin = new Padding(12, 0, 0, 0);
-        _locate.LinkColor = UiTheme.Red;
-        _locate.LinkClicked += OnLocateClicked;
+        _locate.Click += OnLocateClicked;
         _message = new GatewayInput();
         _message.Name = "EditorValidationMessage";
         _message.Dock = DockStyle.Fill;

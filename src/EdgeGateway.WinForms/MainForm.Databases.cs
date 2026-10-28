@@ -6,7 +6,7 @@ namespace EdgeGateway.WinForms;
 public sealed partial class MainForm
 {
     private TabControl _databaseTabs = null!;
-    private DataGridView _databaseGrid = null!, _databaseGroupGrid = null!;
+    private GatewayTable _databaseGrid = null!, _databaseGroupGrid = null!;
     private Label _databaseState = null!;
     private DatabasePageView _databasePageView = null!;
     private AcquisitionSpoolStatistics? _databaseSpool;
@@ -81,7 +81,7 @@ public sealed partial class MainForm
         // Publish the complete text once. Clearing the statistics line before the
         // await used to shrink and expand the AutoSize row on every timer tick.
         if (_databaseState.Text != description) _databaseState.Text = description;
-        foreach (DataGridViewRow row in _databaseGrid.Rows) if (row.DataBoundItem is DatabaseConnectionRow data) row.Cells["Error"].ToolTipText = data.Error;
+        foreach (GatewayTableRow row in _databaseGrid.Rows) if (row.DataBoundItem is DatabaseConnectionRow data) row.Cells["Error"].ToolTipText = data.Error;
     }
 
     private string? DatabasePointReferenceWarning(IEnumerable<TagConfiguration> points)

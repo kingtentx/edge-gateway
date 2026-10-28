@@ -45,6 +45,9 @@ public sealed partial class MainForm
                 SaveEditorScreenshot(editor, "menus", "scanning-form");
             }
         }, "official keyboard menu captured identity");
+        var completed = System.Diagnostics.Stopwatch.StartNew();
+        while (_deviceMore.IsExecuting && completed.Elapsed < TimeSpan.FromSeconds(5)) await Task.Delay(20);
+        if (_deviceMore.IsExecuting) throw new InvalidOperationException("Device menu did not finish its modal command.");
         RebindConfigurationViews(target.Id);
         _deviceSearch.Text = "no-device-menu-check";
         OpenMenuForSmoke(_deviceMore, "disabled menu");

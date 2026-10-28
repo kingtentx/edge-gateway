@@ -12,7 +12,7 @@ public partial class EditorDialog
     private FlowLayoutPanel _buttons = null!;
     private Label _title = null!;
     private Label _description = null!;
-    private LinkLabel _help = null!;
+    private GatewayButton _help = null!;
     private AntdUI.Button _confirm = null!;
     private AntdUI.Button _cancel = null!;
     private EditorFeedback _feedback = null!;
@@ -63,15 +63,12 @@ public partial class EditorDialog
         _description.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _description.Margin = new Padding(0, 4, 0, 4);
         _description.Name = "EditorHeadingDescription";
-        _help = new LinkLabel();
+        _help = new GatewayButton();
         _help.Name = "EditorHelp";
         _help.Text = "查看说明";
         _help.AutoSize = true;
         _help.Visible = false;
         _help.TabStop = true;
-        _help.LinkColor = UiTheme.Blue;
-        _help.ActiveLinkColor = UiTheme.Blue;
-        _help.LinkBehavior = LinkBehavior.HoverUnderline;
         _help.Anchor = AnchorStyles.Right;
         _help.Margin = new Padding(12, 8, 0, 0);
         Tabs = new EditorLayout.EditorTabs();
@@ -145,7 +142,6 @@ public partial class EditorDialog
         _titleRow.Controls.Add(_help, 1, 0);
         _heading.Controls.Add(_titleRow, 0, 0);
         _heading.Controls.Add(_description, 0, 1);
-        _buttons.Paint += OnActionsPaint;
         _layout.Controls.Add(_heading, 0, 0);
         _layout.Controls.Add(Tabs, 0, 1);
         _layout.Controls.Add(_feedback, 0, 2);

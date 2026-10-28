@@ -184,7 +184,7 @@ public sealed partial class MainForm
     {
         void Rows(params Guid[] expected)
         {
-            var actual = _deviceGrid.Rows.Cast<DataGridViewRow>().Select(row => ((DeviceRow)row.DataBoundItem!).Id).ToArray();
+            var actual = _deviceGrid.Rows.Cast<GatewayTableRow>().Select(row => ((DeviceRow)row.DataBoundItem!).Id).ToArray();
             CheckCapability(actual.Length == expected.Length && actual.ToHashSet().SetEquals(expected), "device filter returned unexpected identities.");
             if (expected.Length == 0) CheckCapability(SelectedDevice() is null && _tagGrid.Rows.Count == 0, "empty filter retained a stale selected device or points.");
         }

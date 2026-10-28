@@ -10,7 +10,7 @@ internal sealed partial class DevicesPageView : UserControl
     internal TableLayoutPanel ContentLayout => contentLayout;
     internal Control DeviceToolbarHost => deviceToolbarHost;
     internal Control DeviceFiltersHost => deviceFiltersHost;
-    internal DataGridView DeviceGrid => deviceGrid;
+    internal GatewayTable DeviceGrid => deviceGrid;
     internal AntdUI.Button AddDeviceButton => addDeviceButton;
     internal AntdUI.Button ProbeDeviceButton => probeDeviceButton;
     internal Label DeviceSummary => deviceSummaryLabel;

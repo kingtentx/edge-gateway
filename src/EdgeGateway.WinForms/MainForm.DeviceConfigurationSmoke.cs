@@ -367,7 +367,7 @@ public sealed partial class MainForm
             await CommitConfigurationAsync(fixture, selected.Id, replaceCloudDraft: true);
             ShowPage("devices");
             var column = _deviceGrid.Columns[DeviceConfigurationColumnName];
-            if (column is not DataGridViewLinkColumn { HeaderText: "配置", Text: "配置" }
+            if (column is not GatewayTableLinkColumn { HeaderText: "配置", Text: "配置" }
                 || column.DisplayIndex != 3 || _deviceGrid.Columns[DeviceStartColumnName].DisplayIndex != 1
                 || _deviceGrid.Columns[DeviceStopColumnName].DisplayIndex != 2)
                 throw new InvalidOperationException("Device row commands must immediately follow the device name and retain their Chinese captions.");
@@ -426,7 +426,7 @@ public sealed partial class MainForm
 
     private void AssertSavedDeviceEnabledRowForSmoke(Guid deviceId, bool enabled)
     {
-        var row = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == deviceId);
+        var row = _deviceGrid.Rows.Cast<GatewayTableRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == deviceId);
         if (row.DataBoundItem is not DeviceRow data || data.Enabled != (enabled ? "是" : "否")
             || ((DeviceActionButtonCell)row.Cells[DeviceStartColumnName]).ActionEnabled != enabled
             || _application.IsRunning)
@@ -437,7 +437,7 @@ public sealed partial class MainForm
     {
         if (toolbarEdit) RebindConfigurationViews(target.Id);
         else if (SelectedDevice()?.Id == target.Id) throw new InvalidOperationException("Row-action smoke must start with another device selected.");
-        var row = _deviceGrid.Rows.Cast<DataGridViewRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == target.Id);
+        var row = _deviceGrid.Rows.Cast<GatewayTableRow>().Single(x => x.DataBoundItem is DeviceRow device && device.Id == target.Id);
         var column = _deviceGrid.Columns[doubleClick ? "Name" : DeviceConfigurationColumnName];
         await SmokeDeviceConfigurationModalAsync(
             toolbarEdit ? EditDeviceAsync : () => DeviceGridActionAsync(new DataGridViewCellEventArgs(column.Index, row.Index), doubleClick),
@@ -484,10 +484,17 @@ public sealed partial class MainForm
             finally { dialog.Close(); }
         };
         timer.Start();
-        try { await open(); }
+        try
+        {
+            await open();
+            // AntdUI menus dispatch after their close animation on the UI queue.
+            // Wait for the actual modal result rather than a fixed caller delay.
+            while (confirmed is null && failure is null && elapsed.Elapsed < TimeSpan.FromSeconds(30))
+                await Task.Delay(20);
+        }
         finally { timer.Stop(); }
         if (failure is not null) throw new InvalidOperationException(context + ": unified device configuration failed.", failure);
-        if (!observed || confirmed is null) throw new InvalidOperationException(context + ": expected device dialog was not confirmed.");
+        if (!observed || confirmed is null) throw new InvalidOperationException(context + $": expected device dialog was not confirmed; observed={observed}, elapsed={elapsed.Elapsed}, forms={string.Join(",", System.Windows.Forms.Application.OpenForms.Cast<Form>().Select(f => f.GetType().Name + "/" + f.Visible + "/" + f.Modal))}.");
         return confirmed;
     }
 

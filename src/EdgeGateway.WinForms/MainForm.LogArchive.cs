@@ -19,7 +19,7 @@ public sealed partial class MainForm
     {
         private readonly MainForm _owner;
         private readonly bool _samples;
-        internal readonly DataGridView Grid;
+        internal readonly GatewayTable Grid;
         internal readonly DateTimePicker From, To;
         internal readonly TextBox Keyword, Device, Tag;
         internal readonly ComboBox Level, Quality;

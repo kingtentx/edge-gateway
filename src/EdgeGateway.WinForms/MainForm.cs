@@ -17,7 +17,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly bool _smokeTest;
     private readonly bool _leaveWorkerRunning;
     private readonly NotifyIcon _trayIcon;
-    private readonly ContextMenuStrip _trayMenu;
+    private Form? _trayMenu;
     private readonly Icon _applicationIcon;
     private bool _exitRequested;
     private readonly bool _layoutMatrix;
@@ -41,7 +41,7 @@ public sealed partial class MainForm : DpiAwareForm
     private Label _runState = null!;
     private Label _savedState = null!;
     private Label _footer = null!;
-    private readonly ToolTip _feedbackTip = new() { AutoPopDelay = 30000, InitialDelay = 350, ReshowDelay = 100 };
+    private readonly AntdUI.TooltipComponent _feedbackTip = new() { Delay = 350 };
     private string _lastFeedback = "就绪";
     private Label _automaticSaveState = null!;
     private string _activePage = "overview";
@@ -89,19 +89,30 @@ public sealed partial class MainForm : DpiAwareForm
         Text = "Edge Gateway · 边缘采集网关";
         _applicationIcon = TrayIconFactory.Create();
         Icon = _applicationIcon;
-        _trayMenu = new ContextMenuStrip();
-        _trayMenu.Items.Add("打开 Edge Gateway", null, (_, _) => RestoreFromTray());
-        _trayMenu.Items.Add("查看采集状态", null, (_, _) => ShowTrayStatus());
-        _trayMenu.Items.Add(new ToolStripSeparator());
-        _trayMenu.Items.Add("退出网关", null, (_, _) => ExitFromTray());
         _trayIcon = new NotifyIcon
         {
             Icon = _applicationIcon,
             Text = "Edge Gateway · 边缘采集网关",
-            ContextMenuStrip = _trayMenu,
             Visible = true
         };
         _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
+        _trayIcon.MouseClick += (_, e) =>
+        {
+            if (e.Button != MouseButtons.Right) return;
+            _trayMenu?.Close();
+            _trayMenu = AntdUI.ContextMenuStrip.open(this, _trayIcon, item =>
+            {
+                if (item is not AntdUI.ContextMenuStripItem command) return;
+                switch (command.ID)
+                {
+                    case "open": RestoreFromTray(); break;
+                    case "status": ShowTrayStatus(); break;
+                    case "exit": ExitFromTray(); break;
+                }
+            }, [new AntdUI.ContextMenuStripItem("打开 Edge Gateway") { ID = "open" },
+                new AntdUI.ContextMenuStripItem("查看采集状态") { ID = "status" },
+                new AntdUI.ContextMenuStripItemDivider(), new AntdUI.ContextMenuStripItem("退出网关") { ID = "exit" }]);
+        };
         Font = new Font("Microsoft YaHei UI", 10F);
         ForeColor = UiTheme.Ink;
         BackColor = UiTheme.Background;
@@ -120,7 +131,7 @@ public sealed partial class MainForm : DpiAwareForm
         InitializeComponent();
 
         navigationApplicationIcon.Image = _applicationIcon.ToBitmap();
-        _feedbackTip.SetToolTip(collapseNavigationButton, "收起导航菜单");
+        _feedbackTip.SetTip(collapseNavigationButton, "收起导航菜单");
         var shell = applicationShell;
         var navigationViewport = navigationViewportPanel;
         var sidebar = navigationContentPanel;
@@ -202,7 +213,7 @@ public sealed partial class MainForm : DpiAwareForm
                 navigationMenu.SetRailCollapsed(collapsed);
                 brandTitleLabel.Visible = brandCaptionLabel.Visible = !collapsed;
                 navigationBrandPanel.Visible = !collapsed;
-                _feedbackTip.SetToolTip(collapseNavigationButton, collapsed ? "展开导航菜单" : "收起导航菜单");
+                _feedbackTip.SetTip(collapseNavigationButton, collapsed ? "展开导航菜单" : "收起导航菜单");
                 collapseNavigationButton.AccessibleName = collapsed ? "展开导航菜单" : "收起导航菜单";
                 ArrangeShell();
             }
@@ -727,7 +738,7 @@ public sealed partial class MainForm : DpiAwareForm
         _lastFeedback = message;
         if (_pointsDialog is { Visible: true }) _pointsDialog.SetFeedback(message);
         _footer.Text = DateTime.Now.ToString("HH:mm:ss") + "  ·  " + message.Replace('\n', ' ');
-        _feedbackTip.SetToolTip(_footer, message + "\n点击查看完整说明");
+        _feedbackTip.SetTip(_footer, message + "\n点击查看完整说明");
         _footer.ForeColor = message.Contains("失败", StringComparison.Ordinal) ? UiTheme.Red : UiTheme.Muted;
     }
     private void ShowError(string message)

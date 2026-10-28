@@ -1,4 +1,4 @@
-namespace EdgeGateway.WinForms;
+﻿namespace EdgeGateway.WinForms;
 
 internal sealed partial class ConfigurationCatalogDialog
 {
@@ -6,8 +6,8 @@ internal sealed partial class ConfigurationCatalogDialog
     private Label titleLabel = null!, statusLabel = null!;
     private FlowLayoutPanel toolbar = null!, footer = null!;
     internal GatewayButton addButton = null!, editButton = null!, deleteButton = null!, closeButton = null!;
-    internal DpiDataGridView catalogGrid = null!;
-    private DataGridViewTextBoxColumn nameColumn = null!, countColumn = null!, detailsColumn = null!;
+    internal GatewayTable catalogGrid = null!;
+    private GatewayTableColumn nameColumn = null!, countColumn = null!, detailsColumn = null!;
 
     private AntdUI.Pagination catalogGridPagination = null!;
     private Label catalogGridPaginationTotal = null!;
@@ -25,10 +25,10 @@ internal sealed partial class ConfigurationCatalogDialog
         editButton = new GatewayButton();
         deleteButton = new GatewayButton();
         closeButton = new GatewayButton();
-        catalogGrid = new DpiDataGridView();
-        nameColumn = new DataGridViewTextBoxColumn();
-        countColumn = new DataGridViewTextBoxColumn();
-        detailsColumn = new DataGridViewTextBoxColumn();
+        catalogGrid = new GatewayTable();
+        nameColumn = new GatewayTableColumn();
+        countColumn = new GatewayTableColumn();
+        detailsColumn = new GatewayTableColumn();
         SuspendLayout();
         Font = new Font("Microsoft YaHei UI", 10F);
         BackColor = UiTheme.Background;
@@ -161,6 +161,7 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPaginationTotal.AutoSize = true;
         catalogGridPaginationTotal.Dock = DockStyle.Fill;
         catalogGridPaginationTotal.TextAlign = ContentAlignment.MiddleLeft;
+        catalogGridPaginationTotal.AutoSizeMode = AntdUI.TAutoSize.Width;
         catalogGridPaginationTotal.Margin = new Padding(0, 0, 16, 0);
         catalogGridPaginationSize = new ComboBox();
         catalogGridPaginationSize.Name = "catalogGridPaginationSize";

@@ -5,7 +5,7 @@ namespace EdgeGateway.WinForms;
 /// <summary>Pages a complete UI snapshot without changing query/export or command targets.</summary>
 internal sealed class GridPagination
 {
-    private static readonly ConditionalWeakTable<DataGridView, GridPagination> Bindings = new();
+    private static readonly ConditionalWeakTable<GatewayTable, GridPagination> Bindings = new();
     private readonly AntdUI.Pagination _pagination;
     private readonly Label _total;
     private readonly ComboBox _size;
@@ -37,10 +37,10 @@ internal sealed class GridPagination
         }));
     }
 
-    internal static void Attach(DataGridView grid, AntdUI.Pagination pagination, Label total, ComboBox size)
+    internal static void Attach(GatewayTable grid, AntdUI.Pagination pagination, Label total, ComboBox size)
         => Bindings.Add(grid, new GridPagination(pagination, total, size));
 
-    internal static AntdUI.Pagination GetPager(DataGridView grid) => Bindings.GetValue(grid,
+    internal static AntdUI.Pagination GetPager(GatewayTable grid) => Bindings.GetValue(grid,
         _ => throw new InvalidOperationException("Grid has no pagination binding."))._pagination;
 
     private void ArrangeFooter()
@@ -61,7 +61,7 @@ internal sealed class GridPagination
         finally { _arranging = false; }
     }
 
-    internal static bool Bind<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key,
+    internal static bool Bind<T>(GatewayTable grid, IReadOnlyList<T> rows, Func<T, object?> key,
         object? preferredKey, bool update)
     {
         if (!Bindings.TryGetValue(grid, out var binding)) return false;
@@ -69,7 +69,7 @@ internal sealed class GridPagination
         return true;
     }
 
-    private void SetRows<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key,
+    private void SetRows<T>(GatewayTable grid, IReadOnlyList<T> rows, Func<T, object?> key,
         object? preferredKey, bool update)
     {
         void Render(object? preferred = null)

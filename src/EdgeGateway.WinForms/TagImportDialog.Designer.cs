@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -16,18 +16,18 @@ internal sealed partial class TagImportDialog
     private InputFrame _modeSurface = null!;
     private Label _summary = null!;
     private Label fieldsSection3 = null!;
-    private DpiDataGridView _preview = null!;
-    private DataGridViewTextBoxColumn _previewColumnChange = null!;
-    private DataGridViewTextBoxColumn _previewColumnName = null!;
-    private DataGridViewTextBoxColumn _previewColumnAddress = null!;
-    private DataGridViewTextBoxColumn _previewColumnDataType = null!;
-    private DataGridViewTextBoxColumn _previewColumnEnabled = null!;
-    private DataGridViewTextBoxColumn _previewColumnUpload = null!;
-    private DataGridViewTextBoxColumn _previewColumnMethod = null!;
-    private DataGridViewTextBoxColumn _previewColumnScaling = null!;
-    private DataGridViewTextBoxColumn _previewColumnExpression = null!;
-    private DataGridViewTextBoxColumn _previewColumnScanInterval = null!;
-    private DataGridViewTextBoxColumn _previewColumnDeadband = null!;
+    private GatewayTable _preview = null!;
+    private GatewayTableColumn _previewColumnChange = null!;
+    private GatewayTableColumn _previewColumnName = null!;
+    private GatewayTableColumn _previewColumnAddress = null!;
+    private GatewayTableColumn _previewColumnDataType = null!;
+    private GatewayTableColumn _previewColumnEnabled = null!;
+    private GatewayTableColumn _previewColumnUpload = null!;
+    private GatewayTableColumn _previewColumnMethod = null!;
+    private GatewayTableColumn _previewColumnScaling = null!;
+    private GatewayTableColumn _previewColumnExpression = null!;
+    private GatewayTableColumn _previewColumnScanInterval = null!;
+    private GatewayTableColumn _previewColumnDeadband = null!;
     private Label fieldsSection4 = null!;
     private GatewayInput _errors = null!;
     private Label fieldsHint5 = null!;
@@ -151,7 +151,7 @@ internal sealed partial class TagImportDialog
         fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         fields.Controls.Add(fieldsSection3, 0, 4);
         fields.SetColumnSpan(fieldsSection3, 2);
-        _preview = new DpiDataGridView();
+        _preview = new GatewayTable();
         _preview.Name = "_preview";
         _preview.Dock = DockStyle.Fill;
         _preview.BackgroundColor = Color.White;
@@ -179,7 +179,7 @@ internal sealed partial class TagImportDialog
         _preview.Name = "TagImportPreview";
         _preview.Dock = DockStyle.Top;
         _preview.Height = 250;
-        _previewColumnChange = new DataGridViewTextBoxColumn();
+        _previewColumnChange = new GatewayTableColumn();
         _previewColumnChange.Name = "_previewColumnChange";
         _previewColumnChange.DataPropertyName = "Change";
         _previewColumnChange.HeaderText = "变更";
@@ -188,7 +188,7 @@ internal sealed partial class TagImportDialog
         _previewColumnChange.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnChange.Name = "Change";
         _preview.Columns.Add(_previewColumnChange);
-        _previewColumnName = new DataGridViewTextBoxColumn();
+        _previewColumnName = new GatewayTableColumn();
         _previewColumnName.Name = "_previewColumnName";
         _previewColumnName.DataPropertyName = "Name";
         _previewColumnName.HeaderText = "点位名称";
@@ -197,7 +197,7 @@ internal sealed partial class TagImportDialog
         _previewColumnName.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnName.Name = "Name";
         _preview.Columns.Add(_previewColumnName);
-        _previewColumnAddress = new DataGridViewTextBoxColumn();
+        _previewColumnAddress = new GatewayTableColumn();
         _previewColumnAddress.Name = "_previewColumnAddress";
         _previewColumnAddress.DataPropertyName = "Address";
         _previewColumnAddress.HeaderText = "地址";
@@ -206,7 +206,7 @@ internal sealed partial class TagImportDialog
         _previewColumnAddress.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnAddress.Name = "Address";
         _preview.Columns.Add(_previewColumnAddress);
-        _previewColumnDataType = new DataGridViewTextBoxColumn();
+        _previewColumnDataType = new GatewayTableColumn();
         _previewColumnDataType.Name = "_previewColumnDataType";
         _previewColumnDataType.DataPropertyName = "DataType";
         _previewColumnDataType.HeaderText = "类型";
@@ -215,7 +215,7 @@ internal sealed partial class TagImportDialog
         _previewColumnDataType.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnDataType.Name = "DataType";
         _preview.Columns.Add(_previewColumnDataType);
-        _previewColumnEnabled = new DataGridViewTextBoxColumn();
+        _previewColumnEnabled = new GatewayTableColumn();
         _previewColumnEnabled.Name = "_previewColumnEnabled";
         _previewColumnEnabled.DataPropertyName = "Enabled";
         _previewColumnEnabled.HeaderText = "采集";
@@ -224,7 +224,7 @@ internal sealed partial class TagImportDialog
         _previewColumnEnabled.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnEnabled.Name = "Enabled";
         _preview.Columns.Add(_previewColumnEnabled);
-        _previewColumnUpload = new DataGridViewTextBoxColumn();
+        _previewColumnUpload = new GatewayTableColumn();
         _previewColumnUpload.Name = "_previewColumnUpload";
         _previewColumnUpload.DataPropertyName = "Upload";
         _previewColumnUpload.HeaderText = "上传";
@@ -233,7 +233,7 @@ internal sealed partial class TagImportDialog
         _previewColumnUpload.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnUpload.Name = "Upload";
         _preview.Columns.Add(_previewColumnUpload);
-        _previewColumnMethod = new DataGridViewTextBoxColumn();
+        _previewColumnMethod = new GatewayTableColumn();
         _previewColumnMethod.Name = "_previewColumnMethod";
         _previewColumnMethod.DataPropertyName = "Method";
         _previewColumnMethod.HeaderText = "读取方法";
@@ -242,7 +242,7 @@ internal sealed partial class TagImportDialog
         _previewColumnMethod.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnMethod.Name = "Method";
         _preview.Columns.Add(_previewColumnMethod);
-        _previewColumnScaling = new DataGridViewTextBoxColumn();
+        _previewColumnScaling = new GatewayTableColumn();
         _previewColumnScaling.Name = "_previewColumnScaling";
         _previewColumnScaling.DataPropertyName = "Scaling";
         _previewColumnScaling.HeaderText = "换算";
@@ -251,7 +251,7 @@ internal sealed partial class TagImportDialog
         _previewColumnScaling.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnScaling.Name = "Scaling";
         _preview.Columns.Add(_previewColumnScaling);
-        _previewColumnExpression = new DataGridViewTextBoxColumn();
+        _previewColumnExpression = new GatewayTableColumn();
         _previewColumnExpression.Name = "_previewColumnExpression";
         _previewColumnExpression.DataPropertyName = "Expression";
         _previewColumnExpression.HeaderText = "计算表达式";
@@ -260,7 +260,7 @@ internal sealed partial class TagImportDialog
         _previewColumnExpression.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnExpression.Name = "Expression";
         _preview.Columns.Add(_previewColumnExpression);
-        _previewColumnScanInterval = new DataGridViewTextBoxColumn();
+        _previewColumnScanInterval = new GatewayTableColumn();
         _previewColumnScanInterval.Name = "_previewColumnScanInterval";
         _previewColumnScanInterval.DataPropertyName = "ScanInterval";
         _previewColumnScanInterval.HeaderText = "扫描周期";
@@ -269,7 +269,7 @@ internal sealed partial class TagImportDialog
         _previewColumnScanInterval.SortMode = DataGridViewColumnSortMode.NotSortable;
         _previewColumnScanInterval.Name = "ScanInterval";
         _preview.Columns.Add(_previewColumnScanInterval);
-        _previewColumnDeadband = new DataGridViewTextBoxColumn();
+        _previewColumnDeadband = new GatewayTableColumn();
         _previewColumnDeadband.Name = "_previewColumnDeadband";
         _previewColumnDeadband.DataPropertyName = "Deadband";
         _previewColumnDeadband.HeaderText = "上报死区";
@@ -314,6 +314,7 @@ internal sealed partial class TagImportDialog
         _previewPaginationTotal.AutoSize = true;
         _previewPaginationTotal.Dock = DockStyle.Fill;
         _previewPaginationTotal.TextAlign = ContentAlignment.MiddleLeft;
+        _previewPaginationTotal.AutoSizeMode = AntdUI.TAutoSize.Width;
         _previewPaginationTotal.Margin = new Padding(0, 0, 16, 0);
         _previewPaginationSize = new ComboBox();
         _previewPaginationSize.Name = "_previewPaginationSize";

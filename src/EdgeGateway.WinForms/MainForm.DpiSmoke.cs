@@ -1,4 +1,4 @@
-using EdgeGateway.Model;
+﻿using EdgeGateway.Model;
 using EdgeGateway.Application;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -258,7 +258,7 @@ public sealed partial class MainForm
             {
                 FitSmokeDialog(editor, area); VerifyEditorLayout(editor, result.Name + " database connection");
                 foreach (var input in editor.SmokeInputs) BringIntoViewAndAssert(input, result.Name + " database " + input.Name);
-                foreach (var button in Descendants(editor).OfType<Button>()) BringIntoViewAndAssert(button, result.Name + " database connection command");
+                foreach (var button in Descendants(editor).OfType<Button>().Where(button => button.Name is not ("EditorHelp" or "EditorValidationLocate") || button.Visible)) BringIntoViewAndAssert(button, result.Name + " database connection command");
                 result.DatabaseConnectionMetrics = editor.SmokeInputs.Select(ControlMetric.From).ToList();
                 result.CheckedDialogs.Add("DatabaseConnectionDialog");
             }
@@ -278,7 +278,7 @@ public sealed partial class MainForm
                 // The switch-to-custom button only exists visually in standard mode.
                 // Visit that mode before checking every command, then restore the mapping fixture.
                 editor.SelectModeForSmoke(DatabaseStorageMode.PointRows);
-                foreach (var button in Descendants(editor).OfType<Button>()) BringIntoViewAndAssert(button, result.Name + " database write-group command");
+                foreach (var button in Descendants(editor).OfType<Button>().Where(button => button.Name is not ("EditorHelp" or "EditorValidationLocate") || button.Visible)) BringIntoViewAndAssert(button, result.Name + " database write-group command");
                 editor.SelectModeForSmoke(group.Mode);
                 VerifyDatabasePointSelectionForSmoke(editor, result.Name + " database point selection");
                 result.DatabasePointSelectionVerified = true;
@@ -355,7 +355,7 @@ public sealed partial class MainForm
     {
         var cards = Descendants(_pages["overview"]).Where(x => x.Name.StartsWith("OverviewCard_", StringComparison.Ordinal)).ToArray();
         if (cards.Length != 4) throw new InvalidOperationException("Overview must retain all four live status cards.");
-        if (Descendants(_pages["overview"]).OfType<DataGridView>().Any())
+        if (Descendants(_pages["overview"]).OfType<GatewayTable>().Any())
             throw new InvalidOperationException("Overview must contain device summaries, not device lists.");
         for (var i = 0; i < cards.Length; i++)
         {
@@ -381,7 +381,7 @@ public sealed partial class MainForm
         var grid = _tagGrid;
         var state = GridViewState.Capture(grid, item => ((TagRow)item).Id);
         var priorCell = grid.CurrentCell;
-        var selectedRows = grid.SelectedRows.Cast<DataGridViewRow>().ToArray();
+        var selectedRows = grid.SelectedRows.Cast<GatewayTableRow>().ToArray();
         var priorFocus = Descendants(this).FirstOrDefault(control => control.Focused);
         var viewports = new List<(ScrollableControl Viewport, Point Position)>();
         for (var parent = grid.Parent; parent is not null; parent = parent.Parent)
@@ -399,7 +399,7 @@ public sealed partial class MainForm
                 && ClientSize.Height >= UiTheme.Scale(this, 680))
                 AssertCellVisible(first, requireFocus: false, "initial viewport without outer scrolling");
 
-            var lastColumn = grid.Columns.Cast<DataGridViewColumn>().Where(column => column.Visible)
+            var lastColumn = grid.Columns.Cast<GatewayTableColumn>().Where(column => column.Visible)
                 .MaxBy(column => column.DisplayIndex)!;
             var last = grid.Rows[grid.Rows.Count - 1].Cells[lastColumn.Index];
             foreach (var cell in new[] { first, last }.Distinct())
@@ -453,14 +453,14 @@ public sealed partial class MainForm
             if (priorCell is null) grid.CurrentCell = null;
             grid.ClearSelection();
             foreach (var row in selectedRows)
-                if (ReferenceEquals(row.DataGridView, grid)) row.Selected = true;
+                if (ReferenceEquals(row.GatewayTable, grid)) row.Selected = true;
             foreach (var (scroll, position) in viewports.AsEnumerable().Reverse())
                 scroll.AutoScrollPosition = position;
             PerformLayoutRecursively(this);
             if (openedHere) _pointsDialog.Hide();
         }
 
-        void AssertCellVisible(DataGridViewCell cell, bool requireFocus, string phase)
+        void AssertCellVisible(GatewayTableCell cell, bool requireFocus, string phase)
         {
             var bounds = grid.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, false);
             var clipped = grid.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, true);

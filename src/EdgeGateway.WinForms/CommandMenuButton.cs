@@ -33,6 +33,7 @@ internal sealed class CommandMenuButton : ModernButton
 
     internal Form OpenedMenu => _menu ?? throw new InvalidOperationException("Menu has not been opened.");
     internal IReadOnlyList<MenuCommand> OpenedCommands => _openedCommands;
+    internal bool IsExecuting => _executing;
     internal IReadOnlyList<AntdUI.ContextMenuStripItem> OpenedItems => _openedItems;
     internal void OpenByKeyboardForSmoke()
     {

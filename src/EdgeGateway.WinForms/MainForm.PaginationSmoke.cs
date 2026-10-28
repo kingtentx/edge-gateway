@@ -1,4 +1,4 @@
-using EdgeGateway.Model;
+﻿using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
 
@@ -9,7 +9,7 @@ public sealed partial class MainForm
         if (!_smokeTest || _application.IsRunning) throw new InvalidOperationException("Pagination requires an isolated stopped host.");
         _refreshTimer.Stop();
         var original = Clone(_configuration);
-        static AntdUI.Pagination Pager(DataGridView grid) => GridPagination.GetPager(grid);
+        static AntdUI.Pagination Pager(GatewayTable grid) => GridPagination.GetPager(grid);
         static void Require(bool condition, string message)
         { if (!condition) throw new InvalidOperationException(message); }
         try
@@ -52,10 +52,10 @@ public sealed partial class MainForm
             var realtimePager = Pager(_realtimeGrid);
             realtimePager.Current = 2;
             var source = _realtimeGrid.DataSource;
-            var selected = ((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem).Sample.TagId;
+            var selected = ((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem!).Sample.TagId;
             RefreshRealtime(samples.Select(s => s with { Value = 99, Timestamp = now.AddSeconds(1) }).ToArray());
             Require(realtimePager.Current == 2 && ReferenceEquals(source, _realtimeGrid.DataSource)
-                && ((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem).Sample.TagId == selected,
+                && ((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem!).Sample.TagId == selected,
                 "Realtime refresh lost page, source or selected ID.");
             SaveEditorScreenshot(this, "pagination", "realtime-page2");
             ShowPage("history");
@@ -78,7 +78,7 @@ public sealed partial class MainForm
             var pageButtons = (Array)typeof(AntdUI.Pagination).GetField("buttons",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(historyPager)!;
             Require(historyPager.PageTotal == 50 && pageButtons.Length <= 10
-                && ((SampleRow)_historyGrid.Rows[0].DataBoundItem).Sample.Timestamp == longHistory[110].Timestamp,
+                && ((SampleRow)_historyGrid.Rows[0].DataBoundItem!).Sample.Timestamp == longHistory[110].Timestamp,
                 "Long-list pagination expanded beyond eight page slots or selected the wrong data.");
             SaveEditorScreenshot(this, "pagination", "history-50-pages-compact");
             PresentHistoryResults(null, "分页验证", device.Name, "全部点位",
