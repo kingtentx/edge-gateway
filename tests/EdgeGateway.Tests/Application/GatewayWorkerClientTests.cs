@@ -66,7 +66,7 @@ public sealed class GatewayWorkerClientTests
         var query = new HistoryQuery(sample.DeviceId, sample.TagId, time.AddMinutes(-1), time, 20);
         var result = await server.CreateProxy<IGatewayApplication>().QuerySampleLogHistoryAsync(query, 16);
         var read = Assert.Single(result.Samples);
-        Assert.Equal(long.MaxValue, Assert.IsType<JsonElement>(read.RawValue).GetInt64());
+        Assert.Equal(long.MaxValue, Assert.IsType<long>(read.RawValue));
         Assert.Null(read.Value); Assert.Equal(SampleQuality.Bad, read.Quality);
         Assert.Equal(time, read.Timestamp); Assert.Equal("超时", read.Error);
         Assert.True(result.IsPartial); Assert.Equal(snapshot.Warnings, result.Warnings);
