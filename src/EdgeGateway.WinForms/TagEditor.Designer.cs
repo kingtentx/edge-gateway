@@ -229,7 +229,7 @@ internal sealed partial class TagEditor
         _addressSurface.TabIndex = 3;
         _address.Dock = DockStyle.None;
         _address.Margin = Padding.Empty;
-        _addressSurface.ContentWidth = 560;
+        _addressSurface.ContentWidth = 400;
         _addressSurface.Controls.Add(_address);
         _basic.Controls.Add(_addressSurface, 1, 3);
         _type = new ComboBox();
@@ -633,7 +633,7 @@ internal sealed partial class TagEditor
         _scaleSurface.TabIndex = 2;
         _scale.Dock = DockStyle.None;
         _scale.Margin = Padding.Empty;
-        _scaleSurface.ContentWidth = 200;
+        _scaleSurface.ContentWidth = 240;
         _scaleSurface.Controls.Add(_scale);
         calculation.Controls.Add(_scaleSurface, 1, 2);
         _offset = new GatewayInput();
@@ -666,7 +666,7 @@ internal sealed partial class TagEditor
         _offsetSurface.TabIndex = 3;
         _offset.Dock = DockStyle.None;
         _offset.Margin = Padding.Empty;
-        _offsetSurface.ContentWidth = 200;
+        _offsetSurface.ContentWidth = 240;
         _offsetSurface.Controls.Add(_offset);
         calculation.Controls.Add(_offsetSurface, 1, 3);
         _expression = new GatewayInput();
@@ -699,7 +699,7 @@ internal sealed partial class TagEditor
         _expressionSurface.TabIndex = 4;
         _expression.Dock = DockStyle.None;
         _expression.Margin = Padding.Empty;
-        _expressionSurface.ContentWidth = 560;
+        _expressionSurface.ContentWidth = 400;
         _expressionSurface.Controls.Add(_expression);
         calculation.Controls.Add(_expressionSurface, 1, 4);
         _expression.MaxLength = 512;
@@ -861,7 +861,7 @@ internal sealed partial class TagEditor
         _lowSurface.TabIndex = 11;
         _low.Dock = DockStyle.None;
         _low.Margin = Padding.Empty;
-        _lowSurface.ContentWidth = 200;
+        _lowSurface.ContentWidth = 240;
         _lowSurface.Controls.Add(_low);
         calculation.Controls.Add(_lowSurface, 1, 11);
         _high = new GatewayInput();
@@ -894,7 +894,7 @@ internal sealed partial class TagEditor
         _highSurface.TabIndex = 12;
         _high.Dock = DockStyle.None;
         _high.Margin = Padding.Empty;
-        _highSurface.ContentWidth = 200;
+        _highSurface.ContentWidth = 240;
         _highSurface.Controls.Add(_high);
         calculation.Controls.Add(_highSurface, 1, 12);
         _description = new GatewayInput();
@@ -1050,7 +1050,7 @@ internal sealed partial class TagEditor
         _deadbandSurface.TabIndex = 2;
         _deadband.Dock = DockStyle.None;
         _deadband.Margin = Padding.Empty;
-        _deadbandSurface.ContentWidth = 200;
+        _deadbandSurface.ContentWidth = 240;
         _deadbandSurface.Controls.Add(_deadband);
         reporting.Controls.Add(_deadbandSurface, 1, 2);
         reportingHint13 = new Label();

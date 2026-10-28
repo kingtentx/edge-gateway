@@ -134,7 +134,7 @@ public sealed partial class MainForm
         var id = SelectedDevice()?.Id;
         bool Target() => CanEdit() && id.HasValue && _configuration.Devices.Any(d => d.Id == id);
         return [
-            new("ConfigureDevice", "配置所选设备  F2", () => id.HasValue ? ConfigureDeviceAsync(id.Value) : Task.CompletedTask, Target, "请先选择设备"),
+            new("ConfigureDevice", "配置所选设备", () => id.HasValue ? ConfigureDeviceAsync(id.Value) : Task.CompletedTask, Target, "请先选择设备", Shortcut: "F2"),
             new("CopyDevice", "复制所选设备", () => CopyDeviceAsync(id), Target, "请先选择设备"),
             new("ImportDevices", "追加导入设备 JSON…", () => RunBusyAsync(ImportDevicesAsync), CanEdit, SeparateBefore: true),
             new("ExportConfiguration", "导出网关配置…", () => RunBusyAsync(ExportConfigurationAsync), CanEdit),
@@ -569,12 +569,20 @@ public sealed partial class MainForm
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
             graphics.FillPath(fill, path);
             graphics.SmoothingMode = smoothing;
-            // GDI+ preserves the alpha in AntdUI's disabled foreground token.
-            using var textBrush = new SolidBrush(foreground);
-            using var textFormat = new StringFormat { Alignment = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
-            graphics.DrawString(formattedValue?.ToString() ?? "", cellStyle.Font ?? DataGridView.Font,
-                textBrush, bounds, textFormat);
+            // Match the grid's GDI text metrics. GDI+ line spacing placed these short
+            // captions above the visual center at high DPI. Flatten alpha explicitly
+            // because TextRenderer does not composite AntdUI's disabled text token.
+            static Color Blend(Color color, Color under) => Color.FromArgb(
+                (color.R * color.A + under.R * (255 - color.A)) / 255,
+                (color.G * color.A + under.G * (255 - color.A)) / 255,
+                (color.B * color.A + under.B * (255 - color.A)) / 255);
+            var cellBackground = (elementState & DataGridViewElementStates.Selected) != 0
+                ? cellStyle.SelectionBackColor : cellStyle.BackColor;
+            var textColor = Blend(foreground, Blend(background, cellBackground));
+            TextRenderer.DrawText(graphics, formattedValue?.ToString() ?? "", cellStyle.Font ?? DataGridView.Font,
+                bounds, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter
+                | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding
+                | TextFormatFlags.PreserveGraphicsClipping);
             if (focused)
                 ControlPaint.DrawFocusRectangle(graphics, Rectangle.Inflate(bounds, -2, -2), foreground, background);
         }

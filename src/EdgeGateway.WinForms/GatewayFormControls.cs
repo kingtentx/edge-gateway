@@ -59,7 +59,7 @@ public class GatewaySelect : AntdUI.Select
     }
     public GatewaySelect()
     {
-        List = true; ListAutoWidth = true; MaxCount = 8;
+        List = true; ListAutoWidth = false; MaxCount = 8;
         Radius = 6; Height = 38; BorderWidth = 1; BorderColor = UiTheme.Border;
         base.ExpandDropChanged += (_, e) => { if (e.Value) DropDown?.Invoke(this, EventArgs.Empty); };
     }

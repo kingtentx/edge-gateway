@@ -53,13 +53,14 @@ public sealed partial class MainForm
             _deviceMore.OpenedMenu.Close();
             _deviceSearch.Clear(); RebindConfigurationViews(a.Id);
             OpenMenuForSmoke(_deviceMore, "device command menu", keyboard: true);
-            var configure = MenuItem(_deviceMore, "ConfigureDevice"); configure.Select();
-            CheckUsability(configure.Selected && configure.Enabled, "native menu item cannot be selected.");
+            var configure = MenuItem(_deviceMore, "ConfigureDevice");
+            SendMenuKeyForSmoke(_deviceMore, Keys.Down);
+            CheckUsability(configure.Enabled, "menu command is unavailable.");
             SaveUsabilityMenuScreenshot(_deviceMore.OpenedMenu);
             // The open menu owns A's identity even if a background rebind changes
             // selection to B before activation.
             RebindConfigurationViews(b.Id);
-            await SmokeDeviceConfigurationModalAsync(() => { configure.PerformClick(); return Task.CompletedTask; }, editor =>
+            await SmokeDeviceConfigurationModalAsync(() => _deviceMore.ExecuteCommandAsync((MenuCommand)configure.Tag!), editor =>
             {
                 var name = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DeviceConfiguration_Name");
                 CheckUsability(name.Text == a.Name, "an opened menu redirected its target to a later selection.");
@@ -295,8 +296,8 @@ public sealed partial class MainForm
         }
     }
 
-    private static ToolStripMenuItem MenuItem(CommandMenuButton button, string key) =>
-        button.OpenedMenu.Items.OfType<ToolStripMenuItem>().Single(item => item.Name == key);
+    private static AntdUI.ContextMenuStripItem MenuItem(CommandMenuButton button, string key) =>
+        button.OpenedItems.Single(item => item.ID == key);
 
     private static void OpenMenuForSmoke(CommandMenuButton button, string context, bool keyboard = false)
     {
@@ -304,19 +305,16 @@ public sealed partial class MainForm
         if (keyboard) button.OpenByKeyboardForSmoke(); else button.PerformClick();
         var menu = button.OpenedMenu;
         menu.PerformLayout();
-        CheckUsability(menu.Visible && menu.Items.Count > 0 && Screen.FromControl(menu).WorkingArea.Contains(menu.Bounds),
-            context + ": the native menu is not fully visible on its monitor.");
-        foreach (var item in menu.Items.OfType<ToolStripMenuItem>())
-            CheckUsability(item.Available && item.Bounds.Width > 0 && item.Bounds.Height > 0, context + ": a command has no visible item.");
+        var bounds = menu is AntdUI.ILayeredForm layered ? layered.TargetRect : menu.Bounds;
+        CheckUsability(button.ShowArrow && menu.Visible && button.OpenedItems.Count > 0
+            && Screen.FromControl(button).WorkingArea.Contains(bounds), context + ": official menu or arrow is missing/clipped.");
     }
 
-    private void SaveUsabilityMenuScreenshot(ContextMenuStrip menu)
+    private static void SendMenuKeyForSmoke(CommandMenuButton button, Keys key)
     {
-        if (string.IsNullOrWhiteSpace(_smokeScreenshotPath)) return;
-        var path = Path.GetFullPath(_smokeScreenshotPath);
-        var output = Path.Combine(Path.GetDirectoryName(path)!, Path.GetFileNameWithoutExtension(path) + "-usability-menu.png");
-        using var image = new Bitmap(menu.Width, menu.Height);
-        menu.DrawToBitmap(image, menu.ClientRectangle);
-        image.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+        if (button.OpenedMenu is not AntdUI.ILayeredForm layered || layered.KeyCall?.Invoke(key) is not true)
+            throw new InvalidOperationException("Official menu did not handle " + key);
     }
+
+    private void SaveUsabilityMenuScreenshot(Form menu) => SaveEditorScreenshot(menu, "usability", "menu");
 }

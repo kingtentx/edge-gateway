@@ -1,15 +1,17 @@
 namespace EdgeGateway.WinForms;
 
 internal sealed record MenuCommand(string Key, string Text, Func<Task> Execute, Func<bool> CanExecute,
-    string? DisabledReason = null, bool SeparateBefore = false, bool Dangerous = false);
+    string? DisabledReason = null, bool SeparateBefore = false, bool Dangerous = false, string? Shortcut = null);
 
-/// <summary>A keyboard accessible native menu with actions created for the selected target when it opens.</summary>
+/// <summary>AntdUI menu appearance with commands captured for the target at opening time.</summary>
 internal sealed class CommandMenuButton : ModernButton
 {
     private Func<IReadOnlyList<MenuCommand>> _commands = () => [];
     private Action<Exception> _onError = _ => { };
-    private readonly ContextMenuStrip _menu = new() { ShowImageMargin = false, ShowCheckMargin = false };
+    private Form? _menu;
     private IReadOnlyList<MenuCommand> _openedCommands = [];
+    private AntdUI.ContextMenuStripItem[] _openedItems = [];
+    private bool _executing;
 
     public CommandMenuButton(string text, Func<IReadOnlyList<MenuCommand>> commands, Action<Exception> onError) : this()
     {
@@ -24,14 +26,14 @@ internal sealed class CommandMenuButton : ModernButton
     {
         AutoSize = true; MinimumSize = new Size(100, UiTheme.ActionHeight); Height = UiTheme.ActionHeight;
         Padding = new Padding(13, 6, 13, 6); Margin = new Padding(0, 0, 8, 6);
-        Cursor = Cursors.Hand;
-        _menu.BackColor = Color.White; _menu.ForeColor = UiTheme.Ink;
-        _menu.Renderer = new MenuRenderer();
+        Cursor = Cursors.Hand; ShowArrow = true; IsLink = true;
+        AccessibleDescription = "下拉操作菜单；按 Alt+下箭头打开，方向键选择，Enter 执行，Escape 关闭。";
         Click += (_, _) => OpenMenu();
     }
 
-    internal ContextMenuStrip OpenedMenu => _menu;
+    internal Form OpenedMenu => _menu ?? throw new InvalidOperationException("Menu has not been opened.");
     internal IReadOnlyList<MenuCommand> OpenedCommands => _openedCommands;
+    internal IReadOnlyList<AntdUI.ContextMenuStripItem> OpenedItems => _openedItems;
     internal void OpenByKeyboardForSmoke()
     {
         var message = default(Message);
@@ -41,30 +43,51 @@ internal sealed class CommandMenuButton : ModernButton
 
     internal void OpenMenu()
     {
-        if (!Enabled || !Visible) return;
-        foreach (var old in _menu.Items.Cast<ToolStripItem>().ToArray()) old.Dispose();
-        _menu.Items.Clear(); _menu.Font = Font;
+        if (!Enabled || !Visible || _executing) return;
+        if (_menu is { IsDisposed: false, Visible: true }) { _menu.Close(); return; }
         _openedCommands = _commands();
+        if (_openedCommands.Count == 0) return;
+        var items = new List<AntdUI.IContextMenuStripItem>();
         foreach (var command in _openedCommands)
         {
-            if (command.SeparateBefore && _menu.Items.Count > 0) _menu.Items.Add(new ToolStripSeparator());
-            var item = new ToolStripMenuItem(command.Text)
+            if (command.SeparateBefore && items.Count > 0) items.Add(new AntdUI.ContextMenuStripItemDivider());
+            var enabled = command.CanExecute();
+            items.Add(new AntdUI.ContextMenuStripItem(command.Text)
             {
-                Name = command.Key, Enabled = command.CanExecute(),
-                Padding = UiTheme.Scale(this, new Padding(14, 7, 20, 7)),
-                ForeColor = command.Dangerous ? UiTheme.Red : UiTheme.Ink,
-                ToolTipText = command.CanExecute() ? command.Text : command.DisabledReason ?? "当前状态下不可用"
-            };
-            item.Click += async (_, _) =>
-            {
-                if (!command.CanExecute()) return;
-                try { await command.Execute(); }
-                catch (OperationCanceledException) { }
-                catch (Exception exception) { _onError(exception); }
-            };
-            _menu.Items.Add(item);
+                ID = command.Key, Tag = command, Enabled = enabled,
+                SubText = enabled ? command.Shortcut : (command.DisabledReason ?? "当前状态下不可用").Split('；')[0],
+                Fore = command.Dangerous ? AntdUI.Style.Get(AntdUI.Colour.Error, nameof(AntdUI.Button)) : null
+            });
         }
-        _menu.Show(this, new Point(0, Height));
+        _openedItems = items.OfType<AntdUI.ContextMenuStripItem>().ToArray();
+        _menu = AntdUI.ContextMenuStrip.open(new AntdUI.ContextMenuStrip.Config(this, async item =>
+        {
+            if (item is AntdUI.ContextMenuStripItem { Tag: MenuCommand command }) await ExecuteCommandAsync(command);
+        }, items.ToArray())
+        {
+            Font = Font, Location = PointToScreen(new Point(0, Height)), Align = AntdUI.TAlign.BR,
+            OnClose = () => { if (!IsDisposed) { ArrowProg = -1; Invalidate(); AccessibilityNotifyClients(AccessibleEvents.StateChange, -1); } }
+        });
+        if (_menu is not null)
+        {
+            ArrowProg = 1; Invalidate();
+            _menu.AccessibleName = Text + "操作菜单";
+            AccessibilityNotifyClients(AccessibleEvents.StateChange, -1);
+        }
+    }
+
+    internal async Task ExecuteCommandAsync(MenuCommand command)
+    {
+        if (_executing || IsDisposed || !Enabled || !command.CanExecute()) return;
+        _executing = true;
+        try
+        {
+            if (_menu is { IsDisposed: false }) _menu.Close();
+            await command.Execute();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception) { _onError(exception); }
+        finally { _executing = false; }
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -73,23 +96,34 @@ internal sealed class CommandMenuButton : ModernButton
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
-    protected override void Dispose(bool disposing)
+    // Expose the captured commands through the trigger as well as the painted popup.
+    // Command availability is rechecked on activation, including accessibility actions.
+    protected override AccessibleObject CreateAccessibilityInstance() => new MenuAccessibleObject(this);
+    private sealed class MenuAccessibleObject(CommandMenuButton owner) : ControlAccessibleObject(owner)
     {
-        if (disposing) _menu.Dispose();
-        base.Dispose(disposing);
+        public override AccessibleRole Role => AccessibleRole.ButtonDropDown;
+        public override AccessibleStates State => base.State | AccessibleStates.HasPopup
+            | (owner._menu is { IsDisposed: false, Visible: true } ? AccessibleStates.Expanded : AccessibleStates.Collapsed);
+        public override string DefaultAction => "打开操作菜单";
+        public override void DoDefaultAction() => owner.OpenMenu();
+        public override int GetChildCount() => owner._menu is { IsDisposed: false, Visible: true } ? owner._openedCommands.Count : 0;
+        public override AccessibleObject? GetChild(int index) => index >= 0 && index < GetChildCount()
+            ? new CommandAccessibleObject(owner, owner._openedCommands[index], this) : null;
+    }
+    private sealed class CommandAccessibleObject(CommandMenuButton owner, MenuCommand command, AccessibleObject parent) : AccessibleObject
+    {
+        public override string? Name { get => command.Text; set { } }
+        public override string? Description => command.CanExecute() ? command.Shortcut : command.DisabledReason;
+        public override AccessibleObject Parent => parent;
+        public override AccessibleRole Role => AccessibleRole.MenuItem;
+        public override AccessibleStates State => command.CanExecute() ? AccessibleStates.Focusable : AccessibleStates.Unavailable;
+        public override string DefaultAction => "执行";
+        public override void DoDefaultAction() => _ = owner.ExecuteCommandAsync(command);
     }
 
-    private sealed class MenuRenderer : ToolStripProfessionalRenderer
+    protected override void Dispose(bool disposing)
     {
-        public MenuRenderer() : base(new MenuColors()) { RoundedEdges = false; }
-        private sealed class MenuColors : ProfessionalColorTable
-        {
-            public override Color MenuItemSelected => UiTheme.BlueSoft;
-            public override Color MenuItemBorder => UiTheme.BlueSoft;
-            public override Color MenuBorder => UiTheme.Border;
-            public override Color ToolStripDropDownBackground => Color.White;
-            public override Color SeparatorDark => UiTheme.Border;
-            public override Color SeparatorLight => Color.White;
-        }
+        if (disposing) _menu?.Dispose();
+        base.Dispose(disposing);
     }
 }

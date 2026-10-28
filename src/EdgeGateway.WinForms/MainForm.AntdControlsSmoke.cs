@@ -147,7 +147,7 @@ public sealed partial class MainForm
             var textWidth = ((AntdUI.Select)_deviceGroupFilter).Items.OfType<AntdUI.SelectItem>()
                 .Max(item => TextRenderer.MeasureText(item.Text, popupFont, Size.Empty, TextFormatFlags.NoPadding).Width);
             Console.WriteLine($"Select popup bounds: native={actualBounds}; target={layered.TargetRect}; widestText={textWidth}; render={layered.Print()}.");
-            // ListAutoWidth follows the demo: short choices may be narrower than the input.
+            // Select popups follow the shared input width; long choices remain readable.
             if (actualBounds.Width < textWidth + UiTheme.Scale(this, 16) || actualBounds.Height < UiTheme.Scale(this, 60)
                 || !Screen.FromControl(popup).WorkingArea.Contains(actualBounds) || actualBounds.Size != layered.TargetRect.Size)
                 throw new InvalidOperationException("AntdUI select popup is missing or clipped.");

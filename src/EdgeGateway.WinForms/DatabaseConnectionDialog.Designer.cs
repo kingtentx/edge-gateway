@@ -227,7 +227,7 @@ internal sealed partial class DatabaseConnectionDialog
         _hostSurface.TabIndex = 4;
         _host.Dock = DockStyle.None;
         _host.Margin = Padding.Empty;
-        _hostSurface.ContentWidth = 560;
+        _hostSurface.ContentWidth = 400;
         _hostSurface.Controls.Add(_host);
         connectionFields.Controls.Add(_hostSurface, 1, 4);
         _port = new NumericUpDown();

@@ -28,6 +28,7 @@ public sealed partial class MainForm
             if (!_application.IsDeviceRunning(fixture.Devices[1].Id) || _application.IsDeviceRunning(fixture.Devices[0].Id))
                 throw new InvalidOperationException("Row start targeted the wrong device.");
             await SmokeDefaultButtonStatesAsync();
+            await SmokeCommandMenusAsync();
             foreach (var narrow in new[] { false, true })
             {
                 Size = narrow ? new Size(MinimumSize.Width, originalSize.Height) : originalSize;

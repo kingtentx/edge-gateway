@@ -847,7 +847,7 @@ internal sealed partial class PlatformPageView
         hostInputSurface.Width = 220;
         hostInputSurface.Margin = new Padding(0, 3, 0, 5);
         hostInput.Dock = DockStyle.None;
-        hostInputSurface.ContentWidth = 560;
+        hostInputSurface.ContentWidth = 400;
         hostInputSurface.Controls.Add(hostInput);
         portInputSurface = new InputFrame();
         portInputSurface.Name = "portInputSurface";
@@ -883,7 +883,7 @@ internal sealed partial class PlatformPageView
         accessTokenInputSurface.Width = 220;
         accessTokenInputSurface.Margin = new Padding(0, 3, 0, 5);
         accessTokenInput.Dock = DockStyle.None;
-        accessTokenInputSurface.ContentWidth = 560;
+        accessTokenInputSurface.ContentWidth = 400;
         accessTokenInputSurface.Controls.Add(accessTokenInput);
         passwordInputSurface = new InputFrame();
         passwordInputSurface.Name = "passwordInputSurface";
@@ -898,7 +898,7 @@ internal sealed partial class PlatformPageView
         topicInputSurface.Width = 220;
         topicInputSurface.Margin = new Padding(0, 3, 0, 5);
         topicInput.Dock = DockStyle.None;
-        topicInputSurface.ContentWidth = 560;
+        topicInputSurface.ContentWidth = 400;
         topicInputSurface.Controls.Add(topicInput);
         deviceTypeInputSurface = new InputFrame();
         deviceTypeInputSurface.Name = "deviceTypeInputSurface";
@@ -962,7 +962,7 @@ internal sealed partial class PlatformPageView
         rpcRequestInputSurface.Width = 220;
         rpcRequestInputSurface.Margin = new Padding(0, 3, 0, 5);
         rpcRequestInput.Dock = DockStyle.None;
-        rpcRequestInputSurface.ContentWidth = 560;
+        rpcRequestInputSurface.ContentWidth = 400;
         rpcRequestInputSurface.Controls.Add(rpcRequestInput);
         rpcResponseInputSurface = new InputFrame();
         rpcResponseInputSurface.Name = "rpcResponseInputSurface";
@@ -970,7 +970,7 @@ internal sealed partial class PlatformPageView
         rpcResponseInputSurface.Width = 220;
         rpcResponseInputSurface.Margin = new Padding(0, 3, 0, 5);
         rpcResponseInput.Dock = DockStyle.None;
-        rpcResponseInputSurface.ContentWidth = 560;
+        rpcResponseInputSurface.ContentWidth = 400;
         rpcResponseInputSurface.Controls.Add(rpcResponseInput);
         gatewayIdInputSurface = new InputFrame();
         gatewayIdInputSurface.Name = "gatewayIdInputSurface";

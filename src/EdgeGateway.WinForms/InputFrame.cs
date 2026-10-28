@@ -10,7 +10,7 @@ internal sealed partial class InputFrame : AntdUI.Panel
     private int _textHeight;
     private int _contentWidth;
 
-    /// <summary>Optional logical-pixel width for fields containing longer values; zero uses the editor type.</summary>
+    /// <summary>Optional logical-pixel width for fields containing longer values; zero uses the shared form width.</summary>
     [System.ComponentModel.DefaultValue(0)]
     public int ContentWidth
     {
@@ -24,13 +24,7 @@ internal sealed partial class InputFrame : AntdUI.Panel
         }
     }
 
-    internal int LogicalWidthLimit => ContentWidth > 0 ? ContentWidth : _editor switch
-    {
-        NumericUpDown => 200,
-        DateTimePicker => 240,
-        ComboBox => 320,
-        _ => 360
-    };
+    internal int LogicalWidthLimit => ContentWidth > 0 ? ContentWidth : 240;
 
     public InputFrame()
     {
