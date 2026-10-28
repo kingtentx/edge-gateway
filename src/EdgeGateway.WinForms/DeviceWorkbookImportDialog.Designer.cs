@@ -217,6 +217,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         _previewPagination.Height = 38;
         _previewPagination.RightToLeft = RightToLeft.Yes;
         _previewPagination.ShowSizeChanger = true;
+        _previewPagination.MaxPageTotal = 7;
         _previewPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
         _previewPagination.SizeChangerWidth = 100;
         _preview.Dock = DockStyle.Fill;

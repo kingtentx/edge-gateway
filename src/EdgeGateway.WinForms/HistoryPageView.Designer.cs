@@ -208,6 +208,7 @@ historyGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         historyGridPagination.Height = 38;
         historyGridPagination.RightToLeft = RightToLeft.Yes;
         historyGridPagination.ShowSizeChanger = true;
+        historyGridPagination.MaxPageTotal = 7;
         historyGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
         historyGridPagination.SizeChangerWidth = 100;
         historyGrid.Dock = DockStyle.Fill;

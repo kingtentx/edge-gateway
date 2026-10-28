@@ -67,6 +67,20 @@ public sealed partial class MainForm
             Require(csv.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Length == 24,
                 "History CSV exports only the visible page.");
             SaveEditorScreenshot(this, "pagination", "history-last-page");
+            // A three-page fixture cannot reveal the wide-window page-number expansion.
+            var longHistory = Enumerable.Range(0, 500).Select(i => samples[i % samples.Length] with
+                { Timestamp = now.AddMilliseconds(i) }).ToArray();
+            PresentHistoryResults(null, "分页验证", device.Name, "全部点位",
+                new HistoryQuery(device.Id, null, now.AddMinutes(-1), now.AddMinutes(1), 500), longHistory);
+            var historyPager = Pager(_historyGrid);
+            historyPager.Current = 12;
+            PerformLayoutRecursively(this);
+            var pageButtons = (Array)typeof(AntdUI.Pagination).GetField("buttons",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(historyPager)!;
+            Require(historyPager.PageTotal == 50 && pageButtons.Length <= 9
+                && ((SampleRow)_historyGrid.Rows[0].DataBoundItem).Sample.Timestamp == longHistory[110].Timestamp,
+                "Long-list pagination expanded beyond seven page slots or selected the wrong data.");
+            SaveEditorScreenshot(this, "pagination", "history-50-pages-compact");
             _pointsDeviceId = device.Id;
             BindTags(); _pointsDialog.Show(this);
             PerformLayoutRecursively(_pointsDialog); await Task.Delay(100);

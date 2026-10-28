@@ -196,6 +196,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridPagination.Height = 38;
         valuesGridPagination.RightToLeft = RightToLeft.Yes;
         valuesGridPagination.ShowSizeChanger = true;
+        valuesGridPagination.MaxPageTotal = 7;
         valuesGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
         valuesGridPagination.SizeChangerWidth = 100;
         valuesGrid.Dock = DockStyle.Fill;

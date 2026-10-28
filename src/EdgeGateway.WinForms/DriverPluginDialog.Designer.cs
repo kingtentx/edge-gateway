@@ -267,6 +267,7 @@ internal sealed partial class DriverPluginDialog
         _gridPagination.Height = 38;
         _gridPagination.RightToLeft = RightToLeft.Yes;
         _gridPagination.ShowSizeChanger = true;
+        _gridPagination.MaxPageTotal = 7;
         _gridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
         _gridPagination.SizeChangerWidth = 100;
         _grid.Dock = DockStyle.Fill;

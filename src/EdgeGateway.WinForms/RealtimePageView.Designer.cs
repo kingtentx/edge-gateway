@@ -134,6 +134,7 @@ realtimeGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         realtimeGridPagination.Height = 38;
         realtimeGridPagination.RightToLeft = RightToLeft.Yes;
         realtimeGridPagination.ShowSizeChanger = true;
+        realtimeGridPagination.MaxPageTotal = 7;
         realtimeGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
         realtimeGridPagination.SizeChangerWidth = 100;
         realtimeGrid.Dock = DockStyle.Fill;

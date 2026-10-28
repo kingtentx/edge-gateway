@@ -202,6 +202,7 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         deviceGridPagination.Height = 38;
         deviceGridPagination.RightToLeft = RightToLeft.Yes;
         deviceGridPagination.ShowSizeChanger = true;
+        deviceGridPagination.MaxPageTotal = 7;
         deviceGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
         deviceGridPagination.SizeChangerWidth = 100;
         deviceGrid.Dock = DockStyle.Fill;

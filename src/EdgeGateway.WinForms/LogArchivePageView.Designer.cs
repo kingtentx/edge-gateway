@@ -729,6 +729,7 @@ internal sealed partial class LogArchivePageView
         archivePagination.Height = 38;
         archivePagination.RightToLeft = RightToLeft.Yes;
         archivePagination.ShowSizeChanger = true;
+        archivePagination.MaxPageTotal = 7;
         archivePagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
         archivePagination.SizeChangerWidth = 100;
         Grid.Dock = DockStyle.Fill;

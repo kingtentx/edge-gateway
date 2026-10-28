@@ -134,6 +134,7 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPagination.Height = 38;
         catalogGridPagination.RightToLeft = RightToLeft.Yes;
         catalogGridPagination.ShowSizeChanger = true;
+        catalogGridPagination.MaxPageTotal = 7;
         catalogGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
         catalogGridPagination.SizeChangerWidth = 100;
         catalogGrid.Dock = DockStyle.Fill;

@@ -35,3 +35,9 @@
 dotnet build src/EdgeGateway.WinForms/EdgeGateway.WinForms.csproj -c Release --no-restore
 ./scripts/smoke-test-winforms-background.ps1 -Scenario Pagination -OutputDirectory artifacts/pagination-new-run
 ```
+
+## 宽窗口页码收敛（2026-10-28）
+
+用户反馈 500 条数据、50 页时，页码随宽窗口展开到 1–25 并占满整行。原因是官方 `MaxPageTotal` 缺省为 0，按可用宽度计算显示数量。全部 12 处 Designer 分页实例统一设置 `MaxPageTotal=7`，保留官方默认外观、前后翻页与省略号交互。第 12 页显示为 `1 … 11 12 13 … 50`，整体靠右；窄窗口仍由官方布局减少可见页码。
+
+沿用用户明确授权的同范围分页修复复验：`artifacts/pagination-compact-20261028/build-1.log` Release 编译通过，0 错误、420 项现有驱动/代理警告。`ui-1` 隔离分页检查通过，退出码 0、stderr 为空，共 6 张截图；新增 500 条/50 页/第 12 页场景，核对实际渲染按钮最多 9 个（7 个页码/省略号位置和前后箭头），以及第 12 页绑定的数据。人工查看 `ui-smoke-pagination-history-50-pages-compact.png`，确认紧凑靠右。实际 192 DPI，未切换输入桌面。其余检查仍覆盖原分页专项，不代表全量回归或完整 DPI 矩阵通过。

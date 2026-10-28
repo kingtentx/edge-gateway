@@ -172,6 +172,7 @@ tagGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         tagGridPagination.Height = 38;
         tagGridPagination.RightToLeft = RightToLeft.Yes;
         tagGridPagination.ShowSizeChanger = true;
+        tagGridPagination.MaxPageTotal = 7;
         tagGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
         tagGridPagination.SizeChangerWidth = 100;
         tagGrid.Dock = DockStyle.Fill;
