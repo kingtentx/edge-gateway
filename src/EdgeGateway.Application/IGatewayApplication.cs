@@ -100,6 +100,7 @@ public interface IGatewayApplication : IAsyncDisposable
     GatewayLoggingStatus GetLoggingStatus();
     Task<DatabaseWritePreview> PreviewDatabaseWriteAsync(DatabaseConnectionConfiguration connection, DatabaseWriteGroupConfiguration group, CancellationToken cancellationToken = default);
     Task<GatewayLogQueryResult> QueryLogFilesAsync(GatewayLogQuery query, CancellationToken cancellationToken = default);
+    Task<SampleLogHistoryResult> QuerySampleLogHistoryAsync(HistoryQuery query, int scanLimitMb = 32, CancellationToken cancellationToken = default);
     Task ExportLogQueryAsync(GatewayLogQueryResult result, string path, CancellationToken cancellationToken = default);
     Task<StoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
     Task<AcquisitionSpoolStatistics> GetAcquisitionSpoolStatisticsAsync(CancellationToken cancellationToken = default);

@@ -1,8 +1,10 @@
 namespace EdgeGateway.WinForms;
 
-/// <summary>Fixed design-time structure for external history query and trends.</summary>
+/// <summary>Fixed design-time structure for log and external history query and trends.</summary>
 internal sealed partial class HistoryPageView : UserControl
 {
+    internal ComboBox SourceSelector => sourceSelector;
+    internal NumericUpDown ScanLimit => scanLimit;
     internal ComboBox GroupSelector => groupSelector;
     internal ComboBox DeviceSelector => deviceSelector;
     internal ComboBox PointSelector => pointSelector;

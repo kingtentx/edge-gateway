@@ -159,6 +159,8 @@ public sealed partial class GatewayLog
                 if (!Enum.IsDefined(quality)) throw new JsonException("采样质量无效。");
                 sample = new(Field("deviceId").GetGuid(), Text("deviceName"), Field("tagId").GetGuid(), Text("tagName"),
                     Text("address"), Text("rawValue"), Text("value"), Text("unit"), quality, Text("error"));
+                if (query.DeviceId.HasValue && sample.DeviceId != query.DeviceId.Value
+                    || query.TagId.HasValue && sample.TagId != query.TagId.Value) return null;
                 if (query.Device.Length > 0 && !sample.DeviceName.Contains(query.Device, StringComparison.OrdinalIgnoreCase)
                     && !sample.DeviceId.ToString().Equals(query.Device, StringComparison.OrdinalIgnoreCase)
                     || query.Tag.Length > 0 && !sample.TagName.Contains(query.Tag, StringComparison.OrdinalIgnoreCase)

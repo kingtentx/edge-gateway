@@ -36,4 +36,16 @@ public sealed partial class GatewayApplication
         ThrowIfDisposed();
         return (Log as IGatewayLogArchive ?? throw new InvalidOperationException("当前日志实现不支持文件导出。")).ExportAsync(result, path, cancellationToken);
     }
+
+    public async Task<SampleLogHistoryResult> QuerySampleLogHistoryAsync(HistoryQuery query, int scanLimitMb = 32,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var archive = await QueryLogFilesAsync(new(query.From, query.To, Limit: query.Limit, ScanLimitMb: scanLimitMb)
+        {
+            Category = GatewayLogCategory.Samples, DeviceId = query.DeviceId, TagId = query.TagId
+        }, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return SampleLogHistory.FromArchive(archive);
+    }
 }

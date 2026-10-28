@@ -113,6 +113,8 @@ public sealed partial class MainForm
                 "live refresh changed the operator's row/column/scroll position.");
 
             ShowPage("history"); SelectChoice(_historyDevice, a.Id); SelectChoice(_historyTag, a.Tags[0].Id);
+            CheckUsability(HistoryFromLogs && _historyQuery.Enabled, "local log history must be available without external storage.");
+            _historySource.SelectedIndex = 1;
             CheckUsability(!_historyQuery.Enabled && _historySummary.Text.Contains("尚未配置"), "history without external storage did not show its empty state.");
             // This fixture checks presentation only; actual database query behavior has separate provider integration tests.
             var presentationQuery = new HistoryQuery(a.Id, a.Tags[0].Id, new DateTimeOffset(_historyFrom.Value), new DateTimeOffset(_historyTo.Value), (int)_historyLimit.Value);

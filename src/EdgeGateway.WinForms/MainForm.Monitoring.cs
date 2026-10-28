@@ -10,6 +10,11 @@ public sealed partial class MainForm
     private DataGridView _historyGrid = null!;
     private ComboBox _realtimeDevice = null!;
     private TextBox _realtimeSearch = null!;
+    private ComboBox _historySource = null!;
+    private NumericUpDown _historyScanLimit = null!;
+    private bool _executedHistoryFromLogs;
+    private int _executedHistoryScanLimit;
+    private bool HistoryFromLogs => _historySource.SelectedIndex == 0;
     private ComboBox _historyGroup = null!;
     private ComboBox _historyDevice = null!;
     private ComboBox _historyTag = null!;
@@ -46,6 +51,8 @@ public sealed partial class MainForm
     {
         _historyPageView = new HistoryPageView();
         _historyGrid = _historyPageView.HistoryGrid;
+        _historySource = _historyPageView.SourceSelector;
+        _historyScanLimit = _historyPageView.ScanLimit;
         _historyGroup = _historyPageView.GroupSelector;
         _historyDevice = _historyPageView.DeviceSelector;
         _historyTag = _historyPageView.PointSelector;
@@ -68,6 +75,13 @@ public sealed partial class MainForm
         _historyFrom.ValueChanged += (_, _) => UpdateHistoryQueryState();
         _historyTo.ValueChanged += (_, _) => UpdateHistoryQueryState();
         _historyLimit.ValueChanged += (_, _) => UpdateHistoryQueryState();
+        _historyScanLimit.ValueChanged += (_, _) => UpdateHistoryQueryState();
+        _historySource.SelectedIndexChanged += (_, _) =>
+        {
+            _historyLimit.Maximum = HistoryFromLogs ? 2000 : 10000;
+            if (_historyLimit.Value > _historyLimit.Maximum) _historyLimit.Value = _historyLimit.Maximum;
+            UpdateHistoryQueryState();
+        };
         _trend.Visible = false;
         void ArrangeHistoryLayout()
         {
@@ -177,29 +191,49 @@ public sealed partial class MainForm
         if (_historyFrom.Value >= _historyTo.Value) throw new InvalidOperationException("开始时间必须早于结束时间。");
         var deviceId = (_historyDevice.SelectedItem as Choice)?.Id;
         var tagId = (_historyTag.SelectedItem as Choice)?.Id;
-        var groupId = (_historyGroup.SelectedItem as Choice)?.Id ?? throw new InvalidOperationException("请先配置并启用外部数据库的标准点行写入组。");
+        var fromLogs = HistoryFromLogs;
+        var scanLimit = (int)_historyScanLimit.Value;
+        var groupId = fromLogs ? null : (_historyGroup.SelectedItem as Choice)?.Id;
+        if (!fromLogs && !groupId.HasValue) throw new InvalidOperationException("请先配置并启用外部数据库的标准点行写入组。");
         var queriedGroupName = _historyGroup.Text;
         var queriedDeviceName = _historyDevice.Text;
         var queriedTagName = _historyTag.Text;
         var query = new HistoryQuery(deviceId, tagId, new DateTimeOffset(_historyFrom.Value), new DateTimeOffset(_historyTo.Value), (int)_historyLimit.Value);
-        var samples = await _application.QueryExternalHistoryAsync(groupId, query);
-        PresentHistoryResults(groupId, queriedGroupName, queriedDeviceName, queriedTagName, query, samples);
-        SetFooter("外部数据库历史查询完成。");
+        if (fromLogs)
+        {
+            var result = await _application.QuerySampleLogHistoryAsync(query, scanLimit);
+            PresentHistoryResults(null, "采样日志", queriedDeviceName, queriedTagName, query, result.Samples, result, scanLimit);
+            SetFooter(result.IsPartial ? "采样日志查询完成，结果受限，请查看查询说明。" : "采样日志查询完成。");
+        }
+        else
+        {
+            var samples = await _application.QueryExternalHistoryAsync(groupId!.Value, query);
+            PresentHistoryResults(groupId, queriedGroupName, queriedDeviceName, queriedTagName, query, samples);
+            SetFooter("外部数据库历史查询完成。");
+        }
     }
 
-    private void PresentHistoryResults(Guid? groupId, string groupName, string deviceName, string tagName, HistoryQuery query, IReadOnlyList<TelemetrySample> samples)
+    private void PresentHistoryResults(Guid? groupId, string groupName, string deviceName, string tagName, HistoryQuery query, IReadOnlyList<TelemetrySample> samples, SampleLogHistoryResult? logResult = null, int scanLimit = 32)
     {
         _queriedHistory = samples;
         var rows = _queriedHistory.Select(ToRow).ToList();
         GridViewState.Rebind(_historyGrid, rows, row => row, rows.FirstOrDefault());
         _executedHistoryQuery = query; _executedHistoryGroupId = groupId;
+        _executedHistoryFromLogs = logResult is not null;
+        _executedHistoryScanLimit = scanLimit;
         var tagId = query.TagId;
         _trend.Visible = tagId.HasValue;
-        if (_trend.Parent is TableLayoutPanel historyLayout)
-            historyLayout.RowStyles[0].Height = tagId.HasValue ? UiTheme.Scale(_trend, 205) : 0;
         _trend.SetSamples(tagId.HasValue ? _queriedHistory : [], tagId.HasValue ? tagName : "");
         var limited = _queriedHistory.Count == query.Limit ? "；已达到条数上限，可缩小时间范围" : "";
         _executedHistorySummary = $"{groupName} · {deviceName} / {tagName}  ·  {query.From:MM-dd HH:mm} — {query.To:MM-dd HH:mm}  ·  {_queriedHistory.Count:F0} 条{limited}。";
+        if (logResult is not null)
+        {
+            _executedHistorySummary += $" 返回上限 {query.Limit} 条；扫描 {logResult.ScannedBytes / 1048576D:F2} M（上限 {scanLimit} M），损坏 {logResult.InvalidLines} 条。"
+                + (logResult.IsPartial ? "【受限结果】" : "")
+                + "仅分析仍保留的日志；日志轮转、清理或未记录的时段无法补回，不代表完整历史。"
+                + string.Join("；", logResult.Warnings);
+            if (samples.Count == 0) _executedHistorySummary += " 未找到匹配采样，请检查时间、筛选条件及采样日志开关和保留范围。";
+        }
         UpdateHistoryQueryState();
     }
 
@@ -209,9 +243,16 @@ public sealed partial class MainForm
         var current = new HistoryQuery((_historyDevice.SelectedItem as Choice)?.Id, (_historyTag.SelectedItem as Choice)?.Id,
             new DateTimeOffset(_historyFrom.Value), new DateTimeOffset(_historyTo.Value), (int)_historyLimit.Value);
         var source = (_historyGroup.SelectedItem as Choice)?.Id;
-        _historyConditionsChanged = _executedHistoryQuery is not null && (current != _executedHistoryQuery || source != _executedHistoryGroupId);
-        if (_historyQuery is not null) _historyQuery.Enabled = !_busy && !_closing && source.HasValue;
-        _historySummary.Text = _executedHistoryQuery is null ? source.HasValue ? "选择查询条件后点击“查询”。可按单个点位查看趋势。" : "尚未配置可查询的数据库。请在“数据库”页启用连接与标准点行写入组；默认采集结果保存在日志文件。"
+        var fromLogs = HistoryFromLogs;
+        _historyPageView.groupSelectorFilter.Visible = !fromLogs;
+        _historyPageView.scanLimitFilter.Visible = fromLogs;
+        _historyConditionsChanged = _executedHistoryQuery is not null && (current != _executedHistoryQuery
+            || fromLogs != _executedHistoryFromLogs
+            || (fromLogs ? (int)_historyScanLimit.Value != _executedHistoryScanLimit : source != _executedHistoryGroupId));
+        if (_historyQuery is not null) _historyQuery.Enabled = !_busy && !_closing && (fromLogs || source.HasValue);
+        _historySummary.Text = _executedHistoryQuery is null ? fromLogs
+            ? "查询本地保留的采样日志，无需数据库连接。选择单个数值点位查看趋势；坏质量或非数值采样不连线。"
+            : source.HasValue ? "选择查询条件后点击“查询”。可按单个点位查看趋势。" : "尚未配置可查询的数据库。请在“数据库”页启用连接与标准点行写入组；默认采集结果保存在日志文件。"
             : (_historyConditionsChanged ? "查询条件已修改，请重新查询。下方仍为上次结果：\n" : "查询结果：") + _executedHistorySummary;
         _historySummary.ForeColor = _historyConditionsChanged ? UiTheme.Warning : UiTheme.Muted;
         _historyExport.Text = _historyConditionsChanged ? "导出上次结果" : "导出查询结果";
@@ -230,6 +271,10 @@ public sealed partial class MainForm
     private string BuildHistoryCsv()
     {
         var text = new StringBuilder();
+        if (_executedHistoryFromLogs && _executedHistoryQuery is { } query)
+            text.AppendLine(CsvLine("查询说明", _executedHistorySummary,
+                "开始时间", query.From.ToString("O"), "结束时间", query.To.ToString("O"),
+                "设备筛选ID", query.DeviceId?.ToString() ?? "全部", "点位筛选ID", query.TagId?.ToString() ?? "全部"));
         text.AppendLine(CsvLine("设备ID", "设备名称", "点位ID", "点位名称", "地址", "原始值", "工程值", "单位", "质量", "采样时间（含时区）", "错误信息"));
         foreach (var sample in _queriedHistory)
             text.AppendLine(CsvLine(sample.DeviceId.ToString(), sample.DeviceName, sample.TagId.ToString(), sample.TagName, sample.Address,

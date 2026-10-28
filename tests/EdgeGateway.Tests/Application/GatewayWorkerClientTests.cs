@@ -56,6 +56,27 @@ public sealed class GatewayWorkerClientTests
     }
 
     [Fact]
+    public async Task SampleLogHistoryPreservesPrecisionQualityAndWarningsAcrossWorkerIpc()
+    {
+        var time = DateTimeOffset.Now;
+        var sample = new TelemetrySample(Guid.NewGuid(), "设备", Guid.NewGuid(), "点位", "0",
+            long.MaxValue, null, SampleQuality.Bad, time, "℃", "超时");
+        var snapshot = new SampleLogHistoryResult([sample], 1234, 2, true, ["扫描受限"]);
+        await using var server = new PipeFixture(JsonSerializer.Serialize(snapshot));
+        var query = new HistoryQuery(sample.DeviceId, sample.TagId, time.AddMinutes(-1), time, 20);
+        var result = await server.CreateProxy<IGatewayApplication>().QuerySampleLogHistoryAsync(query, 16);
+        var read = Assert.Single(result.Samples);
+        Assert.Equal(long.MaxValue, Assert.IsType<JsonElement>(read.RawValue).GetInt64());
+        Assert.Null(read.Value); Assert.Equal(SampleQuality.Bad, read.Quality);
+        Assert.Equal(time, read.Timestamp); Assert.Equal("超时", read.Error);
+        Assert.True(result.IsPartial); Assert.Equal(snapshot.Warnings, result.Warnings);
+        var request = await server.Request;
+        Assert.Equal(nameof(IGatewayApplication.QuerySampleLogHistoryAsync), request.GetProperty("Method").GetString());
+        Assert.Equal(sample.DeviceId, request.GetProperty("Arguments")[0].GetProperty("DeviceId").GetGuid());
+        Assert.Equal(16, request.GetProperty("Arguments")[1].GetInt32());
+    }
+
+    [Fact]
     public async Task GeneratedProxyReturnsGenericValueTaskResult()
     {
         await using var server = new PipeFixture("{\"OutboxCount\":29}");

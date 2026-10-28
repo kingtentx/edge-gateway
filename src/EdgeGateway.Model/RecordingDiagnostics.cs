@@ -8,6 +8,8 @@ public sealed record GatewayLogQuery(DateTimeOffset From, DateTimeOffset To,
     public string Device { get; init; } = "";
     public string Tag { get; init; } = "";
     public SampleQuality? Quality { get; init; }
+    public Guid? DeviceId { get; init; }
+    public Guid? TagId { get; init; }
 }
 
 public enum GatewayLogCategory { All, Events, Samples }
@@ -23,6 +25,9 @@ public sealed record GatewayLogFileEntry(DateTimeOffset Timestamp, GatewayLogLev
 
 /// <summary>Query and rows are the executed snapshot, not the current editor draft.</summary>
 public sealed record GatewayLogQueryResult(GatewayLogQuery Query, IReadOnlyList<GatewayLogFileEntry> Entries,
+    long ScannedBytes, int InvalidLines, bool IsPartial, IReadOnlyList<string> Warnings);
+
+public sealed record SampleLogHistoryResult(IReadOnlyList<TelemetrySample> Samples,
     long ScannedBytes, int InvalidLines, bool IsPartial, IReadOnlyList<string> Warnings);
 
 public sealed record DatabasePreviewColumn(string Column, string DatabaseType, string Source,
