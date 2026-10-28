@@ -288,7 +288,7 @@ internal sealed partial class TagImportDialog
         _previewPagination.AccessibleName = "列表分页";
         _previewPagination.Dock = DockStyle.Fill;
         _previewPagination.Height = 38;
-        _previewPagination.RightToLeft = RightToLeft.No;
+        _previewPagination.RightToLeft = RightToLeft.Yes;
         _previewPagination.ShowSizeChanger = false;
         _previewPagination.MaxPageTotal = 8;
         _previewPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
@@ -301,11 +301,12 @@ internal sealed partial class TagImportDialog
         _previewPaginationBar.Height = 46;
         _previewPaginationBar.Padding = new Padding(0, 4, 0, 4);
         _previewPaginationBar.Margin = Padding.Empty;
-        _previewPaginationBar.ColumnCount = 3;
+        _previewPaginationBar.ColumnCount = 4;
         _previewPaginationBar.RowCount = 1;
+        _previewPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         _previewPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _previewPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136F));
-        _previewPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _previewPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 460F));
         _previewPaginationBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         _previewPaginationTotal = new Label();
         _previewPaginationTotal.Name = "_previewPaginationTotal";
@@ -323,9 +324,9 @@ internal sealed partial class TagImportDialog
         _previewPaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
         _previewPaginationSize.SelectedIndex = 0;
         _previewPagination.Margin = Padding.Empty;
-        _previewPaginationBar.Controls.Add(_previewPaginationTotal, 0, 0);
-        _previewPaginationBar.Controls.Add(_previewPaginationSize, 1, 0);
-        _previewPaginationBar.Controls.Add(_previewPagination, 2, 0);
+        _previewPaginationBar.Controls.Add(_previewPaginationTotal, 1, 0);
+        _previewPaginationBar.Controls.Add(_previewPaginationSize, 2, 0);
+        _previewPaginationBar.Controls.Add(_previewPagination, 3, 0);
         _previewPageHost.Controls.Add(_previewPaginationBar);
         _previewPageHost.Dock = DockStyle.Top;
         _previewPageHost.Height = 288;

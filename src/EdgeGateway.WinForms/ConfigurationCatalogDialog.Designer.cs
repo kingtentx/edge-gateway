@@ -135,7 +135,7 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPagination.AccessibleName = "列表分页";
         catalogGridPagination.Dock = DockStyle.Fill;
         catalogGridPagination.Height = 38;
-        catalogGridPagination.RightToLeft = RightToLeft.No;
+        catalogGridPagination.RightToLeft = RightToLeft.Yes;
         catalogGridPagination.ShowSizeChanger = false;
         catalogGridPagination.MaxPageTotal = 8;
         catalogGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
@@ -148,11 +148,12 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPaginationBar.Height = 46;
         catalogGridPaginationBar.Padding = new Padding(0, 4, 0, 4);
         catalogGridPaginationBar.Margin = Padding.Empty;
-        catalogGridPaginationBar.ColumnCount = 3;
+        catalogGridPaginationBar.ColumnCount = 4;
         catalogGridPaginationBar.RowCount = 1;
+        catalogGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         catalogGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         catalogGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136F));
-        catalogGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        catalogGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 460F));
         catalogGridPaginationBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         catalogGridPaginationTotal = new Label();
         catalogGridPaginationTotal.Name = "catalogGridPaginationTotal";
@@ -170,9 +171,9 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
         catalogGridPaginationSize.SelectedIndex = 0;
         catalogGridPagination.Margin = Padding.Empty;
-        catalogGridPaginationBar.Controls.Add(catalogGridPaginationTotal, 0, 0);
-        catalogGridPaginationBar.Controls.Add(catalogGridPaginationSize, 1, 0);
-        catalogGridPaginationBar.Controls.Add(catalogGridPagination, 2, 0);
+        catalogGridPaginationBar.Controls.Add(catalogGridPaginationTotal, 1, 0);
+        catalogGridPaginationBar.Controls.Add(catalogGridPaginationSize, 2, 0);
+        catalogGridPaginationBar.Controls.Add(catalogGridPagination, 3, 0);
         catalogGridPageHost.Controls.Add(catalogGridPaginationBar);
         layout.Controls.Add(catalogGridPageHost, 0, 2);
         layout.Controls.Add(statusLabel, 0, 3);

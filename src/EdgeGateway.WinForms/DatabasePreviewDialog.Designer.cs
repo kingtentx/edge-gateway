@@ -197,7 +197,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridPagination.AccessibleName = "列表分页";
         valuesGridPagination.Dock = DockStyle.Fill;
         valuesGridPagination.Height = 38;
-        valuesGridPagination.RightToLeft = RightToLeft.No;
+        valuesGridPagination.RightToLeft = RightToLeft.Yes;
         valuesGridPagination.ShowSizeChanger = false;
         valuesGridPagination.MaxPageTotal = 8;
         valuesGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
@@ -210,11 +210,12 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridPaginationBar.Height = 46;
         valuesGridPaginationBar.Padding = new Padding(0, 4, 0, 4);
         valuesGridPaginationBar.Margin = Padding.Empty;
-        valuesGridPaginationBar.ColumnCount = 3;
+        valuesGridPaginationBar.ColumnCount = 4;
         valuesGridPaginationBar.RowCount = 1;
+        valuesGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         valuesGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         valuesGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136F));
-        valuesGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        valuesGridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 460F));
         valuesGridPaginationBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         valuesGridPaginationTotal = new Label();
         valuesGridPaginationTotal.Name = "valuesGridPaginationTotal";
@@ -232,9 +233,9 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridPaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
         valuesGridPaginationSize.SelectedIndex = 0;
         valuesGridPagination.Margin = Padding.Empty;
-        valuesGridPaginationBar.Controls.Add(valuesGridPaginationTotal, 0, 0);
-        valuesGridPaginationBar.Controls.Add(valuesGridPaginationSize, 1, 0);
-        valuesGridPaginationBar.Controls.Add(valuesGridPagination, 2, 0);
+        valuesGridPaginationBar.Controls.Add(valuesGridPaginationTotal, 1, 0);
+        valuesGridPaginationBar.Controls.Add(valuesGridPaginationSize, 2, 0);
+        valuesGridPaginationBar.Controls.Add(valuesGridPagination, 3, 0);
         valuesGridPageHost.Controls.Add(valuesGridPaginationBar);
         valuesTab.Controls.Add(valuesGridPageHost);
         Tabs.TabPages.Add(valuesTab);

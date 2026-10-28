@@ -268,7 +268,7 @@ internal sealed partial class DriverPluginDialog
         _gridPagination.AccessibleName = "列表分页";
         _gridPagination.Dock = DockStyle.Fill;
         _gridPagination.Height = 38;
-        _gridPagination.RightToLeft = RightToLeft.No;
+        _gridPagination.RightToLeft = RightToLeft.Yes;
         _gridPagination.ShowSizeChanger = false;
         _gridPagination.MaxPageTotal = 8;
         _gridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
@@ -281,11 +281,12 @@ internal sealed partial class DriverPluginDialog
         _gridPaginationBar.Height = 46;
         _gridPaginationBar.Padding = new Padding(0, 4, 0, 4);
         _gridPaginationBar.Margin = Padding.Empty;
-        _gridPaginationBar.ColumnCount = 3;
+        _gridPaginationBar.ColumnCount = 4;
         _gridPaginationBar.RowCount = 1;
+        _gridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         _gridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _gridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136F));
-        _gridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _gridPaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 460F));
         _gridPaginationBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         _gridPaginationTotal = new Label();
         _gridPaginationTotal.Name = "_gridPaginationTotal";
@@ -303,9 +304,9 @@ internal sealed partial class DriverPluginDialog
         _gridPaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
         _gridPaginationSize.SelectedIndex = 0;
         _gridPagination.Margin = Padding.Empty;
-        _gridPaginationBar.Controls.Add(_gridPaginationTotal, 0, 0);
-        _gridPaginationBar.Controls.Add(_gridPaginationSize, 1, 0);
-        _gridPaginationBar.Controls.Add(_gridPagination, 2, 0);
+        _gridPaginationBar.Controls.Add(_gridPaginationTotal, 1, 0);
+        _gridPaginationBar.Controls.Add(_gridPaginationSize, 2, 0);
+        _gridPaginationBar.Controls.Add(_gridPagination, 3, 0);
         _gridPageHost.Controls.Add(_gridPaginationBar);
         layout.Controls.Add(_gridPageHost, 0, 1);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));

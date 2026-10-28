@@ -13,12 +13,14 @@ internal sealed class GridPagination
     private Action? _render;
     private bool _binding;
     private int _current = 1;
+    private bool _arranging;
 
     private GridPagination(AntdUI.Pagination pagination, Label total, ComboBox size)
     {
         _pagination = pagination;
         _total = total;
         _size = size;
+        pagination.Parent!.Layout += (_, _) => ArrangeFooter();
         size.SelectedIndexChanged += (_, _) =>
         {
             if (!_binding && size.SelectedIndex >= 0) pagination.PageSize = PageSizes[size.SelectedIndex];
@@ -41,6 +43,24 @@ internal sealed class GridPagination
     internal static AntdUI.Pagination GetPager(DataGridView grid) => Bindings.GetValue(grid,
         _ => throw new InvalidOperationException("Grid has no pagination binding."))._pagination;
 
+    private void ArrangeFooter()
+    {
+        if (_arranging || _pagination.Parent is not TableLayoutPanel footer) return;
+        _arranging = true;
+        try
+        {
+            var available = footer.ClientSize.Width - footer.Padding.Horizontal
+                - _total.GetPreferredSize(Size.Empty).Width - _total.Margin.Horizontal
+                - (int)footer.ColumnStyles[2].Width;
+            var pages = Math.Max(1, (_pagination.Total + Math.Max(1, _pagination.PageSize) - 1) / Math.Max(1, _pagination.PageSize));
+            var slot = Math.Max(_pagination.Height, TextRenderer.MeasureText(pages.ToString(), _pagination.Font).Width)
+                + UiTheme.Scale(_pagination, _pagination.Gap);
+            var width = Math.Max(0, Math.Min(available, (Math.Min(pages, _pagination.MaxPageTotal) + 2) * slot));
+            if (footer.ColumnStyles[3].Width != width) footer.ColumnStyles[3].Width = width;
+        }
+        finally { _arranging = false; }
+    }
+
     internal static bool Bind<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key,
         object? preferredKey, bool update)
     {
@@ -61,6 +81,7 @@ internal sealed class GridPagination
                 var totalText = $"共 {rows.Count} 条";
                 if (_total.Text != totalText) _total.Text = totalText;
                 _size.SelectedIndex = Array.IndexOf(PageSizes, _pagination.PageSize);
+                ArrangeFooter();
                 var size = Math.Max(1, _pagination.PageSize);
                 var current = Math.Clamp(_current, 1, Math.Max(1, (rows.Count + size - 1) / size));
                 if (preferred is not null)

@@ -730,7 +730,7 @@ internal sealed partial class LogArchivePageView
         archivePagination.AccessibleName = "列表分页";
         archivePagination.Dock = DockStyle.Fill;
         archivePagination.Height = 38;
-        archivePagination.RightToLeft = RightToLeft.No;
+        archivePagination.RightToLeft = RightToLeft.Yes;
         archivePagination.ShowSizeChanger = false;
         archivePagination.MaxPageTotal = 8;
         archivePagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
@@ -743,11 +743,12 @@ internal sealed partial class LogArchivePageView
         archivePaginationBar.Height = 46;
         archivePaginationBar.Padding = new Padding(0, 4, 0, 4);
         archivePaginationBar.Margin = Padding.Empty;
-        archivePaginationBar.ColumnCount = 3;
+        archivePaginationBar.ColumnCount = 4;
         archivePaginationBar.RowCount = 1;
+        archivePaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         archivePaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         archivePaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136F));
-        archivePaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        archivePaginationBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 460F));
         archivePaginationBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         archivePaginationTotal = new Label();
         archivePaginationTotal.Name = "archivePaginationTotal";
@@ -765,9 +766,9 @@ internal sealed partial class LogArchivePageView
         archivePaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
         archivePaginationSize.SelectedIndex = 0;
         archivePagination.Margin = Padding.Empty;
-        archivePaginationBar.Controls.Add(archivePaginationTotal, 0, 0);
-        archivePaginationBar.Controls.Add(archivePaginationSize, 1, 0);
-        archivePaginationBar.Controls.Add(archivePagination, 2, 0);
+        archivePaginationBar.Controls.Add(archivePaginationTotal, 1, 0);
+        archivePaginationBar.Controls.Add(archivePaginationSize, 2, 0);
+        archivePaginationBar.Controls.Add(archivePagination, 3, 0);
         GridPageHost.Controls.Add(archivePaginationBar);
         contentLayout.Controls.Add(GridPageHost, 0, 3);
         this.Controls.Add(contentLayout);

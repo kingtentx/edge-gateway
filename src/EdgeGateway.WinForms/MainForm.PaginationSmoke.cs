@@ -84,12 +84,16 @@ public sealed partial class MainForm
             PresentHistoryResults(null, "分页验证", device.Name, "全部点位",
                 new HistoryQuery(device.Id, null, now.AddMinutes(-1), now.AddMinutes(1), 500), longHistory.Take(147).ToArray());
             PerformLayoutRecursively(this);
-            var footer = historyPager.Parent!;
+            var footer = (TableLayoutPanel)historyPager.Parent!;
             var totalLabel = footer.Controls.OfType<Label>().Single();
             var sizeSelect = footer.Controls.OfType<ComboBox>().Single();
             Require(totalLabel.Text == "共 147 条" && totalLabel.Right < sizeSelect.Left
                 && sizeSelect.Right < historyPager.Left && !historyPager.ShowSizeChanger,
                 "Footer must order total, page size and page numbers from left to right.");
+            Require(footer.GetColumnWidths()[0] > 0
+                && Math.Abs(totalLabel.Left - footer.GetColumnWidths()[0]) <= 1
+                && historyPager.Right >= footer.ClientSize.Width - footer.Padding.Right - 1,
+                "The complete pagination group must align with the right edge.");
             SaveEditorScreenshot(this, "pagination", "history-147-reference-layout");
             sizeSelect.SelectedIndex = 1;
             Require(historyPager.PageSize == 20 && _historyGrid.Rows.Count == 20,
