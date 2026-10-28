@@ -7,13 +7,22 @@ internal sealed class GridPagination
 {
     private static readonly ConditionalWeakTable<DataGridView, GridPagination> Bindings = new();
     private readonly AntdUI.Pagination _pagination;
+    private readonly Label _total;
+    private readonly ComboBox _size;
+    private static readonly int[] PageSizes = [10, 20, 50, 100];
     private Action? _render;
     private bool _binding;
     private int _current = 1;
 
-    private GridPagination(AntdUI.Pagination pagination)
+    private GridPagination(AntdUI.Pagination pagination, Label total, ComboBox size)
     {
         _pagination = pagination;
+        _total = total;
+        _size = size;
+        size.SelectedIndexChanged += (_, _) =>
+        {
+            if (!_binding && size.SelectedIndex >= 0) pagination.PageSize = PageSizes[size.SelectedIndex];
+        };
         pagination.ValueChanged += (_, _) =>
         {
             if (_binding) return;
@@ -26,8 +35,11 @@ internal sealed class GridPagination
         }));
     }
 
-    internal static void Attach(DataGridView grid, AntdUI.Pagination pagination)
-        => Bindings.Add(grid, new GridPagination(pagination));
+    internal static void Attach(DataGridView grid, AntdUI.Pagination pagination, Label total, ComboBox size)
+        => Bindings.Add(grid, new GridPagination(pagination, total, size));
+
+    internal static AntdUI.Pagination GetPager(DataGridView grid) => Bindings.GetValue(grid,
+        _ => throw new InvalidOperationException("Grid has no pagination binding."))._pagination;
 
     internal static bool Bind<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key,
         object? preferredKey, bool update)
@@ -46,6 +58,9 @@ internal sealed class GridPagination
             try
             {
                 _pagination.Total = rows.Count;
+                var totalText = $"共 {rows.Count} 条";
+                if (_total.Text != totalText) _total.Text = totalText;
+                _size.SelectedIndex = Array.IndexOf(PageSizes, _pagination.PageSize);
                 var size = Math.Max(1, _pagination.PageSize);
                 var current = Math.Clamp(_current, 1, Math.Max(1, (rows.Count + size - 1) / size));
                 if (preferred is not null)

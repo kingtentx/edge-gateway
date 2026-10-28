@@ -3,7 +3,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class LogArchivePageView : UserControl
 {
 
-    public LogArchivePageView() { InitializeComponent(); GridPagination.Attach(Grid, archivePagination); }
+    public LogArchivePageView() { InitializeComponent(); GridPagination.Attach(Grid, archivePagination, archivePaginationTotal, archivePaginationSize); }
 
     internal void ConfigureCategory(bool samples)
     {

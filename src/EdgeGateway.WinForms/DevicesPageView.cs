@@ -14,7 +14,7 @@ internal sealed partial class DevicesPageView : UserControl
     internal AntdUI.Button AddDeviceButton => addDeviceButton;
     internal AntdUI.Button ProbeDeviceButton => probeDeviceButton;
     internal Label DeviceSummary => deviceSummaryLabel;
-    public DevicesPageView() { InitializeComponent(); GridPagination.Attach(deviceGrid, deviceGridPagination); }
+    public DevicesPageView() { InitializeComponent(); GridPagination.Attach(deviceGrid, deviceGridPagination, deviceGridPaginationTotal, deviceGridPaginationSize); }
 
     protected override void OnLayout(LayoutEventArgs e)
     {
@@ -27,7 +27,7 @@ internal sealed partial class DevicesPageView : UserControl
             var width = Math.Max(1, ClientSize.Width - Padding.Horizontal);
             var fixedHeight = titleLabel.Height + titleLabel.Margin.Vertical
                 + descriptionLabel.Height + descriptionLabel.Margin.Vertical
-                + deviceToolbarHost.Height + deviceFiltersHost.Height + deviceGridPagination.Height;
+                + deviceToolbarHost.Height + deviceFiltersHost.Height + deviceGridPagination.Parent!.Height;
             var minimumHeight = fixedHeight + UiTheme.Scale(this, 220);
             AutoScrollMinSize = new Size(0, minimumHeight + Padding.Vertical);
             contentLayout.SetBounds(Padding.Left + AutoScrollPosition.X, Padding.Top + AutoScrollPosition.Y,

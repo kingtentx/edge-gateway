@@ -11,7 +11,7 @@ internal sealed partial class DriverPluginDialog : DpiAwareForm
     private bool _refreshing;
     private bool _busy;
 
-    public DriverPluginDialog() { _application = null!; _pluginDirectory = ""; InitializeComponent(); GridPagination.Attach(_grid, _gridPagination); }
+    public DriverPluginDialog() { _application = null!; _pluginDirectory = ""; InitializeComponent(); GridPagination.Attach(_grid, _gridPagination, _gridPaginationTotal, _gridPaginationSize); }
 
     public DriverPluginDialog(IGatewayApplication application, string driverDirectory)
     {
@@ -23,7 +23,7 @@ internal sealed partial class DriverPluginDialog : DpiAwareForm
         ConfigureWindow(new Size(980, 650), new Size(700, 480));
         StartPosition = FormStartPosition.CenterParent;
 
-        InitializeComponent(); GridPagination.Attach(_grid, _gridPagination);
+        InitializeComponent(); GridPagination.Attach(_grid, _gridPagination, _gridPaginationTotal, _gridPaginationSize);
         upload.Click += async (_, _) => await InstallAsync(false);
         open.Click += (_, _) =>
         {

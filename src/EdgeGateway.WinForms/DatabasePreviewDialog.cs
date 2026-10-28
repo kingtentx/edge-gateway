@@ -5,7 +5,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DatabasePreviewDialog : EditorDialog
 {
     public DatabasePreviewDialog() : base("数据库检查与预览", "只读检查字段与采样映射，不创建表或写入数据。")
-    { InitializeComponent(); GridPagination.Attach(valuesGrid, valuesGridPagination); SetReadOnlyView(); }
+    { InitializeComponent(); GridPagination.Attach(valuesGrid, valuesGridPagination, valuesGridPaginationTotal, valuesGridPaginationSize); SetReadOnlyView(); }
 
     internal DatabasePreviewDialog(DatabaseWritePreview preview) : this()
     {

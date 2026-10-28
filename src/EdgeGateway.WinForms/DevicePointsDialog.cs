@@ -14,7 +14,7 @@ internal sealed partial class DevicePointsDialog : DpiAwareForm
     internal void SetFeedback(string message) => feedbackLabel.Text = message;
     public DevicePointsDialog()
     {
-        InitializeComponent(); GridPagination.Attach(tagGrid, tagGridPagination);
+        InitializeComponent(); GridPagination.Attach(tagGrid, tagGridPagination, tagGridPaginationTotal, tagGridPaginationSize);
         ConfigureWindow(new Size(1160, 700), new Size(760, 460));
     }
     protected override void OnLayout(LayoutEventArgs e)

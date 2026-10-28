@@ -14,7 +14,7 @@ internal sealed partial class ConfigurationCatalogDialog : DpiAwareForm
 
     public ConfigurationCatalogDialog()
     {
-        InitializeComponent(); GridPagination.Attach(catalogGrid, catalogGridPagination);
+        InitializeComponent(); GridPagination.Attach(catalogGrid, catalogGridPagination, catalogGridPaginationTotal, catalogGridPaginationSize);
         ConfigureWindow(new Size(860, 560), new Size(620, 400));
         addButton.Click += async (_, _) => await EditAsync(true);
         editButton.Click += async (_, _) => await EditAsync(false);

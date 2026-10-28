@@ -30,7 +30,7 @@ public sealed partial class MainForm
                 _databaseTabs.SelectedIndex = tab;
                 await Task.Delay(100);
                 PerformLayoutRecursively(this);
-                grid.Parent!.Controls.OfType<AntdUI.Pagination>().Single().PageSize = 50;
+                GridPagination.GetPager(grid).PageSize = 50;
                 grid.CurrentCell = grid.Rows[25].Cells["Name"];
                 grid.FirstDisplayedScrollingRowIndex = 20;
                 grid.HorizontalScrollingOffset = UiTheme.Scale(grid, 80);

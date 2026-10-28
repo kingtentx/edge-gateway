@@ -9,7 +9,7 @@ public sealed partial class MainForm
         if (!_smokeTest || _application.IsRunning) throw new InvalidOperationException("Pagination requires an isolated stopped host.");
         _refreshTimer.Stop();
         var original = Clone(_configuration);
-        static AntdUI.Pagination Pager(DataGridView grid) => grid.Parent!.Controls.OfType<AntdUI.Pagination>().Single();
+        static AntdUI.Pagination Pager(DataGridView grid) => GridPagination.GetPager(grid);
         static void Require(bool condition, string message)
         { if (!condition) throw new InvalidOperationException(message); }
         try
@@ -77,10 +77,23 @@ public sealed partial class MainForm
             PerformLayoutRecursively(this);
             var pageButtons = (Array)typeof(AntdUI.Pagination).GetField("buttons",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(historyPager)!;
-            Require(historyPager.PageTotal == 50 && pageButtons.Length <= 9
+            Require(historyPager.PageTotal == 50 && pageButtons.Length <= 10
                 && ((SampleRow)_historyGrid.Rows[0].DataBoundItem).Sample.Timestamp == longHistory[110].Timestamp,
-                "Long-list pagination expanded beyond seven page slots or selected the wrong data.");
+                "Long-list pagination expanded beyond eight page slots or selected the wrong data.");
             SaveEditorScreenshot(this, "pagination", "history-50-pages-compact");
+            PresentHistoryResults(null, "分页验证", device.Name, "全部点位",
+                new HistoryQuery(device.Id, null, now.AddMinutes(-1), now.AddMinutes(1), 500), longHistory.Take(147).ToArray());
+            PerformLayoutRecursively(this);
+            var footer = historyPager.Parent!;
+            var totalLabel = footer.Controls.OfType<Label>().Single();
+            var sizeSelect = footer.Controls.OfType<ComboBox>().Single();
+            Require(totalLabel.Text == "共 147 条" && totalLabel.Right < sizeSelect.Left
+                && sizeSelect.Right < historyPager.Left && !historyPager.ShowSizeChanger,
+                "Footer must order total, page size and page numbers from left to right.");
+            SaveEditorScreenshot(this, "pagination", "history-147-reference-layout");
+            sizeSelect.SelectedIndex = 1;
+            Require(historyPager.PageSize == 20 && _historyGrid.Rows.Count == 20,
+                "Separate page size selector did not update the bound page.");
             _pointsDeviceId = device.Id;
             BindTags(); _pointsDialog.Show(this);
             PerformLayoutRecursively(_pointsDialog); await Task.Delay(100);

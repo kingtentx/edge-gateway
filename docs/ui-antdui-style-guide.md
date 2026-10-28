@@ -19,7 +19,7 @@
 
 ### 列表分页（2026-10-28）
 
-列表使用真正的 `AntdUI.Pagination`，参考同一固定 Demo 版本的 `Views/PaginationDemo.Designer.cs` 和用户指定的 [Pagination 截图](https://github.com/AntdUI/AntdUI-Demo/blob/main/assets/screenshots/Pagination.png)。保留官方默认主题、圆角 6、间距 8、边框及悬停/禁用状态；不仿制页码按钮或设置自定义颜色。分页条高 38 逻辑像素并靠右，默认每页 10 条，可选 10/20/50/100 条；条数选择器宽度适配中文及 DPI。所有列表在 Designer 中设置 `MaxPageTotal=7`，使用官方省略号折叠远端页码；宽窗口也不铺满整行，窄窗口由官方控件继续减少可见页码。
+列表使用真正的 `AntdUI.Pagination`，参考同一固定 Demo 版本的 `Views/PaginationDemo.Designer.cs` 和用户指定的 [Pagination 截图](https://github.com/AntdUI/AntdUI-Demo/blob/main/assets/screenshots/Pagination.png)。保留官方默认主题、圆角 6、间距 8、边框及悬停/禁用状态；不仿制页码按钮或设置自定义颜色。按用户参考图从左到右排列“共 N 条 → 每页条数下拉 → 上一页/页码/下一页”，整体左对齐。控件高 38 逻辑像素，底栏上下各留 4 像素；默认每页 10 条，可选 10/20/50/100 条。总数标签、独立 AntdUI Select 和 Pagination 都在各自 Designer 中创建，关闭 Pagination 内置右侧条数选择器。所有列表设置 `MaxPageTotal=8`，第一页显示 `1 2 3 4 5 6 … 末页`；宽窗口不铺满整行，窄窗口由官方控件继续减少可见页码。
 
 设备、点位、实时数据、历史、运行/采样日志、数据库连接/写入组、分组/通道、驱动列表及导入/数据库预览在各自 Designer 中创建分页条和表格宿主。编辑用字段映射表及通信诊断固定指标表保留原有编辑/展示方式。`GridPagination` 只负责绑定已有分页控件和切片数据，不创建固定控件。
 

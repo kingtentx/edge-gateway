@@ -8,5 +8,5 @@ internal sealed partial class RealtimePageView : UserControl
     internal DataGridView RealtimeGrid => realtimeGrid;
     internal Control ToolbarHost => toolbarHost;
 
-    public RealtimePageView() { InitializeComponent(); GridPagination.Attach(realtimeGrid, realtimeGridPagination); }
+    public RealtimePageView() { InitializeComponent(); GridPagination.Attach(realtimeGrid, realtimeGridPagination, realtimeGridPaginationTotal, realtimeGridPaginationSize); }
 }

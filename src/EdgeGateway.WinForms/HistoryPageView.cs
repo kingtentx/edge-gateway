@@ -15,5 +15,5 @@ internal sealed partial class HistoryPageView : UserControl
     internal Control ToolbarHost => toolbarHost;
     internal TableLayoutPanel ContentLayout => contentLayout;
 
-    public HistoryPageView() { InitializeComponent(); GridPagination.Attach(historyGrid, historyGridPagination); }
+    public HistoryPageView() { InitializeComponent(); GridPagination.Attach(historyGrid, historyGridPagination, historyGridPaginationTotal, historyGridPaginationSize); }
 }

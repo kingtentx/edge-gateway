@@ -15,7 +15,7 @@ internal sealed partial class TagImportDialog : EditorDialog
     internal TagCsvImportResult Result { get; private set; } = null!;
 
     public TagImportDialog() : base("导入设备点位", "预览并确认导入。")
-    { _content = []; _existing = []; _validate = _ => []; InitializeComponent(); GridPagination.Attach(_preview, _previewPagination); }
+    { _content = []; _existing = []; _validate = _ => []; InitializeComponent(); GridPagination.Attach(_preview, _previewPagination, _previewPaginationTotal, _previewPaginationSize); }
 
     public TagImportDialog(string deviceName, byte[] content, IReadOnlyList<TagConfiguration> existing,
         Func<IReadOnlyList<TagConfiguration>, IReadOnlyList<string>> validate)
@@ -24,7 +24,7 @@ internal sealed partial class TagImportDialog : EditorDialog
         Text = "导入点位 · " + deviceName;
         _content = content; _existing = existing; _validate = validate;
         SetConfirmText("确认导入");
-        InitializeComponent(); GridPagination.Attach(_preview, _previewPagination);
+        InitializeComponent(); GridPagination.Attach(_preview, _previewPagination, _previewPaginationTotal, _previewPaginationSize);
         _mode.Items.AddRange(new object[] { "追加点位（重名将拒绝）", "按名称更新并追加（保留原标识）" });
         _mode.SelectedIndex = 0;
         _mode.SelectedIndexChanged += (_, _) => RefreshPreview();
