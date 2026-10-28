@@ -9,14 +9,14 @@ internal sealed partial class DeviceWorkbookImportDialog : EditorDialog
     internal bool UpdateExisting => _mode.SelectedIndex == 1;
 
     public DeviceWorkbookImportDialog() : base("导入设备 Excel", "预览并确认导入。")
-    { _readPreview = _ => new([], 0, []); InitializeComponent(); }
+    { _readPreview = _ => new([], 0, []); InitializeComponent(); GridPagination.Attach(_preview, _previewPagination); }
 
     public DeviceWorkbookImportDialog(Func<bool, DeviceWorkbookPreview> readPreview)
         : base("导入设备 Excel", "预览设备、通道及点位变更，确认后一次保存。")
     {
         _readPreview = readPreview;
         SetConfirmText("确认导入");
-        InitializeComponent();
+        InitializeComponent(); GridPagination.Attach(_preview, _previewPagination);
         _mode.Items.AddRange(new object[] { "追加设备（标识重复将拒绝）", "按标识更新并追加" });
         _mode.SelectedIndex = 0;
         _mode.SelectedIndexChanged += (_, _) => RefreshPreview();
@@ -26,7 +26,7 @@ internal sealed partial class DeviceWorkbookImportDialog : EditorDialog
     private void RefreshPreview()
     {
         _result = _readPreview(UpdateExisting);
-        _preview.DataSource = _result.Devices.ToList();
+        GridViewState.Rebind(_preview, _result.Devices, row => row.Id);
         _summary.Text = $"新增 {_result.Devices.Count(device => device.Change == "新增")} 台，更新 {_result.Devices.Count(device => device.Change == "更新")} 台；新增通道 {_result.NewChannels} 个。";
         _errors.Text = _result.Errors.Count == 0 ? "校验通过，可以确认导入。" : string.Join(Environment.NewLine, _result.Errors);
         _errors.ForeColor = _result.Errors.Count == 0 ? UiTheme.Green : UiTheme.Red;

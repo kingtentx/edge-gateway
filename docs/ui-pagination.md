@@ -1,0 +1,37 @@
+# 列表分页
+
+更新：2026-10-28。基于 main 实现，AntdUI 2.4.16 / .NET 8 保持不变。
+
+## 实现
+
+采用 AntdUI-Demo Pagination 基础控件和默认主题，分页条靠右，默认每页 10 条，可选 10、20、50、100 条。固定分页控件和表格宿主在对应 Designer 中实例化并挂入控件树，后台 `GridPagination` 只绑定页码事件及数据切片。
+
+覆盖设备、点位、实时、历史、运行/采样日志、数据库连接/写入组、分组/通道、驱动管理、设备/点位导入预览和数据库写入预览。字段映射编辑网格、点位勾选器和通信诊断固定指标保留既有交互。
+
+- 设备/点位行操作仍从当前行读取稳定 ID；显式选中新增或编辑目标时切至所在页。
+- 删除末页记录后回到有效页，空结果清空表格；实时数据保持页码、选择及相同身份的数据行。
+- 查询上限、点位导入 500 条预览上限不变；分页不是数据库服务端分页。
+- 历史趋势、历史 CSV 和日志 CSV/JSONL 使用完整已执行查询快照，与当前显示页无关。
+- 点位摘要注明“筛选结果”，避免把筛选总数误认为当前页行数。
+
+## 本轮验证
+
+用户授权 Release 编译及隔离后台分页定向检查，并明确允许同范围修复重跑。证据保存在 `artifacts/pagination-20261028`。
+
+- `build-1.log`：抽取历史 CSV 方法时插入位置错误，编译失败，已修正并保留记录。
+- `build-2.log`、`build-3.log`、`build-4.log`、`build-5.log`：Release 编译通过，均 0 错误、1 条已有 GatewayWorkerClient.cs:283 CS8602 警告。首轮完整依赖编译的警告更多，不将增量编译结果视为消除了驱动警告。
+- `ui-1`：设备、实时、历史分页定向检查通过。
+- `ui-2`：日志导出断言失败。实际导出包含 23 条事件及 1 条查询元数据，测试按关键词误将元数据计为事件；改为解析 JSON 并逐条核对 23 个 message，没有修改导出逻辑。
+- `ui-3`：最终分页检查通过，应用/脚本退出码 0，stderr 为空，5 张截图。覆盖翻页、10/20 条切换、稳定设备/点位 ID、显式目标跨页定位、删除最后一页、空筛选、实时刷新保持数据源/页码/选择、完整 23 条历史 CSV 与日志 JSONL。
+- 实际 Windows 192 DPI，`ProcessWindowVerified=true`、`InputDesktopSwitch=false`；仅隔离配置、模拟设备定义和测试日志，没有访问现场设备或业务数据库。人工检查设备、历史、点位和日志截图。
+
+翻页/条数切换通过官方控件属性触发真实 ValueChanged 与绑定逻辑；不宣称完成物理鼠标、键盘翻页或下拉弹层验收。其他管理/预览列表完成源码接入与编译，未逐窗运行验收。未执行全量回归、完整 DPI 矩阵、架构门禁或 Visual Studio 设计器往返。
+
+原连续刷新/可用性检查中的第 20/25 行检查已显式设置每页 50 条，保留原行引用和滚动断言，本轮未执行这些旧专项。
+
+经确认后可使用：
+
+```powershell
+dotnet build src/EdgeGateway.WinForms/EdgeGateway.WinForms.csproj -c Release --no-restore
+./scripts/smoke-test-winforms-background.ps1 -Scenario Pagination -OutputDirectory artifacts/pagination-new-run
+```

@@ -25,6 +25,8 @@ internal sealed partial class DriverPluginDialog
     private AntdUI.Button close = null!;
     private TableLayoutPanel layout = null!;
 
+    private AntdUI.Pagination _gridPagination = null!;
+    private Panel _gridPageHost = null!;
     private void InitializeComponent()
     {
         SuspendLayout();
@@ -254,7 +256,23 @@ internal sealed partial class DriverPluginDialog
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(_actions, 0, 0);
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        layout.Controls.Add(_grid, 0, 1);
+        _gridPageHost = new Panel();
+        _gridPageHost.Name = "_gridPageHost";
+        _gridPageHost.Dock = DockStyle.Fill;
+        _gridPageHost.Margin = Padding.Empty;
+        _gridPagination = new AntdUI.Pagination();
+        _gridPagination.Name = "_gridPagination";
+        _gridPagination.AccessibleName = "列表分页";
+        _gridPagination.Dock = DockStyle.Bottom;
+        _gridPagination.Height = 38;
+        _gridPagination.RightToLeft = RightToLeft.Yes;
+        _gridPagination.ShowSizeChanger = true;
+        _gridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        _gridPagination.SizeChangerWidth = 100;
+        _grid.Dock = DockStyle.Fill;
+        _gridPageHost.Controls.Add(_grid);
+        _gridPageHost.Controls.Add(_gridPagination);
+        layout.Controls.Add(_gridPageHost, 0, 1);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(_status, 0, 2);
         this.Controls.Add(layout);

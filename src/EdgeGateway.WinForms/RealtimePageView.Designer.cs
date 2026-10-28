@@ -33,6 +33,8 @@ internal sealed partial class RealtimePageView
     internal InputFrame pointSearchSurface = null!;
     internal AntdUI.Button writeButton = null!;
 
+    private AntdUI.Pagination realtimeGridPagination = null!;
+    private Panel realtimeGridPageHost = null!;
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
@@ -121,7 +123,23 @@ realtimeGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         contentLayout.Controls.Add(titleLabel, 0, 0);
         contentLayout.Controls.Add(descriptionLabel, 0, 1);
         contentLayout.Controls.Add(toolbarHost, 0, 2);
-        contentLayout.Controls.Add(realtimeGrid, 0, 3);
+        realtimeGridPageHost = new Panel();
+        realtimeGridPageHost.Name = "realtimeGridPageHost";
+        realtimeGridPageHost.Dock = DockStyle.Fill;
+        realtimeGridPageHost.Margin = Padding.Empty;
+        realtimeGridPagination = new AntdUI.Pagination();
+        realtimeGridPagination.Name = "realtimeGridPagination";
+        realtimeGridPagination.AccessibleName = "列表分页";
+        realtimeGridPagination.Dock = DockStyle.Bottom;
+        realtimeGridPagination.Height = 38;
+        realtimeGridPagination.RightToLeft = RightToLeft.Yes;
+        realtimeGridPagination.ShowSizeChanger = true;
+        realtimeGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        realtimeGridPagination.SizeChangerWidth = 100;
+        realtimeGrid.Dock = DockStyle.Fill;
+        realtimeGridPageHost.Controls.Add(realtimeGrid);
+        realtimeGridPageHost.Controls.Add(realtimeGridPagination);
+        contentLayout.Controls.Add(realtimeGridPageHost, 0, 3);
         Controls.Add(contentLayout);
         contentLayout.ResumeLayout(false);
         contentLayout.PerformLayout();

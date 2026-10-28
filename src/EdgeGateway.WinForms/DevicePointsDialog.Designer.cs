@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 namespace EdgeGateway.WinForms;
 
 internal sealed partial class DevicePointsDialog
@@ -29,6 +29,8 @@ internal sealed partial class DevicePointsDialog
     private GatewayButton closeButton = null!;
     private Label feedbackLabel = null!;
     private TableLayoutPanel footer = null!;
+    private AntdUI.Pagination tagGridPagination = null!;
+    private Panel tagGridPageHost = null!;
     private void InitializeComponent()
     {
         SuspendLayout();
@@ -159,7 +161,23 @@ tagGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         pointPane.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         pointPane.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         pointPane.Controls.Add(tagHeaderLayout, 0, 0);
-        pointPane.Controls.Add(tagGrid, 0, 1);
+        tagGridPageHost = new Panel();
+        tagGridPageHost.Name = "tagGridPageHost";
+        tagGridPageHost.Dock = DockStyle.Fill;
+        tagGridPageHost.Margin = Padding.Empty;
+        tagGridPagination = new AntdUI.Pagination();
+        tagGridPagination.Name = "tagGridPagination";
+        tagGridPagination.AccessibleName = "列表分页";
+        tagGridPagination.Dock = DockStyle.Bottom;
+        tagGridPagination.Height = 38;
+        tagGridPagination.RightToLeft = RightToLeft.Yes;
+        tagGridPagination.ShowSizeChanger = true;
+        tagGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        tagGridPagination.SizeChangerWidth = 100;
+        tagGrid.Dock = DockStyle.Fill;
+        tagGridPageHost.Controls.Add(tagGrid);
+        tagGridPageHost.Controls.Add(tagGridPagination);
+        pointPane.Controls.Add(tagGridPageHost, 0, 1);
         tagHeaderLayout.Controls.Add(tagHeadingLabel, 0, 0);
         tagHeaderLayout.Controls.Add(tagSummaryLabel, 0, 1);
         tagHeaderLayout.Controls.Add(tagToolbarHost, 0, 2);

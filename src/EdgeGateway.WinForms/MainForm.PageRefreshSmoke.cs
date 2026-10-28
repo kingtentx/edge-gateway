@@ -26,6 +26,7 @@ public sealed partial class MainForm
             var samples = device.Tags.Select((tag, index) => new TelemetrySample(device.Id, device.Name, tag.Id, tag.Name,
                 tag.Address, (double)index, (double)index, SampleQuality.Good, timestamp, tag.Unit)).ToArray();
             RefreshRealtime(samples);
+            _realtimeGrid.Parent!.Controls.OfType<AntdUI.Pagination>().Single().PageSize = 50;
             PerformLayoutRecursively(this);
             _realtimeGrid.CurrentCell = _realtimeGrid.Rows[25].Cells["Error"];
             _realtimeGrid.FirstDisplayedScrollingRowIndex = 20;

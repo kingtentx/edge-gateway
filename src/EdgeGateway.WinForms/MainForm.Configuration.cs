@@ -44,6 +44,7 @@ public sealed partial class MainForm
         _tagHeading = _pointsDialog.TagHeading;
         _tagSummary = _pointsDialog.TagSummary;
         _deviceGrid.Name = "DeviceList"; _tagGrid.Name = "TagList";
+        _deviceGrid.DataBindingComplete += (_, _) => UpdateDeviceConfigurationCommands();
         _deviceGrid.SelectionChanged += (_, _) => { if (!_rebindingDevices) { BindTags(); UpdateSelectionCommands(); } };
         _deviceGrid.CellContentClick += async (_, e) => await HandleDeviceGridActionAsync(e);
         _deviceGrid.CellDoubleClick += async (_, e) => await HandleDeviceGridActionAsync(e, doubleClick: true);
@@ -420,7 +421,7 @@ public sealed partial class MainForm
         GridViewState.Rebind(_tagGrid, rows, row => row.Id, selectTag);
         _tagHeading.Text = device is null ? "请选择设备" : device.Name + " · 点位管理";
         _tagSummary.Text = device is null ? "在上方选择设备，或先添加采集设备。"
-            : $"{descriptor?.Name ?? device.DriverId}  ·  显示 {rows.Count} / 共 {device.Tags.Count} 个点位"
+            : $"{descriptor?.Name ?? device.DriverId}  ·  筛选结果 {rows.Count} / 共 {device.Tags.Count} 个点位"
             + (search.Length > 0 && rows.Count == 0 ? "  ·  未找到匹配点位，可在点位操作中清除筛选。" : "");
         _tagSearch.Enabled = device is not null;
         UpdateSelectionCommands();

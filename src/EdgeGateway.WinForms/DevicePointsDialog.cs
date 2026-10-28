@@ -1,4 +1,4 @@
-﻿namespace EdgeGateway.WinForms;
+namespace EdgeGateway.WinForms;
 
 /// <summary>Fixed point-management surface; application commands are bound by the owner.</summary>
 internal sealed partial class DevicePointsDialog : DpiAwareForm
@@ -14,7 +14,7 @@ internal sealed partial class DevicePointsDialog : DpiAwareForm
     internal void SetFeedback(string message) => feedbackLabel.Text = message;
     public DevicePointsDialog()
     {
-        InitializeComponent();
+        InitializeComponent(); GridPagination.Attach(tagGrid, tagGridPagination);
         ConfigureWindow(new Size(1160, 700), new Size(760, 460));
     }
     protected override void OnLayout(LayoutEventArgs e)

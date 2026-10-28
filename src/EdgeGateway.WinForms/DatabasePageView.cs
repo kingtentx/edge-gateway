@@ -10,5 +10,5 @@ internal sealed partial class DatabasePageView : UserControl
     internal Control ConnectionsToolbarHost => connectionsToolbarHost;
     internal Control GroupsToolbarHost => groupsToolbarHost;
 
-    public DatabasePageView() => InitializeComponent();
+    public DatabasePageView() { InitializeComponent(); GridPagination.Attach(connectionsGrid, connectionsGridPagination); GridPagination.Attach(groupsGrid, groupsGridPagination); }
 }

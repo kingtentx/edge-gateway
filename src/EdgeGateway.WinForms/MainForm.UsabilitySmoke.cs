@@ -103,6 +103,7 @@ public sealed partial class MainForm
             var samples = a.Tags.Select((tag, index) => new TelemetrySample(a.Id, a.Name, tag.Id, tag.Name,
                 tag.Address, (double)index, (double)index, SampleQuality.Good, timestamp, tag.Unit)).ToList();
             RefreshRealtime(samples);
+            _realtimeGrid.Parent!.Controls.OfType<AntdUI.Pagination>().Single().PageSize = 50;
             _realtimeGrid.CurrentCell = _realtimeGrid.Rows[20].Cells["Error"];
             var before = GridViewState.Capture(_realtimeGrid, row => ((SampleRow)row).Sample.TagId);
             RefreshRealtime(samples.Select(sample => sample with { Value = 42D, Timestamp = timestamp.AddSeconds(1) }).ToList());

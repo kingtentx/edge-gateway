@@ -9,6 +9,8 @@ internal sealed partial class ConfigurationCatalogDialog
     internal DpiDataGridView catalogGrid = null!;
     private DataGridViewTextBoxColumn nameColumn = null!, countColumn = null!, detailsColumn = null!;
 
+    private AntdUI.Pagination catalogGridPagination = null!;
+    private Panel catalogGridPageHost = null!;
     private void InitializeComponent()
     {
         layout = new TableLayoutPanel();
@@ -121,7 +123,23 @@ internal sealed partial class ConfigurationCatalogDialog
         CancelButton = closeButton;
         layout.Controls.Add(titleLabel, 0, 0);
         layout.Controls.Add(toolbar, 0, 1);
-        layout.Controls.Add(catalogGrid, 0, 2);
+        catalogGridPageHost = new Panel();
+        catalogGridPageHost.Name = "catalogGridPageHost";
+        catalogGridPageHost.Dock = DockStyle.Fill;
+        catalogGridPageHost.Margin = Padding.Empty;
+        catalogGridPagination = new AntdUI.Pagination();
+        catalogGridPagination.Name = "catalogGridPagination";
+        catalogGridPagination.AccessibleName = "列表分页";
+        catalogGridPagination.Dock = DockStyle.Bottom;
+        catalogGridPagination.Height = 38;
+        catalogGridPagination.RightToLeft = RightToLeft.Yes;
+        catalogGridPagination.ShowSizeChanger = true;
+        catalogGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        catalogGridPagination.SizeChangerWidth = 100;
+        catalogGrid.Dock = DockStyle.Fill;
+        catalogGridPageHost.Controls.Add(catalogGrid);
+        catalogGridPageHost.Controls.Add(catalogGridPagination);
+        layout.Controls.Add(catalogGridPageHost, 0, 2);
         layout.Controls.Add(statusLabel, 0, 3);
         layout.Controls.Add(footer, 0, 4);
         Controls.Add(layout);

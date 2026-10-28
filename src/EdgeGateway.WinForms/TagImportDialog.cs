@@ -15,7 +15,7 @@ internal sealed partial class TagImportDialog : EditorDialog
     internal TagCsvImportResult Result { get; private set; } = null!;
 
     public TagImportDialog() : base("导入设备点位", "预览并确认导入。")
-    { _content = []; _existing = []; _validate = _ => []; InitializeComponent(); }
+    { _content = []; _existing = []; _validate = _ => []; InitializeComponent(); GridPagination.Attach(_preview, _previewPagination); }
 
     public TagImportDialog(string deviceName, byte[] content, IReadOnlyList<TagConfiguration> existing,
         Func<IReadOnlyList<TagConfiguration>, IReadOnlyList<string>> validate)
@@ -24,7 +24,7 @@ internal sealed partial class TagImportDialog : EditorDialog
         Text = "导入点位 · " + deviceName;
         _content = content; _existing = existing; _validate = validate;
         SetConfirmText("确认导入");
-        InitializeComponent();
+        InitializeComponent(); GridPagination.Attach(_preview, _previewPagination);
         _mode.Items.AddRange(new object[] { "追加点位（重名将拒绝）", "按名称更新并追加（保留原标识）" });
         _mode.SelectedIndex = 0;
         _mode.SelectedIndexChanged += (_, _) => RefreshPreview();
@@ -44,7 +44,7 @@ internal sealed partial class TagImportDialog : EditorDialog
         _errors.Text = _validationErrors.Count == 0 ? "校验通过，可以确认导入。" : string.Join(Environment.NewLine, _validationErrors);
         _errors.ForeColor = _validationErrors.Count == 0 ? UiTheme.Green : UiTheme.Red;
         var existing = _existing.ToDictionary(tag => tag.Id);
-        _preview.DataSource = Result.Tags.Select(tag =>
+        var rows = Result.Tags.Select(tag =>
         {
             var change = !existing.TryGetValue(tag.Id, out var previous) ? 0
                 : JsonSerializer.Serialize(tag) != JsonSerializer.Serialize(previous) ? 1 : 2;
@@ -57,6 +57,7 @@ internal sealed partial class TagImportDialog : EditorDialog
             row.Tag.Expression, ScanInterval = row.Tag.ScanIntervalMs == 0 ? "继承设备" : $"{row.Tag.ScanIntervalMs} ms",
             Deadband = row.Tag.Deadband.ToString("G", System.Globalization.CultureInfo.InvariantCulture)
         }).ToList();
+        GridViewState.Rebind(_preview, rows, row => row.Name);
     }
 
     protected override void Commit()

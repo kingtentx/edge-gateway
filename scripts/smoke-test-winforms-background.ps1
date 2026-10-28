@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -131,6 +131,7 @@ namespace EdgeGateway {
                     Attributes = attributes
                 };
                 var arguments = scenario == "UiRedesign" ? " --smoke-test --screenshot "
+                    : scenario == "Pagination" ? " --smoke-pagination --screenshot "
                     : scenario == "Navigation" ? " --smoke-navigation-collapse --screenshot "
                     : scenario == "PageRefresh" ? " --smoke-page-refresh --screenshot "
                     : scenario == "DatabaseRefresh" ? " --smoke-database-refresh --screenshot "
@@ -188,6 +189,14 @@ $code = [EdgeGateway.BackgroundUiSmoke]::Run($applicationPath, $repositoryRoot, 
 if ($code -ne 0) {
     Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log')
     throw "Background WinForms smoke failed: $code"
+}
+if ($Scenario -eq 'Pagination') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'Pagination smoke wrote errors.' }
+    if ($outputText -notmatch 'Pagination smoke passed:') { throw 'Pagination completion marker is missing.' }
+    Write-Output "Pagination smoke passed: $outputRoot"
+    exit 0
 }
 if ($Scenario -eq 'Navigation') {
     $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw

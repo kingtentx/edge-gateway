@@ -32,6 +32,8 @@ internal sealed partial class TagImportDialog
     private GatewayInput _errors = null!;
     private Label fieldsHint5 = null!;
 
+    private AntdUI.Pagination _previewPagination = null!;
+    private Panel _previewPageHost = null!;
     private void InitializeComponent()
     {
         SuspendLayout();
@@ -274,8 +276,26 @@ internal sealed partial class TagImportDialog
         _previewColumnDeadband.Name = "Deadband";
         _preview.Columns.Add(_previewColumnDeadband);
         fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        fields.Controls.Add(_preview, 0, 5);
-        fields.SetColumnSpan(_preview, 2);
+        _previewPageHost = new Panel();
+        _previewPageHost.Name = "_previewPageHost";
+        _previewPageHost.Dock = DockStyle.Fill;
+        _previewPageHost.Margin = Padding.Empty;
+        _previewPagination = new AntdUI.Pagination();
+        _previewPagination.Name = "_previewPagination";
+        _previewPagination.AccessibleName = "列表分页";
+        _previewPagination.Dock = DockStyle.Bottom;
+        _previewPagination.Height = 38;
+        _previewPagination.RightToLeft = RightToLeft.Yes;
+        _previewPagination.ShowSizeChanger = true;
+        _previewPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        _previewPagination.SizeChangerWidth = 100;
+        _preview.Dock = DockStyle.Fill;
+        _previewPageHost.Controls.Add(_preview);
+        _previewPageHost.Controls.Add(_previewPagination);
+        _previewPageHost.Dock = DockStyle.Top;
+        _previewPageHost.Height = 288;
+        fields.Controls.Add(_previewPageHost, 0, 5);
+        fields.SetColumnSpan(_previewPageHost, 2);
         fieldsSection4 = new Label();
         fieldsSection4.Name = "fieldsSection4";
         fieldsSection4.Text = "校验结果";

@@ -14,7 +14,7 @@ internal sealed partial class ConfigurationCatalogDialog : DpiAwareForm
 
     public ConfigurationCatalogDialog()
     {
-        InitializeComponent();
+        InitializeComponent(); GridPagination.Attach(catalogGrid, catalogGridPagination);
         ConfigureWindow(new Size(860, 560), new Size(620, 400));
         addButton.Click += async (_, _) => await EditAsync(true);
         editButton.Click += async (_, _) => await EditAsync(false);
@@ -50,7 +50,7 @@ internal sealed partial class ConfigurationCatalogDialog : DpiAwareForm
         closeButton.Enabled = !_busy;
         statusLabel.Text = !_canEdit() ? "请停止全部设备后进行新增、编辑或删除。"
             : Selected is { DeviceCount: > 0 } ? "所选项目正在被设备引用；请先修改设备配置，再删除。"
-            : $"共 {catalogGrid.Rows.Count} 项；双击行可编辑，修改后自动保存。";
+            : $"共 {catalogGridPagination.Total} 项；双击行可编辑，修改后自动保存。";
     }
 
     private async Task EditAsync(bool add)

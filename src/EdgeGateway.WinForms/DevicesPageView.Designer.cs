@@ -53,6 +53,8 @@ internal sealed partial class DevicesPageView
 
     private MainForm.DeviceActionButtonCell deviceGridColumnDeviceStopTemplate = null!;
     private MainForm.DeviceActionButtonCell deviceGridColumnDeviceStartTemplate = null!;    private DataGridViewLinkColumn devicePointsColumn = null!;
+    private AntdUI.Pagination deviceGridPagination = null!;
+    private Panel deviceGridPageHost = null!;
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
@@ -189,7 +191,23 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         contentLayout.Controls.Add(descriptionLabel, 0, 1);
         contentLayout.Controls.Add(deviceToolbarHost, 0, 3);
         contentLayout.Controls.Add(deviceFiltersHost, 0, 2);
-        contentLayout.Controls.Add(deviceGrid, 0, 4);
+        deviceGridPageHost = new Panel();
+        deviceGridPageHost.Name = "deviceGridPageHost";
+        deviceGridPageHost.Dock = DockStyle.Fill;
+        deviceGridPageHost.Margin = Padding.Empty;
+        deviceGridPagination = new AntdUI.Pagination();
+        deviceGridPagination.Name = "deviceGridPagination";
+        deviceGridPagination.AccessibleName = "列表分页";
+        deviceGridPagination.Dock = DockStyle.Bottom;
+        deviceGridPagination.Height = 38;
+        deviceGridPagination.RightToLeft = RightToLeft.Yes;
+        deviceGridPagination.ShowSizeChanger = true;
+        deviceGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        deviceGridPagination.SizeChangerWidth = 100;
+        deviceGrid.Dock = DockStyle.Fill;
+        deviceGridPageHost.Controls.Add(deviceGrid);
+        deviceGridPageHost.Controls.Add(deviceGridPagination);
+        contentLayout.Controls.Add(deviceGridPageHost, 0, 4);
         Controls.Add(contentLayout);
 
         contentLayout.ResumeLayout(false);

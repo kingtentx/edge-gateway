@@ -53,6 +53,8 @@ internal sealed partial class HistoryPageView
     internal AntdUI.Button recentButton = null!;
     internal AntdUI.Button exportButton = null!;
 
+    private AntdUI.Pagination historyGridPagination = null!;
+    private Panel historyGridPageHost = null!;
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
@@ -195,7 +197,23 @@ historyGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         contentLayout.Controls.Add(toolbarHost, 0, 2);
         contentLayout.Controls.Add(querySummary, 0, 3);
         contentLayout.Controls.Add(trendChart, 0, 4);
-        contentLayout.Controls.Add(historyGrid, 0, 5);
+        historyGridPageHost = new Panel();
+        historyGridPageHost.Name = "historyGridPageHost";
+        historyGridPageHost.Dock = DockStyle.Fill;
+        historyGridPageHost.Margin = Padding.Empty;
+        historyGridPagination = new AntdUI.Pagination();
+        historyGridPagination.Name = "historyGridPagination";
+        historyGridPagination.AccessibleName = "列表分页";
+        historyGridPagination.Dock = DockStyle.Bottom;
+        historyGridPagination.Height = 38;
+        historyGridPagination.RightToLeft = RightToLeft.Yes;
+        historyGridPagination.ShowSizeChanger = true;
+        historyGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        historyGridPagination.SizeChangerWidth = 100;
+        historyGrid.Dock = DockStyle.Fill;
+        historyGridPageHost.Controls.Add(historyGrid);
+        historyGridPageHost.Controls.Add(historyGridPagination);
+        contentLayout.Controls.Add(historyGridPageHost, 0, 5);
         Controls.Add(contentLayout);
         contentLayout.ResumeLayout(false);
         contentLayout.PerformLayout();

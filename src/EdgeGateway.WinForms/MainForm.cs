@@ -24,6 +24,7 @@ public sealed partial class MainForm : DpiAwareForm
     private readonly bool _databaseMappingSmoke;
     private readonly bool _databaseRefreshSmoke;
     private readonly bool _pageRefreshSmoke;
+    private readonly bool _paginationSmoke;
     private readonly bool _navigationSmoke;
     private readonly bool _serverResourcesSmoke;
     private readonly bool _workbookSmoke;
@@ -59,7 +60,7 @@ public sealed partial class MainForm : DpiAwareForm
         bool smokeTest = false, string? smokeScreenshotPath = null, bool layoutMatrix = false,
         Func<IDisposable>? configurationWriteFailureForSmoke = null, string? driverDirectory = null, bool databaseMappingSmoke = false,
         bool serverResourcesSmoke = false, bool workbookSmoke = false, bool leaveWorkerRunning = false, bool loggingSmoke = false,
-        bool databaseRefreshSmoke = false, bool pageRefreshSmoke = false, bool navigationSmoke = false)
+        bool databaseRefreshSmoke = false, bool pageRefreshSmoke = false, bool navigationSmoke = false, bool paginationSmoke = false)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _configuration = application.GetConfiguration();
@@ -69,7 +70,8 @@ public sealed partial class MainForm : DpiAwareForm
         _loggingSmoke = loggingSmoke;
         _workbookSmoke = workbookSmoke;
         _leaveWorkerRunning = leaveWorkerRunning;
-        _smokeTest = navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
+        _smokeTest = paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || smokeTest || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke;
+        _paginationSmoke = paginationSmoke;
         _navigationSmoke = navigationSmoke;
         _pageRefreshSmoke = pageRefreshSmoke;
         _databaseRefreshSmoke = databaseRefreshSmoke;
@@ -245,6 +247,15 @@ public sealed partial class MainForm : DpiAwareForm
 
     private async void OnShown(object? sender, EventArgs e)
     {
+        if (_paginationSmoke)
+        {
+            try { await SmokePaginationAsync(); }
+            catch (Exception exception)
+            {
+                SmokeTestFailed = true; TrySaveSmokeFailure(this, "pagination-failed"); Console.Error.WriteLine(exception);
+            }
+            _allowClose = true; Close(); return;
+        }
         if (_navigationSmoke)
         {
             try { await SmokeNavigationCollapseAsync(); }

@@ -46,6 +46,11 @@ internal sealed record GridViewState(object? SelectedKey, string? ColumnName, ob
 
     internal static void Rebind<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
     {
+        if (!GridPagination.Bind(grid, rows, key, preferredKey, false)) RebindPage(grid, rows, key, preferredKey);
+    }
+
+    internal static void RebindPage<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
+    {
         object? Key(object item) => item is T row ? key(row) : null;
         var state = Capture(grid, Key);
         grid.DataSource = rows.ToList();
@@ -54,6 +59,11 @@ internal sealed record GridViewState(object? SelectedKey, string? ColumnName, ob
 
     /// <summary>Polling keeps bound rows alive until stable identities or their order change.</summary>
     internal static void UpdateRows<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
+    {
+        if (!GridPagination.Bind(grid, rows, key, preferredKey, true)) UpdatePageRows(grid, rows, key, preferredKey);
+    }
+
+    internal static void UpdatePageRows<T>(DataGridView grid, IReadOnlyList<T> rows, Func<T, object?> key, object? preferredKey = null)
     {
         object? RowKey(object item) => item is T value ? key(value) : null;
         if (grid.DataSource is BindingList<T> bound && bound.Count == rows.Count

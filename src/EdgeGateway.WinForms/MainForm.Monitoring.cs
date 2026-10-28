@@ -190,7 +190,8 @@ public sealed partial class MainForm
     private void PresentHistoryResults(Guid? groupId, string groupName, string deviceName, string tagName, HistoryQuery query, IReadOnlyList<TelemetrySample> samples)
     {
         _queriedHistory = samples;
-        _historyGrid.DataSource = _queriedHistory.Select(ToRow).ToList();
+        var rows = _queriedHistory.Select(ToRow).ToList();
+        GridViewState.Rebind(_historyGrid, rows, row => row, rows.FirstOrDefault());
         _executedHistoryQuery = query; _executedHistoryGroupId = groupId;
         var tagId = query.TagId;
         _trend.Visible = tagId.HasValue;
@@ -222,13 +223,18 @@ public sealed partial class MainForm
         if (_queriedHistory.Count == 0) throw new InvalidOperationException("请先查询有数据的历史记录。");
         using var dialog = new SaveFileDialog { Filter = "CSV 文件 (*.csv)|*.csv", FileName = "edge-history-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".csv", Title = "导出本次历史查询", OverwritePrompt = true };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        await File.WriteAllTextAsync(dialog.FileName, BuildHistoryCsv(), new UTF8Encoding(true));
+        SetFooter($"已导出 {_queriedHistory.Count:F0} 条历史记录。");
+    }
+
+    private string BuildHistoryCsv()
+    {
         var text = new StringBuilder();
         text.AppendLine(CsvLine("设备ID", "设备名称", "点位ID", "点位名称", "地址", "原始值", "工程值", "单位", "质量", "采样时间（含时区）", "错误信息"));
         foreach (var sample in _queriedHistory)
             text.AppendLine(CsvLine(sample.DeviceId.ToString(), sample.DeviceName, sample.TagId.ToString(), sample.TagName, sample.Address,
                 ValueText(sample.RawValue), ValueText(sample.Value), sample.Unit, sample.Quality.ToString(), sample.Timestamp.ToLocalTime().ToString("O"), sample.Error ?? ""));
-        await File.WriteAllTextAsync(dialog.FileName, text.ToString(), new UTF8Encoding(true));
-        SetFooter($"已导出 {_queriedHistory.Count:F0} 条历史记录。");
+        return text.ToString();
     }
 
     private static string CsvLine(params string[] values) => string.Join(",", values.Select(value =>

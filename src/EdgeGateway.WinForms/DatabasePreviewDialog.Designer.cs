@@ -22,6 +22,8 @@ internal sealed partial class DatabasePreviewDialog
     private DataGridViewTextBoxColumn valuesGridColumnSampleTime = null!;
     private DataGridViewTextBoxColumn valuesGridColumnError = null!;
 
+    private AntdUI.Pagination valuesGridPagination = null!;
+    private Panel valuesGridPageHost = null!;
     private void InitializeComponent()
     {
         SuspendLayout();
@@ -183,7 +185,23 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridColumnError.SortMode = DataGridViewColumnSortMode.NotSortable;
         valuesGridColumnError.Name = "Error";
         valuesGrid.Columns.Add(valuesGridColumnError);
-        valuesTab.Controls.Add(valuesGrid);
+        valuesGridPageHost = new Panel();
+        valuesGridPageHost.Name = "valuesGridPageHost";
+        valuesGridPageHost.Dock = DockStyle.Fill;
+        valuesGridPageHost.Margin = Padding.Empty;
+        valuesGridPagination = new AntdUI.Pagination();
+        valuesGridPagination.Name = "valuesGridPagination";
+        valuesGridPagination.AccessibleName = "列表分页";
+        valuesGridPagination.Dock = DockStyle.Bottom;
+        valuesGridPagination.Height = 38;
+        valuesGridPagination.RightToLeft = RightToLeft.Yes;
+        valuesGridPagination.ShowSizeChanger = true;
+        valuesGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        valuesGridPagination.SizeChangerWidth = 100;
+        valuesGrid.Dock = DockStyle.Fill;
+        valuesGridPageHost.Controls.Add(valuesGrid);
+        valuesGridPageHost.Controls.Add(valuesGridPagination);
+        valuesTab.Controls.Add(valuesGridPageHost);
         Tabs.TabPages.Add(valuesTab);
         summaryFields.RowCount = 4;
         ResumeLayout(false);

@@ -96,13 +96,14 @@ public sealed partial class MainForm
                 var result = await _owner._application.QueryLogFilesAsync(query, cancellation.Token);
                 if (_owner.IsDisposed || _owner.Disposing) return;
                 Result = result; _changed = Capture() != query;
-                Grid.DataSource = result.Entries.Select(entry => new
+                var rows = result.Entries.Select((entry, index) => new
                 {
-                    Timestamp = entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff"), Level = LogLevelText(entry.Level),
+                    Index = index, Timestamp = entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff"), Level = LogLevelText(entry.Level),
                     entry.Message, entry.FileName, Device = entry.Sample?.DeviceName, Tag = entry.Sample?.TagName,
                     Address = entry.Sample?.Address, RawValue = entry.Sample?.RawValue, Value = entry.Sample?.Value,
                     Quality = entry.Sample is null ? "" : QualityText(entry.Sample.Quality), Unit = entry.Sample?.Unit, Error = entry.Sample?.Error
                 }).ToArray();
+                GridViewState.Rebind(Grid, rows, row => row.Index, 0);
                 _summary = $"{query.From.ToLocalTime():MM-dd HH:mm:ss} 至 {query.To.ToLocalTime():MM-dd HH:mm:ss} · {result.Entries.Count:F0} 条 · 扫描 {result.ScannedBytes / 1048576d:F2} M · 损坏 {result.InvalidLines} 条。"
                     + (result.IsPartial ? "【受限结果】" : "") + "导出本次查询快照。" + string.Join("；", result.Warnings);
                 UpdateSummary();
