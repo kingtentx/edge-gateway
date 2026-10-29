@@ -101,8 +101,15 @@ internal sealed partial class InputFrame : AntdUI.Panel
             _measuredDpi = DeviceDpi;
             _textHeight = TextRenderer.MeasureText("确定", Font, Size.Empty, TextFormatFlags.SingleLine | TextFormatFlags.NoPadding).Height;
         }
-        return new Size(Width, Math.Max(MinimumSize.Height,
-            Math.Max(UiTheme.Scale(this, UiTheme.ActionHeight), _textHeight + UiTheme.Scale(this, 14))));
+        var height = Math.Max(MinimumSize.Height,
+            Math.Max(UiTheme.Scale(this, UiTheme.ActionHeight), _textHeight + UiTheme.Scale(this, 14)));
+        // Toolbar buttons include their text and padding in the preferred height.
+        // Use that same height for adjacent search fields, including after DPI changes.
+        // Form rows retain their own sizing and vertical-centering rules.
+        if (Parent is FlowLayoutPanel toolbar)
+            foreach (var button in toolbar.Controls.OfType<GatewayButton>().Where(button => button.Visible))
+                height = Math.Max(height, button.GetPreferredSize(Size.Empty).Height);
+        return new Size(Width, height);
     }
 
     protected override void OnLayout(LayoutEventArgs e)

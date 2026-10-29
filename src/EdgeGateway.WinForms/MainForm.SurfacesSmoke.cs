@@ -60,6 +60,13 @@ public sealed partial class MainForm
                                 throw new InvalidOperationException($"Content below pagination: {dialog.GetType().Name}/{control.Name}.");
                         }
                     }
+                    if (dialog == points)
+                    {
+                        points.TagSearch.Text = "温度";
+                        FocusForSmoke(points.TagSearch, points.TagSearch, points, "point toolbar search");
+                        await Task.Delay(150);
+                        AssertPointToolbarAlignment(points);
+                    }
                     SaveEditorScreenshot(dialog, "surfaces", dialog.GetType().Name + (narrow ? "-narrow" : "-wide"));
                 }
                 if (dialog == tags)
@@ -76,5 +83,20 @@ public sealed partial class MainForm
             finally { dialog.Close(); }
         }
         Console.WriteLine("List surfaces passed: pagination last, compact bars, theme selection and cancel paths.");
+    }
+
+    private static void AssertPointToolbarAlignment(DevicePointsDialog points)
+    {
+        var search = points.TagSearch;
+        var searchRect = search.RectangleToScreen(search.ReadRectangle);
+        foreach (var button in points.tagSearchSurface.Parent!.Controls.OfType<GatewayButton>())
+        {
+            var buttonRect = button.RectangleToScreen(button.ReadRectangle);
+            // Wrapped rows may have different Y coordinates, but retain equal field heights.
+            if (Math.Abs(buttonRect.Height - searchRect.Height) > UiTheme.Scale(search, 1)
+                || (button.Top == points.tagSearchSurface.Top
+                    && Math.Abs(buttonRect.Top - searchRect.Top) > UiTheme.Scale(search, 1)))
+                throw new InvalidOperationException($"Point toolbar surfaces differ: {button.Name}={buttonRect}, search={searchRect}.");
+        }
     }
 }

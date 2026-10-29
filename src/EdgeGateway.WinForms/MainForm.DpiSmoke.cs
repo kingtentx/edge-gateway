@@ -496,6 +496,7 @@ public sealed partial class MainForm
         {
             EditorDialog editor => editor.SmokeCommands.Last(),
             WriteValueDialog editor => editor.SmokeCommands.Last(),
+            DevicePointsDialog points => points.AddTagButton,
             MainForm main => main.navigationMenu,
             _ => form
         };
@@ -548,6 +549,9 @@ public sealed partial class MainForm
         var expected = Math.Max(UiTheme.Scale(control, UiTheme.ActionHeight),
             TextRenderer.MeasureText("确定", control.Font, Size.Empty, TextFormatFlags.SingleLine | TextFormatFlags.NoPadding).Height
             + UiTheme.Scale(control, 14));
+        if (surface.Parent is FlowLayoutPanel toolbar)
+            foreach (var button in toolbar.Controls.OfType<GatewayButton>().Where(button => button.Visible))
+                expected = Math.Max(expected, button.Height);
         if (Math.Abs(surface.Height - expected) > 1 || Math.Abs(control.Top - (surface.ClientSize.Height - control.Height) / 2) > 1)
             throw new InvalidOperationException($"{context}: input surface height/centering differs from buttons: surface={surface.Height}, expected={expected}, editor={control.Bounds}.");
     }
