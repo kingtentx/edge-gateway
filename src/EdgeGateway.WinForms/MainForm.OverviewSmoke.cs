@@ -25,7 +25,7 @@ public sealed partial class MainForm
             if (_serverCpu.Text != "95.0%" || !_serverMemory.Text.EndsWith('%') || _serverMemory.Text.Contains("正常", StringComparison.Ordinal))
                 throw new InvalidOperationException("CPU and memory values must contain percentages without status suffixes.");
             if (_serverCpu.ForeColor != UiTheme.Warning || _serverMemory.ForeColor != UiTheme.Warning
-                || _serverDisks.ForeColor != UiTheme.Warning || !_serverDisks.Text.Contains("空间偏紧"))
+                || !_serverDiskBars.Values.Any(bar => bar.UsedPercent >= 90))
                 throw new InvalidOperationException("Overview did not identify high resource usage.");
             if (_serverIdentity.Text.Contains("逻辑处理器") || _serverCpuTitle.Text != "CPU · 8 逻辑处理器"
                 || _serverMemoryTitle.Text != "内存 · " + ServerDiskBar.Capacity(16L << 30))
@@ -34,7 +34,7 @@ public sealed partial class MainForm
             if (Descendants(_pages["overview"]).OfType<Label>().Any(label => removedHints.Any(hint => label.Text.StartsWith(hint))))
                 throw new InvalidOperationException("Overview still contains a removed explanatory label.");
             ShowServerResourceFailure("fixture unavailable");
-            if (_serverCpu.Text.Contains("95") || !_serverMemory.Text.Contains("不可用") || !_serverDisks.Text.Contains("不可用"))
+            if (_serverCpu.Text.Contains("95") || !_serverMemory.Text.Contains("不可用") || !_serverErrors.Visible || !_serverErrors.Text.Contains("fixture unavailable"))
                 throw new InvalidOperationException("Overview reused stale resource values after an error.");
         }
         finally { RefreshOverview(summary); RefreshServerResources(actual); }

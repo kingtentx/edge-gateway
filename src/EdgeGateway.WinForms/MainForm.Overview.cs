@@ -25,7 +25,6 @@ public sealed partial class MainForm
     private ServerUsageTrend _serverMemoryChart = null!;
     private TableLayoutPanel _serverDiskRows = null!;
     private readonly Dictionary<string, ServerDiskBar> _serverDiskBars = new(StringComparer.OrdinalIgnoreCase);
-    private Label _serverDisks = null!;
     private Label _serverErrors = null!;
 
     private Control BuildOverviewPage()
@@ -46,7 +45,6 @@ public sealed partial class MainForm
         _serverMemory = _overviewPageView._serverMemory;
         _serverCpuTitle = _overviewPageView._serverCpuTitle;
         _serverMemoryTitle = _overviewPageView._serverMemoryTitle;
-        _serverDisks = _overviewPageView._serverDisks;
         _serverErrors = _overviewPageView._serverErrors;
         _serverCpuChart = _overviewPageView._serverCpuChart;
         _serverMemoryChart = _overviewPageView._serverMemoryChart;
@@ -149,15 +147,11 @@ public sealed partial class MainForm
             _serverCpuChart.AddReading(snapshot.Timestamp, snapshot.CpuUsagePercent);
             _serverMemoryChart.AddReading(snapshot.Timestamp, snapshot.Memory?.UsedPercent);
         }
-        var tightDisks = snapshot.Disks.Count(disk => disk.UsedPercent >= 90 && disk.Error is null);
-        _serverDisks.Text = snapshot.Disks.Count == 0 ? "磁盘容量 · 暂无可用的本地固定磁盘读数"
-            : $"磁盘容量 · {snapshot.Disks.Count} 个固定磁盘{(tightDisks > 0 ? $" · {tightDisks} 个空间偏紧" : "")}";
-        _serverDisks.ForeColor = snapshot.Disks.Any(disk => disk.UsedPercent >= 90 || disk.Error is not null) ? UiTheme.Warning : UiTheme.Muted;
         RefreshServerDiskBars(snapshot.Disks);
         var errors = snapshot.Errors.Concat(snapshot.Disks.Where(disk => disk.Error is not null).Select(disk => $"{disk.Name}：{disk.Error}")).ToArray();
-        _serverErrors.Text = $"更新于 {snapshot.Timestamp.ToLocalTime():HH:mm:ss} · 最近 60 秒趋势 · 磁盘 90% 起提示空间偏紧。"
-            + (errors.Length > 0 ? "\n" + string.Join("；", errors) : "");
-        _serverErrors.ForeColor = errors.Length > 0 ? UiTheme.Warning : UiTheme.Muted;
+        _serverErrors.Text = string.Join("；", errors);
+        _serverErrors.Visible = errors.Length > 0;
+        _serverErrors.ForeColor = UiTheme.Warning;
     }
 
     private void RefreshServerDiskBars(IReadOnlyList<ServerDiskUsage> disks)
@@ -214,11 +208,12 @@ public sealed partial class MainForm
 
     private void ShowServerResourceFailure(string error)
     {
-        _serverCpu.Text = "整机 CPU：不可用"; _serverMemory.Text = "物理内存：不可用"; _serverDisks.Text = "磁盘容量：不可用";
-        _serverCpu.ForeColor = _serverMemory.ForeColor = _serverDisks.ForeColor = UiTheme.Muted;
+        _serverCpu.Text = _serverMemory.Text = "不可用";
+        _serverCpu.ForeColor = _serverMemory.ForeColor = UiTheme.Muted;
         var now = DateTimeOffset.UtcNow;
         _serverCpuChart.AddReading(now, null); _serverMemoryChart.AddReading(now, null);
         foreach (var (name, bar) in _serverDiskBars) bar.UpdateUsage(new(name, null, null, error));
+        _serverErrors.Visible = true;
         _serverErrors.Text = "资源读取失败：" + error; _serverErrors.ForeColor = UiTheme.Warning;
     }
 
