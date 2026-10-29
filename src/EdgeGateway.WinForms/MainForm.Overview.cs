@@ -68,13 +68,14 @@ public sealed partial class MainForm
             arranging = true;
             try
             {
+                SizeResourceValues();
                 var width = content.ClientSize.Width;
                 ArrangeOverviewGrid(cards, primary, width >= UiTheme.Scale(cards, 840) ? 4 : width >= UiTheme.Scale(cards, 400) ? 2 : 1);
                 ArrangeOverviewGrid(health, healthPanels, width >= UiTheme.Scale(health, 620) ? 2 : 1);
                 ArrangeOverviewGrid(resourceGrid, resourcePanels, width >= UiTheme.Scale(resourceGrid, 680) ? 2 : 1, 8);
                 ArrangeDiskGrid();
                 foreach (var panel in primary.Concat(healthPanels).Concat(resourceSummaries).Append(resources))
-                    foreach (var label in panel.Controls.OfType<Label>())
+                    foreach (var label in panel.Controls.OfType<Label>().Where(label => label != _serverCpu && label != _serverMemory))
                         SetWrappingWidth(label, Math.Max(1, panel.ClientSize.Width - panel.Padding.Horizontal));
                 SetWrappingWidth(_overviewDeviceSummary, Math.Max(1, width));
                 viewport.PerformLayout();
@@ -126,6 +127,30 @@ public sealed partial class MainForm
         _outputHealth.ForeColor = failures > 0 ? UiTheme.Red : UiTheme.Muted;
     }
 
+    private void SizeResourceValues()
+    {
+        foreach (var label in new[] { _serverCpu, _serverMemory })
+        {
+            var flags = TextFormatFlags.SingleLine | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix;
+            var text = TextRenderer.MeasureText(label.Text, label.Font, Size.Empty, flags);
+            var percent = TextRenderer.MeasureText("100.0%", label.Font, Size.Empty, flags);
+            var size = new Size(Math.Max(text.Width, percent.Width) + UiTheme.Scale(label, 8),
+                Math.Max(text.Height, percent.Height) + UiTheme.Scale(label, 4));
+            label.MaximumSize = Size.Empty;
+            if (label.MinimumSize != size) label.MinimumSize = size;
+            if (label.Parent is TableLayoutPanel header)
+            {
+                var column = header.ColumnStyles[1];
+                var width = size.Width + label.Margin.Horizontal;
+                if (column.SizeType != SizeType.Absolute || column.Width != width)
+                {
+                    column.SizeType = SizeType.Absolute;
+                    column.Width = width;
+                }
+            }
+        }
+    }
+
     private void RefreshServerResources(ServerResourceSnapshot snapshot)
     {
         static string Load(double value) => $"{value:F1}%";
@@ -136,6 +161,7 @@ public sealed partial class MainForm
         _serverCpu.ForeColor = snapshot.CpuUsagePercent >= 85 ? UiTheme.Warning : snapshot.CpuUsagePercent is null ? UiTheme.Muted : UiTheme.Blue;
         _serverMemory.Text = snapshot.Memory is { } memory ? Load(memory.UsedPercent) : "不可用";
         _serverMemory.ForeColor = snapshot.Memory?.UsedPercent >= 85 ? UiTheme.Warning : snapshot.Memory is null ? UiTheme.Muted : UiTheme.Green;
+        SizeResourceValues();
         if (snapshot.History.Count > 0)
         {
             // The worker's history is authoritative, including samples taken while another page was open.
@@ -210,6 +236,7 @@ public sealed partial class MainForm
     {
         _serverCpu.Text = _serverMemory.Text = "不可用";
         _serverCpu.ForeColor = _serverMemory.ForeColor = UiTheme.Muted;
+        SizeResourceValues();
         var now = DateTimeOffset.UtcNow;
         _serverCpuChart.AddReading(now, null); _serverMemoryChart.AddReading(now, null);
         foreach (var (name, bar) in _serverDiskBars) bar.UpdateUsage(new(name, null, null, error));

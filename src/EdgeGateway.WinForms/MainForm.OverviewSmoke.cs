@@ -43,6 +43,18 @@ public sealed partial class MainForm
         Console.WriteLine("Overview health smoke passed: four device metrics, no device list, live host memory/disks, resource warnings/unavailable states and layout reachability.");
     }
 
+    private void AssertResourceValueFits()
+    {
+        foreach (var label in new[] { _serverCpu, _serverMemory })
+        {
+            var text = TextRenderer.MeasureText(label.Text, label.Font, Size.Empty,
+                TextFormatFlags.SingleLine | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+            if (label.TextMultiLine || label.ClientSize.Width < text.Width || label.ClientSize.Height < text.Height)
+                throw new InvalidOperationException($"Resource value clipped: {label.Name}, text={label.Text}, measured={text}, client={label.ClientSize}.");
+            BringIntoViewAndAssert(label, "resource value single line");
+        }
+    }
+
     private async Task SmokeServerResourceChartsAsync()
     {
         if (_application.IsRunning) throw new InvalidOperationException("Resource chart verification must not start device collection.");
@@ -103,6 +115,23 @@ public sealed partial class MainForm
                     throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error());
                 FitToWorkingArea(testWorkArea: area);
                 await Task.Yield(); PerformLayoutRecursively(this);
+                foreach (var value in new[] { 9.9, 10.1, 100.0, 0.0 })
+                {
+                    RefreshServerResources(new(now, "图表验证示例", 22, value,
+                        new(1000L << 20, (long)((100 - value) * 10) << 20),
+                        [new("C:\\", 100L << 30, 5L << 30), new("D:\\", 500L << 30, 250L << 30),
+                         new("E:\\", null, null, "示例：磁盘暂不可用"), new("F:\\", 3000L << 30, 1728L << 30)], []) { History = recoveredHistory });
+                    PerformLayoutRecursively(this);
+                    AssertResourceValueFits();
+                }
+                ShowServerResourceFailure("验证不可用文案");
+                PerformLayoutRecursively(this);
+                AssertResourceValueFits();
+                RefreshServerResources(new(now, "图表验证示例", 22, 10.1, new(16L << 30, 7L << 30),
+                    [new("C:\\", 100L << 30, 5L << 30), new("D:\\", 500L << 30, 250L << 30),
+                     new("E:\\", null, null, "示例：磁盘暂不可用"), new("F:\\", 3000L << 30, 1728L << 30)], []) { History = recoveredHistory });
+                PerformLayoutRecursively(this);
+                AssertResourceValueFits();
                 VerifyOverviewCards("server resources " + name);
                 if (_overviewPageView.viewport.HorizontalScroll.Visible)
                     throw new InvalidOperationException("Live resource overview has horizontal overflow.");
@@ -134,7 +163,7 @@ public sealed partial class MainForm
                     if (progress.UseSystemText || !progress.UseTextCenter || progress.ShowTextDot != 1
                         || Descendants(bar).Any(control => control.Name == "DiskUsed"))
                         throw new InvalidOperationException("Disk percentage must appear once, inside the official progress bar.");
-                    if (progress.Height < UiTheme.Scale(progress, 24) || details.Bottom > details.Parent!.ClientSize.Height
+                    if ((progress.Visible && progress.Height < UiTheme.Scale(progress, 24)) || details.Bottom > details.Parent!.ClientSize.Height
                         || details.Height < TextRenderer.MeasureText(details.Text, details.Font,
                             new Size(details.Width, int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.WordBreak).Height)
                         throw new InvalidOperationException($"Disk capacity progress or details are clipped: {bar.Name}, progress={progress.Bounds}, details={details.Bounds}, parent={details.Parent?.ClientSize}, dpi={bar.DeviceDpi}.");

@@ -529,6 +529,7 @@ internal sealed partial class OverviewPageView
         cpuSummary.Controls.Add(_serverCpuTitle, 0, 0);
         cpuSummary.Controls.Add(_serverCpu, 1, 0);
         _serverCpu.TextAlign = ContentAlignment.MiddleRight;
+        _serverCpu.TextMultiLine = false;
         _serverCpuTitle.TextAlign = ContentAlignment.MiddleLeft;
         cpuCard = new SurfaceCard();
         cpuCard.Name = "cpuCard";
@@ -565,6 +566,7 @@ internal sealed partial class OverviewPageView
         memorySummary.Controls.Add(_serverMemoryTitle, 0, 0);
         memorySummary.Controls.Add(_serverMemory, 1, 0);
         _serverMemory.TextAlign = ContentAlignment.MiddleRight;
+        _serverMemory.TextMultiLine = false;
         _serverMemoryTitle.TextAlign = ContentAlignment.MiddleLeft;
         memoryCard = new SurfaceCard();
         memoryCard.Name = "memoryCard";
