@@ -69,6 +69,8 @@ public sealed partial class MainForm
 
     private static void AssertHorizontalFilters(Control root)
     {
+        foreach (var surface in Descendants(root).Where(control => control is InputFrame or GatewaySwitch))
+            AssertFieldCaptionAlignment(surface, "form alignment " + root.Name);
         foreach (var group in Descendants(root).OfType<TableLayoutPanel>().Where(control => control.Visible && control.Name.EndsWith("Filter")))
         {
             if (group.Parent is TabPage { Showed: false }) continue;

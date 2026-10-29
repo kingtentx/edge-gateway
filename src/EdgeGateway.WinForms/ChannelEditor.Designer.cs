@@ -92,7 +92,7 @@ internal sealed partial class ChannelEditor
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
         _nameLabel.Padding = new Padding(0, 4, 14, 4);
-        _nameLabel.Margin = Padding.Empty;
+        _nameLabel.Margin = new Padding(0, 3, 0, 5);
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "通道名称";
         _name.TabIndex = 2;
@@ -125,7 +125,7 @@ internal sealed partial class ChannelEditor
         _delayLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _delayLabel.Margin = new Padding(0, 4, 0, 4);
         _delayLabel.Padding = new Padding(0, 4, 14, 4);
-        _delayLabel.Margin = Padding.Empty;
+        _delayLabel.Margin = new Padding(0, 3, 0, 5);
         _delayLabel.TextAlign = ContentAlignment.MiddleLeft;
         _delay.AccessibleName = "请求间隔 (ms)";
         _delay.TabIndex = 3;
@@ -157,7 +157,7 @@ internal sealed partial class ChannelEditor
         _descriptionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _descriptionLabel.Margin = new Padding(0, 4, 0, 4);
         _descriptionLabel.Padding = new Padding(0, 4, 14, 4);
-        _descriptionLabel.Margin = Padding.Empty;
+        _descriptionLabel.Margin = new Padding(0, 3, 0, 5);
         _descriptionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _description.AccessibleName = "说明";
         _description.TabIndex = 4;

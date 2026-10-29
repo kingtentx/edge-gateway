@@ -281,7 +281,7 @@ internal sealed partial class LoggingPageView
         MinimumLevelInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         MinimumLevelInputLabel.Margin = new Padding(0, 4, 0, 4);
         MinimumLevelInputLabel.Padding = new Padding(0, 4, 14, 4);
-        MinimumLevelInputLabel.Margin = Padding.Empty;
+        MinimumLevelInputLabel.Margin = new Padding(0, 3, 0, 5);
         MinimumLevelInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         MinimumLevelInput.AccessibleName = "运行日志最低级别";
         MinimumLevelInput.TabIndex = 2;
@@ -314,7 +314,7 @@ internal sealed partial class LoggingPageView
         MaxFileSizeMbInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         MaxFileSizeMbInputLabel.Margin = new Padding(0, 4, 0, 4);
         MaxFileSizeMbInputLabel.Padding = new Padding(0, 4, 14, 4);
-        MaxFileSizeMbInputLabel.Margin = Padding.Empty;
+        MaxFileSizeMbInputLabel.Margin = new Padding(0, 3, 0, 5);
         MaxFileSizeMbInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         MaxFileSizeMbInput.AccessibleName = "单文件最大大小（M）";
         MaxFileSizeMbInput.TabIndex = 3;
@@ -347,7 +347,7 @@ internal sealed partial class LoggingPageView
         RetainedFileCountInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         RetainedFileCountInputLabel.Margin = new Padding(0, 4, 0, 4);
         RetainedFileCountInputLabel.Padding = new Padding(0, 4, 14, 4);
-        RetainedFileCountInputLabel.Margin = Padding.Empty;
+        RetainedFileCountInputLabel.Margin = new Padding(0, 3, 0, 5);
         RetainedFileCountInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         RetainedFileCountInput.AccessibleName = "最多保留文件数";
         RetainedFileCountInput.TabIndex = 4;
@@ -380,7 +380,7 @@ internal sealed partial class LoggingPageView
         RetainedDaysInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         RetainedDaysInputLabel.Margin = new Padding(0, 4, 0, 4);
         RetainedDaysInputLabel.Padding = new Padding(0, 4, 14, 4);
-        RetainedDaysInputLabel.Margin = Padding.Empty;
+        RetainedDaysInputLabel.Margin = new Padding(0, 3, 0, 5);
         RetainedDaysInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         RetainedDaysInput.AccessibleName = "最多保留天数";
         RetainedDaysInput.TabIndex = 5;
@@ -440,7 +440,7 @@ internal sealed partial class LoggingPageView
         SamplesInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         SamplesInputLabel.Margin = new Padding(0, 4, 0, 4);
         SamplesInputLabel.Padding = new Padding(0, 4, 14, 4);
-        SamplesInputLabel.Margin = Padding.Empty;
+        SamplesInputLabel.Margin = new Padding(0, 3, 0, 5);
         SamplesInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         SamplesInput.AccessibleName = "记录采样数据";
         SamplesInput.TabIndex = 8;
@@ -464,7 +464,7 @@ internal sealed partial class LoggingPageView
         SampleMaxFileSizeMbInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         SampleMaxFileSizeMbInputLabel.Margin = new Padding(0, 4, 0, 4);
         SampleMaxFileSizeMbInputLabel.Padding = new Padding(0, 4, 14, 4);
-        SampleMaxFileSizeMbInputLabel.Margin = Padding.Empty;
+        SampleMaxFileSizeMbInputLabel.Margin = new Padding(0, 3, 0, 5);
         SampleMaxFileSizeMbInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         SampleMaxFileSizeMbInput.AccessibleName = "单文件最大大小（M）";
         SampleMaxFileSizeMbInput.TabIndex = 9;
@@ -497,7 +497,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedFileCountInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         SampleRetainedFileCountInputLabel.Margin = new Padding(0, 4, 0, 4);
         SampleRetainedFileCountInputLabel.Padding = new Padding(0, 4, 14, 4);
-        SampleRetainedFileCountInputLabel.Margin = Padding.Empty;
+        SampleRetainedFileCountInputLabel.Margin = new Padding(0, 3, 0, 5);
         SampleRetainedFileCountInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         SampleRetainedFileCountInput.AccessibleName = "最多保留文件数";
         SampleRetainedFileCountInput.TabIndex = 10;
@@ -530,7 +530,7 @@ internal sealed partial class LoggingPageView
         SampleRetainedDaysInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         SampleRetainedDaysInputLabel.Margin = new Padding(0, 4, 0, 4);
         SampleRetainedDaysInputLabel.Padding = new Padding(0, 4, 14, 4);
-        SampleRetainedDaysInputLabel.Margin = Padding.Empty;
+        SampleRetainedDaysInputLabel.Margin = new Padding(0, 3, 0, 5);
         SampleRetainedDaysInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         SampleRetainedDaysInput.AccessibleName = "最多保留天数";
         SampleRetainedDaysInput.TabIndex = 11;
@@ -590,7 +590,7 @@ internal sealed partial class LoggingPageView
         MinimumFreeDiskSpaceMbInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         MinimumFreeDiskSpaceMbInputLabel.Margin = new Padding(0, 4, 0, 4);
         MinimumFreeDiskSpaceMbInputLabel.Padding = new Padding(0, 4, 14, 4);
-        MinimumFreeDiskSpaceMbInputLabel.Margin = Padding.Empty;
+        MinimumFreeDiskSpaceMbInputLabel.Margin = new Padding(0, 3, 0, 5);
         MinimumFreeDiskSpaceMbInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         MinimumFreeDiskSpaceMbInput.AccessibleName = "最低剩余空间（M）";
         MinimumFreeDiskSpaceMbInput.TabIndex = 14;
@@ -623,7 +623,7 @@ internal sealed partial class LoggingPageView
         DiskResumeMarginMbInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         DiskResumeMarginMbInputLabel.Margin = new Padding(0, 4, 0, 4);
         DiskResumeMarginMbInputLabel.Padding = new Padding(0, 4, 14, 4);
-        DiskResumeMarginMbInputLabel.Margin = Padding.Empty;
+        DiskResumeMarginMbInputLabel.Margin = new Padding(0, 3, 0, 5);
         DiskResumeMarginMbInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         DiskResumeMarginMbInput.AccessibleName = "恢复余量（M）";
         DiskResumeMarginMbInput.TabIndex = 15;

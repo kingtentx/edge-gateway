@@ -27,7 +27,22 @@ public class GatewayLabel : AntdUI.Label
     public bool UseMnemonic { get; set; }
     public bool UseCompatibleTextRendering { get; set; }
     public int PreferredHeight => GetPreferredSize(new Size(Width, 0)).Height;
-    public override Size PSize => MeasureLabel(AutoSizeMode == AntdUI.TAutoSize.Height ? Width : MaximumSize.Width);
+    public override Size PSize
+    {
+        get
+        {
+            var measured = MeasureLabel(AutoSizeMode == AntdUI.TAutoSize.Height ? Width : MaximumSize.Width);
+            // AntdUI applies PSize again during OnResize. A centered, fill-docked
+            // caption must retain the height assigned by its layout row, rather
+            // than shrink back to the text height and sit above its editor.
+            // GetPreferredSize still reports the measured text height to the
+            // parent, so wrapped captions can grow and shrink with the window.
+            if (Dock == DockStyle.Fill && TextAlign == ContentAlignment.MiddleLeft
+                && AutoSizeMode == AntdUI.TAutoSize.Height)
+                return new Size(measured.Width, Height);
+            return measured;
+        }
+    }
     private Size MeasureLabel(int width)
     {
         if (measurements is null) return new Size(100, 24);

@@ -123,7 +123,7 @@ internal sealed partial class DatabaseConnectionDialog
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
         _nameLabel.Padding = new Padding(0, 4, 14, 4);
-        _nameLabel.Margin = Padding.Empty;
+        _nameLabel.Margin = new Padding(0, 3, 0, 5);
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "连接名称";
         _name.TabIndex = 1;
@@ -156,7 +156,7 @@ internal sealed partial class DatabaseConnectionDialog
         _enabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _enabledLabel.Margin = new Padding(0, 4, 0, 4);
         _enabledLabel.Padding = new Padding(0, 4, 14, 4);
-        _enabledLabel.Margin = Padding.Empty;
+        _enabledLabel.Margin = new Padding(0, 3, 0, 5);
         _enabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _enabled.AccessibleName = "数据写入";
         _enabled.TabIndex = 2;
@@ -181,7 +181,7 @@ internal sealed partial class DatabaseConnectionDialog
         _providerLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _providerLabel.Margin = new Padding(0, 4, 0, 4);
         _providerLabel.Padding = new Padding(0, 4, 14, 4);
-        _providerLabel.Margin = Padding.Empty;
+        _providerLabel.Margin = new Padding(0, 3, 0, 5);
         _providerLabel.TextAlign = ContentAlignment.MiddleLeft;
         _provider.AccessibleName = "数据库类型";
         _provider.TabIndex = 3;
@@ -213,7 +213,7 @@ internal sealed partial class DatabaseConnectionDialog
         _hostLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _hostLabel.Margin = new Padding(0, 4, 0, 4);
         _hostLabel.Padding = new Padding(0, 4, 14, 4);
-        _hostLabel.Margin = Padding.Empty;
+        _hostLabel.Margin = new Padding(0, 3, 0, 5);
         _hostLabel.TextAlign = ContentAlignment.MiddleLeft;
         _host.AccessibleName = "服务器";
         _host.TabIndex = 4;
@@ -247,7 +247,7 @@ internal sealed partial class DatabaseConnectionDialog
         _portLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _portLabel.Margin = new Padding(0, 4, 0, 4);
         _portLabel.Padding = new Padding(0, 4, 14, 4);
-        _portLabel.Margin = Padding.Empty;
+        _portLabel.Margin = new Padding(0, 3, 0, 5);
         _portLabel.TextAlign = ContentAlignment.MiddleLeft;
         _port.AccessibleName = "端口";
         _port.TabIndex = 5;
@@ -279,7 +279,7 @@ internal sealed partial class DatabaseConnectionDialog
         _databaseLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _databaseLabel.Margin = new Padding(0, 4, 0, 4);
         _databaseLabel.Padding = new Padding(0, 4, 14, 4);
-        _databaseLabel.Margin = Padding.Empty;
+        _databaseLabel.Margin = new Padding(0, 3, 0, 5);
         _databaseLabel.TextAlign = ContentAlignment.MiddleLeft;
         _database.AccessibleName = "数据库 / Oracle 服务名";
         _database.TabIndex = 6;
@@ -311,7 +311,7 @@ internal sealed partial class DatabaseConnectionDialog
         _usernameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _usernameLabel.Margin = new Padding(0, 4, 0, 4);
         _usernameLabel.Padding = new Padding(0, 4, 14, 4);
-        _usernameLabel.Margin = Padding.Empty;
+        _usernameLabel.Margin = new Padding(0, 3, 0, 5);
         _usernameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _username.AccessibleName = "用户名";
         _username.TabIndex = 7;
@@ -345,7 +345,7 @@ internal sealed partial class DatabaseConnectionDialog
         _passwordLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _passwordLabel.Margin = new Padding(0, 4, 0, 4);
         _passwordLabel.Padding = new Padding(0, 4, 14, 4);
-        _passwordLabel.Margin = Padding.Empty;
+        _passwordLabel.Margin = new Padding(0, 3, 0, 5);
         _passwordLabel.TextAlign = ContentAlignment.MiddleLeft;
         _password.AccessibleName = "密码";
         _password.TabIndex = 8;
@@ -378,7 +378,7 @@ internal sealed partial class DatabaseConnectionDialog
         _tlsLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _tlsLabel.Margin = new Padding(0, 4, 0, 4);
         _tlsLabel.Padding = new Padding(0, 4, 14, 4);
-        _tlsLabel.Margin = Padding.Empty;
+        _tlsLabel.Margin = new Padding(0, 3, 0, 5);
         _tlsLabel.TextAlign = ContentAlignment.MiddleLeft;
         _tls.AccessibleName = "连接加密";
         _tls.TabIndex = 9;
@@ -471,7 +471,7 @@ internal sealed partial class DatabaseConnectionDialog
         _connectTimeoutLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _connectTimeoutLabel.Margin = new Padding(0, 4, 0, 4);
         _connectTimeoutLabel.Padding = new Padding(0, 4, 14, 4);
-        _connectTimeoutLabel.Margin = Padding.Empty;
+        _connectTimeoutLabel.Margin = new Padding(0, 3, 0, 5);
         _connectTimeoutLabel.TextAlign = ContentAlignment.MiddleLeft;
         _connectTimeout.AccessibleName = "连接超时（秒）";
         _connectTimeout.TabIndex = 1;
@@ -504,7 +504,7 @@ internal sealed partial class DatabaseConnectionDialog
         _commandTimeoutLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _commandTimeoutLabel.Margin = new Padding(0, 4, 0, 4);
         _commandTimeoutLabel.Padding = new Padding(0, 4, 14, 4);
-        _commandTimeoutLabel.Margin = Padding.Empty;
+        _commandTimeoutLabel.Margin = new Padding(0, 3, 0, 5);
         _commandTimeoutLabel.TextAlign = ContentAlignment.MiddleLeft;
         _commandTimeout.AccessibleName = "命令超时（秒）";
         _commandTimeout.TabIndex = 2;
@@ -564,7 +564,7 @@ internal sealed partial class DatabaseConnectionDialog
         _batchLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _batchLabel.Margin = new Padding(0, 4, 0, 4);
         _batchLabel.Padding = new Padding(0, 4, 14, 4);
-        _batchLabel.Margin = Padding.Empty;
+        _batchLabel.Margin = new Padding(0, 3, 0, 5);
         _batchLabel.TextAlign = ContentAlignment.MiddleLeft;
         _batch.AccessibleName = "每批最大行数";
         _batch.TabIndex = 5;
@@ -597,7 +597,7 @@ internal sealed partial class DatabaseConnectionDialog
         _flushLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _flushLabel.Margin = new Padding(0, 4, 0, 4);
         _flushLabel.Padding = new Padding(0, 4, 14, 4);
-        _flushLabel.Margin = Padding.Empty;
+        _flushLabel.Margin = new Padding(0, 3, 0, 5);
         _flushLabel.TextAlign = ContentAlignment.MiddleLeft;
         _flush.AccessibleName = "提交间隔（ms）";
         _flush.TabIndex = 6;
@@ -630,7 +630,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacityLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _capacityLabel.Margin = new Padding(0, 4, 0, 4);
         _capacityLabel.Padding = new Padding(0, 4, 14, 4);
-        _capacityLabel.Margin = Padding.Empty;
+        _capacityLabel.Margin = new Padding(0, 3, 0, 5);
         _capacityLabel.TextAlign = ContentAlignment.MiddleLeft;
         _capacity.AccessibleName = "队列最大行数";
         _capacity.TabIndex = 7;
@@ -663,7 +663,7 @@ internal sealed partial class DatabaseConnectionDialog
         _capacityMbLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _capacityMbLabel.Margin = new Padding(0, 4, 0, 4);
         _capacityMbLabel.Padding = new Padding(0, 4, 14, 4);
-        _capacityMbLabel.Margin = Padding.Empty;
+        _capacityMbLabel.Margin = new Padding(0, 3, 0, 5);
         _capacityMbLabel.TextAlign = ContentAlignment.MiddleLeft;
         _capacityMb.AccessibleName = "队列最大大小（M）";
         _capacityMb.TabIndex = 8;
@@ -696,7 +696,7 @@ internal sealed partial class DatabaseConnectionDialog
         _retryAttemptsLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _retryAttemptsLabel.Margin = new Padding(0, 4, 0, 4);
         _retryAttemptsLabel.Padding = new Padding(0, 4, 14, 4);
-        _retryAttemptsLabel.Margin = Padding.Empty;
+        _retryAttemptsLabel.Margin = new Padding(0, 3, 0, 5);
         _retryAttemptsLabel.TextAlign = ContentAlignment.MiddleLeft;
         _retryAttempts.AccessibleName = "每批最多尝试次数";
         _retryAttempts.TabIndex = 9;

@@ -129,7 +129,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
         _nameLabel.Padding = new Padding(0, 4, 14, 4);
-        _nameLabel.Margin = Padding.Empty;
+        _nameLabel.Margin = new Padding(0, 3, 0, 5);
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "写入组名称";
         _name.TabIndex = 1;
@@ -162,7 +162,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _enabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _enabledLabel.Margin = new Padding(0, 4, 0, 4);
         _enabledLabel.Padding = new Padding(0, 4, 14, 4);
-        _enabledLabel.Margin = Padding.Empty;
+        _enabledLabel.Margin = new Padding(0, 3, 0, 5);
         _enabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _enabled.AccessibleName = "写入开关";
         _enabled.TabIndex = 2;
@@ -186,7 +186,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _connectionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _connectionLabel.Margin = new Padding(0, 4, 0, 4);
         _connectionLabel.Padding = new Padding(0, 4, 14, 4);
-        _connectionLabel.Margin = Padding.Empty;
+        _connectionLabel.Margin = new Padding(0, 3, 0, 5);
         _connectionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _connection.AccessibleName = "数据库连接";
         _connection.TabIndex = 3;
@@ -220,7 +220,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _modeLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _modeLabel.Margin = new Padding(0, 4, 0, 4);
         _modeLabel.Padding = new Padding(0, 4, 14, 4);
-        _modeLabel.Margin = Padding.Empty;
+        _modeLabel.Margin = new Padding(0, 3, 0, 5);
         _modeLabel.TextAlign = ContentAlignment.MiddleLeft;
         _mode.AccessibleName = "数据格式";
         _mode.TabIndex = 4;
@@ -253,7 +253,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _schemaLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _schemaLabel.Margin = new Padding(0, 4, 0, 4);
         _schemaLabel.Padding = new Padding(0, 4, 14, 4);
-        _schemaLabel.Margin = Padding.Empty;
+        _schemaLabel.Margin = new Padding(0, 3, 0, 5);
         _schemaLabel.TextAlign = ContentAlignment.MiddleLeft;
         _schema.AccessibleName = "Schema / 所属用户";
         _schema.TabIndex = 5;
@@ -285,7 +285,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _tableLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _tableLabel.Margin = new Padding(0, 4, 0, 4);
         _tableLabel.Padding = new Padding(0, 4, 14, 4);
-        _tableLabel.Margin = Padding.Empty;
+        _tableLabel.Margin = new Padding(0, 3, 0, 5);
         _tableLabel.TextAlign = ContentAlignment.MiddleLeft;
         _table.AccessibleName = "表名";
         _table.TabIndex = 6;
@@ -318,7 +318,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _tablesLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _tablesLabel.Margin = new Padding(0, 4, 0, 4);
         _tablesLabel.Padding = new Padding(0, 4, 14, 4);
-        _tablesLabel.Margin = Padding.Empty;
+        _tablesLabel.Margin = new Padding(0, 3, 0, 5);
         _tablesLabel.TextAlign = ContentAlignment.MiddleLeft;
         _tables.AccessibleName = "已有数据表";
         _tables.TabIndex = 7;
@@ -465,7 +465,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _intervalLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _intervalLabel.Margin = new Padding(0, 4, 0, 4);
         _intervalLabel.Padding = new Padding(0, 4, 14, 4);
-        _intervalLabel.Margin = Padding.Empty;
+        _intervalLabel.Margin = new Padding(0, 3, 0, 5);
         _intervalLabel.TextAlign = ContentAlignment.MiddleLeft;
         _interval.AccessibleName = "最小写入间隔（ms）";
         _interval.TabIndex = 13;
@@ -498,7 +498,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _maxAgeLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _maxAgeLabel.Margin = new Padding(0, 4, 0, 4);
         _maxAgeLabel.Padding = new Padding(0, 4, 14, 4);
-        _maxAgeLabel.Margin = Padding.Empty;
+        _maxAgeLabel.Margin = new Padding(0, 3, 0, 5);
         _maxAgeLabel.TextAlign = ContentAlignment.MiddleLeft;
         _maxAge.AccessibleName = "点位最大数据年龄（ms）";
         _maxAge.TabIndex = 14;
@@ -531,7 +531,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         _goodOnlyLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _goodOnlyLabel.Margin = new Padding(0, 4, 0, 4);
         _goodOnlyLabel.Padding = new Padding(0, 4, 14, 4);
-        _goodOnlyLabel.Margin = Padding.Empty;
+        _goodOnlyLabel.Margin = new Padding(0, 3, 0, 5);
         _goodOnlyLabel.TextAlign = ContentAlignment.MiddleLeft;
         _goodOnly.AccessibleName = "写入质量要求";
         _goodOnly.TabIndex = 15;

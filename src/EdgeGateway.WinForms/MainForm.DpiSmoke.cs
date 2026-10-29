@@ -514,6 +514,7 @@ public sealed partial class MainForm
 
     private static void AssertInputSurface(Control control, string context)
     {
+        AssertFieldCaptionAlignment(control.Parent is InputFrame frame ? frame : control, context);
         if (control is NumericUpDown number && number.ThousandsSeparator)
             throw new InvalidOperationException(context + ": thousands separators enabled: " + control.Name);
         if (control is GatewaySwitch toggle)
@@ -549,6 +550,19 @@ public sealed partial class MainForm
             + UiTheme.Scale(control, 14));
         if (Math.Abs(surface.Height - expected) > 1 || Math.Abs(control.Top - (surface.ClientSize.Height - control.Height) / 2) > 1)
             throw new InvalidOperationException($"{context}: input surface height/centering differs from buttons: surface={surface.Height}, expected={expected}, editor={control.Bounds}.");
+    }
+
+    private static void AssertFieldCaptionAlignment(Control surface, string context)
+    {
+        for (Control? parent = surface; parent is not null; parent = parent.Parent)
+            if (parent is TabPage { Showed: false }) return;
+        if (surface is not (InputFrame or GatewaySwitch)
+            || surface.Parent is not TableLayoutPanel table || table.GetColumn(surface) != 1
+            || table.GetControlFromPosition(0, table.GetRow(surface)) is not Label caption
+            || table.GetColumnSpan(caption) != 1 || !caption.Visible || !surface.Visible) return;
+        if (caption.TextAlign != ContentAlignment.MiddleLeft
+            || Math.Abs(caption.Top + caption.Height / 2.0 - surface.Top - surface.Height / 2.0) > UiTheme.Scale(table, 3))
+            throw new InvalidOperationException($"{context}: field caption is not centered beside its editor: {caption.Name}={caption.Bounds}, {surface.Name}={surface.Bounds}.");
     }
 
     private static void FocusForSmoke(Control target, Control requested, Form window, string context)

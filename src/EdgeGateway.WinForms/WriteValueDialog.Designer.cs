@@ -143,7 +143,7 @@ internal sealed partial class WriteValueDialog
         _valueLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _valueLabel.Margin = new Padding(0, 4, 0, 4);
         _valueLabel.Padding = new Padding(0, 4, 14, 4);
-        _valueLabel.Margin = Padding.Empty;
+        _valueLabel.Margin = new Padding(0, 3, 0, 5);
         _valueLabel.TextAlign = ContentAlignment.MiddleLeft;
         _value.AccessibleName = "新的工程值";
         _value.TabIndex = 2;
@@ -218,7 +218,7 @@ internal sealed partial class WriteValueDialog
         _verifyLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _verifyLabel.Margin = new Padding(0, 4, 0, 4);
         _verifyLabel.Padding = new Padding(0, 4, 14, 4);
-        _verifyLabel.Margin = Padding.Empty;
+        _verifyLabel.Margin = new Padding(0, 3, 0, 5);
         _verifyLabel.TextAlign = ContentAlignment.MiddleLeft;
         _verify.AccessibleName = "核对开关";
         _verify.TabIndex = 6;
@@ -243,7 +243,7 @@ internal sealed partial class WriteValueDialog
         _verificationTimeoutLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _verificationTimeoutLabel.Margin = new Padding(0, 4, 0, 4);
         _verificationTimeoutLabel.Padding = new Padding(0, 4, 14, 4);
-        _verificationTimeoutLabel.Margin = Padding.Empty;
+        _verificationTimeoutLabel.Margin = new Padding(0, 3, 0, 5);
         _verificationTimeoutLabel.TextAlign = ContentAlignment.MiddleLeft;
         _verificationTimeout.AccessibleName = "总超时 (ms)";
         _verificationTimeout.TabIndex = 7;
@@ -277,7 +277,7 @@ internal sealed partial class WriteValueDialog
         _absoluteToleranceLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _absoluteToleranceLabel.Margin = new Padding(0, 4, 0, 4);
         _absoluteToleranceLabel.Padding = new Padding(0, 4, 14, 4);
-        _absoluteToleranceLabel.Margin = Padding.Empty;
+        _absoluteToleranceLabel.Margin = new Padding(0, 3, 0, 5);
         _absoluteToleranceLabel.TextAlign = ContentAlignment.MiddleLeft;
         _absoluteTolerance.AccessibleName = "绝对容差";
         _absoluteTolerance.TabIndex = 8;
@@ -312,7 +312,7 @@ internal sealed partial class WriteValueDialog
         _relativeToleranceLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _relativeToleranceLabel.Margin = new Padding(0, 4, 0, 4);
         _relativeToleranceLabel.Padding = new Padding(0, 4, 14, 4);
-        _relativeToleranceLabel.Margin = Padding.Empty;
+        _relativeToleranceLabel.Margin = new Padding(0, 3, 0, 5);
         _relativeToleranceLabel.TextAlign = ContentAlignment.MiddleLeft;
         _relativeTolerance.AccessibleName = "相对容差";
         _relativeTolerance.TabIndex = 9;

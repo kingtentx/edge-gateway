@@ -179,7 +179,7 @@ public partial class EditorDialog : DpiAwareForm
     {
         var row = table.RowCount++; table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         var caption = EditorLayout.WrappingLabel(label, 10, UiTheme.Ink); caption.Padding = new Padding(0, 7, 14, 7);
-        caption.Margin = Padding.Empty;
+        caption.Margin = new Padding(0, 5, 0, 10);
         caption.TextAlign = ContentAlignment.MiddleLeft;
         control.Margin = new Padding(0, 5, 0, 10);
         control.AccessibleName ??= label;

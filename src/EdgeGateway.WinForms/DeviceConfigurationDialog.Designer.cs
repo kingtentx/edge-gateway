@@ -110,7 +110,7 @@ internal sealed partial class DeviceConfigurationDialog
         _enabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _enabledLabel.Margin = new Padding(0, 4, 0, 4);
         _enabledLabel.Padding = new Padding(0, 4, 14, 4);
-        _enabledLabel.Margin = Padding.Empty;
+        _enabledLabel.Margin = new Padding(0, 3, 0, 5);
         _enabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _enabled.AccessibleName = "启用状态";
         _enabled.TabIndex = 1;
@@ -132,7 +132,7 @@ internal sealed partial class DeviceConfigurationDialog
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
         _nameLabel.Padding = new Padding(0, 4, 14, 4);
-        _nameLabel.Margin = Padding.Empty;
+        _nameLabel.Margin = new Padding(0, 3, 0, 5);
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "设备名称";
         _name.TabIndex = 2;
@@ -163,7 +163,7 @@ internal sealed partial class DeviceConfigurationDialog
         _groupLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _groupLabel.Margin = new Padding(0, 4, 0, 4);
         _groupLabel.Padding = new Padding(0, 4, 14, 4);
-        _groupLabel.Margin = Padding.Empty;
+        _groupLabel.Margin = new Padding(0, 3, 0, 5);
         _groupLabel.TextAlign = ContentAlignment.MiddleLeft;
         _group.AccessibleName = "设备分组";
         _group.TabIndex = 3;
@@ -223,7 +223,7 @@ internal sealed partial class DeviceConfigurationDialog
         _driverLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _driverLabel.Margin = new Padding(0, 4, 0, 4);
         _driverLabel.Padding = new Padding(0, 4, 14, 4);
-        _driverLabel.Margin = Padding.Empty;
+        _driverLabel.Margin = new Padding(0, 3, 0, 5);
         _driverLabel.TextAlign = ContentAlignment.MiddleLeft;
         _driver.AccessibleName = "采集驱动";
         _driver.TabIndex = 6;
@@ -255,7 +255,7 @@ internal sealed partial class DeviceConfigurationDialog
         _channelLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _channelLabel.Margin = new Padding(0, 4, 0, 4);
         _channelLabel.Padding = new Padding(0, 4, 14, 4);
-        _channelLabel.Margin = Padding.Empty;
+        _channelLabel.Margin = new Padding(0, 3, 0, 5);
         _channelLabel.TextAlign = ContentAlignment.MiddleLeft;
         _channel.AccessibleName = "通信通道";
         _channel.TabIndex = 7;
@@ -287,7 +287,7 @@ internal sealed partial class DeviceConfigurationDialog
         _cycleLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _cycleLabel.Margin = new Padding(0, 4, 0, 4);
         _cycleLabel.Padding = new Padding(0, 4, 14, 4);
-        _cycleLabel.Margin = Padding.Empty;
+        _cycleLabel.Margin = new Padding(0, 3, 0, 5);
         _cycleLabel.TextAlign = ContentAlignment.MiddleLeft;
         _cycle.AccessibleName = "采集周期 (ms)";
         _cycle.TabIndex = 8;
@@ -319,7 +319,7 @@ internal sealed partial class DeviceConfigurationDialog
         _timeoutLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _timeoutLabel.Margin = new Padding(0, 4, 0, 4);
         _timeoutLabel.Padding = new Padding(0, 4, 14, 4);
-        _timeoutLabel.Margin = Padding.Empty;
+        _timeoutLabel.Margin = new Padding(0, 3, 0, 5);
         _timeoutLabel.TextAlign = ContentAlignment.MiddleLeft;
         _timeout.AccessibleName = "通信超时 (ms)";
         _timeout.TabIndex = 9;
@@ -427,7 +427,7 @@ internal sealed partial class DeviceConfigurationDialog
         _scanModeLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _scanModeLabel.Margin = new Padding(0, 4, 0, 4);
         _scanModeLabel.Padding = new Padding(0, 4, 14, 4);
-        _scanModeLabel.Margin = Padding.Empty;
+        _scanModeLabel.Margin = new Padding(0, 3, 0, 5);
         _scanModeLabel.TextAlign = ContentAlignment.MiddleLeft;
         _scanMode.AccessibleName = "扫描模式";
         _scanMode.TabIndex = 2;
@@ -459,7 +459,7 @@ internal sealed partial class DeviceConfigurationDialog
         _autoDemotionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _autoDemotionLabel.Margin = new Padding(0, 4, 0, 4);
         _autoDemotionLabel.Padding = new Padding(0, 4, 14, 4);
-        _autoDemotionLabel.Margin = Padding.Empty;
+        _autoDemotionLabel.Margin = new Padding(0, 3, 0, 5);
         _autoDemotionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _autoDemotion.AccessibleName = "故障降速";
         _autoDemotion.TabIndex = 3;
@@ -482,7 +482,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionCountLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _demotionCountLabel.Margin = new Padding(0, 4, 0, 4);
         _demotionCountLabel.Padding = new Padding(0, 4, 14, 4);
-        _demotionCountLabel.Margin = Padding.Empty;
+        _demotionCountLabel.Margin = new Padding(0, 3, 0, 5);
         _demotionCountLabel.TextAlign = ContentAlignment.MiddleLeft;
         _demotionCount.AccessibleName = "连续失败次数";
         _demotionCount.TabIndex = 4;
@@ -514,7 +514,7 @@ internal sealed partial class DeviceConfigurationDialog
         _demotionIntervalLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _demotionIntervalLabel.Margin = new Padding(0, 4, 0, 4);
         _demotionIntervalLabel.Padding = new Padding(0, 4, 14, 4);
-        _demotionIntervalLabel.Margin = Padding.Empty;
+        _demotionIntervalLabel.Margin = new Padding(0, 3, 0, 5);
         _demotionIntervalLabel.TextAlign = ContentAlignment.MiddleLeft;
         _demotionInterval.AccessibleName = "降速重试间隔 (ms)";
         _demotionInterval.TabIndex = 5;

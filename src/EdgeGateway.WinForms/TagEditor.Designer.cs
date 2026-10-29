@@ -150,7 +150,7 @@ internal sealed partial class TagEditor
         _nameLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _nameLabel.Margin = new Padding(0, 4, 0, 4);
         _nameLabel.Padding = new Padding(0, 4, 14, 4);
-        _nameLabel.Margin = Padding.Empty;
+        _nameLabel.Margin = new Padding(0, 3, 0, 5);
         _nameLabel.TextAlign = ContentAlignment.MiddleLeft;
         _name.AccessibleName = "点位名称";
         _name.TabIndex = 1;
@@ -183,7 +183,7 @@ internal sealed partial class TagEditor
         _readMethodLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _readMethodLabel.Margin = new Padding(0, 4, 0, 4);
         _readMethodLabel.Padding = new Padding(0, 4, 14, 4);
-        _readMethodLabel.Margin = Padding.Empty;
+        _readMethodLabel.Margin = new Padding(0, 3, 0, 5);
         _readMethodLabel.TextAlign = ContentAlignment.MiddleLeft;
         _readMethod.AccessibleName = "读取方法";
         _readMethod.TabIndex = 2;
@@ -215,7 +215,7 @@ internal sealed partial class TagEditor
         _addressLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _addressLabel.Margin = new Padding(0, 4, 0, 4);
         _addressLabel.Padding = new Padding(0, 4, 14, 4);
-        _addressLabel.Margin = Padding.Empty;
+        _addressLabel.Margin = new Padding(0, 3, 0, 5);
         _addressLabel.TextAlign = ContentAlignment.MiddleLeft;
         _address.AccessibleName = "点位地址";
         _address.TabIndex = 3;
@@ -249,7 +249,7 @@ internal sealed partial class TagEditor
         _typeLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _typeLabel.Margin = new Padding(0, 4, 0, 4);
         _typeLabel.Padding = new Padding(0, 4, 14, 4);
-        _typeLabel.Margin = Padding.Empty;
+        _typeLabel.Margin = new Padding(0, 3, 0, 5);
         _typeLabel.TextAlign = ContentAlignment.MiddleLeft;
         _type.AccessibleName = "数据类型";
         _type.TabIndex = 4;
@@ -282,7 +282,7 @@ internal sealed partial class TagEditor
         _endianLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _endianLabel.Margin = new Padding(0, 4, 0, 4);
         _endianLabel.Padding = new Padding(0, 4, 14, 4);
-        _endianLabel.Margin = Padding.Empty;
+        _endianLabel.Margin = new Padding(0, 3, 0, 5);
         _endianLabel.TextAlign = ContentAlignment.MiddleLeft;
         _endian.AccessibleName = "协议字节序";
         _endian.TabIndex = 5;
@@ -315,7 +315,7 @@ internal sealed partial class TagEditor
         _areaLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _areaLabel.Margin = new Padding(0, 4, 0, 4);
         _areaLabel.Padding = new Padding(0, 4, 14, 4);
-        _areaLabel.Margin = Padding.Empty;
+        _areaLabel.Margin = new Padding(0, 3, 0, 5);
         _areaLabel.TextAlign = ContentAlignment.MiddleLeft;
         _area.AccessibleName = "Modbus 寄存区";
         _area.TabIndex = 6;
@@ -348,7 +348,7 @@ internal sealed partial class TagEditor
         _byteOrderLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _byteOrderLabel.Margin = new Padding(0, 4, 0, 4);
         _byteOrderLabel.Padding = new Padding(0, 4, 14, 4);
-        _byteOrderLabel.Margin = Padding.Empty;
+        _byteOrderLabel.Margin = new Padding(0, 3, 0, 5);
         _byteOrderLabel.TextAlign = ContentAlignment.MiddleLeft;
         _byteOrder.AccessibleName = "字节序";
         _byteOrder.TabIndex = 7;
@@ -380,7 +380,7 @@ internal sealed partial class TagEditor
         _unitLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _unitLabel.Margin = new Padding(0, 4, 0, 4);
         _unitLabel.Padding = new Padding(0, 4, 14, 4);
-        _unitLabel.Margin = Padding.Empty;
+        _unitLabel.Margin = new Padding(0, 3, 0, 5);
         _unitLabel.TextAlign = ContentAlignment.MiddleLeft;
         _unit.AccessibleName = "单位";
         _unit.TabIndex = 8;
@@ -440,7 +440,7 @@ internal sealed partial class TagEditor
         _enabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _enabledLabel.Margin = new Padding(0, 4, 0, 4);
         _enabledLabel.Padding = new Padding(0, 4, 14, 4);
-        _enabledLabel.Margin = Padding.Empty;
+        _enabledLabel.Margin = new Padding(0, 3, 0, 5);
         _enabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _enabled.AccessibleName = "启用状态";
         _enabled.TabIndex = 11;
@@ -464,7 +464,7 @@ internal sealed partial class TagEditor
         _uploadEnabledLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _uploadEnabledLabel.Margin = new Padding(0, 4, 0, 4);
         _uploadEnabledLabel.Padding = new Padding(0, 4, 14, 4);
-        _uploadEnabledLabel.Margin = Padding.Empty;
+        _uploadEnabledLabel.Margin = new Padding(0, 3, 0, 5);
         _uploadEnabledLabel.TextAlign = ContentAlignment.MiddleLeft;
         _uploadEnabled.AccessibleName = "上传平台";
         _uploadEnabled.TabIndex = 12;
@@ -488,7 +488,7 @@ internal sealed partial class TagEditor
         _writableLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _writableLabel.Margin = new Padding(0, 4, 0, 4);
         _writableLabel.Padding = new Padding(0, 4, 14, 4);
-        _writableLabel.Margin = Padding.Empty;
+        _writableLabel.Margin = new Padding(0, 3, 0, 5);
         _writableLabel.TextAlign = ContentAlignment.MiddleLeft;
         _writable.AccessibleName = "写入权限";
         _writable.TabIndex = 13;
@@ -512,7 +512,7 @@ internal sealed partial class TagEditor
         _writeMethodLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _writeMethodLabel.Margin = new Padding(0, 4, 0, 4);
         _writeMethodLabel.Padding = new Padding(0, 4, 14, 4);
-        _writeMethodLabel.Margin = Padding.Empty;
+        _writeMethodLabel.Margin = new Padding(0, 3, 0, 5);
         _writeMethodLabel.TextAlign = ContentAlignment.MiddleLeft;
         _writeMethod.AccessibleName = "写入方法";
         _writeMethod.TabIndex = 14;
@@ -619,7 +619,7 @@ internal sealed partial class TagEditor
         _scaleLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _scaleLabel.Margin = new Padding(0, 4, 0, 4);
         _scaleLabel.Padding = new Padding(0, 4, 14, 4);
-        _scaleLabel.Margin = Padding.Empty;
+        _scaleLabel.Margin = new Padding(0, 3, 0, 5);
         _scaleLabel.TextAlign = ContentAlignment.MiddleLeft;
         _scale.AccessibleName = "倍率";
         _scale.TabIndex = 2;
@@ -652,7 +652,7 @@ internal sealed partial class TagEditor
         _offsetLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _offsetLabel.Margin = new Padding(0, 4, 0, 4);
         _offsetLabel.Padding = new Padding(0, 4, 14, 4);
-        _offsetLabel.Margin = Padding.Empty;
+        _offsetLabel.Margin = new Padding(0, 3, 0, 5);
         _offsetLabel.TextAlign = ContentAlignment.MiddleLeft;
         _offset.AccessibleName = "偏移量";
         _offset.TabIndex = 3;
@@ -685,7 +685,7 @@ internal sealed partial class TagEditor
         _expressionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _expressionLabel.Margin = new Padding(0, 4, 0, 4);
         _expressionLabel.Padding = new Padding(0, 4, 14, 4);
-        _expressionLabel.Margin = Padding.Empty;
+        _expressionLabel.Margin = new Padding(0, 3, 0, 5);
         _expressionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _expression.AccessibleName = "计算表达式（可空）";
         _expression.TabIndex = 4;
@@ -747,7 +747,7 @@ internal sealed partial class TagEditor
         previewInputLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         previewInputLabel.Margin = new Padding(0, 4, 0, 4);
         previewInputLabel.Padding = new Padding(0, 4, 14, 4);
-        previewInputLabel.Margin = Padding.Empty;
+        previewInputLabel.Margin = new Padding(0, 3, 0, 5);
         previewInputLabel.TextAlign = ContentAlignment.MiddleLeft;
         previewInput.AccessibleName = "试算 x";
         previewInput.TabIndex = 7;
@@ -785,7 +785,7 @@ internal sealed partial class TagEditor
         previewButtonLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         previewButtonLabel.Margin = new Padding(0, 4, 0, 4);
         previewButtonLabel.Padding = new Padding(0, 4, 14, 4);
-        previewButtonLabel.Margin = Padding.Empty;
+        previewButtonLabel.Margin = new Padding(0, 3, 0, 5);
         previewButtonLabel.TextAlign = ContentAlignment.MiddleLeft;
         previewButton.AccessibleName = "表达式试算";
         previewButton.TabIndex = 8;
@@ -810,7 +810,7 @@ internal sealed partial class TagEditor
         previewResultLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         previewResultLabel.Margin = new Padding(0, 4, 0, 4);
         previewResultLabel.Padding = new Padding(0, 4, 14, 4);
-        previewResultLabel.Margin = Padding.Empty;
+        previewResultLabel.Margin = new Padding(0, 3, 0, 5);
         previewResultLabel.TextAlign = ContentAlignment.MiddleLeft;
         previewResult.AccessibleName = "试算结果";
         previewResult.TabIndex = 9;
@@ -847,7 +847,7 @@ internal sealed partial class TagEditor
         _lowLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _lowLabel.Margin = new Padding(0, 4, 0, 4);
         _lowLabel.Padding = new Padding(0, 4, 14, 4);
-        _lowLabel.Margin = Padding.Empty;
+        _lowLabel.Margin = new Padding(0, 3, 0, 5);
         _lowLabel.TextAlign = ContentAlignment.MiddleLeft;
         _low.AccessibleName = "报警下限（可空）";
         _low.TabIndex = 11;
@@ -880,7 +880,7 @@ internal sealed partial class TagEditor
         _highLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _highLabel.Margin = new Padding(0, 4, 0, 4);
         _highLabel.Padding = new Padding(0, 4, 14, 4);
-        _highLabel.Margin = Padding.Empty;
+        _highLabel.Margin = new Padding(0, 3, 0, 5);
         _highLabel.TextAlign = ContentAlignment.MiddleLeft;
         _high.AccessibleName = "报警上限（可空）";
         _high.TabIndex = 12;
@@ -916,7 +916,7 @@ internal sealed partial class TagEditor
         _descriptionLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _descriptionLabel.Margin = new Padding(0, 4, 0, 4);
         _descriptionLabel.Padding = new Padding(0, 4, 14, 4);
-        _descriptionLabel.Margin = Padding.Empty;
+        _descriptionLabel.Margin = new Padding(0, 3, 0, 5);
         _descriptionLabel.TextAlign = ContentAlignment.MiddleLeft;
         _description.AccessibleName = "点位说明";
         _description.TabIndex = 13;
@@ -1004,7 +1004,7 @@ internal sealed partial class TagEditor
         _scanIntervalLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _scanIntervalLabel.Margin = new Padding(0, 4, 0, 4);
         _scanIntervalLabel.Padding = new Padding(0, 4, 14, 4);
-        _scanIntervalLabel.Margin = Padding.Empty;
+        _scanIntervalLabel.Margin = new Padding(0, 3, 0, 5);
         _scanIntervalLabel.TextAlign = ContentAlignment.MiddleLeft;
         _scanInterval.AccessibleName = "点位扫描周期 (ms)";
         _scanInterval.TabIndex = 1;
@@ -1036,7 +1036,7 @@ internal sealed partial class TagEditor
         _deadbandLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _deadbandLabel.Margin = new Padding(0, 4, 0, 4);
         _deadbandLabel.Padding = new Padding(0, 4, 14, 4);
-        _deadbandLabel.Margin = Padding.Empty;
+        _deadbandLabel.Margin = new Padding(0, 3, 0, 5);
         _deadbandLabel.TextAlign = ContentAlignment.MiddleLeft;
         _deadband.AccessibleName = "变化上报绝对死区";
         _deadband.TabIndex = 2;

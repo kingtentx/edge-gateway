@@ -108,7 +108,7 @@ internal sealed partial class TagImportDialog
         _modeLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _modeLabel.Margin = new Padding(0, 4, 0, 4);
         _modeLabel.Padding = new Padding(0, 4, 14, 4);
-        _modeLabel.Margin = Padding.Empty;
+        _modeLabel.Margin = new Padding(0, 3, 0, 5);
         _modeLabel.TextAlign = ContentAlignment.MiddleLeft;
         _mode.AccessibleName = "导入方式";
         _mode.TabIndex = 2;
