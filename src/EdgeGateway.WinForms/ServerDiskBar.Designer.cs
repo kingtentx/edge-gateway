@@ -12,7 +12,7 @@ internal sealed partial class ServerDiskBar
         diskLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         diskLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
         diskLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        diskName = new Label { Name = "DiskName", AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 8, 0), TextAlign = ContentAlignment.MiddleLeft };
+        diskName = new Label { Name = "DiskName", AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 8, 0), TextAlign = ContentAlignment.MiddleLeft, TextMultiLine = false, AutoSizeMode = AntdUI.TAutoSize.Width };
         diskProgress = new AntdUI.Progress { Name = "DiskCapacity", Dock = DockStyle.Fill, Margin = Padding.Empty, UseTextCenter = true, ShowTextDot = 1, ValueRatio = 1.2F };
         diskDetails = new Label { Name = "DiskDetails", Dock = DockStyle.Fill, TextMultiLine = true, ForeColor = UiTheme.Muted, Margin = Padding.Empty };
         diskLayout.Controls.Add(diskName, 0, 0);

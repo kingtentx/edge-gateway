@@ -160,6 +160,9 @@ public sealed partial class MainForm
                     BringIntoViewAndAssert(bar, "server resources " + name + " disk");
                     var progress = Descendants(bar).OfType<AntdUI.Progress>().Single();
                     var details = Descendants(bar).OfType<Label>().Single(label => label.Name == "DiskDetails");
+                    var drive = Descendants(bar).OfType<Label>().Single(label => label.Name == "DiskName");
+                    if (progress.Visible && Math.Abs(drive.Top + drive.Height / 2d - progress.Top - progress.Height / 2d) > UiTheme.Scale(drive, 1))
+                        throw new InvalidOperationException($"Disk name is not vertically centered: {drive.Bounds}, progress={progress.Bounds}.");
                     if (progress.UseSystemText || !progress.UseTextCenter || progress.ShowTextDot != 1
                         || Descendants(bar).Any(control => control.Name == "DiskUsed"))
                         throw new InvalidOperationException("Disk percentage must appear once, inside the official progress bar.");
