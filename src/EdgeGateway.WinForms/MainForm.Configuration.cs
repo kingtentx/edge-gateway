@@ -44,6 +44,16 @@ public sealed partial class MainForm
         _tagHeading = _pointsDialog.TagHeading;
         _tagSummary = _pointsDialog.TagSummary;
         _deviceGrid.Name = "DeviceList"; _tagGrid.Name = "TagList";
+        _devicesPageView.deviceGridColumnChecked.IsChecked = item => item is DeviceRow row && _checkedDeviceIds.Contains(row.Id);
+        _devicesPageView.deviceGridColumnChecked.CanCheck = CanEdit;
+        _devicesPageView.deviceGridColumnChecked.SetChecked = (item, value) =>
+        {
+            if (item is not DeviceRow row || !CanEdit()) return;
+            if (value) _checkedDeviceIds.Add(row.Id); else _checkedDeviceIds.Remove(row.Id);
+            UpdateDeviceCheckSummary();
+        };
+        _devicesPageView.deviceBatchButton.Bind(BuildDeviceBatchMenu, exception => ShowError(exception.Message));
+        _configurationCommands.Add(_devicesPageView.deviceBatchButton);
         _deviceGrid.DataBindingComplete += (_, _) => UpdateDeviceConfigurationCommands();
         _deviceGrid.SelectionChanged += (_, _) => { if (!_rebindingDevices) { BindTags(); UpdateSelectionCommands(); } };
         _deviceGrid.CellContentClick += async (_, e) => await HandleDeviceGridActionAsync(e);
@@ -125,6 +135,7 @@ public sealed partial class MainForm
         // Keep the target's name visible while reading details. Do not freeze an entire
         // action block when it would consume the small monitor's horizontal viewport.
         _deviceGrid.Columns["Name"].Frozen = _deviceGrid.ClientSize.Width >= UiTheme.Scale(_deviceGrid, 340);
+        _devicesPageView.deviceGridColumnChecked.Frozen = _deviceGrid.Columns["Name"].Frozen;
     }
 
     private IReadOnlyList<MenuCommand> BuildDeviceMenu()
@@ -200,7 +211,7 @@ public sealed partial class MainForm
         if (doubleClick)
         {
             // Action columns already handle their first click. Do not invoke them twice.
-            if (columnName is DeviceConfigurationColumnName or DeviceStartColumnName or DeviceStopColumnName or DevicePointsColumnName)
+            if (columnName is "DeviceChecked" or DeviceConfigurationColumnName or DeviceStartColumnName or DeviceStopColumnName or DevicePointsColumnName)
                 return Task.CompletedTask;
             columnName = DeviceConfigurationColumnName;
         }

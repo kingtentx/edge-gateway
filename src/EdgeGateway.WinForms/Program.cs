@@ -22,7 +22,8 @@ internal static class Program
         var databaseMappingSmoke = args.Contains("--smoke-database-mapping", StringComparer.OrdinalIgnoreCase);
         var databaseRefreshSmoke = args.Contains("--smoke-database-refresh", StringComparer.OrdinalIgnoreCase);
         var deviceColumnsSmoke = args.Contains("--smoke-device-columns", StringComparer.OrdinalIgnoreCase);
-        var rowDensitySmoke = deviceColumnsSmoke || args.Contains("--smoke-row-density", StringComparer.OrdinalIgnoreCase);
+        var deviceBatchSmoke = args.Contains("--smoke-device-batch", StringComparer.OrdinalIgnoreCase);
+        var rowDensitySmoke = deviceBatchSmoke || deviceColumnsSmoke || args.Contains("--smoke-row-density", StringComparer.OrdinalIgnoreCase);
         var dpiRoundTripOnly = args.Contains("--smoke-dpi-roundtrip", StringComparer.OrdinalIgnoreCase);
         var dpiConfirmationSmoke = dpiRoundTripOnly || args.Contains("--smoke-dpi-confirmation", StringComparer.OrdinalIgnoreCase);
         var pageRefreshSmoke = dpiConfirmationSmoke || rowDensitySmoke || args.Contains("--smoke-page-refresh", StringComparer.OrdinalIgnoreCase);
@@ -85,6 +86,7 @@ internal static class Program
                 host.BeginConfigurationWriteFailureForVerification, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke, loggingSmoke: loggingSmoke, databaseRefreshSmoke: databaseRefreshSmoke, pageRefreshSmoke: pageRefreshSmoke, navigationSmoke: navigationSmoke, paginationSmoke: paginationSmoke, historySourcesSmoke: historySourcesSmoke, formWidthsSmoke: formWidthsSmoke, buttonAppearanceSmoke: buttonAppearanceSmoke);
             window.RowDensitySmoke = rowDensitySmoke;
             window.DeviceColumnsSmoke = deviceColumnsSmoke;
+            window.DeviceBatchSmoke = deviceBatchSmoke;
             window.DpiConfirmationSmoke = dpiConfirmationSmoke;
             window.DpiRoundTripOnly = dpiRoundTripOnly;
             window.LiveLogsSmoke = liveLogsSmoke;

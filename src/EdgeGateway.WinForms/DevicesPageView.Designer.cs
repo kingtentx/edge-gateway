@@ -21,6 +21,8 @@ internal sealed partial class DevicesPageView
 
 
     internal GatewayTableColumn deviceGridColumnName = null!;
+    internal GatewayTableCheckColumn deviceGridColumnChecked = null!;
+    internal CommandMenuButton deviceBatchButton = null!;
     internal GatewayTableButtonColumn deviceGridColumnDeviceStart = null!;
     internal GatewayTableButtonColumn deviceGridColumnDeviceStop = null!;
     internal GatewayTableLinkColumn deviceGridColumnDeviceConfiguration = null!;
@@ -160,7 +162,7 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         titleLabel.ForeColor = UiTheme.Ink;
         titleLabel.Margin = new Padding(0, 0, 0, 2);
         descriptionLabel.Name = "DevicesPageDescription";
-        descriptionLabel.Text = "筛选并管理采集设备；点击行内“查看点位”维护设备点位。";
+        descriptionLabel.Text = "勾选设备可批量操作；点击行内“查看点位”维护设备点位。";
         descriptionLabel.AutoSize = true;
         descriptionLabel.Dock = DockStyle.Fill;
         descriptionLabel.Font = new Font("Microsoft YaHei UI", 10F);
@@ -256,6 +258,14 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
 
         contentLayout.ResumeLayout(false);
         contentLayout.PerformLayout();
+        deviceGridColumnChecked = new GatewayTableCheckColumn();
+        deviceGridColumnChecked.Name = "DeviceChecked";
+        deviceGridColumnChecked.HeaderText = "勾选";
+        deviceGridColumnChecked.MinimumWidth = 64;
+        deviceGridColumnChecked.Width = 64;
+        deviceGridColumnChecked.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+        deviceGridColumnChecked.SortMode = DataGridViewColumnSortMode.NotSortable;
+        deviceGrid.Columns.Add(deviceGridColumnChecked);
         deviceGridColumnName = new GatewayTableColumn();
         deviceGridColumnName.Name = "deviceGridColumnName";
         deviceGridColumnName.DataPropertyName = "Name";
@@ -667,6 +677,17 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         deviceToolbarHost.Controls.SetChildIndex(groupButton, 3);
         deviceToolbarHost.Controls.SetChildIndex(deviceMoreButton, 4);
         deviceToolbarHost.Controls.SetChildIndex(probeDeviceButton, 5);
+        deviceBatchButton = new CommandMenuButton();
+        deviceBatchButton.Name = "DeviceBatchActions";
+        deviceBatchButton.Text = "批量操作";
+        deviceBatchButton.AccessibleName = "勾选设备批量操作";
+        deviceBatchButton.AutoSize = true;
+        deviceBatchButton.MinimumSize = new Size(100, 38);
+        deviceBatchButton.Height = 38;
+        deviceBatchButton.Type = AntdUI.TTypeMini.Default;
+        deviceBatchButton.Padding = new Padding(10, 4, 10, 4);
+        deviceBatchButton.Margin = new Padding(0, 0, 8, 6);
+        deviceToolbarHost.Controls.Add(deviceBatchButton);
         deviceToolbarHost.Controls.Add(deviceSummaryLabel);
         ResumeLayout(false);
     }

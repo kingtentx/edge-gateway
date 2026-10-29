@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'Scrollbars', 'Surfaces', 'SurfaceLists', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'Scrollbars', 'Surfaces', 'SurfaceLists', 'DeviceBatch', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -142,6 +142,7 @@ namespace EdgeGateway {
                     : scenario == "PageRefresh" ? " --smoke-page-refresh --screenshot "
                     : scenario == "DpiConfirmation" ? " --smoke-dpi-confirmation --screenshot "
                     : scenario == "DpiRoundTrip" ? " --smoke-dpi-roundtrip --screenshot "
+                    : scenario == "DeviceBatch" ? " --smoke-device-batch --screenshot "
                     : scenario == "DeviceColumns" ? " --smoke-device-columns --screenshot "
                     : scenario == "RowDensity" ? " --smoke-row-density --screenshot "
                     : scenario == "DatabaseRefresh" ? " --smoke-database-refresh --screenshot "
@@ -265,6 +266,14 @@ if ($Scenario -in @('Surfaces', 'SurfaceLists')) {
     if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'Surfaces wrote errors.' }
     if ($outputText -notmatch 'List surfaces passed:' -or ($Scenario -eq 'Surfaces' -and $outputText -notmatch 'FormWidths smoke passed:')) { throw 'Surfaces completion marker is missing.' }
     Write-Output 'Background surfaces smoke passed.'
+    return
+}
+if ($Scenario -eq 'DeviceBatch') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'Device batch wrote errors.' }
+    if ($outputText -notmatch 'Device batch smoke passed:') { throw 'Device batch completion marker is missing.' }
+    Write-Output 'Background device batch smoke passed.'
     return
 }
 if ($Scenario -eq 'DeviceColumns') {

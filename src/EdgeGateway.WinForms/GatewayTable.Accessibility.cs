@@ -49,7 +49,7 @@ internal sealed class GatewayCellAccessibleObject(GatewayTableCell cell) : Acces
     {
         GatewayTableButtonCell => AccessibleRole.PushButton,
         GatewayTableLinkCell => AccessibleRole.Link,
-        _ when cell.OwningColumn is GatewayGridSwitchColumn => AccessibleRole.CheckButton,
+        _ when cell.OwningColumn is GatewayGridSwitchColumn or GatewayTableCheckColumn => AccessibleRole.CheckButton,
         _ when cell.OwningColumn is GatewayGridSelectColumn => AccessibleRole.ComboBox,
         _ => AccessibleRole.Cell
     };
@@ -62,6 +62,11 @@ internal sealed class GatewayCellAccessibleObject(GatewayTableCell cell) : Acces
             if (cell.GatewayTable?.CurrentCell == cell) state |= AccessibleStates.Selected;
             if (cell.GatewayTable is { ContainsFocus: true } grid && grid.CurrentCell == cell) state |= AccessibleStates.Focused;
             if (cell.OwningColumn is GatewayGridSwitchColumn && cell.Value is true) state |= AccessibleStates.Checked;
+            if (cell.OwningColumn is GatewayTableCheckColumn check)
+            {
+                if (check.IsChecked(cell.OwningRow.DataBoundItem)) state |= AccessibleStates.Checked;
+                if (!check.CanCheck()) state |= AccessibleStates.Unavailable;
+            }
             if (Bounds.IsEmpty) state |= AccessibleStates.Offscreen;
             return state;
         }
@@ -70,6 +75,7 @@ internal sealed class GatewayCellAccessibleObject(GatewayTableCell cell) : Acces
         ? grid.RectangleToScreen(grid.GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, true)) : Rectangle.Empty;
     public override string? DefaultAction => cell is GatewayTableButtonCell { Enabled: false } or GatewayTableLinkCell { Enabled: false } ? null
         : cell is GatewayTableButtonCell or GatewayTableLinkCell ? "执行"
+        : cell.OwningColumn is GatewayTableCheckColumn check ? check.CanCheck() ? "切换勾选" : null
         : cell.CanEdit ? "编辑" : null;
     public override void DoDefaultAction() => cell.GatewayTable?.InvokeAccessibleCell(cell);
     public override int GetChildCount() => cell.GatewayTable is { IsCurrentCellInEditMode: true } grid && grid.CurrentCell == cell ? 1 : 0;

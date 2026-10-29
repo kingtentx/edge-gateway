@@ -9,6 +9,7 @@ public sealed partial class MainForm
 
     private async Task SmokeRowDensityAsync()
     {
+        if (DeviceBatchSmoke) { await SmokeDeviceBatchAsync(); return; }
         if (DeviceColumnsSmoke) { await SmokeDeviceColumnsAsync(); return; }
         if (!_smokeTest || _application.IsRunning) throw new InvalidOperationException("Row density requires an isolated stopped host.");
         _refreshTimer.Stop();

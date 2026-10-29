@@ -26,6 +26,20 @@ public sealed partial class GatewayApplication
         }, cancellationToken);
     }
 
+    public Task<ConfigurationApplyResult> SetDevicesEnabledAsync(IReadOnlyList<Guid> deviceIds, bool enabled, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(deviceIds);
+        var ids = deviceIds.Distinct().ToArray();
+        if (ids.Length == 0) throw new ArgumentException("请先勾选设备。", nameof(deviceIds));
+        // Resolve against the latest candidate under the application command lock.
+        // Only change Enabled; validation and persistence remain one atomic commit.
+        return ChangeAsync(candidate =>
+        {
+            var devices = ids.Select(id => FindDevice(candidate, id)).ToArray();
+            foreach (var device in devices) device.Enabled = enabled;
+        }, cancellationToken);
+    }
+
     public Task<ConfigurationApplyResult> DeleteDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default) =>
         ChangeAsync(candidate => candidate.Devices.Remove(FindDevice(candidate, deviceId)), cancellationToken);
 

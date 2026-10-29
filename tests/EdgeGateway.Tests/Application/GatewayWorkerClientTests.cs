@@ -16,6 +16,19 @@ public sealed class GatewayWorkerClientTests
     }
 
     [Fact]
+    public async Task BatchEnableIdsAndResultSurviveWorkerIpc()
+    {
+        var id = Guid.NewGuid();
+        await using var server = new PipeFixture("{\"Added\":[],\"Updated\":[\"" + id + "\"],\"Removed\":[],\"Restarted\":[],\"Stopped\":[]}");
+        var result = await server.CreateProxy<IGatewayApplication>().SetDevicesEnabledAsync([id], false);
+        Assert.Equal(id, Assert.Single(result.Updated));
+        var request = await server.Request;
+        Assert.Equal(nameof(IGatewayApplication.SetDevicesEnabledAsync), request.GetProperty("Method").GetString());
+        Assert.Equal(id, request.GetProperty("Arguments")[0][0].GetGuid());
+        Assert.False(request.GetProperty("Arguments")[1].GetBoolean());
+    }
+
+    [Fact]
     public async Task GeneratedApplicationProxyReturnsGenericTaskResult()
     {
         await using var server = new PipeFixture("{\"OutboxCount\":17}");

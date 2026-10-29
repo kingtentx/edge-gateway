@@ -275,6 +275,7 @@ public partial class GatewayTable : AntdUI.Table
             {
                 if (cell is GatewayTableButtonCell { Enabled: true } or GatewayTableLinkCell { Enabled: true })
                     CellContentClick?.Invoke(this, new(cell.ColumnIndex, cell.RowIndex));
+                else if (cell.OwningColumn is GatewayTableCheckColumn check) check.Toggle(cell.OwningRow.DataBoundItem);
                 else if (cell.OwningColumn is GatewayGridSwitchColumn && cell.CanEdit) cell.Value = cell.Value is not true;
                 else OpenCellEditor();
                 return true;
@@ -393,6 +394,20 @@ public class GatewayTableColumn : AntdUI.Column
     public DataGridViewCellStyle DefaultCellStyle { get; } = new();
     public GatewayTableCell? CellTemplate { get; set; }
     internal virtual GatewayTableCell CreateCell() => CellTemplate is null ? new GatewayTableCell() : (GatewayTableCell)CellTemplate.Clone();
+}
+/// <summary>Official checkbox template for independent row selection in read-only tables.</summary>
+public sealed class GatewayTableCheckColumn : GatewayTableColumn
+{
+    public GatewayTableCheckColumn() { Align = AntdUI.ColumnAlign.Center; }
+    internal Func<object?, bool> IsChecked { get; set; } = _ => false;
+    internal Func<bool> CanCheck { get; set; } = () => false;
+    internal Action<object?, bool> SetChecked { get; set; } = (_, _) => { };
+    internal void Toggle(object? item)
+    {
+        if (!CanCheck()) return;
+        SetChecked(item, !IsChecked(item));
+        Owner?.RepaintRows();
+    }
 }
 public class GatewayTableButtonColumn : GatewayTableColumn
 {
@@ -517,6 +532,13 @@ public class GatewayTableCell
     internal AntdUI.ICell? RenderedCell { get; private set; }
     internal virtual AntdUI.ICell CreatePresentation()
     {
+        if (OwningColumn is GatewayTableCheckColumn check)
+        {
+            var item = OwningRow.DataBoundItem;
+            var checkbox = new AntdUI.CellCheckbox(check.IsChecked(item)) { Enabled = check.CanCheck() };
+            checkbox.CheckedChanged += (_, e) => { if (check.CanCheck()) check.SetChecked(item, e.Value); };
+            return checkbox;
+        }
         if (OwningColumn is GatewayGridSwitchColumn)
         {
             var toggle = new AntdUI.CellSwitch(Value is true) { Enabled = CanEdit };

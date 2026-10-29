@@ -67,11 +67,13 @@ public sealed partial class MainForm
         _rebindingDevices = true;
         try
         {
+            _filteredDeviceIds = devices.Select(d => d.Id).ToArray();
+            _checkedDeviceIds.IntersectWith(_filteredDeviceIds);
             var rows = devices.Select(d => new DeviceRow(d.Id, d.Name,
                 _configuration.Channels.FirstOrDefault(c => c.Id == d.ChannelId)?.Name ?? "独立通信",
                 d.Group, d.DriverId, d.Enabled ? "是" : "否", "已停止", d.Tags.Count, d.PollIntervalMs)).ToList();
             GridViewState.Rebind(_deviceGrid, rows, row => row.Id, selected);
-            _deviceSummary.Text = $"{rows.Count} / {_configuration.Devices.Count} 台设备";
+            UpdateDeviceCheckSummary();
         }
         finally { _rebindingDevices = false; }
         BindTags();
