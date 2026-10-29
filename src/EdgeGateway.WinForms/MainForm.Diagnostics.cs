@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Globalization;
+using System.Text;
 using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
@@ -111,17 +113,31 @@ public sealed partial class MainForm
 
     private async Task ExportDiagnosticsAsync()
     {
-        using var dialog = new SaveFileDialog { Filter = "诊断快照 (*.json)|*.json", FileName = "edge-gateway-diagnostics.json", OverwritePrompt = true };
-        if (dialog.ShowDialog(this) != DialogResult.OK) return;
-        var snapshot = new
+        RefreshTelemetryDiagnostics(await _application.GetStatisticsAsync());
+        var capturedAt = DateTimeOffset.Now;
+        var rows = _telemetryDiagnosticRows.ToArray();
+        // Freeze the complete diagnostic list before the modal dialog allows timer
+        // refreshes. Export is independent of the current page and row selection.
+        var csv = BuildDiagnosticsCsv(rows, _configuration.GatewayId, capturedAt);
+        using var dialog = new SaveFileDialog
         {
-            capturedAt = DateTimeOffset.UtcNow, gatewayId = _configuration.GatewayId,
-            telemetry = _application.GetTelemetryStatus(), rpc = _application.GetRpcStatus(), databases = _application.GetDatabaseStatuses(),
-            devices = _application.GetDeviceStatuses(), communication = _application.GetCommunicationStatistics()
+            Filter = "CSV 文件 (*.csv)|*.csv", DefaultExt = "csv", AddExtension = true,
+            FileName = "通信诊断_" + capturedAt.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".csv",
+            Title = "导出通信诊断", OverwritePrompt = true
         };
-        await File.WriteAllTextAsync(dialog.FileName, System.Text.Json.JsonSerializer.Serialize(snapshot,
-            GatewayJson.Options));
-        SetFooter("通信与 RPC 诊断快照已导出。");
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        await File.WriteAllTextAsync(dialog.FileName, csv, new UTF8Encoding(true));
+        SetFooter($"已导出 {rows.Length} 条通信诊断（CSV）。");
+    }
+
+    private static string BuildDiagnosticsCsv(IReadOnlyList<DiagnosticRow> rows, string gatewayId, DateTimeOffset capturedAt)
+    {
+        var csv = new StringBuilder();
+        csv.Append(CsvLine("导出时间", "网关标识", "诊断项目", "当前值 / 最近事件", "说明")).Append("\r\n");
+        var time = capturedAt.ToString("yyyy-MM-dd HH:mm:ss.fff zzz", CultureInfo.InvariantCulture);
+        foreach (var row in rows)
+            csv.Append(CsvLine(time, gatewayId, row.Item, row.Value, row.Meaning)).Append("\r\n");
+        return csv.ToString();
     }
 
     private sealed record DiagnosticRow(string Item, string Value, string Meaning, string? Identity = null)
