@@ -11,11 +11,11 @@ internal sealed partial class ServerDiskBar
         diskLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         diskLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         diskLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        diskLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 18));
+        diskLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
         diskLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         diskName = new Label { Name = "DiskName", AutoSize = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
         diskValue = new Label { Name = "DiskUsed", AutoSize = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.TopRight, Margin = Padding.Empty };
-        diskProgress = new AntdUI.Progress { Name = "DiskCapacity", Dock = DockStyle.Fill, Margin = Padding.Empty, UseSystemText = false };
+        diskProgress = new AntdUI.Progress { Name = "DiskCapacity", Dock = DockStyle.Fill, Margin = Padding.Empty, UseSystemText = true, Text = null };
         diskDetails = new Label { Name = "DiskDetails", Dock = DockStyle.Fill, TextMultiLine = true, ForeColor = UiTheme.Muted, Margin = Padding.Empty };
         diskLayout.Controls.Add(diskName, 0, 0); diskLayout.Controls.Add(diskValue, 1, 0);
         diskLayout.Controls.Add(diskProgress, 0, 1); diskLayout.SetColumnSpan(diskProgress, 2);

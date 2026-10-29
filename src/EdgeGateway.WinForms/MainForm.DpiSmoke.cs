@@ -517,6 +517,8 @@ public sealed partial class MainForm
         if (control is GatewaySwitch toggle)
         {
             AssertVisibleBounds(toggle.SwitchControl, context + " switch track");
+            if (toggle.Width != UiTheme.Scale(toggle, 52) || toggle.Height < UiTheme.Scale(toggle, 30))
+                throw new InvalidOperationException($"{context}: switch track has invalid bounds: {toggle.Name} {toggle.Bounds}.");
             if (toggle.Controls.OfType<Label>().Any(label => label.Visible))
                 throw new InvalidOperationException(context + ": switch has a redundant caption: " + toggle.Name);
         }

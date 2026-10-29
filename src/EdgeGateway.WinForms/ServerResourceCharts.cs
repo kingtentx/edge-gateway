@@ -60,6 +60,7 @@ internal sealed class ServerUsageTrend : AntdUI.Chart
 internal sealed partial class ServerDiskBar : AntdUI.Panel
 {
     private ServerDiskUsage _disk;
+    private bool _measuring;
     internal double? UsedPercent => _disk.Error is null ? _disk.UsedPercent : null;
     internal ServerDiskBar(ServerDiskUsage disk) { _disk = disk; InitializeComponent(); UpdateUsage(disk); }
     internal static string Capacity(long bytes) => $"{bytes / 1048576d:F0} M";
@@ -76,10 +77,23 @@ internal sealed partial class ServerDiskBar : AntdUI.Panel
     }
     private void MeasureRow()
     {
-        if (diskDetails is null) return;
-        var details = TextRenderer.MeasureText(diskDetails.Text, Font, new Size(Math.Max(1, ClientSize.Width - UiTheme.Scale(this, 24)), int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.WordBreak);
-        var height = Font.Height + details.Height + UiTheme.Scale(this, 40);
-        if (Height != height) Height = height;
+        if (_measuring || diskDetails is null) return;
+        _measuring = true;
+        try
+        {
+            // Disk rows are created after the form's initial scaling pass. Resolve
+            // their fixed row and padding from logical units at the actual DPI.
+            var padding = UiTheme.Scale(this, new Padding(12, 10, 12, 10));
+            if (Padding != padding) Padding = padding;
+            var progressHeight = UiTheme.Scale(this, 24);
+            if (diskLayout.RowStyles[1].Height != progressHeight) diskLayout.RowStyles[1].Height = progressHeight;
+            var details = TextRenderer.MeasureText(diskDetails.Text, diskDetails.Font,
+                new Size(Math.Max(1, ClientSize.Width - Padding.Horizontal), int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.WordBreak);
+            var height = Math.Max(diskName.PreferredHeight, diskValue.PreferredHeight)
+                + details.Height + Padding.Vertical + progressHeight;
+            if (Height != height) Height = height;
+        }
+        finally { _measuring = false; }
     }
     protected override void OnSizeChanged(EventArgs e) { base.OnSizeChanged(e); MeasureRow(); }
     protected override void OnFontChanged(EventArgs e) { base.OnFontChanged(e); MeasureRow(); }

@@ -20,6 +20,7 @@ public sealed partial class MainForm
                 await Task.Yield();
                 PerformLayoutRecursively(this);
                 AssertPageToolbarsFit(_pages[key], "form widths " + key);
+                if (!Descendants(_pages[key]).OfType<TabControl>().Any()) AssertSwitchSizes(_pages[key]);
                 foreach (var tabs in Descendants(_pages[key]).OfType<TabControl>().ToArray())
                 {
                     foreach (TabPage tab in tabs.TabPages)
@@ -27,6 +28,7 @@ public sealed partial class MainForm
                         tabs.SelectedTab = tab;
                         PerformLayoutRecursively(this);
                         AssertPageToolbarsFit(tab, "form widths " + key + " " + tab.Text);
+                        AssertSwitchSizes(tab);
                         ResetScrollPositions(tab, navigationMenu);
                         SaveEditorScreenshot(this, "form-widths", key + "-" + tab.Name + (narrow ? "-narrow" : "-wide"));
                     }
@@ -50,5 +52,12 @@ public sealed partial class MainForm
             finally { editor.Close(); }
         }
         Console.WriteLine($"FormWidths smoke passed: DeviceDpi={DeviceDpi}; eight pages, all page tabs, narrow/wide return, driver editors and dynamic parameters, database/channel/group/write dialogs; compact bounds, focus and clipping.");
+    }
+
+    private static void AssertSwitchSizes(Control root)
+    {
+        foreach (var toggle in Descendants(root).OfType<GatewaySwitch>().Where(toggle => toggle.Visible))
+            if (toggle.Width != UiTheme.Scale(toggle, 52) || toggle.Height < UiTheme.Scale(toggle, 30))
+                throw new InvalidOperationException($"Switch collapsed below its usable bounds: {toggle.Name} {toggle.Bounds} dpi={toggle.DeviceDpi}");
     }
 }

@@ -65,6 +65,25 @@ public sealed partial class MainForm
                     if (_serverResourceRefresh is not null) await _serverResourceRefresh;
                     await Task.Delay(120);
                     PerformLayoutRecursively(this);
+                    // AntdUI keeps unselected page controls in the tree before their first layout.
+                    // Visit each selected page, rather than measuring an unopened page at width zero.
+                    foreach (var toggle in Descendants((Control?)tabs?.SelectedTab ?? _pages[key]).OfType<GatewaySwitch>().Where(toggle => toggle.Visible))
+                    {
+                        if (toggle.Width != UiTheme.Scale(toggle, 52) || toggle.Height < UiTheme.Scale(toggle, 30))
+                            throw new InvalidOperationException($"Switch collapsed below its usable bounds: {toggle.Name} {toggle.Bounds} dpi={toggle.DeviceDpi}");
+                        if (toggle.Name == "CloudField_autoStart")
+                        {
+                            var saved = toggle.Checked;
+                            try
+                            {
+                                FocusForSmoke(toggle, toggle, this, "auto-start switch");
+                                SendControlSmokeMessage(toggle.Handle, 0x0100, new IntPtr((int)Keys.Space), IntPtr.Zero);
+                                SendControlSmokeMessage(toggle.Handle, 0x0101, new IntPtr((int)Keys.Space), IntPtr.Zero);
+                                if (toggle.Checked == saved) throw new InvalidOperationException("Auto-start switch did not respond to Space.");
+                            }
+                            finally { toggle.Checked = saved; }
+                        }
+                    }
                     await VerifyPageRefreshStabilityAsync(_pages[key], key + "/" + index);
                 }
                 SaveEditorScreenshot(this, "page-refresh", key);

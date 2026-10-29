@@ -775,8 +775,9 @@ internal sealed partial class PlatformPageView
         gatewayNameInput.TabIndex = 1;
         autoStartInput.Name = "CloudField_autoStart";
         autoStartInput.Text = "启用";
-        autoStartInput.AutoSize = true;
-        autoStartInput.MinimumSize = new Size(0, 32);
+        autoStartInput.AutoSize = false;
+        autoStartInput.Size = new Size(52, 32);
+        autoStartInput.MinimumSize = new Size(52, 32);
         autoStartInput.Anchor = AnchorStyles.Left;
         autoStartInput.TabIndex = 2;
         // Fixed action buttons.

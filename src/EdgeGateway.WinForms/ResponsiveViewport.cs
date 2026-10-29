@@ -17,11 +17,15 @@ namespace EdgeGateway.WinForms;
         protected override void OnLayout(LayoutEventArgs levent)
         {
             if (_arranging) return;
-            base.OnLayout(levent);
-            if (_arranging || _content is null || FindForm() is not DpiAwareForm { IsDpiLayoutReady: true }) return;
+            if (_content is null || FindForm() is not DpiAwareForm { IsDpiLayoutReady: true })
+            {
+                base.OnLayout(levent);
+                return;
+            }
             _arranging = true;
             try
             {
+                base.OnLayout(levent);
                 // A vertical scrollbar can narrow the content enough to wrap a
                 // toolbar onto another row. Re-measure at that actual width so
                 // wrapped actions cannot consume the tables' minimum height.
@@ -37,6 +41,9 @@ namespace EdgeGateway.WinForms;
                     var height = Math.Max(minimum, ClientSize.Height - Padding.Vertical);
                     var bounds = new Rectangle(Padding.Left + AutoScrollPosition.X, Padding.Top + AutoScrollPosition.Y, width, height);
                     if (_content.Bounds != bounds) _content.Bounds = bounds;
+                    // ScrollableControl initially saw the previous content width. Reconcile
+                    // scrollbars against the new bounds before deciding layout has converged.
+                    base.OnLayout(levent);
                     if (width == measuredWidth && width == Math.Max(1, ClientSize.Width - Padding.Horizontal)) break;
                 }
             }

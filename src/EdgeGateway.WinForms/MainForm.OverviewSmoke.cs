@@ -104,6 +104,8 @@ public sealed partial class MainForm
                 FitToWorkingArea(testWorkArea: area);
                 await Task.Yield(); PerformLayoutRecursively(this);
                 VerifyOverviewCards("server resources " + name);
+                if (_overviewPageView.viewport.HorizontalScroll.Visible)
+                    throw new InvalidOperationException("Live resource overview has horizontal overflow.");
                 // Official Panel owns an inner layout table; the card is the grid item.
                 var cpuPanel = _serverCpuChart.Parent!.Parent!;
                 var memoryPanel = _serverMemoryChart.Parent!.Parent!;
@@ -127,6 +129,14 @@ public sealed partial class MainForm
                 foreach (var bar in diskCards)
                 {
                     BringIntoViewAndAssert(bar, "server resources " + name + " disk");
+                    var progress = Descendants(bar).OfType<AntdUI.Progress>().Single();
+                    var details = Descendants(bar).OfType<Label>().Single(label => label.Name == "DiskDetails");
+                    if (!progress.UseSystemText || !string.IsNullOrEmpty(progress.Text))
+                        throw new InvalidOperationException("Disk capacity duplicates the percentage label.");
+                    if (progress.Height < UiTheme.Scale(progress, 24) || details.Bottom > details.Parent!.ClientSize.Height
+                        || details.Height < TextRenderer.MeasureText(details.Text, details.Font,
+                            new Size(details.Width, int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.WordBreak).Height)
+                        throw new InvalidOperationException($"Disk capacity progress or details are clipped: {bar.Name}, progress={progress.Bounds}, details={details.Bounds}, parent={details.Parent?.ClientSize}, dpi={bar.DeviceDpi}.");
                     if (name == "wide" && bar.Width > _serverDiskRows.ClientSize.Width * 0.6)
                         throw new InvalidOperationException("A disk capacity bar still stretches across the resource area.");
                     foreach (var other in diskCards.Where(other => !ReferenceEquals(other, bar)))
