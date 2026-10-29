@@ -55,7 +55,7 @@ public sealed partial class MainForm
             await RefreshSnapshotsAsync();
             if (_databaseGrid.Rows.Count != 39 || _databaseGroupGrid.Rows.Count != 39)
                 throw new InvalidOperationException("Database configuration removal did not rebuild the table structure.");
-            Console.WriteLine($"Database refresh smoke passed: empty page and both populated tabs; actual timer ticks caused no status text churn, tab/grid movement or rebinding; changed values updated in place; selected row/column and scroll retained; removal rebuilt rows at actual {DeviceDpi} DPI. UI-only disabled database fixtures, no external connections.");
+            Console.WriteLine($"Database refresh smoke passed: empty page and both populated tabs; actual timer ticks caused no tab/grid movement or rebinding; changed values updated in place; selected row/column and scroll retained; removal rebuilt rows at actual {DeviceDpi} DPI. UI-only disabled database fixtures, no external connections.");
         }
         finally { _refreshTimer.Stop(); _configuration = original; }
     }
@@ -66,14 +66,12 @@ public sealed partial class MainForm
         var tabs = _databaseTabs.Bounds;
         var connections = _databaseGrid.Bounds;
         var groups = _databaseGroupGrid.Bounds;
-        void TextChanged(object? sender, EventArgs e) => changes.Add("status text changed");
         void DataSourceChanged(object? sender, EventArgs e) => changes.Add(((Control)sender!).Name + " rebound");
         void LayoutChanged(object? sender, EventArgs e)
         {
             if (_databaseTabs.Bounds != tabs || _databaseGrid.Bounds != connections || _databaseGroupGrid.Bounds != groups)
                 changes.Add("tab/grid bounds moved");
         }
-        _databaseState.TextChanged += TextChanged;
         _databaseGrid.DataSourceChanged += DataSourceChanged; _databaseGroupGrid.DataSourceChanged += DataSourceChanged;
         _databaseTabs.LocationChanged += LayoutChanged; _databaseTabs.SizeChanged += LayoutChanged;
         _databaseGrid.SizeChanged += LayoutChanged; _databaseGroupGrid.SizeChanged += LayoutChanged;
@@ -88,7 +86,6 @@ public sealed partial class MainForm
         finally
         {
             _refreshTimer.Stop();
-            _databaseState.TextChanged -= TextChanged;
             _databaseGrid.DataSourceChanged -= DataSourceChanged; _databaseGroupGrid.DataSourceChanged -= DataSourceChanged;
             _databaseTabs.LocationChanged -= LayoutChanged; _databaseTabs.SizeChanged -= LayoutChanged;
             _databaseGrid.SizeChanged -= LayoutChanged; _databaseGroupGrid.SizeChanged -= LayoutChanged;

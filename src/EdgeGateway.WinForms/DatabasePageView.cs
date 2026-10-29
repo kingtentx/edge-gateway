@@ -6,7 +6,6 @@ internal sealed partial class DatabasePageView : UserControl
     internal TabControl DatabaseTabs => databaseTabs;
     internal GatewayTable ConnectionsGrid => connectionsGrid;
     internal GatewayTable GroupsGrid => groupsGrid;
-    internal Label DatabaseState => databaseStateLabel;
     internal Control ConnectionsToolbarHost => connectionsToolbarHost;
     internal Control GroupsToolbarHost => groupsToolbarHost;
 

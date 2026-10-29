@@ -697,8 +697,7 @@ public sealed partial class MainForm : DpiAwareForm
                 await _eventArchive.RefreshLiveAsync();
             if (_activePage == "database")
             {
-                var spool = await _application.GetAcquisitionSpoolStatisticsAsync();
-                BindDatabaseViews(spool: spool);
+                BindDatabaseViews();
             }
             var statistics = await _application.GetStatisticsAsync();
             if (!IsDisposed)

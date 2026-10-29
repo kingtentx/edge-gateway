@@ -7,9 +7,7 @@ public sealed partial class MainForm
 {
     private TabControl _databaseTabs = null!;
     private GatewayTable _databaseGrid = null!, _databaseGroupGrid = null!;
-    private Label _databaseState = null!;
     private DatabasePageView _databasePageView = null!;
-    private AcquisitionSpoolStatistics? _databaseSpool;
 
     private Control BuildDatabasesPage()
     {
@@ -17,7 +15,6 @@ public sealed partial class MainForm
         _databaseTabs = _databasePageView.DatabaseTabs;
         _databaseGrid = _databasePageView.ConnectionsGrid;
         _databaseGroupGrid = _databasePageView.GroupsGrid;
-        _databaseState = _databasePageView.DatabaseState;
         _databaseGrid.Name = "DatabaseConnections"; _databaseGroupGrid.Name = "DatabaseWriteGroups";
 
         _databasePageView.addConnection.Click += async (_, _) => await RunBusyAsync(() => EditDatabaseConnectionAsync(true));
@@ -40,15 +37,12 @@ public sealed partial class MainForm
         _databasePageView.previewGroup.Click += async (_, _) => await RunBusyAsync(() => PreviewSelectedDatabaseGroupAsync());
         _databaseGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseConnectionAsync(false)); };
         _databaseGroupGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseGroupAsync(false)); };
-        _databaseState.Name = "DatabaseConfigurationState";
-        _databasePageView.SizeChanged += (_, _) => SetWrappingWidth(_databaseState, Math.Max(1, _databasePageView.ClientSize.Width - 16));
         return _databasePageView;
     }
 
-    private void BindDatabaseViews(Guid? connectionId = null, Guid? groupId = null, AcquisitionSpoolStatistics? spool = null)
+    private void BindDatabaseViews(Guid? connectionId = null, Guid? groupId = null)
     {
         if (_databaseGrid.Columns.Count == 0) return;
-        if (spool is not null) _databaseSpool = spool;
         var statuses = _application.GetDatabaseStatuses().ToDictionary(status => status.ConnectionId);
         var rows = _configuration.Databases.Select(connection =>
         {
@@ -70,17 +64,6 @@ public sealed partial class MainForm
                     + (group.Mode == DatabaseStorageMode.PointMapping ? $" / {group.Columns.Count} 个映射字段" : ""),
             group.Enabled ? "已启用" : "未启用")).ToArray();
         GridViewState.UpdateRows(_databaseGroupGrid, groups, row => row.Id, groupId);
-        var description = _application.IsRunning ? "设备正在运行。停止全部设备后可修改数据库与写入组；当前已保存的写入配置继续工作。"
-            : _configuration.Databases.Count == 0 ? "默认采集结果写入日志。添加数据库连接 → 配置写入组 → 启用连接与写入组 → 启动设备。"
-            : "数据库配置已保存。标准点行和自定义逐点按采样写入；自定义整行按关联点位组合。连接与写入组均需启用。";
-        if (_databaseSpool is { } buffer)
-            description += Environment.NewLine
-                + $"本地持久缓冲：{buffer.PendingRows:F0} 行 / {buffer.PendingBatches:F0} 批 / {buffer.PendingBytes / 1048576d:F1} M；"
-                + $"本进程确认 {buffer.AcknowledgedBatches:F0} 批，容量拒绝 {buffer.CapacityRejectedBatches:F0} 批。"
-                + (buffer.LastError is null ? "" : Environment.NewLine + "缓冲异常：" + buffer.LastError);
-        // Publish the complete text once. Clearing the statistics line before the
-        // await used to shrink and expand the AutoSize row on every timer tick.
-        if (_databaseState.Text != description) _databaseState.Text = description;
         foreach (GatewayTableRow row in _databaseGrid.Rows) if (row.DataBoundItem is DatabaseConnectionRow data) row.Cells["Error"].ToolTipText = data.Error;
     }
 
