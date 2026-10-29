@@ -17,6 +17,9 @@ public partial class GatewayTable : AntdUI.Table
     {
         Columns = new(this); Rows = new(this);
         EmptyText = "暂无数据"; MultipleRows = false; Bordered = false;
+        // Keep rows compact without fixing their height: wrapped text and action
+        // cells still determine the content height. AntdUI applies DPI scaling.
+        Gaps = new Size(12, 6);
         EnableHeaderResizing = true;
         base.EditMode = AntdUI.TEditMode.None;
         base.CellClick += (_, e) =>
@@ -498,6 +501,13 @@ public class GatewayTableCell
     {
         GatewayTable?.FormatCell(this, FormattedValue);
         var presentation = CreatePresentation();
+        // The official plain-text cell measures LineBreak against the column
+        // width. CellText is an inline template measured as one line in 2.4.16.
+        if (OwningColumn.LineBreak && presentation is AntdUI.CellText { Fore: null } text)
+        {
+            RenderedCell = null;
+            return text.Text;
+        }
         // CellButton also derives from CellLink. Suppress hover popups for all
         // row actions, including specialized buttons and select-cell triggers.
         if (presentation is AntdUI.CellLink action) action.Tooltip = null;

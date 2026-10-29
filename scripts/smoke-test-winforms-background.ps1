@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -137,6 +137,7 @@ namespace EdgeGateway {
                     : scenario == "Pagination" ? " --smoke-pagination --screenshot "
                     : scenario == "Navigation" ? " --smoke-navigation-collapse --screenshot "
                     : scenario == "PageRefresh" ? " --smoke-page-refresh --screenshot "
+                    : scenario == "RowDensity" ? " --smoke-row-density --screenshot "
                     : scenario == "DatabaseRefresh" ? " --smoke-database-refresh --screenshot "
                     : scenario == "Logging" ? " --smoke-logging --screenshot "
                     : scenario == "Workbooks" ? " --smoke-workbooks --screenshot "
@@ -233,6 +234,16 @@ if ($Scenario -eq 'Navigation') {
     $screenshots = @(Get-ChildItem -LiteralPath $outputRoot -Filter '*navigation-collapse*.png' -File)
     if ($screenshots.Count -ne 6 -or @($screenshots | Where-Object Length -eq 0).Count -ne 0) { throw 'Navigation screenshots are missing or empty.' }
     Write-Output 'Background navigation collapse smoke passed.'
+    return
+}
+if ($Scenario -eq 'RowDensity') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'Row density wrote errors.' }
+    if ($outputText -notmatch 'Row density smoke passed:') { throw 'Row density completion marker is missing.' }
+    $screenshots = @(Get-ChildItem -LiteralPath $outputRoot -Filter '*row-density*.png' -File)
+    if ($screenshots.Count -ne 9 -or @($screenshots | Where-Object Length -eq 0).Count -ne 0) { throw 'Row density screenshots are missing or empty.' }
+    Write-Output 'Background row density smoke passed.'
     return
 }
 if ($Scenario -eq 'PageRefresh') {

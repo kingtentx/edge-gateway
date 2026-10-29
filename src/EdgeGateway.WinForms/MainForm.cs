@@ -312,7 +312,7 @@ public sealed partial class MainForm : DpiAwareForm
         }
         if (_pageRefreshSmoke)
         {
-            try { await SmokePageRefreshAsync(); }
+            try { if (RowDensitySmoke) await SmokeRowDensityAsync(); else await SmokePageRefreshAsync(); }
             catch (Exception exception)
             {
                 SmokeTestFailed = true; TrySaveSmokeFailure(this, "page-refresh-failed"); Console.Error.WriteLine(exception);

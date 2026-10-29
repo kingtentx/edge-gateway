@@ -18,7 +18,8 @@ internal static class Program
         var layoutMatrix = args.Contains("--layout-matrix", StringComparer.OrdinalIgnoreCase);
         var databaseMappingSmoke = args.Contains("--smoke-database-mapping", StringComparer.OrdinalIgnoreCase);
         var databaseRefreshSmoke = args.Contains("--smoke-database-refresh", StringComparer.OrdinalIgnoreCase);
-        var pageRefreshSmoke = args.Contains("--smoke-page-refresh", StringComparer.OrdinalIgnoreCase);
+        var rowDensitySmoke = args.Contains("--smoke-row-density", StringComparer.OrdinalIgnoreCase);
+        var pageRefreshSmoke = rowDensitySmoke || args.Contains("--smoke-page-refresh", StringComparer.OrdinalIgnoreCase);
         var navigationSmoke = args.Contains("--smoke-navigation-collapse", StringComparer.OrdinalIgnoreCase);
         var serverResourcesSmoke = args.Contains("--smoke-server-resources", StringComparer.OrdinalIgnoreCase);
         var loggingSmoke = args.Contains("--smoke-logging", StringComparer.OrdinalIgnoreCase);
@@ -75,6 +76,7 @@ internal static class Program
                 enableVerificationFaults: smokeTest, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
             using var window = new MainForm(host.Application, smokeTest, screenshotPath, layoutMatrix,
                 host.BeginConfigurationWriteFailureForVerification, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke, loggingSmoke: loggingSmoke, databaseRefreshSmoke: databaseRefreshSmoke, pageRefreshSmoke: pageRefreshSmoke, navigationSmoke: navigationSmoke, paginationSmoke: paginationSmoke, historySourcesSmoke: historySourcesSmoke, formWidthsSmoke: formWidthsSmoke, buttonAppearanceSmoke: buttonAppearanceSmoke);
+            window.RowDensitySmoke = rowDensitySmoke;
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }
