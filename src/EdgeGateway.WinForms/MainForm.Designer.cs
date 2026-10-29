@@ -9,7 +9,7 @@ public sealed partial class MainForm
     private TableLayoutPanel navigationHeaderPanel = null!;
     private AntdUI.Avatar navigationApplicationIcon = null!;
     private TableLayoutPanel applicationShell = null!;
-    private Panel navigationViewportPanel = null!;
+    private AntdUI.Panel navigationViewportPanel = null!;
     private TableLayoutPanel navigationContentPanel = null!;
     private FlowLayoutPanel navigationBrandPanel = null!;
     private TableLayoutPanel applicationBody = null!;
@@ -35,7 +35,7 @@ public sealed partial class MainForm
         navigationHeaderPanel = new TableLayoutPanel();
         navigationApplicationIcon = new AntdUI.Avatar();
         applicationShell = new TableLayoutPanel();
-        navigationViewportPanel = new Panel();
+        navigationViewportPanel = new AntdUI.Panel();
         navigationContentPanel = new TableLayoutPanel();
         navigationBrandPanel = new FlowLayoutPanel();
         brandTitleLabel = new Label();

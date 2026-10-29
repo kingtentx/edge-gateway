@@ -98,7 +98,9 @@ public sealed partial class MainForm
             await RefreshSnapshotsAsync();
             PerformLayoutRecursively(this);
             if (viewport.AutoScrollPosition.Y != wheelPosition) throw new InvalidOperationException("Dashboard refresh reset the wheel position.");
-            SendControlSmokeMessage(viewport.Handle, 0x0115, new IntPtr(7), IntPtr.Zero); // SB_BOTTOM
+            if (viewport.YScroll is not { Visible: true } scrollbar)
+                throw new InvalidOperationException("Overview is missing the official vertical scrollbar.");
+            scrollbar.Value = scrollbar.GetValue(int.MaxValue);
             var bottom = viewport.AutoScrollPosition.Y;
             if (bottom >= 0) throw new InvalidOperationException("Dashboard scrollbar did not reach a lower position.");
             await RefreshSnapshotsAsync();

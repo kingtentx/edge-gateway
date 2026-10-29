@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class TagEditor
 {
     private TabPage _basicTab = null!;
-    private Panel _basicViewport = null!;
+    private AntdUI.Panel _basicViewport = null!;
     private TableLayoutPanel _basic = null!;
     private Label _basicSection1 = null!;
     private GatewayInput _name = null!;
@@ -48,7 +48,7 @@ internal sealed partial class TagEditor
     private Label _basicHint4 = null!;
     private Label _methodHint = null!;
     private TabPage calculationTab = null!;
-    private Panel calculationViewport = null!;
+    private AntdUI.Panel calculationViewport = null!;
     private TableLayoutPanel calculation = null!;
     private Label calculationSection5 = null!;
     private Label calculationHint6 = null!;
@@ -82,7 +82,7 @@ internal sealed partial class TagEditor
     private Label calculationHint10 = null!;
     private Label calculationHint11 = null!;
     private TabPage reportingTab = null!;
-    private Panel reportingViewport = null!;
+    private AntdUI.Panel reportingViewport = null!;
     private TableLayoutPanel reporting = null!;
     private Label reportingSection12 = null!;
     private NumericUpDown _scanInterval = null!;
@@ -100,7 +100,7 @@ internal sealed partial class TagEditor
         _basicTab.Name = "_basicTab";
         _basicTab.Text = "方法与地址";
         _basicTab.BackColor = Color.White;
-        _basicViewport = new Panel();
+        _basicViewport = new AntdUI.Panel();
         _basicViewport.Name = "_basicViewport";
         _basicViewport.Dock = DockStyle.Fill;
         _basicViewport.AutoScroll = true;
@@ -556,7 +556,7 @@ internal sealed partial class TagEditor
         calculationTab.Name = "calculationTab";
         calculationTab.Text = "换算与报警";
         calculationTab.BackColor = Color.White;
-        calculationViewport = new Panel();
+        calculationViewport = new AntdUI.Panel();
         calculationViewport.Name = "calculationViewport";
         calculationViewport.Dock = DockStyle.Fill;
         calculationViewport.AutoScroll = true;
@@ -953,7 +953,7 @@ internal sealed partial class TagEditor
         reportingTab.Name = "reportingTab";
         reportingTab.Text = "扫描与上报";
         reportingTab.BackColor = Color.White;
-        reportingViewport = new Panel();
+        reportingViewport = new AntdUI.Panel();
         reportingViewport.Name = "reportingViewport";
         reportingViewport.Dock = DockStyle.Fill;
         reportingViewport.AutoScroll = true;

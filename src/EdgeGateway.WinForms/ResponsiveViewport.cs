@@ -1,6 +1,6 @@
 namespace EdgeGateway.WinForms;
 
-    internal sealed class ResponsiveViewport : Panel, IMessageFilter
+    internal sealed class ResponsiveViewport : GatewayScrollPanel, IMessageFilter
 {
         private Control? _content;
         private Func<int> _minimumHeight = () => 480;
@@ -31,20 +31,20 @@ namespace EdgeGateway.WinForms;
                 // wrapped actions cannot consume the tables' minimum height.
                 for (var pass = 0; pass < 4; pass++)
                 {
-                    var measuredWidth = Math.Max(1, ClientSize.Width - Padding.Horizontal);
+                    var measuredWidth = Math.Max(1, ScrollClientSize.Width);
                     if (_content.Width != measuredWidth) _content.Width = measuredWidth;
                     _content.PerformLayout();
                     var minimum = Math.Max(1, _minimumHeight());
-                    var scrollExtent = new Size(0, minimum + Padding.Vertical);
+                    var scrollExtent = new Size(0, minimum);
                     if (AutoScrollMinSize != scrollExtent) AutoScrollMinSize = scrollExtent;
-                    var width = Math.Max(1, ClientSize.Width - Padding.Horizontal);
-                    var height = Math.Max(minimum, ClientSize.Height - Padding.Vertical);
-                    var bounds = new Rectangle(Padding.Left + AutoScrollPosition.X, Padding.Top + AutoScrollPosition.Y, width, height);
+                    var width = Math.Max(1, ScrollClientSize.Width);
+                    var height = Math.Max(minimum, ScrollClientSize.Height);
+                    var bounds = new Rectangle(AutoScrollPosition.X, AutoScrollPosition.Y, width, height);
                     if (_content.Bounds != bounds) _content.Bounds = bounds;
                     // ScrollableControl initially saw the previous content width. Reconcile
                     // scrollbars against the new bounds before deciding layout has converged.
                     base.OnLayout(levent);
-                    if (width == measuredWidth && width == Math.Max(1, ClientSize.Width - Padding.Horizontal)) break;
+                    if (width == measuredWidth && width == Math.Max(1, ScrollClientSize.Width)) break;
                 }
             }
             finally { _arranging = false; }
@@ -55,9 +55,9 @@ namespace EdgeGateway.WinForms;
         protected override void OnHandleDestroyed(EventArgs e)
         { System.Windows.Forms.Application.RemoveMessageFilter(this); base.OnHandleDestroyed(e); }
 
-        public bool PreFilterMessage(ref Message m)
+        public new bool PreFilterMessage(ref Message m)
         {
-            if (!RouteContentWheel || m.Msg != 0x020A || !Visible || !VerticalScroll.Visible || !IsHandleCreated) return false;
+            if (!RouteContentWheel || m.Msg != 0x020A || !Visible || !IsHandleCreated || ScrollHost is null || !VerticalScroll.Visible) return false;
             var location = new Point(unchecked((short)(long)m.LParam), unchecked((short)((long)m.LParam >> 16)));
             if (!RectangleToScreen(ClientRectangle).Contains(location)) return false;
             var target = Control.FromChildHandle(m.HWnd);

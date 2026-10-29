@@ -10,7 +10,7 @@ internal sealed class ServerUsageTrend : AntdUI.Chart
     internal Color SeriesColor { get; set; } = UiTheme.Blue;
     internal ServerUsageTrend()
     {
-        Height = 120; Margin = System.Windows.Forms.Padding.Empty; TabStop = false;
+        Height = 180; Margin = System.Windows.Forms.Padding.Empty; TabStop = false;
         ChartType = AntdUI.TChartType.Line; ShowLegend = false; EnableAnimation = false;
         XMin = -60; XMax = 0; YMin = 0; YMax = 100;
         XAxisLabelFormat = "0'秒'"; YAxisLabelFormat = "0'%'";
@@ -63,17 +63,19 @@ internal sealed partial class ServerDiskBar : AntdUI.Panel
     private bool _measuring;
     internal double? UsedPercent => _disk.Error is null ? _disk.UsedPercent : null;
     internal ServerDiskBar(ServerDiskUsage disk) { _disk = disk; InitializeComponent(); UpdateUsage(disk); }
-    internal static string Capacity(long bytes) => $"{bytes / 1048576d:F0} M";
+    internal static string Capacity(long bytes) => $"{bytes / 1073741824d:F1} GB";
     internal void UpdateUsage(ServerDiskUsage disk)
     {
         _disk = disk; AccessibleName = $"磁盘 {disk.Name}";
         diskName.Text = disk.Name;
-        diskValue.Text = UsedPercent is { } used ? $"{used:F1}%{(used >= 90 ? " · 空间偏紧" : " 已用")}" : "不可用";
+        var usage = UsedPercent is { } used ? $"{used:F1}%{(used >= 90 ? " · 空间偏紧" : " 已用")}" : "不可用";
+        diskName.Text = disk.Name + (UsedPercent >= 90 ? " · 空间偏紧" : "");
         diskDetails.Text = UsedPercent is not null ? $"可用 {Capacity(disk.FreeBytes!.Value)} / 总量 {Capacity(disk.TotalBytes!.Value)}" : "不可用：" + disk.Error;
         diskProgress.Visible = UsedPercent.HasValue;
         diskProgress.Value = (float)(Math.Clamp(UsedPercent ?? 0, 0, 100) / 100);
-        diskProgress.State = UsedPercent >= 90 ? AntdUI.TType.Warn : AntdUI.TType.None;
-        AccessibleDescription = diskValue.Text + "，" + diskDetails.Text; MeasureRow();
+        diskProgress.State = AntdUI.TType.None;
+        diskProgress.Fill = UsedPercent >= 90 ? AntdUI.Style.Get(AntdUI.Colour.Warning, nameof(AntdUI.Progress)) : null;
+        AccessibleDescription = usage + "，" + diskDetails.Text; MeasureRow();
     }
     private void MeasureRow()
     {
@@ -83,13 +85,13 @@ internal sealed partial class ServerDiskBar : AntdUI.Panel
         {
             // Disk rows are created after the form's initial scaling pass. Resolve
             // their fixed row and padding from logical units at the actual DPI.
-            var padding = UiTheme.Scale(this, new Padding(12, 10, 12, 10));
+            var padding = UiTheme.Scale(this, new Padding(8, 6, 8, 6));
             if (Padding != padding) Padding = padding;
             var progressHeight = UiTheme.Scale(this, 24);
             if (diskLayout.RowStyles[1].Height != progressHeight) diskLayout.RowStyles[1].Height = progressHeight;
             var details = TextRenderer.MeasureText(diskDetails.Text, diskDetails.Font,
                 new Size(Math.Max(1, ClientSize.Width - Padding.Horizontal), int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.WordBreak);
-            var height = Math.Max(diskName.PreferredHeight, diskValue.PreferredHeight)
+            var height = diskName.PreferredHeight
                 + details.Height + Padding.Vertical + progressHeight;
             if (Height != height) Height = height;
         }

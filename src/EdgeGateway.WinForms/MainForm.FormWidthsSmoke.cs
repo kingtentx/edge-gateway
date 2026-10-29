@@ -8,6 +8,7 @@ public sealed partial class MainForm
     {
         if (!_smokeTest || _application.IsRunning) throw new InvalidOperationException("FormWidths requires an isolated stopped host.");
         _refreshTimer.Stop();
+        if (ScrollbarsSmoke) { await SmokeScrollbarsAsync(); return; }
         if (SurfacesListsOnly) { await SmokeListSurfacesAsync(); return; }
         var originalSize = Size;
         var directory = SmokeOutputDirectory("form-widths");

@@ -3,7 +3,7 @@ using System.Collections;
 namespace EdgeGateway.WinForms;
 
 /// <summary>Virtualized data rows with AntdUI switches for explicit point selection.</summary>
-public sealed class GatewayCheckList : ScrollableControl
+public sealed class GatewayCheckList : GatewayScrollPanel
 {
     private readonly List<GatewaySwitch> _rows = [];
     private readonly List<Label> _names = [];
@@ -18,7 +18,7 @@ public sealed class GatewayCheckList : ScrollableControl
     public PointItems Items { get; }
     public bool CheckOnClick { get; set; } = true;
     public bool IntegralHeight { get; set; }
-    public BorderStyle BorderStyle { get; set; }
+    public new BorderStyle BorderStyle { get; set; }
     private int RowHeight => Math.Max(UiTheme.Scale(this, 36), Font.Height + UiTheme.Scale(this, 12));
     public int SelectedIndex
     {
@@ -30,7 +30,7 @@ public sealed class GatewayCheckList : ScrollableControl
         get => -AutoScrollPosition.Y / RowHeight;
         set { AutoScrollPosition = new Point(0, Math.Max(0, value) * RowHeight); RenderRows(); }
     }
-    public Rectangle GetItemRectangle(int index) => new(0, index * RowHeight + AutoScrollPosition.Y, ClientSize.Width, RowHeight);
+    public Rectangle GetItemRectangle(int index) => new(0, index * RowHeight + AutoScrollPosition.Y, ScrollClientSize.Width, RowHeight);
     public event ItemCheckEventHandler? ItemCheck;
     public void SetItemChecked(int index, bool value)
     {
@@ -41,7 +41,7 @@ public sealed class GatewayCheckList : ScrollableControl
         RenderRows();
     }
     protected override void OnLayout(LayoutEventArgs e) { base.OnLayout(e); RenderRows(); }
-    protected override void OnScroll(ScrollEventArgs e) { base.OnScroll(e); RenderRows(); }
+    protected override void OnViewportScroll() { base.OnViewportScroll(); RenderRows(); }
     protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); RenderRows(); }
     protected override bool IsInputKey(Keys keyData) => (keyData & Keys.KeyCode) is Keys.Up or Keys.Down or Keys.Space || base.IsInputKey(keyData);
     protected override void OnKeyDown(KeyEventArgs e)
@@ -66,7 +66,7 @@ public sealed class GatewayCheckList : ScrollableControl
             var extent = new Size(0, Items.Count * RowHeight);
             if (AutoScrollMinSize != extent) AutoScrollMinSize = extent;
             var first = TopIndex;
-            var count = Math.Min(Items.Count - first, Math.Max(0, ClientSize.Height / RowHeight + 2));
+            var count = Math.Min(Items.Count - first, Math.Max(0, ScrollClientSize.Height / RowHeight + 2));
             while (_rows.Count < count)
             {
                 var row = new GatewaySwitch { AutoSize = false, TabStop = false };

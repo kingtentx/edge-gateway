@@ -6,6 +6,7 @@ namespace EdgeGateway.WinForms;
 
 internal sealed partial class LogArchivePageView
 {
+    private AntdUI.Panel pageViewport = null!;
     internal TableLayoutPanel contentLayout = null!;
     internal FlowLayoutPanel filterBar = null!;
     internal FlowLayoutPanel actions = null!;
@@ -801,9 +802,11 @@ internal sealed partial class LogArchivePageView
         archivePaginationBar.Controls.Add(archivePagination, 3, 0);
         GridPageHost.Controls.Add(archivePaginationBar);
         contentLayout.Controls.Add(GridPageHost, 0, 3);
-        this.Controls.Add(contentLayout);
+        pageViewport = new AntdUI.Panel { Dock = DockStyle.Fill, AutoScroll = true, Name = "ArchiveViewport" };
+        pageViewport.Controls.Add(contentLayout);
+        this.Controls.Add(pageViewport);
         this.AutoScaleMode = AutoScaleMode.Inherit;
-        this.AutoScroll = true;
+
         this.BackColor = Color.White;
         ResumeLayout(false);
     }

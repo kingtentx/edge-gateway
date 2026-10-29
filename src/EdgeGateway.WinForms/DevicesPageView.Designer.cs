@@ -7,6 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DevicesPageView
 {
     private System.ComponentModel.IContainer? components;
+    private GatewayScrollPanel pageViewport = null!;
     private TableLayoutPanel contentLayout = null!;
     private Label titleLabel = null!;
     private Label descriptionLabel = null!;
@@ -133,7 +134,7 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         SuspendLayout();
 
         AutoScaleMode = AutoScaleMode.Inherit;
-        AutoScroll = true;
+        pageViewport = new GatewayScrollPanel { Dock = DockStyle.Fill, Name = "DevicesViewport" };
         Name = "DevicesPageView";
         Dock = DockStyle.Fill;
         BackColor = UiTheme.Background;
@@ -250,7 +251,8 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         deviceGridPaginationBar.Controls.Add(deviceGridPagination, 3, 0);
         deviceGridPageHost.Controls.Add(deviceGridPaginationBar);
         contentLayout.Controls.Add(deviceGridPageHost, 0, 4);
-        Controls.Add(contentLayout);
+        pageViewport.Controls.Add(contentLayout);
+        Controls.Add(pageViewport);
 
         contentLayout.ResumeLayout(false);
         contentLayout.PerformLayout();

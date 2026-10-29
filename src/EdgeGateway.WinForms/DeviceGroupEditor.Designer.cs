@@ -2,6 +2,7 @@ namespace EdgeGateway.WinForms;
 
 internal sealed partial class DeviceGroupEditor
 {
+    private AntdUI.Panel groupViewport = null!;
     private TabPage groupTab = null!;
     private TableLayoutPanel fields = null!;
     private Label nameLabel = null!;
@@ -17,7 +18,8 @@ internal sealed partial class DeviceGroupEditor
         nameInput = new GatewayInput();
         groupTab.Text = "分组信息";
         groupTab.BackColor = Color.White;
-        groupTab.AutoScroll = true;
+        groupViewport = new AntdUI.Panel { Dock = DockStyle.Fill, AutoScroll = true };
+        groupTab.Controls.Add(groupViewport);
         fields.Dock = DockStyle.Top;
         fields.AutoSize = true;
         fields.Padding = new Padding(20);
@@ -37,7 +39,7 @@ internal sealed partial class DeviceGroupEditor
         nameSurface.Controls.Add(nameInput);
         fields.Controls.Add(nameLabel, 0, 0);
         fields.Controls.Add(nameSurface, 1, 0);
-        groupTab.Controls.Add(fields);
+        groupViewport.Controls.Add(fields);
         Tabs.TabPages.Add(groupTab);
     }
 }

@@ -14,7 +14,8 @@ internal static class Program
         var buttonAppearanceSmoke = args.Contains("--smoke-button-appearance", StringComparer.OrdinalIgnoreCase);
         var surfacesListsOnly = args.Contains("--smoke-surfaces-lists", StringComparer.OrdinalIgnoreCase);
         var surfacesSmoke = surfacesListsOnly || args.Contains("--smoke-surfaces", StringComparer.OrdinalIgnoreCase);
-        var formWidthsSmoke = surfacesSmoke || args.Contains("--smoke-form-widths", StringComparer.OrdinalIgnoreCase);
+        var scrollbarsSmoke = args.Contains("--smoke-scrollbars", StringComparer.OrdinalIgnoreCase);
+        var formWidthsSmoke = scrollbarsSmoke || surfacesSmoke || args.Contains("--smoke-form-widths", StringComparer.OrdinalIgnoreCase);
         var historySourcesSmoke = args.Contains("--smoke-history-sources", StringComparer.OrdinalIgnoreCase);
         var paginationSmoke = args.Contains("--smoke-pagination", StringComparer.OrdinalIgnoreCase);
         var layoutMatrix = args.Contains("--layout-matrix", StringComparer.OrdinalIgnoreCase);
@@ -87,6 +88,7 @@ internal static class Program
             window.DpiConfirmationSmoke = dpiConfirmationSmoke;
             window.DpiRoundTripOnly = dpiRoundTripOnly;
             window.LiveLogsSmoke = liveLogsSmoke;
+            window.ScrollbarsSmoke = scrollbarsSmoke;
             window.SurfacesSmoke = surfacesSmoke;
             window.SurfacesListsOnly = surfacesListsOnly;
             System.Windows.Forms.Application.Run(window);

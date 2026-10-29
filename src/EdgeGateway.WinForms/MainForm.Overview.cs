@@ -54,17 +54,14 @@ public sealed partial class MainForm
         var content = _overviewPageView.dashboardContent;
         var cards = _overviewPageView.cards; var health = _overviewPageView.health;
         var resourceGrid = _overviewPageView.resourceGrid; var resources = _overviewPageView.resources;
-        var links = _overviewPageView.links; var viewport = _overviewPageView.viewport;
+        var viewport = _overviewPageView.viewport;
         Control[] primary = [_overviewPageView.metricCard0, _overviewPageView.metricCard1, _overviewPageView.metricCard2, _overviewPageView.metricCard3];
         Control[] healthPanels = [_overviewPageView.collectionCard, _overviewPageView.deliveryCard];
         Control[] resourcePanels = [_overviewPageView.cpuCard, _overviewPageView.memoryCard];
         TableLayoutPanel[] resourceSummaries = [_overviewPageView.cpuSummary, _overviewPageView.memorySummary];
-        _overviewPageView.devicesButton.Click += (_, _) => ShowPage("devices");
-        _overviewPageView.realtimeButton.Click += (_, _) => ShowPage("realtime");
-        _overviewPageView.diagnosticsButton.Click += (_, _) => ShowPage("diagnostics");
         viewport.BindLayout(content, () => cards.PreferredSize.Height
             + _overviewDeviceSummary.PreferredHeight + _overviewDeviceSummary.Margin.Vertical + health.PreferredSize.Height
-            + links.PreferredSize.Height + resources.PreferredSize.Height + resources.Margin.Vertical);
+            + resources.PreferredSize.Height + resources.Margin.Vertical);
         _feedbackTip.SetTip(_serverIdentity, "最近 60 秒趋势，每秒刷新；鼠标移到曲线上查看读数。磁盘显示容量使用率。");
         var arranging = false;
         void Arrange()
@@ -191,8 +188,8 @@ public sealed partial class MainForm
     private void ArrangeDiskGrid()
     {
         var width = _serverDiskRows.ClientSize.Width;
-        var columns = width >= UiTheme.Scale(_serverDiskRows, 1120) ? 4
-            : width >= UiTheme.Scale(_serverDiskRows, 600) ? 2 : 1;
+        var columns = width >= UiTheme.Scale(_serverDiskRows, 800) ? 4
+            : width >= UiTheme.Scale(_serverDiskRows, 420) ? 2 : 1;
         var bars = _serverDiskBars.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).Select(pair => pair.Value).ToArray();
         var rebuild = _serverDiskRows.ColumnCount != columns || _serverDiskRows.ColumnStyles.Count != columns
             || _serverDiskRows.Controls.Count != bars.Length || bars.Where((bar, index) =>

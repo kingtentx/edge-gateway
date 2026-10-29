@@ -117,22 +117,23 @@ public sealed partial class MainForm
                     throw new InvalidOperationException("Narrow resource cards must remain readable in one column.");
                 foreach (var chart in new Control[] { _serverCpuChart, _serverMemoryChart })
                 {
-                    if (chart.Height < UiTheme.Scale(chart, 120)) throw new InvalidOperationException("Resource chart did not retain its increased height.");
+                    if (chart.Height < UiTheme.Scale(chart, 180)) throw new InvalidOperationException("Resource chart did not retain its increased height.");
                     BringIntoViewAndAssert(chart, "server resources " + name + " trend");
                 }
                 SaveSmokeScreenshot(this, Path.Combine(directory, $"server-resources-{name}-trends.png"));
-                if (name == "wide" && _serverDiskRows.ColumnCount < 2)
-                    throw new InvalidOperationException("Wide disk capacity cards must use multiple columns.");
-                if (name == "narrow" && _serverDiskRows.ColumnCount != 1)
-                    throw new InvalidOperationException("Narrow disk capacity cards must wrap to one column.");
+                var expectedColumns = _serverDiskRows.ClientSize.Width >= UiTheme.Scale(_serverDiskRows, 800) ? 4
+                    : _serverDiskRows.ClientSize.Width >= UiTheme.Scale(_serverDiskRows, 420) ? 2 : 1;
+                if (_serverDiskRows.ColumnCount != expectedColumns)
+                    throw new InvalidOperationException("Disk capacity cards did not wrap at the compact card breakpoints.");
                 var diskCards = _serverDiskBars.Values.ToArray();
                 foreach (var bar in diskCards)
                 {
                     BringIntoViewAndAssert(bar, "server resources " + name + " disk");
                     var progress = Descendants(bar).OfType<AntdUI.Progress>().Single();
                     var details = Descendants(bar).OfType<Label>().Single(label => label.Name == "DiskDetails");
-                    if (!progress.UseSystemText || !string.IsNullOrEmpty(progress.Text))
-                        throw new InvalidOperationException("Disk capacity duplicates the percentage label.");
+                    if (progress.UseSystemText || !progress.UseTextCenter || progress.ShowTextDot != 1
+                        || Descendants(bar).Any(control => control.Name == "DiskUsed"))
+                        throw new InvalidOperationException("Disk percentage must appear once, inside the official progress bar.");
                     if (progress.Height < UiTheme.Scale(progress, 24) || details.Bottom > details.Parent!.ClientSize.Height
                         || details.Height < TextRenderer.MeasureText(details.Text, details.Font,
                             new Size(details.Width, int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.WordBreak).Height)

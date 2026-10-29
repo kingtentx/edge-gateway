@@ -40,7 +40,7 @@ internal class ModernButton : GatewayButton
 }
 
 /// <summary>A page can scroll as a whole when the monitor offers very little logical height.</summary>
-internal sealed class PageViewport : Panel
+internal sealed class PageViewport : GatewayScrollPanel
 {
     private readonly Control _page;
     private bool _arranging;
@@ -58,8 +58,8 @@ internal sealed class PageViewport : Panel
         {
             var minimumHeight = UiTheme.Scale(this, 480);
             AutoScrollMinSize = new Size(0, minimumHeight);
-            var height = Math.Max(ClientSize.Height, minimumHeight);
-            _page.SetBounds(AutoScrollPosition.X, AutoScrollPosition.Y, Math.Max(1, ClientSize.Width), height);
+            var height = Math.Max(ScrollClientSize.Height, minimumHeight);
+            _page.SetBounds(AutoScrollPosition.X, AutoScrollPosition.Y, Math.Max(1, ScrollClientSize.Width), height);
         }
         finally { _arranging = false; }
     }

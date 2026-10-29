@@ -15,7 +15,7 @@ internal sealed partial class LoggingPageView
     private TabPage eventLogsTab = null!;
     private TabPage sampleLogsTab = null!;
     private TableLayoutPanel settingsContent = null!;
-    private Panel settingsFieldsHost = null!;
+    private AntdUI.Panel settingsFieldsHost = null!;
     private TableLayoutPanel settingsFooter = null!;
     private Label settingsState = null!;
     private AntdUI.Button applyButton = null!;
@@ -114,7 +114,7 @@ internal sealed partial class LoggingPageView
         settingsContent.ColumnCount = 1;
         settingsContent.RowCount = 2;
         settingsContent.Margin = Padding.Empty;
-        settingsFieldsHost = new Panel();
+        settingsFieldsHost = new AntdUI.Panel();
         settingsFieldsHost.Name = "LoggingFieldsViewport";
         settingsFieldsHost.Dock = DockStyle.Fill;
         settingsFieldsHost.AutoScroll = true;

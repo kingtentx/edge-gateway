@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class ChannelEditor
 {
     private TabPage channelFieldsTab = null!;
-    private Panel channelFieldsViewport = null!;
+    private AntdUI.Panel channelFieldsViewport = null!;
     private TableLayoutPanel channelFields = null!;
     private Label channelFieldsSection1 = null!;
     private Label channelFieldsHint2 = null!;
@@ -29,7 +29,7 @@ internal sealed partial class ChannelEditor
         channelFieldsTab.Name = "channelFieldsTab";
         channelFieldsTab.Text = "通道设置";
         channelFieldsTab.BackColor = Color.White;
-        channelFieldsViewport = new Panel();
+        channelFieldsViewport = new AntdUI.Panel();
         channelFieldsViewport.Name = "channelFieldsViewport";
         channelFieldsViewport.Dock = DockStyle.Fill;
         channelFieldsViewport.AutoScroll = true;
