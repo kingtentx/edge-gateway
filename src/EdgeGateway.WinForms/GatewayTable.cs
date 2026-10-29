@@ -17,6 +17,7 @@ public partial class GatewayTable : AntdUI.Table
     {
         Columns = new(this); Rows = new(this);
         EmptyText = "暂无数据"; MultipleRows = false; Bordered = false;
+        EnableHeaderResizing = true;
         base.EditMode = AntdUI.TEditMode.None;
         base.CellClick += (_, e) =>
         {
@@ -82,6 +83,7 @@ public partial class GatewayTable : AntdUI.Table
         EndEdit(); syncing = true;
         try
         {
+            ApplyColumnWidths();
             Rows.ClearCore(); current = null;
             if (source is IEnumerable list) foreach (var item in list) Rows.AddCore(item);
             base.DataSource = Rows;
@@ -95,12 +97,13 @@ public partial class GatewayTable : AntdUI.Table
     {
         column.Owner = this;
         column.Render = (_, record, _) => record is GatewayTableRow row ? row.Cells[column.Index].Presentation() : null;
-        base.Columns.Add(column); RegisterColumn(column, column.MinimumWidth);
+        base.Columns.Add(column); ApplyColumnWidths();
     }
     internal void RepaintRows()
     {
         if (syncing || IsDisposed) return;
         if (updateDepth > 0) { repaintPending = true; return; }
+        ApplyColumnWidths();
         if (!ReferenceEquals(base.DataSource, Rows)) base.DataSource = Rows;
         else base.Refresh();
     }
@@ -289,9 +292,23 @@ public partial class GatewayTable : AntdUI.Table
         return args.Value;
     }
     public void RegisterColumn(GatewayTableColumn column, int logicalMinimum)
-    { column.LogicalMinimum = logicalMinimum; column.ApplyWidth(); }
+    { column.LogicalMinimum = logicalMinimum; ApplyColumnWidths(); }
+    private void ApplyColumnWidths()
+    { if (Columns is not null) foreach (var col in Columns) col.ApplyWidth(); }
+    internal string ColumnWidth(GatewayTableColumn column)
+    {
+        if (!column.FillsAvailableWidth) return column.FixedLogicalWidth.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var visible = Columns.Where(c => c.Visible).ToArray();
+        var weight = visible.Where(c => c.FillsAvailableWidth).Sum(c => Math.Max(1, c.FillWeight));
+        var viewport = Math.Max(1, (ClientSize.Width - (ScrollBar.ShowY ? ScrollBar.SIZE : 0)) * 96d / Math.Max(96, DeviceDpi));
+        var fixedWidth = visible.Where(c => !c.FillsAvailableWidth).Sum(c => c.FixedLogicalWidth);
+        // Official percentage widths fill available space; MinWidth keeps narrow
+        // windows readable. AntdUI retains its own user-drag overrides on refresh.
+        var percent = Math.Max(0, 1 - fixedWidth / viewport) * Math.Max(1, column.FillWeight) / Math.Max(1, weight) * 100;
+        return percent.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    }
     protected override void OnSizeChanged(EventArgs e)
-    { base.OnSizeChanged(e); if (Columns is not null) foreach (var col in Columns) col.ApplyWidth(); }
+    { ApplyColumnWidths(); base.OnSizeChanged(e); }
     protected override void OnDpiChangedAfterParent(EventArgs e)
     { base.OnDpiChangedAfterParent(e); foreach (var col in Columns) col.ApplyWidth(); }
     protected override void Dispose(bool disposing)
@@ -316,7 +333,11 @@ public partial class GatewayTable : AntdUI.Table
     public BorderStyle BorderStyle { get; set; }
     public DataGridViewSelectionMode SelectionMode { get; set; }
     public DataGridViewHeaderBorderStyle ColumnHeadersBorderStyle { get; set; }
-    public new DataGridViewAutoSizeColumnsMode AutoSizeColumnsMode { get; set; }
+    public new DataGridViewAutoSizeColumnsMode AutoSizeColumnsMode
+    {
+        get => base.AutoSizeColumnsMode == AntdUI.ColumnsMode.Fill ? DataGridViewAutoSizeColumnsMode.Fill : DataGridViewAutoSizeColumnsMode.None;
+        set { base.AutoSizeColumnsMode = value == DataGridViewAutoSizeColumnsMode.Fill ? AntdUI.ColumnsMode.Fill : AntdUI.ColumnsMode.Auto; ApplyColumnWidths(); }
+    }
     public DataGridViewColumnHeadersHeightSizeMode ColumnHeadersHeightSizeMode { get; set; }
     public DataGridViewCellBorderStyle CellBorderStyle { get; set; }
     public new DataGridViewEditMode EditMode { get; set; }
@@ -342,9 +363,13 @@ public class GatewayTableColumn : AntdUI.Column
     public new int Width { get => WidthPixel > 0 ? WidthPixel : width > 0 ? width : MinimumWidth; set { width = value; ApplyWidth(); } }
     internal void ApplyWidth()
     {
-        var logical = Owner is null || Owner.DeviceDpi == 0 ? width : width * 96 / Owner.DeviceDpi;
-        base.Width = Math.Max(LogicalMinimum, logical).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        MinWidth = LogicalMinimum.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var value = Owner?.ColumnWidth(this) ?? FixedLogicalWidth.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (base.Width != value) base.Width = value;
     }
+    internal bool FillsAvailableWidth => AutoSizeMode == DataGridViewAutoSizeColumnMode.Fill
+        || (AutoSizeMode == DataGridViewAutoSizeColumnMode.NotSet && Owner?.AutoSizeColumnsMode == DataGridViewAutoSizeColumnsMode.Fill);
+    internal int FixedLogicalWidth => Math.Max(LogicalMinimum, Owner is null || Owner.DeviceDpi == 0 ? width : width * 96 / Owner.DeviceDpi);
     public float FillWeight { get; set; } = 100;
     public bool Frozen { get => Fixed; set => Fixed = value; }
     public new bool ReadOnly { get => base.ReadOnly; set => base.ReadOnly = value; }

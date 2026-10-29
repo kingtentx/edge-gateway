@@ -20,6 +20,7 @@ public sealed partial class MainForm
                 await Task.Yield();
                 PerformLayoutRecursively(this);
                 AssertPageToolbarsFit(_pages[key], "form widths " + key);
+                if (!Descendants(_pages[key]).OfType<TabControl>().Any()) AssertHorizontalFilters(_pages[key]);
                 if (!Descendants(_pages[key]).OfType<TabControl>().Any()) AssertSwitchSizes(_pages[key]);
                 foreach (var tabs in Descendants(_pages[key]).OfType<TabControl>().ToArray())
                 {
@@ -28,6 +29,7 @@ public sealed partial class MainForm
                         tabs.SelectedTab = tab;
                         PerformLayoutRecursively(this);
                         AssertPageToolbarsFit(tab, "form widths " + key + " " + tab.Text);
+                        AssertHorizontalFilters(tab);
                         AssertSwitchSizes(tab);
                         ResetScrollPositions(tab, navigationMenu);
                         SaveEditorScreenshot(this, "form-widths", key + "-" + tab.Name + (narrow ? "-narrow" : "-wide"));
@@ -59,5 +61,19 @@ public sealed partial class MainForm
         foreach (var toggle in Descendants(root).OfType<GatewaySwitch>().Where(toggle => toggle.Visible))
             if (toggle.Width != UiTheme.Scale(toggle, 52) || toggle.Height < UiTheme.Scale(toggle, 30))
                 throw new InvalidOperationException($"Switch collapsed below its usable bounds: {toggle.Name} {toggle.Bounds} dpi={toggle.DeviceDpi}");
+    }
+
+    private static void AssertHorizontalFilters(Control root)
+    {
+        foreach (var group in Descendants(root).OfType<TableLayoutPanel>().Where(control => control.Visible && control.Name.EndsWith("Filter")))
+        {
+            if (group.Parent is TabPage { Showed: false }) continue;
+            var caption = group.Controls.OfType<Label>().SingleOrDefault();
+            var input = group.Controls.OfType<InputFrame>().SingleOrDefault();
+            if (caption is null || input is null) continue;
+            if (group.GetColumn(input) != 1 || group.GetRow(input) != 0 || caption.Right > input.Left
+                || Math.Abs(caption.Top + caption.Height / 2 - input.Top - input.Height / 2) > UiTheme.Scale(group, 3))
+                throw new InvalidOperationException($"Filter is not horizontally aligned: {group.Name}, label={caption.Bounds}, input={input.Bounds}.");
+        }
     }
 }

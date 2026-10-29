@@ -1,4 +1,4 @@
-﻿# AntdUI-Demo 界面样式规范
+# AntdUI-Demo 界面样式规范
 
 更新日期：2026-10-29。普通按钮增加官方边框；按用户本次明确要求，设备启动使用官方绿色 Success、停止使用官方红色 Error。其余按钮继续采用 Default / Primary。
 
@@ -11,6 +11,7 @@
 - 所有页面、弹窗、工具栏、菜单触发按钮、导航折叠按钮及行内操作统一遵循此规范。
 - 普通操作使用 `Type=Default`；新增、保存、应用、查询等已有主操作使用 `Type=Primary`。删除保留明确文案和确认流程，不通过匹配“删除”字符串自动染红；新增危险样式须有明确产品需求并使用官方类型。
 - 普通控件使用 `GatewayButton : AntdUI.Button`，保留官方圆角 6、边框宽度 1、非 Ghost；`BorderWidth=1` 与基础 Demo 的 `WaveSize=0` 在共享基类中统一，普通白底按钮也能区分可点击轮廓。不要自行设置 Back、Fore、DefaultBack、DefaultBorderColor、BackHover、BackActive、ForeHover、ForeActive，也不要通过 WinForms BackColor / ForeColor 叠加按钮皮肤。
+- 2026-10-29 用户指定例外：侧栏折叠按钮使用无边框官方方向图标，`BorderWidth=0`；普通业务按钮仍保留边框。展开侧栏保持 184 逻辑像素并增加菜单项高度及左侧留白，收缩为 64，详见 [导航与筛选布局](ui-compact-layout.md)。
 - 默认、悬停、按下、禁用及焦点状态交由官方按钮处理，不通过鼠标事件切换自定义配色或模拟普通按钮。保留 Enter / Space、Tab、默认按钮、取消和无障碍语义。图标使用官方主题色，保持现有 DPI 与资源释放规则。
 - 全部业务表格使用 `GatewayTable : AntdUI.Table`，设备启停直接使用官方 `CellButton` 的 Success / Error；配置与查看点位为 `CellLink`，字段映射开关为 `CellSwitch`。不再保留原生 DataGridView 或自行绘制行按钮。绑定适配层保留稳定 ID、选择、分页、滚动、键盘及无障碍行/单元格树。
 - 38 逻辑像素操作高度、中文 10 pt 正文、工具栏换行和可点击面积继续按项目 DPI 规范维护；不为照搬 Demo 示例窗口尺寸缩小字号或裁切文字。
@@ -22,6 +23,8 @@
 菜单触发按钮使用官方 `ShowArrow=true` / `IsLink=true` 的下拉箭头；操作项改用真正的 `AntdUI.ContextMenuStrip`，保留默认圆角、留白、分隔和悬停，快捷键单独在右侧显示。禁用项显示简短原因，无障碍描述保留完整原因。方向键、Enter、Escape 和打开时捕获的设备身份继续有效。启停单元格由官方 CellButton 负责文字居中和全部状态绘制。
 
 普通单行表单统一 240 逻辑像素上限，长字段 400；Select 弹出列表跟随输入宽度。实现及本轮验证见 [菜单和表单对齐](ui-menu-form-alignment.md)。
+
+页面筛选项在 Designer 中以标签在左、输入在右排列，宽度不足时整项换行。表格启用官方表头拖动，填充列使用官方百分比宽度和最小宽度约束；刷新、分页保留用户拖动结果，详见 [紧凑布局](ui-compact-layout.md)。
 
 ## 其他组件与设计器
 

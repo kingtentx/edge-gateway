@@ -161,7 +161,7 @@ public sealed partial class MainForm : DpiAwareForm
             try
             {
                 // Keep a stable logical rail width; AntdUI owns menu scrolling.
-                var sidebarWidth = UiTheme.Scale(shell, navigationMenu.Collapsed ? 56 : 184);
+                var sidebarWidth = UiTheme.Scale(shell, navigationMenu.Collapsed ? 64 : 184);
                 if (shell.ColumnStyles[0].Width != sidebarWidth)
                 {
                     shell.ColumnStyles[0].Width = sidebarWidth;
@@ -211,6 +211,7 @@ public sealed partial class MainForm : DpiAwareForm
             {
                 var collapsed = !navigationMenu.Collapsed;
                 navigationMenu.SetRailCollapsed(collapsed);
+                collapseNavigationButton.IconSvg = collapsed ? "MenuUnfoldOutlined" : "MenuFoldOutlined";
                 brandTitleLabel.Visible = brandCaptionLabel.Visible = !collapsed;
                 navigationBrandPanel.Visible = !collapsed;
                 _feedbackTip.SetTip(collapseNavigationButton, collapsed ? "展开导航菜单" : "收起导航菜单");

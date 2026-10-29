@@ -28,6 +28,8 @@ public sealed partial class MainForm
             RefreshRealtime(samples);
             GridPagination.GetPager(_realtimeGrid).PageSize = 50;
             PerformLayoutRecursively(this);
+            AssertNavigationShell(false, "initial page layout without toggling");
+            VerifyTableColumnDrag(_realtimeGrid);
             _realtimeGrid.CurrentCell = _realtimeGrid.Rows[25].Cells["Error"];
             _realtimeGrid.FirstDisplayedScrollingRowIndex = 20;
             var state = GridViewState.Capture(_realtimeGrid, row => ((SampleRow)row).Sample.TagId);
@@ -65,6 +67,7 @@ public sealed partial class MainForm
                     if (_serverResourceRefresh is not null) await _serverResourceRefresh;
                     await Task.Delay(120);
                     PerformLayoutRecursively(this);
+                    AssertHorizontalFilters((Control?)tabs?.SelectedTab ?? _pages[key]);
                     // AntdUI keeps unselected page controls in the tree before their first layout.
                     // Visit each selected page, rather than measuring an unopened page at width zero.
                     foreach (var toggle in Descendants((Control?)tabs?.SelectedTab ?? _pages[key]).OfType<GatewaySwitch>().Where(toggle => toggle.Visible))
@@ -85,12 +88,61 @@ public sealed partial class MainForm
                         }
                     }
                     await VerifyPageRefreshStabilityAsync(_pages[key], key + "/" + index);
+                    var wideSize = Size;
+                    try
+                    {
+                        Size = new Size(MinimumSize.Width, wideSize.Height);
+                        await Task.Yield();
+                        PerformLayoutRecursively(this);
+                        AssertNavigationShell(false, "narrow page layout without toggling");
+                        var selectedPage = (Control?)tabs?.SelectedTab ?? _pages[key];
+                        AssertHorizontalFilters(selectedPage);
+                        AssertPageToolbarsFit(selectedPage, "narrow filters " + key + "/" + index);
+                        SaveEditorScreenshot(this, "filters-narrow", key + "-" + index);
+                    }
+                    finally { Size = wideSize; PerformLayoutRecursively(this); }
                 }
                 SaveEditorScreenshot(this, "page-refresh", key);
             }
             Console.WriteLine($"Page refresh smoke passed: eight pages and every database/platform/log tab; stable data sources, control bounds and scroll during timer refresh; realtime unchanged/changed samples retained rows and selection, filter updated membership, and 40 real simulator points refreshed at actual {DeviceDpi} DPI. MQTT disabled; no external databases or hardware.");
         }
         finally { _refreshTimer.Stop(); await _application.StopAsync(); await RestoreConfigurationForSmokeAsync(original); }
+    }
+
+    private static void VerifyTableColumnDrag(GatewayTable grid)
+    {
+        var viewportWidth = grid.ClientSize.Width - (grid.ScrollBar.ShowY ? grid.ScrollBar.SIZE : 0);
+        var widths = grid.Columns.Where(column => column.Visible).Sum(column => column.WidthPixel);
+        if (!grid.EnableHeaderResizing || widths < viewportWidth - 2)
+            throw new InvalidOperationException($"Table does not fill its viewport: {grid.Name}, columns={widths}, viewport={viewportWidth}.");
+        var column = grid.Columns.First(column => column.Visible && !column.Frozen);
+        var header = grid.GetCellDisplayRectangle(column.Index, -1, false);
+        var before = column.WidthPixel;
+        var x = header.Right - 1;
+        var y = header.Top + header.Height / 2;
+        var delta = UiTheme.Scale(grid, 36);
+        void Mouse(string method, MouseButtons buttons, int position)
+        {
+            typeof(AntdUI.Table).GetMethod(method, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(grid, [new MouseEventArgs(buttons, 1, position, y, 0)]);
+        }
+        Mouse("OnMouseMove", MouseButtons.None, x);
+        Mouse("OnMouseDown", MouseButtons.Left, x);
+        Mouse("OnMouseMove", MouseButtons.Left, x + delta);
+        Mouse("OnMouseUp", MouseButtons.Left, x + delta);
+        if (column.WidthPixel < before + delta - 2)
+            throw new InvalidOperationException($"Official header drag failed: {before} -> {column.WidthPixel}.");
+        var dragged = column.WidthPixel;
+        grid.RepaintRows();
+        var pager = GridPagination.GetPager(grid);
+        var savedSize = pager.PageSize;
+        pager.PageSize = 10;
+        pager.Current = 2;
+        pager.Current = 1;
+        pager.PageSize = savedSize;
+        if (column.WidthPixel != dragged)
+            throw new InvalidOperationException("Column drag width was lost during refresh or paging.");
+        Console.WriteLine($"Table column resize passed: {grid.Name}; {before} -> {dragged}; official drag, refresh and paging retained width.");
     }
 
     private async Task VerifyPageRefreshStabilityAsync(Control page, string context)

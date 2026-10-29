@@ -137,7 +137,7 @@ public sealed partial class MainForm
 
     private void AssertNavigationShell(bool collapsed, string context)
     {
-        var width = UiTheme.Scale(applicationShell, collapsed ? 56 : 184);
+        var width = UiTheme.Scale(applicationShell, collapsed ? 64 : 184);
         if (navigationMenu.Collapsed != collapsed || navigationViewportPanel.Width != width
             || applicationShell.ColumnStyles[0].Width != width || applicationBody.Left != navigationViewportPanel.Right
             || navigationContentPanel.Width != width || navigationBrandPanel.Visible == collapsed)
@@ -151,6 +151,8 @@ public sealed partial class MainForm
                 throw new InvalidOperationException(context + ": collapsed icon is not centered: " + item.Text);
         }
         AssertVisibleBounds(collapseNavigationButton, context + " toggle button");
+        if (collapseNavigationButton.BorderWidth != 0 || collapseNavigationButton.IconSvg != (collapsed ? "MenuUnfoldOutlined" : "MenuFoldOutlined"))
+            throw new InvalidOperationException(context + ": navigation toggle lost its borderless directional icon.");
         AssertVisibleBounds(navigationApplicationIcon, context + " application icon");
         if (navigationApplicationIcon.Image is null) throw new InvalidOperationException("Missing application icon.");
         var toggleCenter = collapseNavigationButton.PointToScreen(new Point(collapseNavigationButton.Width / 2, 0)).X;

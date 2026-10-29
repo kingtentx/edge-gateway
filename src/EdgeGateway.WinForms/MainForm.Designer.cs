@@ -87,8 +87,8 @@ public sealed partial class MainForm
         navigationMenu.Margin = Padding.Empty;
         navigationMenu.Padding = new Padding(4);
         navigationMenu.Radius = 6;
-        navigationMenu.Gap = 10;
-        navigationMenu.itemMargin = 6;
+        navigationMenu.Gap = 14;
+        navigationMenu.itemMargin = 8;
         navigationMenu.IconRatio = 1F;
         navigationMenu.BackColor = Color.White;
         navigationMenu.ForeColor = UiTheme.Ink;
@@ -99,13 +99,14 @@ public sealed partial class MainForm
         navigationMenu.TabStop = true;
         collapseNavigationButton.Name = "CollapseNavigation";
         collapseNavigationButton.AccessibleName = "收起导航菜单";
-        collapseNavigationButton.IconSvg = "MenuOutlined";
+        collapseNavigationButton.IconSvg = "MenuFoldOutlined";
         collapseNavigationButton.Text = "";
         collapseNavigationButton.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-        collapseNavigationButton.Width = 56;
+        collapseNavigationButton.Width = 64;
         collapseNavigationButton.Height = 40;
         collapseNavigationButton.Margin = Padding.Empty;
         collapseNavigationButton.WaveSize = 0;
+        collapseNavigationButton.BorderWidth = 0;
         navigationContentPanel.Controls.Add(navigationMenu, 0, 2);
         navigationContentPanel.Controls.Add(collapseNavigationButton, 0, 1);
         applicationBody = new TableLayoutPanel();
@@ -166,7 +167,7 @@ public sealed partial class MainForm
         navigationHeaderPanel.Dock = DockStyle.Fill;
         navigationHeaderPanel.Margin = Padding.Empty;
         navigationHeaderPanel.ColumnCount = 2;
-        navigationHeaderPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 56F));
+        navigationHeaderPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));
         navigationHeaderPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         navigationHeaderPanel.RowCount = 1;
         navigationHeaderPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
@@ -174,7 +175,7 @@ public sealed partial class MainForm
         navigationApplicationIcon.AccessibleName = "Edge Gateway 应用图标";
         navigationApplicationIcon.ImageFit = AntdUI.TFit.Contain;
         navigationApplicationIcon.Dock = DockStyle.Fill;
-        navigationApplicationIcon.Margin = new Padding(14);
+        navigationApplicationIcon.Margin = new Padding(18, 14, 18, 14);
         navigationApplicationIcon.TabStop = false;
         navigationHeaderPanel.Controls.Add(navigationApplicationIcon, 0, 0);
         navigationHeaderPanel.Controls.Add(navigationBrandPanel, 1, 0);

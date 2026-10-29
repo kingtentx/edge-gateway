@@ -29,16 +29,23 @@ public sealed class GatewayNavigationMenu : AntdUI.Menu
         AlignIconColumn();
     }
 
+    protected override void OnLayout(LayoutEventArgs e)
+    {
+        base.OnLayout(e);
+        AlignIconColumn();
+    }
+
     private void AlignIconColumn()
     {
-        if (_aligning || !IsHandleCreated || Items.Count == 0) return;
+        if (_aligning || !IsHandleCreated || Items.Count == 0
+            || FindForm() is DpiAwareForm { IsDpiLayoutReady: false }) return;
         var icon = Items[0].Rect("Icon");
         if (icon.Width <= 0) return;
         var inset = UiTheme.Scale(this, 4);
         // AntdUI centers collapsed icons; expanded icons use Padding + Gap.
-        // Both states meet at the center of the fixed 56 logical-pixel rail.
+        // Both states meet at the center of the fixed 64 logical-pixel rail.
         var left = Collapsed ? inset : Math.Max(0,
-            (UiTheme.Scale(this, 56) - icon.Width) / 2 - UiTheme.Scale(this, Gap ?? 6));
+            (UiTheme.Scale(this, 64) - icon.Width) / 2 - UiTheme.Scale(this, Gap ?? 6));
         var padding = new Padding(left, inset, inset, inset);
         if (Padding == padding) return;
         _aligning = true;
