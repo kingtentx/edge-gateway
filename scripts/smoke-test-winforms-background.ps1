@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -139,6 +139,7 @@ namespace EdgeGateway {
                     : scenario == "PageRefresh" ? " --smoke-page-refresh --screenshot "
                     : scenario == "DpiConfirmation" ? " --smoke-dpi-confirmation --screenshot "
                     : scenario == "DpiRoundTrip" ? " --smoke-dpi-roundtrip --screenshot "
+                    : scenario == "DeviceColumns" ? " --smoke-device-columns --screenshot "
                     : scenario == "RowDensity" ? " --smoke-row-density --screenshot "
                     : scenario == "DatabaseRefresh" ? " --smoke-database-refresh --screenshot "
                     : scenario == "LiveLogs" ? " --smoke-live-logs --screenshot "
@@ -246,6 +247,14 @@ if ($Scenario -eq 'DpiConfirmation' -or $Scenario -eq 'DpiRoundTrip') {
     $marker = if ($Scenario -eq 'DpiRoundTrip') { 'DPI roundtrip smoke passed:' } else { 'DPI confirmation smoke passed:' }
     if ($outputText -notmatch $marker) { throw 'DPI completion marker is missing.' }
     Write-Output "Background $Scenario smoke passed."
+    return
+}
+if ($Scenario -eq 'DeviceColumns') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'Device columns wrote errors.' }
+    if ($outputText -notmatch 'Device columns smoke passed:') { throw 'Device columns completion marker is missing.' }
+    Write-Output 'Background device columns smoke passed.'
     return
 }
 if ($Scenario -eq 'RowDensity') {

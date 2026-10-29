@@ -5,9 +5,11 @@ namespace EdgeGateway.WinForms;
 public sealed partial class MainForm
 {
     internal bool RowDensitySmoke { get; set; }
+    internal bool DeviceColumnsSmoke { get; set; }
 
     private async Task SmokeRowDensityAsync()
     {
+        if (DeviceColumnsSmoke) { await SmokeDeviceColumnsAsync(); return; }
         if (!_smokeTest || _application.IsRunning) throw new InvalidOperationException("Row density requires an isolated stopped host.");
         _refreshTimer.Stop();
         var original = Clone(_configuration);
