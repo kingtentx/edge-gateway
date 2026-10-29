@@ -139,7 +139,7 @@ internal sealed partial class LogArchivePageView
         From.Margin = new Padding(0, 3, 0, 5);
         From.Format = DateTimePickerFormat.Custom;
         From.CustomFormat = "yyyy-MM-dd HH:mm:ss";
-        FromFilter = new TableLayoutPanel();
+        FromFilter = new FilterFieldPanel();
         FromFilter.Name = "FromFilter";
         FromFilter.Dock = DockStyle.Top;
         FromFilter.AutoSize = true;
@@ -186,7 +186,7 @@ internal sealed partial class LogArchivePageView
         To.Margin = new Padding(0, 3, 0, 5);
         To.Format = DateTimePickerFormat.Custom;
         To.CustomFormat = "yyyy-MM-dd HH:mm:ss";
-        ToFilter = new TableLayoutPanel();
+        ToFilter = new FilterFieldPanel();
         ToFilter.Name = "ToFilter";
         ToFilter.Dock = DockStyle.Top;
         ToFilter.AutoSize = true;
@@ -235,7 +235,7 @@ internal sealed partial class LogArchivePageView
         Device.BorderStyle = BorderStyle.FixedSingle;
         Device.MaxLength = 256;
         Device.PlaceholderText = "设备名称或完整标识";
-        DeviceFilter = new TableLayoutPanel();
+        DeviceFilter = new FilterFieldPanel();
         DeviceFilter.Name = "DeviceFilter";
         DeviceFilter.Dock = DockStyle.Top;
         DeviceFilter.AutoSize = true;
@@ -284,7 +284,7 @@ internal sealed partial class LogArchivePageView
         TagInput.BorderStyle = BorderStyle.FixedSingle;
         TagInput.MaxLength = 256;
         TagInput.PlaceholderText = "点位名称或完整标识";
-        TagFilter = new TableLayoutPanel();
+        TagFilter = new FilterFieldPanel();
         TagFilter.Name = "TagFilter";
         TagFilter.Dock = DockStyle.Top;
         TagFilter.AutoSize = true;
@@ -332,7 +332,7 @@ internal sealed partial class LogArchivePageView
         Quality.DropDownStyle = ComboBoxStyle.DropDownList;
         Quality.IntegralHeight = false;
         Quality.DropDownHeight = 320;
-        QualityFilter = new TableLayoutPanel();
+        QualityFilter = new FilterFieldPanel();
         QualityFilter.Name = "QualityFilter";
         QualityFilter.Dock = DockStyle.Top;
         QualityFilter.AutoSize = true;
@@ -380,7 +380,7 @@ internal sealed partial class LogArchivePageView
         Level.DropDownStyle = ComboBoxStyle.DropDownList;
         Level.IntegralHeight = false;
         Level.DropDownHeight = 320;
-        LevelFilter = new TableLayoutPanel();
+        LevelFilter = new FilterFieldPanel();
         LevelFilter.Name = "LevelFilter";
         LevelFilter.Dock = DockStyle.Top;
         LevelFilter.AutoSize = true;
@@ -429,7 +429,7 @@ internal sealed partial class LogArchivePageView
         Keyword.BorderStyle = BorderStyle.FixedSingle;
         Keyword.MaxLength = 256;
         Keyword.PlaceholderText = "内容 / 地址 / 错误";
-        KeywordFilter = new TableLayoutPanel();
+        KeywordFilter = new FilterFieldPanel();
         KeywordFilter.Name = "KeywordFilter";
         KeywordFilter.Dock = DockStyle.Top;
         KeywordFilter.AutoSize = true;
@@ -478,7 +478,7 @@ internal sealed partial class LogArchivePageView
         Limit.Minimum = 1;
         Limit.Maximum = 2000;
         Limit.Value = 500;
-        LimitFilter = new TableLayoutPanel();
+        LimitFilter = new FilterFieldPanel();
         LimitFilter.Name = "LimitFilter";
         LimitFilter.Dock = DockStyle.Top;
         LimitFilter.AutoSize = true;
@@ -527,7 +527,7 @@ internal sealed partial class LogArchivePageView
         Budget.Minimum = 1;
         Budget.Maximum = 64;
         Budget.Value = 32;
-        BudgetFilter = new TableLayoutPanel();
+        BudgetFilter = new FilterFieldPanel();
         BudgetFilter.Name = "BudgetFilter";
         BudgetFilter.Dock = DockStyle.Top;
         BudgetFilter.AutoSize = true;

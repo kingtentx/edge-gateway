@@ -7,6 +7,16 @@ public class GatewayButton : AntdUI.Button
     // AntdUI continues to own all colors and interaction states.
     public GatewayButton() { WaveSize = 0; BorderWidth = 1; }
 
+    protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
+    {
+        // AntdUI auto sizing can run from SizeChanged while WinForms is still
+        // scaling padding and minimum bounds. Measure once those values agree.
+        var mode = AutoSizeMode;
+        AutoSizeMode = AntdUI.TAutoSize.None;
+        try { base.ScaleControl(factor, specified); }
+        finally { AutoSizeMode = mode; }
+    }
+
     public override Size PSize
     {
         get

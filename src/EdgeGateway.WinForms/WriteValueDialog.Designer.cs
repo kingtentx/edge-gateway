@@ -373,6 +373,7 @@ internal sealed partial class WriteValueDialog
         _confirm.Margin = new Padding(0, 0, 8, 6);
         _confirm.Cursor = Cursors.Hand;
         _confirm.Name = "WriteConfirm";
+        _confirm.TabIndex = 0;
         _cancel = new GatewayButton();
         _cancel.Name = "_cancel";
         _cancel.Text = "取消";
@@ -387,9 +388,10 @@ internal sealed partial class WriteValueDialog
         _cancel.Margin = new Padding(0, 0, 8, 6);
         _cancel.Cursor = Cursors.Hand;
         _cancel.Name = "WriteCancel";
+        _cancel.TabIndex = 1;
         _cancel.DialogResult = DialogResult.Cancel;
-        _actions.Controls.Add(_confirm);
         _actions.Controls.Add(_cancel);
+        _actions.Controls.Add(_confirm);
         _layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _layout.Controls.Add(heading, 0, 0);
         _layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));

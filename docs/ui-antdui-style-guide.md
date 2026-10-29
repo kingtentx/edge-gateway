@@ -70,6 +70,8 @@
 
 ## 历史验证（2026-10-27）
 
+2026-10-29 DPI 布局与确认按钮顺序修改见 [本轮记录](ui-dpi-confirmation-layout.md)。本轮 Release、实际 192 DPI 页面/弹窗及可控列宽往返检查通过；真实跨屏未验收，与以下历史结果分别记录。
+
 用户已授权 Release 编译及隔离后台八页面、配置弹窗、设备行按钮定向检查，允许在该范围修复重跑。产物目录为 `artifacts/antd-default-buttons-20261027`。
 
 - Release 编译通过。首轮 `build-1.log` 为 0 错误、420 条驱动及代理代码警告；最终 `build-2.log` 为 0 错误、1 条既有 `GatewayWorkerClient.cs:283` CS8602 警告。未修改依赖或核心业务。

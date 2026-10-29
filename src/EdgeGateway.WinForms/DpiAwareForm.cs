@@ -19,6 +19,7 @@ public partial class DpiAwareForm : AntdUI.Window
         // Keep the entire derived constructor at its original 96-DPI design baseline.
         // Resuming before all controls exist causes only a partial tree to scale.
         SuspendLayout();
+        AutoHandDpi = false;
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScaleDimensions = new SizeF(96, 96);
         Font = new Font("Microsoft YaHei UI", 10F);

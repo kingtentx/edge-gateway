@@ -92,6 +92,7 @@ public partial class EditorDialog
         _confirm.Margin = new Padding(0, 0, 8, 6);
         _confirm.Cursor = Cursors.Hand;
         _confirm.Name = "EditorConfirm";
+        _confirm.TabIndex = 0;
         _cancel = new GatewayButton();
         _cancel.Name = "_cancel";
         _cancel.Text = "取消";
@@ -106,6 +107,7 @@ public partial class EditorDialog
         _cancel.Margin = new Padding(0, 0, 8, 6);
         _cancel.Cursor = Cursors.Hand;
         _cancel.Name = "EditorCancel";
+        _cancel.TabIndex = 1;
         _cancel.DialogResult = DialogResult.Cancel;
         _buttons = new FlowLayoutPanel();
         _buttons.Name = "_buttons";
@@ -115,8 +117,8 @@ public partial class EditorDialog
         _buttons.WrapContents = true;
         _buttons.Margin = Padding.Empty;
         _buttons.Padding = new Padding(0, 4, 0, 4);
-        _buttons.Controls.Add(_confirm);
         _buttons.Controls.Add(_cancel);
+        _buttons.Controls.Add(_confirm);
         _buttons.Name = "EditorActions";
         _buttons.FlowDirection = FlowDirection.RightToLeft;
         _buttons.WrapContents = false;

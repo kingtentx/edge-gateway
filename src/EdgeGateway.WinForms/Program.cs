@@ -19,7 +19,9 @@ internal static class Program
         var databaseMappingSmoke = args.Contains("--smoke-database-mapping", StringComparer.OrdinalIgnoreCase);
         var databaseRefreshSmoke = args.Contains("--smoke-database-refresh", StringComparer.OrdinalIgnoreCase);
         var rowDensitySmoke = args.Contains("--smoke-row-density", StringComparer.OrdinalIgnoreCase);
-        var pageRefreshSmoke = rowDensitySmoke || args.Contains("--smoke-page-refresh", StringComparer.OrdinalIgnoreCase);
+        var dpiRoundTripOnly = args.Contains("--smoke-dpi-roundtrip", StringComparer.OrdinalIgnoreCase);
+        var dpiConfirmationSmoke = dpiRoundTripOnly || args.Contains("--smoke-dpi-confirmation", StringComparer.OrdinalIgnoreCase);
+        var pageRefreshSmoke = dpiConfirmationSmoke || rowDensitySmoke || args.Contains("--smoke-page-refresh", StringComparer.OrdinalIgnoreCase);
         var navigationSmoke = args.Contains("--smoke-navigation-collapse", StringComparer.OrdinalIgnoreCase);
         var serverResourcesSmoke = args.Contains("--smoke-server-resources", StringComparer.OrdinalIgnoreCase);
         var loggingSmoke = args.Contains("--smoke-logging", StringComparer.OrdinalIgnoreCase);
@@ -77,6 +79,8 @@ internal static class Program
             using var window = new MainForm(host.Application, smokeTest, screenshotPath, layoutMatrix,
                 host.BeginConfigurationWriteFailureForVerification, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke, loggingSmoke: loggingSmoke, databaseRefreshSmoke: databaseRefreshSmoke, pageRefreshSmoke: pageRefreshSmoke, navigationSmoke: navigationSmoke, paginationSmoke: paginationSmoke, historySourcesSmoke: historySourcesSmoke, formWidthsSmoke: formWidthsSmoke, buttonAppearanceSmoke: buttonAppearanceSmoke);
             window.RowDensitySmoke = rowDensitySmoke;
+            window.DpiConfirmationSmoke = dpiConfirmationSmoke;
+            window.DpiRoundTripOnly = dpiRoundTripOnly;
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }

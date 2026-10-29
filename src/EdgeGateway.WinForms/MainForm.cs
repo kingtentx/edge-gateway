@@ -312,7 +312,7 @@ public sealed partial class MainForm : DpiAwareForm
         }
         if (_pageRefreshSmoke)
         {
-            try { if (RowDensitySmoke) await SmokeRowDensityAsync(); else await SmokePageRefreshAsync(); }
+            try { if (DpiConfirmationSmoke) await SmokeDpiConfirmationAsync(); else if (RowDensitySmoke) await SmokeRowDensityAsync(); else await SmokePageRefreshAsync(); }
             catch (Exception exception)
             {
                 SmokeTestFailed = true; TrySaveSmokeFailure(this, "page-refresh-failed"); Console.Error.WriteLine(exception);
@@ -490,6 +490,9 @@ public sealed partial class MainForm : DpiAwareForm
 
     private static void VerifyEditorLayout(EditorDialog editor, string context)
     {
+        if (editor.SmokeCommands.Count == 2
+            && editor.SmokeCommands[0].Left >= editor.SmokeCommands[1].Left)
+            throw new InvalidOperationException(context + ": confirm must precede cancel from left to right.");
         var selected = editor.SelectedSmokeTab;
         foreach (var tab in editor.SmokeTabs)
         {

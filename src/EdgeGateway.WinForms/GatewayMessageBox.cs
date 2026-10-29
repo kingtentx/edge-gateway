@@ -35,18 +35,24 @@ internal static class GatewayMessageBox
             MessageBoxDefaultButton.Button2 or MessageBoxDefaultButton.Button3 => "Cancel",
             _ => "OK"
         };
+        var modalButtons = new Dictionary<string, AntdUI.Button>();
         config.OnButtonStyle = (name, button) =>
         {
+            modalButtons.Add(name, button);
             button.BorderWidth = 1;
-            if (name != defaultName) return;
+            if (name != "OK") return;
             button.HandleCreated += (_, _) =>
             {
                 if (button.FindForm() is not { } dialog) return;
+                // Load runs before AntdUI sorts its arrow-navigation list by Left.
+                // Reorder the real buttons, preserving their click/result handlers.
+                dialog.Load += (_, _) => ArrangeButtons(modalButtons);
                 dialog.Shown += (_, _) => dialog.BeginInvoke((Action)(() =>
                 {
-                    if (dialog.IsDisposed || button.IsDisposed) return;
-                    dialog.AcceptButton = button;
-                    button.Focus();
+                    if (dialog.IsDisposed || !modalButtons.TryGetValue(defaultName, out var defaultAction)
+                        || defaultAction.IsDisposed) return;
+                    dialog.AcceptButton = defaultAction;
+                    defaultAction.Focus();
                 }));
             };
         };
@@ -59,5 +65,29 @@ internal static class GatewayMessageBox
             return DialogResult.No;
         }
         return result == DialogResult.OK ? DialogResult.OK : DialogResult.Cancel;
+    }
+
+    private static void ArrangeButtons(IReadOnlyDictionary<string, AntdUI.Button> buttons)
+    {
+        if (buttons["OK"].Parent is not { } panel) return;
+        panel.SuspendLayout();
+        try
+        {
+            var index = 0;
+            foreach (var name in new[] { "OK", "No", "Cancel" })
+            {
+                if (!buttons.TryGetValue(name, out var button)) continue;
+                // Right-docked controls are laid out in reverse child-index order.
+                panel.Controls.SetChildIndex(button, index);
+                button.TabIndex = index++;
+                // Width-only autosizing can resize a right-docked button after
+                // its parent has placed it, leaving the new right edge clipped.
+                var width = Math.Max(button.PSize.Width, UiTheme.Scale(button, 80));
+                button.AutoSizeMode = AntdUI.TAutoSize.None;
+                button.MinimumSize = new Size(UiTheme.Scale(button, 80), 0);
+                button.Width = width;
+            }
+        }
+        finally { panel.ResumeLayout(true); }
     }
 }

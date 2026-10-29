@@ -205,6 +205,8 @@ public sealed partial class MainForm
             {
                 FitSmokeDialog(editor, area);
                 foreach (var command in editor.SmokeCommands) AssertVisibleBounds(command, result.Name + " write action");
+                if (editor.SmokeCommands[0].Left >= editor.SmokeCommands[1].Left)
+                    throw new InvalidOperationException("Write confirm must precede cancel from left to right.");
                 BringIntoViewAndAssert(editor.SmokeValueInput, result.Name + " write value");
                 foreach (var input in editor.SmokeVerificationInputs)
                     BringIntoViewAndAssert(input, result.Name + " write verification");
