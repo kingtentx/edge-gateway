@@ -186,7 +186,7 @@ internal sealed partial class LoggingPageView
         Name = "LoggingPageView";
         Dock = DockStyle.Fill;
         BackColor = UiTheme.Background;
-        Padding = new Padding(16);
+        Padding = new Padding(16, 12, 16, 8);
         settingsContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         settingsContent.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         settingsContent.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -196,7 +196,7 @@ internal sealed partial class LoggingPageView
         settingsState.Name = "LoggingDraftState";
         settingsState.Dock = DockStyle.Fill;
         settingsFooter.Controls.Add(settingsState, 0, 0);
-        actions = new FlowLayoutPanel();
+        actions = new WrappingToolbar();
         actions.Name = "LoggingApplyActions";
         actions.Dock = DockStyle.Fill;
         actions.AutoSize = true;

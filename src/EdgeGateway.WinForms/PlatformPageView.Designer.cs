@@ -149,7 +149,7 @@ internal sealed partial class PlatformPageView
         rpcFields = new TableLayoutPanel();
         gatewayFields = new TableLayoutPanel();
         applyBar = new TableLayoutPanel();
-        actionPanel = new FlowLayoutPanel();
+        actionPanel = new WrappingToolbar();
         draftState = new Label();
         applyButton = new GatewayButton();
         resetButton = new GatewayButton();
@@ -1104,7 +1104,7 @@ internal sealed partial class PlatformPageView
         ForeColor = Color.FromArgb(28, 43, 63);
         BackColor = Color.FromArgb(244, 247, 251);
         Name = "PlatformPageView";
-        Padding = new Padding(16);
+        Padding = new Padding(16, 12, 16, 8);
         Size = new Size(1100, 740);
         Dock = DockStyle.Fill;
         Controls.Add(contentLayout);

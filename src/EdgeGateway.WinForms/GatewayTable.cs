@@ -300,11 +300,21 @@ public partial class GatewayTable : AntdUI.Table
         if (!column.FillsAvailableWidth) return column.FixedLogicalWidth.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var visible = Columns.Where(c => c.Visible).ToArray();
         var weight = visible.Where(c => c.FillsAvailableWidth).Sum(c => Math.Max(1, c.FillWeight));
-        var viewport = Math.Max(1, (ClientSize.Width - (ScrollBar.ShowY ? ScrollBar.SIZE : 0)) * 96d / Math.Max(96, DeviceDpi));
-        var fixedWidth = visible.Where(c => !c.FillsAvailableWidth).Sum(c => c.FixedLogicalWidth);
-        // Official percentage widths fill available space; MinWidth keeps narrow
-        // windows readable. AntdUI retains its own user-drag overrides on refresh.
-        var percent = Math.Max(0, 1 - fixedWidth / viewport) * Math.Max(1, column.FillWeight) / Math.Max(1, weight) * 100;
+        var viewport = Math.Max(1, ClientSize.Width);
+        var available = viewport - (ScrollBar.ShowY ? ScrollBar.SIZE : 0);
+        var minimumWidth = visible.Sum(c => UiTheme.Scale(this, c.FillsAvailableWidth ? c.LogicalMinimum : c.FixedLogicalWidth));
+        // Reserve readable minimums first, then share only the spare space.
+        // Encode the minimum in Width as well: a percentage below MinWidth must
+        // not depend on a second library sizing pass to produce the right total.
+        // Narrow tables overflow horizontally; native drag overrides stay intact.
+        var precedingWeight = visible.TakeWhile(c => c != column).Where(c => c.FillsAvailableWidth).Sum(c => Math.Max(1, c.FillWeight));
+        var spare = Math.Max(0, available - minimumWidth);
+        var extra = Math.Floor(spare * (precedingWeight + Math.Max(1, column.FillWeight)) / Math.Max(1d, weight))
+            - Math.Floor(spare * precedingWeight / Math.Max(1d, weight));
+        var target = UiTheme.Scale(this, column.LogicalMinimum) + extra;
+        // AntdUI resolves percentages against the whole table then rounds up.
+        // Budget the scrollbar once and avoid a fractional-pixel extra per column.
+        var percent = Math.Max(0, target - .01) / viewport * 100;
         return percent.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture) + "%";
     }
     protected override void OnSizeChanged(EventArgs e)

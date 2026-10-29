@@ -125,8 +125,6 @@ public sealed partial class MainForm
         // Keep the target's name visible while reading details. Do not freeze an entire
         // action block when it would consume the small monitor's horizontal viewport.
         _deviceGrid.Columns["Name"].Frozen = _deviceGrid.ClientSize.Width >= UiTheme.Scale(_deviceGrid, 340);
-        _deviceGrid.Columns["Name"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-        _deviceGrid.Columns["Name"].Width = UiTheme.Scale(_deviceGrid, 150);
     }
 
     private IReadOnlyList<MenuCommand> BuildDeviceMenu()

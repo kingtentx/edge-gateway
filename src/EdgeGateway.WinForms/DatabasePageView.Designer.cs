@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -99,7 +99,7 @@ internal sealed partial class DatabasePageView
         writeGroupsTab = new TabPage("采集写入组");
         writeGroupsTab.Name = "DatabaseWriteGroupsTab";
         writeGroupsTab.BackColor = Color.White;
-        connectionsToolbarHost = new FlowLayoutPanel();
+        connectionsToolbarHost = new WrappingToolbar();
         connectionsToolbarHost.Name = "DatabaseConnectionsToolbarHost";
         connectionsToolbarHost.Dock = DockStyle.Fill;
         connectionsToolbarHost.AutoSize = true;
@@ -108,7 +108,7 @@ internal sealed partial class DatabasePageView
         connectionsToolbarHost.FlowDirection = FlowDirection.LeftToRight;
         connectionsToolbarHost.Margin = Padding.Empty;
         connectionsToolbarHost.Padding = new Padding(0, 4, 0, 4);
-        groupsToolbarHost = new FlowLayoutPanel();
+        groupsToolbarHost = new WrappingToolbar();
         groupsToolbarHost.Name = "DatabaseWriteGroupsToolbarHost";
         groupsToolbarHost.Dock = DockStyle.Fill;
         groupsToolbarHost.AutoSize = true;
@@ -193,7 +193,7 @@ groupsGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         Name = "DatabasePageView";
         Dock = DockStyle.Fill;
         BackColor = UiTheme.Background;
-        Padding = new Padding(16);
+        Padding = new Padding(16, 12, 16, 8);
         contentLayout.Name = "DatabaseContent";
         contentLayout.Dock = DockStyle.Fill;
         contentLayout.ColumnCount = 1;

@@ -25,6 +25,14 @@ internal sealed partial class DevicesPageView : UserControl
         try
         {
             var width = Math.Max(1, ClientSize.Width - Padding.Horizontal);
+            // Measure wrapped rows at their current width before using their
+            // heights to size the page; stale narrow-window heights leave gaps.
+            contentLayout.Width = width;
+            var filterWidth = Math.Max(1, width - deviceFiltersHost.Padding.Horizontal);
+            var filterHeight = filters.GetPreferredSize(new Size(filterWidth, 1)).Height;
+            deviceFiltersHost.RowStyles[0].SizeType = SizeType.Absolute;
+            deviceFiltersHost.RowStyles[0].Height = filterHeight;
+            contentLayout.PerformLayout();
             var fixedHeight = titleLabel.Height + titleLabel.Margin.Vertical
                 + descriptionLabel.Height + descriptionLabel.Margin.Vertical
                 + deviceToolbarHost.Height + deviceFiltersHost.Height + deviceGridPagination.Parent!.Height;

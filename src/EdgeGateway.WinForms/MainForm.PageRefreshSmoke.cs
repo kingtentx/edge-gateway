@@ -68,6 +68,7 @@ public sealed partial class MainForm
                     await Task.Delay(120);
                     PerformLayoutRecursively(this);
                     AssertHorizontalFilters((Control?)tabs?.SelectedTab ?? _pages[key]);
+                    AssertPageLayoutDensity((Control?)tabs?.SelectedTab ?? _pages[key]);
                     // AntdUI keeps unselected page controls in the tree before their first layout.
                     // Visit each selected page, rather than measuring an unopened page at width zero.
                     foreach (var toggle in Descendants((Control?)tabs?.SelectedTab ?? _pages[key]).OfType<GatewaySwitch>().Where(toggle => toggle.Visible))
@@ -98,15 +99,46 @@ public sealed partial class MainForm
                         var selectedPage = (Control?)tabs?.SelectedTab ?? _pages[key];
                         AssertHorizontalFilters(selectedPage);
                         AssertPageToolbarsFit(selectedPage, "narrow filters " + key + "/" + index);
+                        AssertPageLayoutDensity(selectedPage);
                         SaveEditorScreenshot(this, "filters-narrow", key + "-" + index);
                     }
                     finally { Size = wideSize; PerformLayoutRecursively(this); }
+                    AssertPageLayoutDensity((Control?)tabs?.SelectedTab ?? _pages[key]);
                 }
                 SaveEditorScreenshot(this, "page-refresh", key);
             }
             Console.WriteLine($"Page refresh smoke passed: eight pages and every database/platform/log tab; stable data sources, control bounds and scroll during timer refresh; realtime unchanged/changed samples retained rows and selection, filter updated membership, and 40 real simulator points refreshed at actual {DeviceDpi} DPI. MQTT disabled; no external databases or hardware.");
         }
         finally { _refreshTimer.Stop(); await _application.StopAsync(); await RestoreConfigurationForSmokeAsync(original); }
+    }
+
+    private static void AssertPageLayoutDensity(Control page)
+    {
+        foreach (var toolbar in Descendants(page).OfType<WrappingToolbar>().Where(control => control.Visible))
+        {
+            var children = toolbar.Controls.Cast<Control>().Where(control => control.Visible).ToArray();
+            if (children.Length == 0) continue;
+            var contentBottom = children.Max(control => control.Bottom + control.Margin.Bottom) + toolbar.Padding.Bottom;
+            if (toolbar.ClientSize.Height - contentBottom > UiTheme.Scale(toolbar, 8))
+                throw new InvalidOperationException($"Unused toolbar height: {toolbar.Name}, height={toolbar.Height}, content bottom={contentBottom}.");
+            if (toolbar.Parent is TableLayoutPanel { Name: "DeviceFiltersHost" } host
+                && host.Height - host.Padding.Vertical - toolbar.Height > UiTheme.Scale(host, 8))
+                throw new InvalidOperationException($"Unused filter host height: {host.Height}; filters={toolbar.Height}.");
+        }
+        foreach (var grid in Descendants(page).OfType<GatewayTable>().Where(control => control.Visible && control.Rows.Count > 0))
+        {
+            var columns = grid.Columns.Where(column => column.Visible).ToArray();
+            var viewport = grid.ClientSize.Width - (grid.ScrollBar.ShowY ? grid.ScrollBar.SIZE : 0);
+            if (grid.AutoSizeColumnsMode == DataGridViewAutoSizeColumnsMode.Fill
+                && columns.Sum(column => column.WidthPixel) < viewport - 2)
+                throw new InvalidOperationException($"Unused table width: {grid.Name}; columns={columns.Sum(column => column.WidthPixel)}; viewport={viewport}.");
+            if (grid.Name == "TelemetryDiagnostics" && columns.Sum(column => UiTheme.Scale(grid, column.LogicalMinimum)) <= viewport
+                && grid.ScrollBar.ShowX)
+                throw new InvalidOperationException("Diagnostics table has unnecessary horizontal scrolling.");
+            foreach (var column in columns)
+                if (column.WidthPixel < UiTheme.Scale(grid, column.LogicalMinimum) - 2)
+                    throw new InvalidOperationException($"Column below readable minimum: {grid.Name}/{column.Name}; actual={column.WidthPixel}; minimum={UiTheme.Scale(grid, column.LogicalMinimum)}.");
+        }
     }
 
     private static void VerifyTableColumnDrag(GatewayTable grid)

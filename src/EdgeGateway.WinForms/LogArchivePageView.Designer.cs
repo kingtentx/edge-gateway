@@ -84,7 +84,7 @@ internal sealed partial class LogArchivePageView
         contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         contentLayout.Padding = new Padding(12);
         contentLayout.RowCount = 4;
-        filterBar = new FlowLayoutPanel();
+        filterBar = new WrappingToolbar();
         filterBar.Name = "filterBar";
         filterBar.Dock = DockStyle.Fill;
         filterBar.AutoSize = true;
@@ -92,7 +92,7 @@ internal sealed partial class LogArchivePageView
         filterBar.WrapContents = true;
         filterBar.Margin = Padding.Empty;
         filterBar.Padding = new Padding(0, 4, 0, 4);
-        actions = new FlowLayoutPanel();
+        actions = new WrappingToolbar();
         actions.Name = "actions";
         actions.Dock = DockStyle.Fill;
         actions.AutoSize = true;
@@ -152,7 +152,7 @@ internal sealed partial class LogArchivePageView
         FromFilter.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190F));
         FromFilter.Dock = DockStyle.None;
         FromFilter.Width = 270;
-        FromFilter.MinimumSize = new Size(270, 0);
+        FromFilter.MinimumSize = new Size(0, 0);
         FromFilter.Margin = new Padding(0, 0, 12, 6);
         FromFilter.Padding = Padding.Empty;
         FromFilter.RowCount = 1;
@@ -199,7 +199,7 @@ internal sealed partial class LogArchivePageView
         ToFilter.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190F));
         ToFilter.Dock = DockStyle.None;
         ToFilter.Width = 270;
-        ToFilter.MinimumSize = new Size(270, 0);
+        ToFilter.MinimumSize = new Size(0, 0);
         ToFilter.Margin = new Padding(0, 0, 12, 6);
         ToFilter.Padding = Padding.Empty;
         ToFilter.RowCount = 1;
@@ -248,7 +248,7 @@ internal sealed partial class LogArchivePageView
         DeviceFilter.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160F));
         DeviceFilter.Dock = DockStyle.None;
         DeviceFilter.Width = 240;
-        DeviceFilter.MinimumSize = new Size(240, 0);
+        DeviceFilter.MinimumSize = new Size(0, 0);
         DeviceFilter.Margin = new Padding(0, 0, 12, 6);
         DeviceFilter.Padding = Padding.Empty;
         DeviceFilter.RowCount = 1;
@@ -297,7 +297,7 @@ internal sealed partial class LogArchivePageView
         TagFilter.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160F));
         TagFilter.Dock = DockStyle.None;
         TagFilter.Width = 240;
-        TagFilter.MinimumSize = new Size(240, 0);
+        TagFilter.MinimumSize = new Size(0, 0);
         TagFilter.Margin = new Padding(0, 0, 12, 6);
         TagFilter.Padding = Padding.Empty;
         TagFilter.RowCount = 1;
@@ -345,7 +345,7 @@ internal sealed partial class LogArchivePageView
         QualityFilter.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110F));
         QualityFilter.Dock = DockStyle.None;
         QualityFilter.Width = 190;
-        QualityFilter.MinimumSize = new Size(190, 0);
+        QualityFilter.MinimumSize = new Size(0, 0);
         QualityFilter.Margin = new Padding(0, 0, 12, 6);
         QualityFilter.Padding = Padding.Empty;
         QualityFilter.RowCount = 1;
@@ -393,7 +393,7 @@ internal sealed partial class LogArchivePageView
         LevelFilter.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110F));
         LevelFilter.Dock = DockStyle.None;
         LevelFilter.Width = 190;
-        LevelFilter.MinimumSize = new Size(190, 0);
+        LevelFilter.MinimumSize = new Size(0, 0);
         LevelFilter.Margin = new Padding(0, 0, 12, 6);
         LevelFilter.Padding = Padding.Empty;
         LevelFilter.RowCount = 1;
@@ -442,7 +442,7 @@ internal sealed partial class LogArchivePageView
         KeywordFilter.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180F));
         KeywordFilter.Dock = DockStyle.None;
         KeywordFilter.Width = 260;
-        KeywordFilter.MinimumSize = new Size(260, 0);
+        KeywordFilter.MinimumSize = new Size(0, 0);
         KeywordFilter.Margin = new Padding(0, 0, 12, 6);
         KeywordFilter.Padding = Padding.Empty;
         KeywordFilter.RowCount = 1;
@@ -491,7 +491,7 @@ internal sealed partial class LogArchivePageView
         LimitFilter.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
         LimitFilter.Dock = DockStyle.None;
         LimitFilter.Width = 160;
-        LimitFilter.MinimumSize = new Size(160, 0);
+        LimitFilter.MinimumSize = new Size(0, 0);
         LimitFilter.Margin = new Padding(0, 0, 12, 6);
         LimitFilter.Padding = Padding.Empty;
         LimitFilter.RowCount = 1;
@@ -540,7 +540,7 @@ internal sealed partial class LogArchivePageView
         BudgetFilter.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
         BudgetFilter.Dock = DockStyle.None;
         BudgetFilter.Width = 160;
-        BudgetFilter.MinimumSize = new Size(160, 0);
+        BudgetFilter.MinimumSize = new Size(0, 0);
         BudgetFilter.Margin = new Padding(0, 0, 12, 6);
         BudgetFilter.Padding = Padding.Empty;
         BudgetFilter.RowCount = 1;

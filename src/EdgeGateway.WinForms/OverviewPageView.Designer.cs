@@ -87,7 +87,7 @@ internal sealed partial class OverviewPageView
         Name = "OverviewPageView";
         Dock = DockStyle.Fill;
         BackColor = UiTheme.Background;
-        Padding = new Padding(16);
+        Padding = new Padding(16, 12, 16, 8);
         contentLayout.Name = "OverviewContent";
         contentLayout.Dock = DockStyle.Fill;
         contentLayout.ColumnCount = 1;
@@ -615,7 +615,7 @@ internal sealed partial class OverviewPageView
         _serverMemory.Name = "OverviewServerMemory";
         _serverDisks.Name = "OverviewServerDisks";
         _serverErrors.Name = "OverviewServerErrors";
-        links = new FlowLayoutPanel();
+        links = new WrappingToolbar();
         links.Name = "links";
         links.Dock = DockStyle.Fill;
         links.AutoSize = true;
