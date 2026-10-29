@@ -140,10 +140,20 @@ public sealed partial class MainForm
         if (_writeButton is null) return;
         var deviceId = (_realtimeDevice.SelectedItem as Choice)?.Id;
         var search = _realtimeSearch.Text.Trim();
+        var accessByTag = _configuration.Devices
+            .SelectMany(device => device.Tags.Select(tag => new
+            {
+                Key = (device.Id, tag.Id), Access = tag.Writable ? "读 / 写" : "只读"
+            }))
+            .ToDictionary(tag => tag.Key, tag => tag.Access);
         var rows = samples.Where(sample => (!deviceId.HasValue || sample.DeviceId == deviceId)
             && (search.Length == 0 || sample.TagName.Contains(search, StringComparison.OrdinalIgnoreCase)
                 || sample.Address.Contains(search, StringComparison.OrdinalIgnoreCase)))
-            .OrderBy(sample => sample.DeviceName).ThenBy(sample => sample.TagName).Select(ToRow).ToList();
+            .OrderBy(sample => sample.DeviceName).ThenBy(sample => sample.TagName)
+            .Select(sample => ToRow(sample) with
+            {
+                Access = accessByTag.GetValueOrDefault((sample.DeviceId, sample.TagId), "—")
+            }).ToList();
         GridViewState.UpdateRows(_realtimeGrid, rows, row => (row.Sample.DeviceId, row.Sample.TagId));
         UpdateWriteButton();
     }
@@ -295,5 +305,8 @@ public sealed partial class MainForm
         if (sender is GatewayTable grid && e.RowIndex >= 0 && grid.Rows[e.RowIndex].DataBoundItem is SampleRow row && grid.Columns[e.ColumnIndex].Name == "Quality")
             e.CellStyle!.ForeColor = row.Sample.Quality == SampleQuality.Good ? UiTheme.Green : row.Sample.Quality == SampleQuality.Bad ? UiTheme.Red : Color.FromArgb(180, 83, 9);
     }
-    private sealed record SampleRow(TelemetrySample Sample, string Device, string Tag, string Address, string Value, string RawValue, string Unit, string Quality, string Time, string Error);
+    private sealed record SampleRow(TelemetrySample Sample, string Device, string Tag, string Address, string Value, string RawValue, string Unit, string Quality, string Time, string Error)
+    {
+        public string Access { get; init; } = "—";
+    }
 }
