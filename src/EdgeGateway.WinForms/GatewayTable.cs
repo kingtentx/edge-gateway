@@ -487,7 +487,11 @@ public class GatewayTableCell
     internal object? Presentation()
     {
         GatewayTable?.FormatCell(this, FormattedValue);
-        return RenderedCell = CreatePresentation();
+        var presentation = CreatePresentation();
+        // CellButton also derives from CellLink. Suppress hover popups for all
+        // row actions, including specialized buttons and select-cell triggers.
+        if (presentation is AntdUI.CellLink action) action.Tooltip = null;
+        return RenderedCell = presentation;
     }
     internal AntdUI.ICell? RenderedCell { get; private set; }
     internal virtual AntdUI.ICell CreatePresentation()
