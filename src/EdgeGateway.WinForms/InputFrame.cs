@@ -41,8 +41,9 @@ internal sealed partial class InputFrame : AntdUI.Panel
         TabIndex = editor.TabIndex;
         AccessibleName = editor.AccessibleName;
         Margin = editor.Margin;
-        Dock = editor.Dock == DockStyle.Fill ? DockStyle.Top : editor.Dock;
-        Anchor = editor.Anchor;
+        // Let the row center a fixed-height field beside a wrapping caption.
+        Dock = editor.Dock == DockStyle.Fill ? DockStyle.None : editor.Dock;
+        Anchor = editor.Dock == DockStyle.Fill ? AnchorStyles.Left | AnchorStyles.Right : editor.Anchor;
         MinimumSize = new Size(editor.MinimumSize.Width, UiTheme.ActionHeight);
         Size = new Size(editor.Width, UiTheme.ActionHeight);
         Controls.Add(editor);
@@ -100,7 +101,8 @@ internal sealed partial class InputFrame : AntdUI.Panel
             _measuredDpi = DeviceDpi;
             _textHeight = TextRenderer.MeasureText("确定", Font, Size.Empty, TextFormatFlags.SingleLine | TextFormatFlags.NoPadding).Height;
         }
-        return new Size(Width, Math.Max(UiTheme.Scale(this, UiTheme.ActionHeight), _textHeight + UiTheme.Scale(this, 14)));
+        return new Size(Width, Math.Max(MinimumSize.Height,
+            Math.Max(UiTheme.Scale(this, UiTheme.ActionHeight), _textHeight + UiTheme.Scale(this, 14))));
     }
 
     protected override void OnLayout(LayoutEventArgs e)

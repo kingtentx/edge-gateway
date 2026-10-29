@@ -100,7 +100,8 @@ internal sealed partial class ChannelEditor
         channelFields.Controls.Add(_nameLabel, 0, 2);
         _nameSurface = new InputFrame();
         _nameSurface.Name = "_nameSurface";
-        _nameSurface.Dock = DockStyle.Top;
+        _nameSurface.Dock = DockStyle.None;
+        _nameSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _nameSurface.Width = 220;
         _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 2;
@@ -133,7 +134,8 @@ internal sealed partial class ChannelEditor
         channelFields.Controls.Add(_delayLabel, 0, 3);
         _delaySurface = new InputFrame();
         _delaySurface.Name = "_delaySurface";
-        _delaySurface.Dock = DockStyle.Top;
+        _delaySurface.Dock = DockStyle.None;
+        _delaySurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _delaySurface.Width = 220;
         _delaySurface.Margin = new Padding(0, 3, 0, 5);
         _delaySurface.TabIndex = 3;
@@ -165,7 +167,8 @@ internal sealed partial class ChannelEditor
         channelFields.Controls.Add(_descriptionLabel, 0, 4);
         _descriptionSurface = new InputFrame();
         _descriptionSurface.Name = "_descriptionSurface";
-        _descriptionSurface.Dock = DockStyle.Top;
+        _descriptionSurface.Dock = DockStyle.None;
+        _descriptionSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _descriptionSurface.Width = 220;
         _descriptionSurface.Margin = new Padding(0, 3, 0, 5);
         _descriptionSurface.TabIndex = 4;

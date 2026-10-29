@@ -109,7 +109,8 @@ internal sealed partial class DeviceWorkbookImportDialog
         fields.Controls.Add(_modeLabel, 0, 2);
         _modeSurface = new InputFrame();
         _modeSurface.Name = "_modeSurface";
-        _modeSurface.Dock = DockStyle.Top;
+        _modeSurface.Dock = DockStyle.None;
+        _modeSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _modeSurface.Width = 220;
         _modeSurface.Margin = new Padding(0, 3, 0, 5);
         _modeSurface.TabIndex = 2;

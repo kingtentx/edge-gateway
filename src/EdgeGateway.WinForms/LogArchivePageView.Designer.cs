@@ -171,7 +171,8 @@ internal sealed partial class LogArchivePageView
         FromCaption.AutoSizeMode = AntdUI.TAutoSize.Width;
         FromSurface = new InputFrame();
         FromSurface.Name = "FromSurface";
-        FromSurface.Dock = DockStyle.Top;
+        FromSurface.Dock = DockStyle.None;
+        FromSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         FromSurface.Width = 190;
         FromSurface.Margin = Padding.Empty;
         From.Dock = DockStyle.None;
@@ -218,7 +219,8 @@ internal sealed partial class LogArchivePageView
         ToCaption.AutoSizeMode = AntdUI.TAutoSize.Width;
         ToSurface = new InputFrame();
         ToSurface.Name = "ToSurface";
-        ToSurface.Dock = DockStyle.Top;
+        ToSurface.Dock = DockStyle.None;
+        ToSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         ToSurface.Width = 190;
         ToSurface.Margin = Padding.Empty;
         To.Dock = DockStyle.None;
@@ -267,7 +269,8 @@ internal sealed partial class LogArchivePageView
         DeviceCaption.AutoSizeMode = AntdUI.TAutoSize.Width;
         DeviceSurface = new InputFrame();
         DeviceSurface.Name = "DeviceSurface";
-        DeviceSurface.Dock = DockStyle.Top;
+        DeviceSurface.Dock = DockStyle.None;
+        DeviceSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         DeviceSurface.Width = 160;
         DeviceSurface.Margin = Padding.Empty;
         Device.Dock = DockStyle.None;
@@ -316,7 +319,8 @@ internal sealed partial class LogArchivePageView
         TagCaption.AutoSizeMode = AntdUI.TAutoSize.Width;
         TagSurface = new InputFrame();
         TagSurface.Name = "TagSurface";
-        TagSurface.Dock = DockStyle.Top;
+        TagSurface.Dock = DockStyle.None;
+        TagSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         TagSurface.Width = 160;
         TagSurface.Margin = Padding.Empty;
         TagInput.Dock = DockStyle.None;
@@ -364,7 +368,8 @@ internal sealed partial class LogArchivePageView
         QualityCaption.AutoSizeMode = AntdUI.TAutoSize.Width;
         QualitySurface = new InputFrame();
         QualitySurface.Name = "QualitySurface";
-        QualitySurface.Dock = DockStyle.Top;
+        QualitySurface.Dock = DockStyle.None;
+        QualitySurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         QualitySurface.Width = 110;
         QualitySurface.Margin = Padding.Empty;
         Quality.Dock = DockStyle.None;
@@ -412,7 +417,8 @@ internal sealed partial class LogArchivePageView
         LevelCaption.AutoSizeMode = AntdUI.TAutoSize.Width;
         LevelSurface = new InputFrame();
         LevelSurface.Name = "LevelSurface";
-        LevelSurface.Dock = DockStyle.Top;
+        LevelSurface.Dock = DockStyle.None;
+        LevelSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         LevelSurface.Width = 110;
         LevelSurface.Margin = Padding.Empty;
         Level.Dock = DockStyle.None;
@@ -461,7 +467,8 @@ internal sealed partial class LogArchivePageView
         KeywordCaption.AutoSizeMode = AntdUI.TAutoSize.Width;
         KeywordSurface = new InputFrame();
         KeywordSurface.Name = "KeywordSurface";
-        KeywordSurface.Dock = DockStyle.Top;
+        KeywordSurface.Dock = DockStyle.None;
+        KeywordSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         KeywordSurface.Width = 180;
         KeywordSurface.Margin = Padding.Empty;
         Keyword.Dock = DockStyle.None;
@@ -510,7 +517,8 @@ internal sealed partial class LogArchivePageView
         LimitCaption.AutoSizeMode = AntdUI.TAutoSize.Width;
         LimitSurface = new InputFrame();
         LimitSurface.Name = "LimitSurface";
-        LimitSurface.Dock = DockStyle.Top;
+        LimitSurface.Dock = DockStyle.None;
+        LimitSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         LimitSurface.Width = 80;
         LimitSurface.Margin = Padding.Empty;
         Limit.Dock = DockStyle.None;
@@ -559,7 +567,8 @@ internal sealed partial class LogArchivePageView
         BudgetCaption.AutoSizeMode = AntdUI.TAutoSize.Width;
         BudgetSurface = new InputFrame();
         BudgetSurface.Name = "BudgetSurface";
-        BudgetSurface.Dock = DockStyle.Top;
+        BudgetSurface.Dock = DockStyle.None;
+        BudgetSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         BudgetSurface.Width = 80;
         BudgetSurface.Margin = Padding.Empty;
         Budget.Dock = DockStyle.None;

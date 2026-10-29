@@ -289,7 +289,8 @@ internal sealed partial class LoggingPageView
         settingsFields.Controls.Add(MinimumLevelInputLabel, 0, 2);
         MinimumLevelInputSurface = new InputFrame();
         MinimumLevelInputSurface.Name = "MinimumLevelInputSurface";
-        MinimumLevelInputSurface.Dock = DockStyle.Top;
+        MinimumLevelInputSurface.Dock = DockStyle.None;
+        MinimumLevelInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         MinimumLevelInputSurface.Width = 220;
         MinimumLevelInputSurface.Margin = new Padding(0, 3, 0, 5);
         MinimumLevelInputSurface.TabIndex = 2;
@@ -322,7 +323,8 @@ internal sealed partial class LoggingPageView
         settingsFields.Controls.Add(MaxFileSizeMbInputLabel, 0, 3);
         MaxFileSizeMbInputSurface = new InputFrame();
         MaxFileSizeMbInputSurface.Name = "MaxFileSizeMbInputSurface";
-        MaxFileSizeMbInputSurface.Dock = DockStyle.Top;
+        MaxFileSizeMbInputSurface.Dock = DockStyle.None;
+        MaxFileSizeMbInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         MaxFileSizeMbInputSurface.Width = 220;
         MaxFileSizeMbInputSurface.Margin = new Padding(0, 3, 0, 5);
         MaxFileSizeMbInputSurface.TabIndex = 3;
@@ -355,7 +357,8 @@ internal sealed partial class LoggingPageView
         settingsFields.Controls.Add(RetainedFileCountInputLabel, 0, 4);
         RetainedFileCountInputSurface = new InputFrame();
         RetainedFileCountInputSurface.Name = "RetainedFileCountInputSurface";
-        RetainedFileCountInputSurface.Dock = DockStyle.Top;
+        RetainedFileCountInputSurface.Dock = DockStyle.None;
+        RetainedFileCountInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         RetainedFileCountInputSurface.Width = 220;
         RetainedFileCountInputSurface.Margin = new Padding(0, 3, 0, 5);
         RetainedFileCountInputSurface.TabIndex = 4;
@@ -388,7 +391,8 @@ internal sealed partial class LoggingPageView
         settingsFields.Controls.Add(RetainedDaysInputLabel, 0, 5);
         RetainedDaysInputSurface = new InputFrame();
         RetainedDaysInputSurface.Name = "RetainedDaysInputSurface";
-        RetainedDaysInputSurface.Dock = DockStyle.Top;
+        RetainedDaysInputSurface.Dock = DockStyle.None;
+        RetainedDaysInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         RetainedDaysInputSurface.Width = 220;
         RetainedDaysInputSurface.Margin = new Padding(0, 3, 0, 5);
         RetainedDaysInputSurface.TabIndex = 5;
@@ -472,7 +476,8 @@ internal sealed partial class LoggingPageView
         settingsFields.Controls.Add(SampleMaxFileSizeMbInputLabel, 0, 9);
         SampleMaxFileSizeMbInputSurface = new InputFrame();
         SampleMaxFileSizeMbInputSurface.Name = "SampleMaxFileSizeMbInputSurface";
-        SampleMaxFileSizeMbInputSurface.Dock = DockStyle.Top;
+        SampleMaxFileSizeMbInputSurface.Dock = DockStyle.None;
+        SampleMaxFileSizeMbInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         SampleMaxFileSizeMbInputSurface.Width = 220;
         SampleMaxFileSizeMbInputSurface.Margin = new Padding(0, 3, 0, 5);
         SampleMaxFileSizeMbInputSurface.TabIndex = 9;
@@ -505,7 +510,8 @@ internal sealed partial class LoggingPageView
         settingsFields.Controls.Add(SampleRetainedFileCountInputLabel, 0, 10);
         SampleRetainedFileCountInputSurface = new InputFrame();
         SampleRetainedFileCountInputSurface.Name = "SampleRetainedFileCountInputSurface";
-        SampleRetainedFileCountInputSurface.Dock = DockStyle.Top;
+        SampleRetainedFileCountInputSurface.Dock = DockStyle.None;
+        SampleRetainedFileCountInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         SampleRetainedFileCountInputSurface.Width = 220;
         SampleRetainedFileCountInputSurface.Margin = new Padding(0, 3, 0, 5);
         SampleRetainedFileCountInputSurface.TabIndex = 10;
@@ -538,7 +544,8 @@ internal sealed partial class LoggingPageView
         settingsFields.Controls.Add(SampleRetainedDaysInputLabel, 0, 11);
         SampleRetainedDaysInputSurface = new InputFrame();
         SampleRetainedDaysInputSurface.Name = "SampleRetainedDaysInputSurface";
-        SampleRetainedDaysInputSurface.Dock = DockStyle.Top;
+        SampleRetainedDaysInputSurface.Dock = DockStyle.None;
+        SampleRetainedDaysInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         SampleRetainedDaysInputSurface.Width = 220;
         SampleRetainedDaysInputSurface.Margin = new Padding(0, 3, 0, 5);
         SampleRetainedDaysInputSurface.TabIndex = 11;
@@ -598,7 +605,8 @@ internal sealed partial class LoggingPageView
         settingsFields.Controls.Add(MinimumFreeDiskSpaceMbInputLabel, 0, 14);
         MinimumFreeDiskSpaceMbInputSurface = new InputFrame();
         MinimumFreeDiskSpaceMbInputSurface.Name = "MinimumFreeDiskSpaceMbInputSurface";
-        MinimumFreeDiskSpaceMbInputSurface.Dock = DockStyle.Top;
+        MinimumFreeDiskSpaceMbInputSurface.Dock = DockStyle.None;
+        MinimumFreeDiskSpaceMbInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         MinimumFreeDiskSpaceMbInputSurface.Width = 220;
         MinimumFreeDiskSpaceMbInputSurface.Margin = new Padding(0, 3, 0, 5);
         MinimumFreeDiskSpaceMbInputSurface.TabIndex = 14;
@@ -631,7 +639,8 @@ internal sealed partial class LoggingPageView
         settingsFields.Controls.Add(DiskResumeMarginMbInputLabel, 0, 15);
         DiskResumeMarginMbInputSurface = new InputFrame();
         DiskResumeMarginMbInputSurface.Name = "DiskResumeMarginMbInputSurface";
-        DiskResumeMarginMbInputSurface.Dock = DockStyle.Top;
+        DiskResumeMarginMbInputSurface.Dock = DockStyle.None;
+        DiskResumeMarginMbInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         DiskResumeMarginMbInputSurface.Width = 220;
         DiskResumeMarginMbInputSurface.Margin = new Padding(0, 3, 0, 5);
         DiskResumeMarginMbInputSurface.TabIndex = 15;

@@ -186,6 +186,7 @@ public partial class EditorDialog : DpiAwareForm
         control.TabIndex = row;
         UiTheme.StyleInput(control);
         if (control is not CheckBox) control.Dock = DockStyle.Fill;
+        else control.Anchor = AnchorStyles.Left;
         table.Controls.Add(caption, 0, row); table.Controls.Add(UiTheme.InputSurface(control), 1, row);
     }
     internal static void Section(TableLayoutPanel table, string title, string? description = null) =>

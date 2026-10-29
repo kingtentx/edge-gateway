@@ -151,7 +151,8 @@ internal sealed partial class WriteValueDialog
         content.Controls.Add(_valueLabel, 0, 2);
         _valueSurface = new InputFrame();
         _valueSurface.Name = "_valueSurface";
-        _valueSurface.Dock = DockStyle.Top;
+        _valueSurface.Dock = DockStyle.None;
+        _valueSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _valueSurface.Width = 220;
         _valueSurface.Margin = new Padding(0, 3, 0, 5);
         _valueSurface.TabIndex = 2;
@@ -251,7 +252,8 @@ internal sealed partial class WriteValueDialog
         content.Controls.Add(_verificationTimeoutLabel, 0, 7);
         _verificationTimeoutSurface = new InputFrame();
         _verificationTimeoutSurface.Name = "_verificationTimeoutSurface";
-        _verificationTimeoutSurface.Dock = DockStyle.Top;
+        _verificationTimeoutSurface.Dock = DockStyle.None;
+        _verificationTimeoutSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _verificationTimeoutSurface.Width = 220;
         _verificationTimeoutSurface.Margin = new Padding(0, 3, 0, 5);
         _verificationTimeoutSurface.TabIndex = 7;
@@ -285,7 +287,8 @@ internal sealed partial class WriteValueDialog
         content.Controls.Add(_absoluteToleranceLabel, 0, 8);
         _absoluteToleranceSurface = new InputFrame();
         _absoluteToleranceSurface.Name = "_absoluteToleranceSurface";
-        _absoluteToleranceSurface.Dock = DockStyle.Top;
+        _absoluteToleranceSurface.Dock = DockStyle.None;
+        _absoluteToleranceSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _absoluteToleranceSurface.Width = 220;
         _absoluteToleranceSurface.Margin = new Padding(0, 3, 0, 5);
         _absoluteToleranceSurface.TabIndex = 8;
@@ -320,7 +323,8 @@ internal sealed partial class WriteValueDialog
         content.Controls.Add(_relativeToleranceLabel, 0, 9);
         _relativeToleranceSurface = new InputFrame();
         _relativeToleranceSurface.Name = "_relativeToleranceSurface";
-        _relativeToleranceSurface.Dock = DockStyle.Top;
+        _relativeToleranceSurface.Dock = DockStyle.None;
+        _relativeToleranceSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _relativeToleranceSurface.Width = 220;
         _relativeToleranceSurface.Margin = new Padding(0, 3, 0, 5);
         _relativeToleranceSurface.TabIndex = 9;

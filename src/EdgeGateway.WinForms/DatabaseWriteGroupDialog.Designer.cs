@@ -137,7 +137,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFields.Controls.Add(_nameLabel, 0, 1);
         _nameSurface = new InputFrame();
         _nameSurface.Name = "_nameSurface";
-        _nameSurface.Dock = DockStyle.Top;
+        _nameSurface.Dock = DockStyle.None;
+        _nameSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _nameSurface.Width = 220;
         _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 1;
@@ -194,7 +195,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFields.Controls.Add(_connectionLabel, 0, 3);
         _connectionSurface = new InputFrame();
         _connectionSurface.Name = "_connectionSurface";
-        _connectionSurface.Dock = DockStyle.Top;
+        _connectionSurface.Dock = DockStyle.None;
+        _connectionSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _connectionSurface.Width = 220;
         _connectionSurface.Margin = new Padding(0, 3, 0, 5);
         _connectionSurface.TabIndex = 3;
@@ -228,7 +230,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFields.Controls.Add(_modeLabel, 0, 4);
         _modeSurface = new InputFrame();
         _modeSurface.Name = "_modeSurface";
-        _modeSurface.Dock = DockStyle.Top;
+        _modeSurface.Dock = DockStyle.None;
+        _modeSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _modeSurface.Width = 220;
         _modeSurface.Margin = new Padding(0, 3, 0, 5);
         _modeSurface.TabIndex = 4;
@@ -261,7 +264,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFields.Controls.Add(_schemaLabel, 0, 5);
         _schemaSurface = new InputFrame();
         _schemaSurface.Name = "_schemaSurface";
-        _schemaSurface.Dock = DockStyle.Top;
+        _schemaSurface.Dock = DockStyle.None;
+        _schemaSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _schemaSurface.Width = 220;
         _schemaSurface.Margin = new Padding(0, 3, 0, 5);
         _schemaSurface.TabIndex = 5;
@@ -293,7 +297,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFields.Controls.Add(_tableLabel, 0, 6);
         _tableSurface = new InputFrame();
         _tableSurface.Name = "_tableSurface";
-        _tableSurface.Dock = DockStyle.Top;
+        _tableSurface.Dock = DockStyle.None;
+        _tableSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _tableSurface.Width = 220;
         _tableSurface.Margin = new Padding(0, 3, 0, 5);
         _tableSurface.TabIndex = 6;
@@ -326,7 +331,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFields.Controls.Add(_tablesLabel, 0, 7);
         _tablesSurface = new InputFrame();
         _tablesSurface.Name = "_tablesSurface";
-        _tablesSurface.Dock = DockStyle.Top;
+        _tablesSurface.Dock = DockStyle.None;
+        _tablesSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _tablesSurface.Width = 220;
         _tablesSurface.Margin = new Padding(0, 3, 0, 5);
         _tablesSurface.TabIndex = 7;
@@ -473,7 +479,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFields.Controls.Add(_intervalLabel, 0, 13);
         _intervalSurface = new InputFrame();
         _intervalSurface.Name = "_intervalSurface";
-        _intervalSurface.Dock = DockStyle.Top;
+        _intervalSurface.Dock = DockStyle.None;
+        _intervalSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _intervalSurface.Width = 220;
         _intervalSurface.Margin = new Padding(0, 3, 0, 5);
         _intervalSurface.TabIndex = 13;
@@ -506,7 +513,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFields.Controls.Add(_maxAgeLabel, 0, 14);
         _maxAgeSurface = new InputFrame();
         _maxAgeSurface.Name = "_maxAgeSurface";
-        _maxAgeSurface.Dock = DockStyle.Top;
+        _maxAgeSurface.Dock = DockStyle.None;
+        _maxAgeSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _maxAgeSurface.Width = 220;
         _maxAgeSurface.Margin = new Padding(0, 3, 0, 5);
         _maxAgeSurface.TabIndex = 14;
@@ -572,7 +580,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         _pointSearch.Name = "DatabasePointSearch";
         pointSearchSurface = new InputFrame();
         pointSearchSurface.Name = "pointSearchSurface";
-        pointSearchSurface.Dock = DockStyle.Top;
+        pointSearchSurface.Dock = DockStyle.None;
+        pointSearchSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         pointSearchSurface.Controls.Add(_pointSearch);
         _pointList = new CheckedListBox();
         _pointList.Name = "_pointList";

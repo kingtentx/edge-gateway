@@ -158,7 +158,8 @@ internal sealed partial class TagEditor
         _basic.Controls.Add(_nameLabel, 0, 1);
         _nameSurface = new InputFrame();
         _nameSurface.Name = "_nameSurface";
-        _nameSurface.Dock = DockStyle.Top;
+        _nameSurface.Dock = DockStyle.None;
+        _nameSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _nameSurface.Width = 220;
         _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 1;
@@ -191,7 +192,8 @@ internal sealed partial class TagEditor
         _basic.Controls.Add(_readMethodLabel, 0, 2);
         _readMethodSurface = new InputFrame();
         _readMethodSurface.Name = "_readMethodSurface";
-        _readMethodSurface.Dock = DockStyle.Top;
+        _readMethodSurface.Dock = DockStyle.None;
+        _readMethodSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _readMethodSurface.Width = 220;
         _readMethodSurface.Margin = new Padding(0, 3, 0, 5);
         _readMethodSurface.TabIndex = 2;
@@ -223,7 +225,8 @@ internal sealed partial class TagEditor
         _basic.Controls.Add(_addressLabel, 0, 3);
         _addressSurface = new InputFrame();
         _addressSurface.Name = "_addressSurface";
-        _addressSurface.Dock = DockStyle.Top;
+        _addressSurface.Dock = DockStyle.None;
+        _addressSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _addressSurface.Width = 220;
         _addressSurface.Margin = new Padding(0, 3, 0, 5);
         _addressSurface.TabIndex = 3;
@@ -257,7 +260,8 @@ internal sealed partial class TagEditor
         _basic.Controls.Add(_typeLabel, 0, 4);
         _typeSurface = new InputFrame();
         _typeSurface.Name = "_typeSurface";
-        _typeSurface.Dock = DockStyle.Top;
+        _typeSurface.Dock = DockStyle.None;
+        _typeSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _typeSurface.Width = 220;
         _typeSurface.Margin = new Padding(0, 3, 0, 5);
         _typeSurface.TabIndex = 4;
@@ -290,7 +294,8 @@ internal sealed partial class TagEditor
         _basic.Controls.Add(_endianLabel, 0, 5);
         _endianSurface = new InputFrame();
         _endianSurface.Name = "_endianSurface";
-        _endianSurface.Dock = DockStyle.Top;
+        _endianSurface.Dock = DockStyle.None;
+        _endianSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _endianSurface.Width = 220;
         _endianSurface.Margin = new Padding(0, 3, 0, 5);
         _endianSurface.TabIndex = 5;
@@ -323,7 +328,8 @@ internal sealed partial class TagEditor
         _basic.Controls.Add(_areaLabel, 0, 6);
         _areaSurface = new InputFrame();
         _areaSurface.Name = "_areaSurface";
-        _areaSurface.Dock = DockStyle.Top;
+        _areaSurface.Dock = DockStyle.None;
+        _areaSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _areaSurface.Width = 220;
         _areaSurface.Margin = new Padding(0, 3, 0, 5);
         _areaSurface.TabIndex = 6;
@@ -356,7 +362,8 @@ internal sealed partial class TagEditor
         _basic.Controls.Add(_byteOrderLabel, 0, 7);
         _byteOrderSurface = new InputFrame();
         _byteOrderSurface.Name = "_byteOrderSurface";
-        _byteOrderSurface.Dock = DockStyle.Top;
+        _byteOrderSurface.Dock = DockStyle.None;
+        _byteOrderSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _byteOrderSurface.Width = 220;
         _byteOrderSurface.Margin = new Padding(0, 3, 0, 5);
         _byteOrderSurface.TabIndex = 7;
@@ -388,7 +395,8 @@ internal sealed partial class TagEditor
         _basic.Controls.Add(_unitLabel, 0, 8);
         _unitSurface = new InputFrame();
         _unitSurface.Name = "_unitSurface";
-        _unitSurface.Dock = DockStyle.Top;
+        _unitSurface.Dock = DockStyle.None;
+        _unitSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _unitSurface.Width = 220;
         _unitSurface.Margin = new Padding(0, 3, 0, 5);
         _unitSurface.TabIndex = 8;
@@ -520,7 +528,8 @@ internal sealed partial class TagEditor
         _basic.Controls.Add(_writeMethodLabel, 0, 14);
         _writeMethodSurface = new InputFrame();
         _writeMethodSurface.Name = "_writeMethodSurface";
-        _writeMethodSurface.Dock = DockStyle.Top;
+        _writeMethodSurface.Dock = DockStyle.None;
+        _writeMethodSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _writeMethodSurface.Width = 220;
         _writeMethodSurface.Margin = new Padding(0, 3, 0, 5);
         _writeMethodSurface.TabIndex = 14;
@@ -627,7 +636,8 @@ internal sealed partial class TagEditor
         calculation.Controls.Add(_scaleLabel, 0, 2);
         _scaleSurface = new InputFrame();
         _scaleSurface.Name = "_scaleSurface";
-        _scaleSurface.Dock = DockStyle.Top;
+        _scaleSurface.Dock = DockStyle.None;
+        _scaleSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _scaleSurface.Width = 220;
         _scaleSurface.Margin = new Padding(0, 3, 0, 5);
         _scaleSurface.TabIndex = 2;
@@ -660,7 +670,8 @@ internal sealed partial class TagEditor
         calculation.Controls.Add(_offsetLabel, 0, 3);
         _offsetSurface = new InputFrame();
         _offsetSurface.Name = "_offsetSurface";
-        _offsetSurface.Dock = DockStyle.Top;
+        _offsetSurface.Dock = DockStyle.None;
+        _offsetSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _offsetSurface.Width = 220;
         _offsetSurface.Margin = new Padding(0, 3, 0, 5);
         _offsetSurface.TabIndex = 3;
@@ -693,7 +704,8 @@ internal sealed partial class TagEditor
         calculation.Controls.Add(_expressionLabel, 0, 4);
         _expressionSurface = new InputFrame();
         _expressionSurface.Name = "_expressionSurface";
-        _expressionSurface.Dock = DockStyle.Top;
+        _expressionSurface.Dock = DockStyle.None;
+        _expressionSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _expressionSurface.Width = 220;
         _expressionSurface.Margin = new Padding(0, 3, 0, 5);
         _expressionSurface.TabIndex = 4;
@@ -755,7 +767,8 @@ internal sealed partial class TagEditor
         calculation.Controls.Add(previewInputLabel, 0, 7);
         previewInputSurface = new InputFrame();
         previewInputSurface.Name = "previewInputSurface";
-        previewInputSurface.Dock = DockStyle.Top;
+        previewInputSurface.Dock = DockStyle.None;
+        previewInputSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         previewInputSurface.Width = 220;
         previewInputSurface.Margin = new Padding(0, 3, 0, 5);
         previewInputSurface.TabIndex = 7;
@@ -855,7 +868,8 @@ internal sealed partial class TagEditor
         calculation.Controls.Add(_lowLabel, 0, 11);
         _lowSurface = new InputFrame();
         _lowSurface.Name = "_lowSurface";
-        _lowSurface.Dock = DockStyle.Top;
+        _lowSurface.Dock = DockStyle.None;
+        _lowSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _lowSurface.Width = 220;
         _lowSurface.Margin = new Padding(0, 3, 0, 5);
         _lowSurface.TabIndex = 11;
@@ -888,7 +902,8 @@ internal sealed partial class TagEditor
         calculation.Controls.Add(_highLabel, 0, 12);
         _highSurface = new InputFrame();
         _highSurface.Name = "_highSurface";
-        _highSurface.Dock = DockStyle.Top;
+        _highSurface.Dock = DockStyle.None;
+        _highSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _highSurface.Width = 220;
         _highSurface.Margin = new Padding(0, 3, 0, 5);
         _highSurface.TabIndex = 12;
@@ -1012,7 +1027,8 @@ internal sealed partial class TagEditor
         reporting.Controls.Add(_scanIntervalLabel, 0, 1);
         _scanIntervalSurface = new InputFrame();
         _scanIntervalSurface.Name = "_scanIntervalSurface";
-        _scanIntervalSurface.Dock = DockStyle.Top;
+        _scanIntervalSurface.Dock = DockStyle.None;
+        _scanIntervalSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _scanIntervalSurface.Width = 220;
         _scanIntervalSurface.Margin = new Padding(0, 3, 0, 5);
         _scanIntervalSurface.TabIndex = 1;
@@ -1044,7 +1060,8 @@ internal sealed partial class TagEditor
         reporting.Controls.Add(_deadbandLabel, 0, 2);
         _deadbandSurface = new InputFrame();
         _deadbandSurface.Name = "_deadbandSurface";
-        _deadbandSurface.Dock = DockStyle.Top;
+        _deadbandSurface.Dock = DockStyle.None;
+        _deadbandSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _deadbandSurface.Width = 220;
         _deadbandSurface.Margin = new Padding(0, 3, 0, 5);
         _deadbandSurface.TabIndex = 2;

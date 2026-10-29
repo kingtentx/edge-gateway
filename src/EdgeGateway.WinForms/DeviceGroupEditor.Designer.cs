@@ -32,7 +32,8 @@ internal sealed partial class DeviceGroupEditor
         nameLabel.AutoSize = true;
         nameLabel.Dock = DockStyle.Fill;
         nameLabel.TextAlign = ContentAlignment.MiddleLeft;
-        nameSurface.Dock = DockStyle.Top;
+        nameSurface.Dock = DockStyle.None;
+        nameSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         nameInput.Name = "DeviceGroupName";
         nameInput.AccessibleName = "分组名称";
         nameInput.Dock = DockStyle.Fill;

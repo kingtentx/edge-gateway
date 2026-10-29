@@ -140,7 +140,8 @@ internal sealed partial class DeviceConfigurationDialog
         acquisition.Controls.Add(_nameLabel, 0, 2);
         _nameSurface = new InputFrame();
         _nameSurface.Name = "_nameSurface";
-        _nameSurface.Dock = DockStyle.Top;
+        _nameSurface.Dock = DockStyle.None;
+        _nameSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _nameSurface.Width = 220;
         _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 2;
@@ -171,7 +172,8 @@ internal sealed partial class DeviceConfigurationDialog
         acquisition.Controls.Add(_groupLabel, 0, 3);
         _groupSurface = new InputFrame();
         _groupSurface.Name = "_groupSurface";
-        _groupSurface.Dock = DockStyle.Top;
+        _groupSurface.Dock = DockStyle.None;
+        _groupSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _groupSurface.Width = 220;
         _groupSurface.Margin = new Padding(0, 3, 0, 5);
         _groupSurface.TabIndex = 3;
@@ -231,7 +233,8 @@ internal sealed partial class DeviceConfigurationDialog
         acquisition.Controls.Add(_driverLabel, 0, 6);
         _driverSurface = new InputFrame();
         _driverSurface.Name = "_driverSurface";
-        _driverSurface.Dock = DockStyle.Top;
+        _driverSurface.Dock = DockStyle.None;
+        _driverSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _driverSurface.Width = 220;
         _driverSurface.Margin = new Padding(0, 3, 0, 5);
         _driverSurface.TabIndex = 6;
@@ -263,7 +266,8 @@ internal sealed partial class DeviceConfigurationDialog
         acquisition.Controls.Add(_channelLabel, 0, 7);
         _channelSurface = new InputFrame();
         _channelSurface.Name = "_channelSurface";
-        _channelSurface.Dock = DockStyle.Top;
+        _channelSurface.Dock = DockStyle.None;
+        _channelSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _channelSurface.Width = 220;
         _channelSurface.Margin = new Padding(0, 3, 0, 5);
         _channelSurface.TabIndex = 7;
@@ -295,7 +299,8 @@ internal sealed partial class DeviceConfigurationDialog
         acquisition.Controls.Add(_cycleLabel, 0, 8);
         _cycleSurface = new InputFrame();
         _cycleSurface.Name = "_cycleSurface";
-        _cycleSurface.Dock = DockStyle.Top;
+        _cycleSurface.Dock = DockStyle.None;
+        _cycleSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _cycleSurface.Width = 220;
         _cycleSurface.Margin = new Padding(0, 3, 0, 5);
         _cycleSurface.TabIndex = 8;
@@ -327,7 +332,8 @@ internal sealed partial class DeviceConfigurationDialog
         acquisition.Controls.Add(_timeoutLabel, 0, 9);
         _timeoutSurface = new InputFrame();
         _timeoutSurface.Name = "_timeoutSurface";
-        _timeoutSurface.Dock = DockStyle.Top;
+        _timeoutSurface.Dock = DockStyle.None;
+        _timeoutSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _timeoutSurface.Width = 220;
         _timeoutSurface.Margin = new Padding(0, 3, 0, 5);
         _timeoutSurface.TabIndex = 9;
@@ -435,7 +441,8 @@ internal sealed partial class DeviceConfigurationDialog
         scanning.Controls.Add(_scanModeLabel, 0, 2);
         _scanModeSurface = new InputFrame();
         _scanModeSurface.Name = "_scanModeSurface";
-        _scanModeSurface.Dock = DockStyle.Top;
+        _scanModeSurface.Dock = DockStyle.None;
+        _scanModeSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _scanModeSurface.Width = 220;
         _scanModeSurface.Margin = new Padding(0, 3, 0, 5);
         _scanModeSurface.TabIndex = 2;
@@ -490,7 +497,8 @@ internal sealed partial class DeviceConfigurationDialog
         scanning.Controls.Add(_demotionCountLabel, 0, 4);
         _demotionCountSurface = new InputFrame();
         _demotionCountSurface.Name = "_demotionCountSurface";
-        _demotionCountSurface.Dock = DockStyle.Top;
+        _demotionCountSurface.Dock = DockStyle.None;
+        _demotionCountSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _demotionCountSurface.Width = 220;
         _demotionCountSurface.Margin = new Padding(0, 3, 0, 5);
         _demotionCountSurface.TabIndex = 4;
@@ -522,7 +530,8 @@ internal sealed partial class DeviceConfigurationDialog
         scanning.Controls.Add(_demotionIntervalLabel, 0, 5);
         _demotionIntervalSurface = new InputFrame();
         _demotionIntervalSurface.Name = "_demotionIntervalSurface";
-        _demotionIntervalSurface.Dock = DockStyle.Top;
+        _demotionIntervalSurface.Dock = DockStyle.None;
+        _demotionIntervalSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _demotionIntervalSurface.Width = 220;
         _demotionIntervalSurface.Margin = new Padding(0, 3, 0, 5);
         _demotionIntervalSurface.TabIndex = 5;

@@ -131,7 +131,8 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFields.Controls.Add(_nameLabel, 0, 1);
         _nameSurface = new InputFrame();
         _nameSurface.Name = "_nameSurface";
-        _nameSurface.Dock = DockStyle.Top;
+        _nameSurface.Dock = DockStyle.None;
+        _nameSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _nameSurface.Width = 220;
         _nameSurface.Margin = new Padding(0, 3, 0, 5);
         _nameSurface.TabIndex = 1;
@@ -189,7 +190,8 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFields.Controls.Add(_providerLabel, 0, 3);
         _providerSurface = new InputFrame();
         _providerSurface.Name = "_providerSurface";
-        _providerSurface.Dock = DockStyle.Top;
+        _providerSurface.Dock = DockStyle.None;
+        _providerSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _providerSurface.Width = 220;
         _providerSurface.Margin = new Padding(0, 3, 0, 5);
         _providerSurface.TabIndex = 3;
@@ -221,7 +223,8 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFields.Controls.Add(_hostLabel, 0, 4);
         _hostSurface = new InputFrame();
         _hostSurface.Name = "_hostSurface";
-        _hostSurface.Dock = DockStyle.Top;
+        _hostSurface.Dock = DockStyle.None;
+        _hostSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _hostSurface.Width = 220;
         _hostSurface.Margin = new Padding(0, 3, 0, 5);
         _hostSurface.TabIndex = 4;
@@ -255,7 +258,8 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFields.Controls.Add(_portLabel, 0, 5);
         _portSurface = new InputFrame();
         _portSurface.Name = "_portSurface";
-        _portSurface.Dock = DockStyle.Top;
+        _portSurface.Dock = DockStyle.None;
+        _portSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _portSurface.Width = 220;
         _portSurface.Margin = new Padding(0, 3, 0, 5);
         _portSurface.TabIndex = 5;
@@ -287,7 +291,8 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFields.Controls.Add(_databaseLabel, 0, 6);
         _databaseSurface = new InputFrame();
         _databaseSurface.Name = "_databaseSurface";
-        _databaseSurface.Dock = DockStyle.Top;
+        _databaseSurface.Dock = DockStyle.None;
+        _databaseSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _databaseSurface.Width = 220;
         _databaseSurface.Margin = new Padding(0, 3, 0, 5);
         _databaseSurface.TabIndex = 6;
@@ -319,7 +324,8 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFields.Controls.Add(_usernameLabel, 0, 7);
         _usernameSurface = new InputFrame();
         _usernameSurface.Name = "_usernameSurface";
-        _usernameSurface.Dock = DockStyle.Top;
+        _usernameSurface.Dock = DockStyle.None;
+        _usernameSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _usernameSurface.Width = 220;
         _usernameSurface.Margin = new Padding(0, 3, 0, 5);
         _usernameSurface.TabIndex = 7;
@@ -353,7 +359,8 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFields.Controls.Add(_passwordLabel, 0, 8);
         _passwordSurface = new InputFrame();
         _passwordSurface.Name = "_passwordSurface";
-        _passwordSurface.Dock = DockStyle.Top;
+        _passwordSurface.Dock = DockStyle.None;
+        _passwordSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _passwordSurface.Width = 220;
         _passwordSurface.Margin = new Padding(0, 3, 0, 5);
         _passwordSurface.TabIndex = 8;
@@ -479,7 +486,8 @@ internal sealed partial class DatabaseConnectionDialog
         batchFields.Controls.Add(_connectTimeoutLabel, 0, 1);
         _connectTimeoutSurface = new InputFrame();
         _connectTimeoutSurface.Name = "_connectTimeoutSurface";
-        _connectTimeoutSurface.Dock = DockStyle.Top;
+        _connectTimeoutSurface.Dock = DockStyle.None;
+        _connectTimeoutSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _connectTimeoutSurface.Width = 220;
         _connectTimeoutSurface.Margin = new Padding(0, 3, 0, 5);
         _connectTimeoutSurface.TabIndex = 1;
@@ -512,7 +520,8 @@ internal sealed partial class DatabaseConnectionDialog
         batchFields.Controls.Add(_commandTimeoutLabel, 0, 2);
         _commandTimeoutSurface = new InputFrame();
         _commandTimeoutSurface.Name = "_commandTimeoutSurface";
-        _commandTimeoutSurface.Dock = DockStyle.Top;
+        _commandTimeoutSurface.Dock = DockStyle.None;
+        _commandTimeoutSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _commandTimeoutSurface.Width = 220;
         _commandTimeoutSurface.Margin = new Padding(0, 3, 0, 5);
         _commandTimeoutSurface.TabIndex = 2;
@@ -572,7 +581,8 @@ internal sealed partial class DatabaseConnectionDialog
         batchFields.Controls.Add(_batchLabel, 0, 5);
         _batchSurface = new InputFrame();
         _batchSurface.Name = "_batchSurface";
-        _batchSurface.Dock = DockStyle.Top;
+        _batchSurface.Dock = DockStyle.None;
+        _batchSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _batchSurface.Width = 220;
         _batchSurface.Margin = new Padding(0, 3, 0, 5);
         _batchSurface.TabIndex = 5;
@@ -605,7 +615,8 @@ internal sealed partial class DatabaseConnectionDialog
         batchFields.Controls.Add(_flushLabel, 0, 6);
         _flushSurface = new InputFrame();
         _flushSurface.Name = "_flushSurface";
-        _flushSurface.Dock = DockStyle.Top;
+        _flushSurface.Dock = DockStyle.None;
+        _flushSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _flushSurface.Width = 220;
         _flushSurface.Margin = new Padding(0, 3, 0, 5);
         _flushSurface.TabIndex = 6;
@@ -638,7 +649,8 @@ internal sealed partial class DatabaseConnectionDialog
         batchFields.Controls.Add(_capacityLabel, 0, 7);
         _capacitySurface = new InputFrame();
         _capacitySurface.Name = "_capacitySurface";
-        _capacitySurface.Dock = DockStyle.Top;
+        _capacitySurface.Dock = DockStyle.None;
+        _capacitySurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _capacitySurface.Width = 220;
         _capacitySurface.Margin = new Padding(0, 3, 0, 5);
         _capacitySurface.TabIndex = 7;
@@ -671,7 +683,8 @@ internal sealed partial class DatabaseConnectionDialog
         batchFields.Controls.Add(_capacityMbLabel, 0, 8);
         _capacityMbSurface = new InputFrame();
         _capacityMbSurface.Name = "_capacityMbSurface";
-        _capacityMbSurface.Dock = DockStyle.Top;
+        _capacityMbSurface.Dock = DockStyle.None;
+        _capacityMbSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _capacityMbSurface.Width = 220;
         _capacityMbSurface.Margin = new Padding(0, 3, 0, 5);
         _capacityMbSurface.TabIndex = 8;
@@ -704,7 +717,8 @@ internal sealed partial class DatabaseConnectionDialog
         batchFields.Controls.Add(_retryAttemptsLabel, 0, 9);
         _retryAttemptsSurface = new InputFrame();
         _retryAttemptsSurface.Name = "_retryAttemptsSurface";
-        _retryAttemptsSurface.Dock = DockStyle.Top;
+        _retryAttemptsSurface.Dock = DockStyle.None;
+        _retryAttemptsSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _retryAttemptsSurface.Width = 220;
         _retryAttemptsSurface.Margin = new Padding(0, 3, 0, 5);
         _retryAttemptsSurface.TabIndex = 9;
