@@ -330,7 +330,7 @@ public sealed partial class MainForm : DpiAwareForm
         }
         if (_loggingSmoke)
         {
-            try { await SmokeLoggingAsync(); }
+            try { if (LiveLogsSmoke) await SmokeLiveLogsAsync(); else await SmokeLoggingAsync(); }
             catch (Exception exception)
             {
                 SmokeTestFailed = true; TrySaveSmokeFailure(this, "logging-failed"); Console.Error.WriteLine(exception);
@@ -693,6 +693,8 @@ public sealed partial class MainForm : DpiAwareForm
         {
             if (_activePage == "overview") RefreshOverview(_application.GetOverviewSummary());
             if (_activePage == "realtime") RefreshRealtime(_application.GetLatest());
+            if (_activePage == "logs" && _logTabs.SelectedTab == _eventArchive.Page)
+                await _eventArchive.RefreshLiveAsync();
             if (_activePage == "database")
             {
                 var spool = await _application.GetAcquisitionSpoolStatisticsAsync();

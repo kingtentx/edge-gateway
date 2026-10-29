@@ -1,4 +1,4 @@
-﻿using EdgeGateway.Model;
+using EdgeGateway.Model;
 using System.Diagnostics;
 
 namespace EdgeGateway.WinForms;
@@ -407,7 +407,7 @@ public sealed partial class MainForm
             var rejectedWhileRunning = false;
             try { await _application.ApplyDatabaseSettingsAsync([connection], [group]); } catch (InvalidOperationException) { rejectedWhileRunning = true; }
             Check(rejectedWhileRunning, "database configuration changed while acquisition was active.");
-            ShowPage("logs"); _logTabs.SelectedIndex = 0;
+            ShowPage("logs"); _logTabs.SelectedTab = _loggingPageView.SettingsTab;
             ((NumericUpDown)_loggingFields["RetainedDays"]).Value = 17;
             ((NumericUpDown)_loggingFields["MaxFileSizeMb"]).Value = 12;
             ((NumericUpDown)_loggingFields["MinimumFreeDiskSpaceMb"]).Value = 128;
@@ -432,9 +432,9 @@ public sealed partial class MainForm
             while (!_application.GetLatest().Any(sample => sample.Timestamp > beforeSample) && timer.Elapsed < TimeSpan.FromSeconds(5)) await Task.Delay(25);
             Check(_application.GetLatest().Any(sample => sample.Timestamp > beforeSample), "device did not continue producing samples after logging apply.");
             foreach (var input in _loggingFields.Values) BringIntoViewAndAssert(input, "logging settings " + input.Name);
-            ResetScrollPositions(_pages["logs"], navigationMenu); _logTabs.SelectedIndex = 0;
+            ResetScrollPositions(_pages["logs"], navigationMenu); _logTabs.SelectedTab = _loggingPageView.SettingsTab;
             SaveEditorScreenshot(this, "recording", "log-settings");
-            _logTabs.SelectedIndex = 2;
+            _logTabs.SelectedTab = _loggingPageView.SampleLogsTab;
             foreach (var control in _sampleArchive.Inputs)
                 BringIntoViewAndAssert(control, "sample archive " + control.Name);
             await _sampleArchive.QueryAsync();
@@ -455,7 +455,7 @@ public sealed partial class MainForm
                 }
                 finally { previewDialog.Close(); }
             }
-            _logTabs.SelectedIndex = 0;
+            _logTabs.SelectedTab = _loggingPageView.SettingsTab;
             await AssertSavedConfigurationForSmokeAsync("data recording configuration");
             Console.WriteLine($"Data recording configuration smoke passed: connection save failure/retry, 16 connection inputs, standard point selection, custom required/generated columns and point/type/constant bindings, history empty/source states, stopped-only database apply, and logging hot apply with retained failure drafts at actual {DeviceDpi} DPI; metadata fixtures tested UI only, no external database was contacted.");
         }
@@ -465,7 +465,7 @@ public sealed partial class MainForm
             await RestoreConfigurationForSmokeAsync(original);
             _executedHistoryQuery = null; _executedHistoryGroupId = null; _queriedHistory = []; _historyGrid.DataSource = null;
             _trend.Visible = false; if (_trend.Parent is TableLayoutPanel historyLayout) historyLayout.RowStyles[0].Height = 0;
-            _logTabs.SelectedIndex = 0; RebindConfigurationViews(originalSelection); ShowPage(originalPage); UpdateCommands();
+            _logTabs.SelectedTab = _loggingPageView.SettingsTab; RebindConfigurationViews(originalSelection); ShowPage(originalPage); UpdateCommands();
         }
     }
 

@@ -1,4 +1,4 @@
-﻿using EdgeGateway.Model;
+using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
 
@@ -107,7 +107,7 @@ public sealed partial class MainForm
             SaveEditorScreenshot(_pointsDialog, "pagination", "points-last-page");
             _pointsDialog.Hide(); _pointsDeviceId = null;
 
-            ShowPage("logs"); _logTabs.SelectedIndex = 1;
+            ShowPage("logs"); _logTabs.SelectedTab = _loggingPageView.EventLogsTab;
             for (var i = 0; i < 23; i++) _log.Write(GatewayLogLevel.Error, $"pagination-event-{i:000}");
             _eventArchive.Keyword.Text = "pagination-event-";
             for (var attempt = 0; attempt < 30; attempt++)
@@ -117,9 +117,8 @@ public sealed partial class MainForm
             }
             Require(_eventArchive.Result?.Entries.Count == 23, "Log fixture did not flush 23 records.");
             PerformLayoutRecursively(this); await Task.Delay(100);
-            Pager(_eventArchive.Grid).Current = 3;
-            Require(_eventArchive.Grid.Rows.Count == 3 && _eventArchive.Result!.Entries.Count == 23,
-                "Log pagination changed the executed snapshot.");
+            Require(_eventArchive.Grid.Rows.Count == 23 && _eventArchive.Result!.Entries.Count == 23,
+                "Running logs must show the complete bounded result without pagination.");
             var directory = Path.GetDirectoryName(Path.GetFullPath(_smokeScreenshotPath ?? "ui-smoke.png"))!;
             var export = Path.Combine(directory, "pagination-events.jsonl");
             await _application.ExportLogQueryAsync(_eventArchive.Result!, export);
@@ -131,7 +130,7 @@ public sealed partial class MainForm
             }
             Require(exportedMessages.Order().SequenceEqual(Enumerable.Range(0, 23).Select(i => $"pagination-event-{i:000}")),
                 "Log export omitted records from other pages.");
-            SaveEditorScreenshot(this, "pagination", "logs-last-page");
+            SaveEditorScreenshot(this, "pagination", "logs-unpaged");
             Console.WriteLine($"Pagination smoke passed: DeviceDpi={DeviceDpi}; page navigation, page size, stable device/tag IDs, final-page deletion, empty results, realtime refresh, complete history CSV and log JSONL.");
         }
         finally { await CommitConfigurationAsync(original, replaceCloudDraft: true); }

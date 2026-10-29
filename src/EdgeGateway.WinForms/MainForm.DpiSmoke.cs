@@ -1,4 +1,4 @@
-﻿using EdgeGateway.Model;
+using EdgeGateway.Model;
 using EdgeGateway.Application;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -120,7 +120,7 @@ public sealed partial class MainForm
                             BringIntoViewAndAssert(Descendants(_pages["logs"]).Single(control => control.Name == "OpenLogDirectory"), name + " log directory command");
                             BringIntoViewAndAssert(_loggingFileState, name + " log file status");
                             result.LoggingInputMetrics = _loggingFields.Values.Select(ControlMetric.From).ToList();
-                            _logTabs.SelectedIndex = 0;
+                            _logTabs.SelectedTab = _loggingPageView.SettingsTab;
                         }
                         ResetScrollPositions(_pages[key], navigationMenu);
                         result.CheckedPages.Add(key);

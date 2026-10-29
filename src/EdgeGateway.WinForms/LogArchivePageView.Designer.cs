@@ -54,6 +54,7 @@ internal sealed partial class LogArchivePageView
     internal InputFrame BudgetSurface = null!;
     internal AntdUI.Button Search = null!;
     internal AntdUI.Button Recent = null!;
+    internal AntdUI.Button Live = null!;
     internal AntdUI.Button Cancel = null!;
     internal AntdUI.Button Export = null!;
     internal GatewayTableColumn GridColumnTimestamp = null!;
@@ -596,6 +597,16 @@ internal sealed partial class LogArchivePageView
         Recent.Margin = new Padding(0, 0, 8, 6);
         Recent.Cursor = Cursors.Hand;
         actions.Controls.Add(Recent);
+        Live = new GatewayButton();
+        Live.Name = "Live";
+        Live.Text = "暂停刷新";
+        Live.AccessibleName = "暂停或恢复运行日志实时刷新";
+        Live.AutoSize = true;
+        Live.MinimumSize = new Size(100, 38);
+        Live.Height = 38;
+        Live.Padding = new Padding(10, 4, 10, 4);
+        Live.Margin = new Padding(0, 0, 8, 6);
+        actions.Controls.Add(Live);
         Cancel = new GatewayButton();
         Cancel.Name = "Cancel";
         Cancel.Text = "取消查询 / 导出";

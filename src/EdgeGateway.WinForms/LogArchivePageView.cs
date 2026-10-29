@@ -3,10 +3,13 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class LogArchivePageView : UserControl
 {
 
-    public LogArchivePageView() { InitializeComponent(); GridPagination.Attach(Grid, archivePagination, archivePaginationTotal, archivePaginationSize); }
+    public LogArchivePageView() { InitializeComponent(); }
 
     internal void ConfigureCategory(bool samples)
     {
+        if (samples) GridPagination.Attach(Grid, archivePagination, archivePaginationTotal, archivePaginationSize);
+        archivePaginationBar.Visible = samples;
+        Live.Visible = !samples;
         DeviceFilter.Visible = TagFilter.Visible = QualityFilter.Visible = samples;
         LevelFilter.Visible = !samples;
         Grid.Columns["Level"].Visible = Grid.Columns["Message"].Visible = !samples;

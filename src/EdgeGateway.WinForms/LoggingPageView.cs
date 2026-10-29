@@ -4,6 +4,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class LoggingPageView : UserControl
 {
     internal TabControl LogTabs => logTabs;
+    internal TabPage SettingsTab => settingsTab;
     internal TabPage EventLogsTab => eventLogsTab;
     internal TabPage SampleLogsTab => sampleLogsTab;
     internal Control SettingsFieldsHost => settingsFieldsHost;

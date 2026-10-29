@@ -24,7 +24,8 @@ internal static class Program
         var pageRefreshSmoke = dpiConfirmationSmoke || rowDensitySmoke || args.Contains("--smoke-page-refresh", StringComparer.OrdinalIgnoreCase);
         var navigationSmoke = args.Contains("--smoke-navigation-collapse", StringComparer.OrdinalIgnoreCase);
         var serverResourcesSmoke = args.Contains("--smoke-server-resources", StringComparer.OrdinalIgnoreCase);
-        var loggingSmoke = args.Contains("--smoke-logging", StringComparer.OrdinalIgnoreCase);
+        var liveLogsSmoke = args.Contains("--smoke-live-logs", StringComparer.OrdinalIgnoreCase);
+        var loggingSmoke = liveLogsSmoke || args.Contains("--smoke-logging", StringComparer.OrdinalIgnoreCase);
         var workbookSmoke = args.Contains("--smoke-workbooks", StringComparer.OrdinalIgnoreCase);
         var smokeTest = buttonAppearanceSmoke || formWidthsSmoke || historySourcesSmoke || paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
         var screenshotIndex = Array.FindIndex(args, x => x.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
@@ -81,6 +82,7 @@ internal static class Program
             window.RowDensitySmoke = rowDensitySmoke;
             window.DpiConfirmationSmoke = dpiConfirmationSmoke;
             window.DpiRoundTripOnly = dpiRoundTripOnly;
+            window.LiveLogsSmoke = liveLogsSmoke;
             System.Windows.Forms.Application.Run(window);
             return window.SmokeTestFailed ? 1 : 0;
         }

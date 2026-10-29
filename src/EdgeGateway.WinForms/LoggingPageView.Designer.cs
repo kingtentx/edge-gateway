@@ -212,9 +212,10 @@ internal sealed partial class LoggingPageView
         settingsContent.Controls.Add(settingsFieldsHost, 0, 0);
         settingsContent.Controls.Add(settingsFooter, 0, 1);
         settingsTab.Controls.Add(settingsContent);
-        logTabs.TabPages.Add(settingsTab);
         logTabs.TabPages.Add(eventLogsTab);
         logTabs.TabPages.Add(sampleLogsTab);
+        logTabs.TabPages.Add(settingsTab);
+        logTabs.SelectedTab = eventLogsTab;
         pageLayout.Controls.Add(titleLabel, 0, 0);
         pageLayout.Controls.Add(descriptionLabel, 0, 1);
         pageLayout.Controls.Add(logTabs, 0, 2);

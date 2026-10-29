@@ -10,14 +10,14 @@ public sealed partial class MainForm
         var directory = Path.GetDirectoryName(Path.GetFullPath(_smokeScreenshotPath ?? "ui-smoke.png"))!;
         Directory.CreateDirectory(directory);
         using var focusDiagnostics = StartSmokeFocusDiagnostics(directory);
-        CheckUsability(_logTabs.TabPages.Cast<TabPage>().Select(tab => tab.Text).SequenceEqual(new[] { "日志设置", "运行日志", "采样数据" }), "Logging tab order is wrong.");
+        CheckUsability(_logTabs.TabPages.Cast<TabPage>().Select(tab => tab.Text).SequenceEqual(new[] { "运行日志", "采样数据", "日志设置" }), "Logging tab order is wrong.");
         var device = new DeviceConfiguration { Name = "日志验证设备", DriverId = "simulator", PollIntervalMs = 100,
             Tags = [new() { Name = "温度", Address = "constant:12.5", DataType = TagDataType.Float64 }] };
         CompleteConfigurationCommit(await _application.AddDeviceAsync(device), device.Id, "日志验证");
         await _application.StartDeviceAsync(device.Id);
         try
         {
-            ShowPage("logs"); _logTabs.SelectedIndex = 0;
+            ShowPage("logs"); _logTabs.SelectedTab = _loggingPageView.SettingsTab;
             ((ComboBox)_loggingFields["MinimumLevel"]).SelectedItem = GatewayLogLevel.Error;
             ((NumericUpDown)_loggingFields["SampleMaxFileSizeMb"]).Value = 3;
             ((NumericUpDown)_loggingFields["SampleRetainedFileCount"]).Value = 7;
@@ -61,7 +61,7 @@ public sealed partial class MainForm
                 if (!SetWindowPos(Handle, IntPtr.Zero, area.X, area.Y, area.Width, area.Height, 0x0014))
                     throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error());
                 FitToWorkingArea(testWorkArea: area); await Task.Yield(); PerformLayoutRecursively(this);
-                _logTabs.SelectedIndex = 0;
+                _logTabs.SelectedTab = _loggingPageView.SettingsTab;
                 foreach (var input in _loggingFields.Values) BringIntoViewAndAssert(input, "logging settings " + name + " " + input.Name);
                 BringIntoViewAndAssert(_loggingApply, "logging apply " + name);
                 ResetScrollPositions(_pages["logs"], navigationMenu);
