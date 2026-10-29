@@ -46,7 +46,7 @@ dotnet build src/EdgeGateway.WinForms/EdgeGateway.WinForms.csproj -c Release --n
 
 ## 按参考图排列总数、条数与页码（2026-10-28）
 
-本轮最新要求替代此前的整体靠右排列。所有列表使用 Designer 直接创建的三列底栏：左侧总数标签，中间独立的 AntdUI Select，右侧 AntdUI Pagination。条数框展示真实选中值（如 `10条/页`），关闭 Pagination 内置的右侧条数框。分页仍使用官方状态与外观，`MaxPageTotal=8` 对应第一页 `1 2 3 4 5 6 … 末页`。固定控件高 38 逻辑像素，底栏高 46、上下各 4 像素；业务代码只更新总数、同步条数并绑定事件。
+本轮最新要求替代此前的整体靠右排列。所有列表使用 Designer 直接创建的三列底栏：左侧总数标签，中间独立的 AntdUI Select，右侧 AntdUI Pagination。条数框展示真实选中值（如 `10条/页`），关闭 Pagination 内置的右侧条数框。分页仍使用官方状态与外观，`MaxPageTotal=8` 对应第一页 `1 2 3 4 5 6 … 末页`。2026-10-29 压缩底栏后，固定控件高 32 逻辑像素，底栏高 36、上下各 2 像素；业务代码只更新总数、同步条数并绑定事件。
 
 沿用用户同范围分页修复复验授权，产物 `artifacts/pagination-order-20261028`：Release `build-1.log` 通过（0 错误、420 项现有驱动/代理警告）；隔离后台 `ui-1` 通过（应用/脚本退出码 0，stderr 为空，7 张截图）。新增 147 条/15 页检查，核对总数标签、条数下拉、页码的实际左右位置，并通过独立下拉从 10 切换为 20 条验证绑定；保留 50 页紧凑显示、末页删除、实时刷新及完整结果导出的原有检查。人工查看 `ui-smoke-pagination-history-147-reference-layout.png`，排列与参考图一致。实际 192 DPI，未切换输入桌面。未执行全量回归、完整 DPI 矩阵、每个管理弹窗的运行检查或设计器往返。
 

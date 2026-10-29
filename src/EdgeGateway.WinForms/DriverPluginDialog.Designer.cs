@@ -278,8 +278,8 @@ internal sealed partial class DriverPluginDialog
         _gridPaginationBar = new TableLayoutPanel();
         _gridPaginationBar.Name = "_gridPaginationBar";
         _gridPaginationBar.Dock = DockStyle.Bottom;
-        _gridPaginationBar.Height = 46;
-        _gridPaginationBar.Padding = new Padding(0, 4, 0, 4);
+        _gridPaginationBar.Height = 36;
+        _gridPaginationBar.Padding = new Padding(0, 2, 0, 2);
         _gridPaginationBar.Margin = Padding.Empty;
         _gridPaginationBar.ColumnCount = 4;
         _gridPaginationBar.RowCount = 1;
@@ -309,9 +309,12 @@ internal sealed partial class DriverPluginDialog
         _gridPaginationBar.Controls.Add(_gridPaginationSize, 2, 0);
         _gridPaginationBar.Controls.Add(_gridPagination, 3, 0);
         _gridPageHost.Controls.Add(_gridPaginationBar);
-        layout.Controls.Add(_gridPageHost, 0, 1);
+        layout.Controls.Add(_gridPageHost, 0, 2);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(_status, 0, 2);
+        layout.Controls.Add(_status, 0, 1);
+        layout.RowStyles[1].SizeType = SizeType.AutoSize;
+        layout.RowStyles[2].SizeType = SizeType.Percent;
+        layout.RowStyles[2].Height = 100;
         this.Controls.Add(layout);
         ResumeLayout(false);
     }

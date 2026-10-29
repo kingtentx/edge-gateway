@@ -356,7 +356,12 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
         return checked((int)input.Value);
     }
 
-    private static TabPage TabOf(TableLayoutPanel table) => (TabPage)table.Parent!.Parent!;
+    private static TabPage TabOf(TableLayoutPanel table)
+    {
+        for (Control? parent = table.Parent; parent is not null; parent = parent.Parent)
+            if (parent is TabPage tab) return tab;
+        throw new InvalidOperationException("设备字段未挂入页签。");
+    }
     private sealed record ChannelOption(Guid? Id, string Name) { public override string ToString() => Name; }
     private static DeviceConfiguration Clone(DeviceConfiguration value) => GatewayJson.Clone(value);
 }

@@ -20,6 +20,7 @@ public partial class GatewayTable : AntdUI.Table
         // Keep rows compact without fixing their height: wrapped text and action
         // cells still determine the content height. AntdUI applies DPI scaling.
         Gaps = new Size(12, 6);
+        RowSelectedBg = AntdUI.Style.Get(AntdUI.Colour.PrimaryBgHover, nameof(AntdUI.Table));
         EnableHeaderResizing = true;
         base.EditMode = AntdUI.TEditMode.None;
         base.CellClick += (_, e) =>

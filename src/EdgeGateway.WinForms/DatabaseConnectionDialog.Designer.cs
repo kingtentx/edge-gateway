@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DatabaseConnectionDialog
 {
     private TabPage connectionFieldsTab = null!;
-    private Panel connectionFieldsViewport = null!;
+    private AntdUI.Panel connectionFieldsViewport = null!;
     private TableLayoutPanel connectionFields = null!;
     private Label connectionFieldsSection1 = null!;
     private GatewayInput _name = null!;
@@ -38,7 +38,7 @@ internal sealed partial class DatabaseConnectionDialog
     private AntdUI.Button testConnectionButton = null!;
     private Label _testResult = null!;
     private TabPage batchFieldsTab = null!;
-    private Panel batchFieldsViewport = null!;
+    private AntdUI.Panel batchFieldsViewport = null!;
     private TableLayoutPanel batchFields = null!;
     private Label batchFieldsSection3 = null!;
     private NumericUpDown _connectTimeout = null!;
@@ -73,7 +73,7 @@ internal sealed partial class DatabaseConnectionDialog
         connectionFieldsTab.Name = "connectionFieldsTab";
         connectionFieldsTab.Text = "连接设置";
         connectionFieldsTab.BackColor = Color.White;
-        connectionFieldsViewport = new Panel();
+        connectionFieldsViewport = new AntdUI.Panel();
         connectionFieldsViewport.Name = "connectionFieldsViewport";
         connectionFieldsViewport.Dock = DockStyle.Fill;
         connectionFieldsViewport.AutoScroll = true;
@@ -420,7 +420,7 @@ internal sealed partial class DatabaseConnectionDialog
         batchFieldsTab.Name = "batchFieldsTab";
         batchFieldsTab.Text = "批次与超时";
         batchFieldsTab.BackColor = Color.White;
-        batchFieldsViewport = new Panel();
+        batchFieldsViewport = new AntdUI.Panel();
         batchFieldsViewport.Name = "batchFieldsViewport";
         batchFieldsViewport.Dock = DockStyle.Fill;
         batchFieldsViewport.AutoScroll = true;

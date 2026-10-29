@@ -769,8 +769,8 @@ internal sealed partial class LogArchivePageView
         archivePaginationBar = new TableLayoutPanel();
         archivePaginationBar.Name = "archivePaginationBar";
         archivePaginationBar.Dock = DockStyle.Bottom;
-        archivePaginationBar.Height = 46;
-        archivePaginationBar.Padding = new Padding(0, 4, 0, 4);
+        archivePaginationBar.Height = 36;
+        archivePaginationBar.Padding = new Padding(0, 2, 0, 2);
         archivePaginationBar.Margin = Padding.Empty;
         archivePaginationBar.ColumnCount = 4;
         archivePaginationBar.RowCount = 1;

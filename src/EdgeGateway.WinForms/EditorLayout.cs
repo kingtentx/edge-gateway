@@ -62,10 +62,12 @@ internal static class EditorLayout
             AutoScaleMode = AutoScaleMode.Dpi;
             AutoScaleDimensions = new SizeF(96, 96);
             Font = new Font("Microsoft YaHei UI", 10F);
-            Dock = DockStyle.Fill; AutoScroll = true; BackColor = Color.White;
+            Dock = DockStyle.Fill; BackColor = Color.White;
             Padding = new Padding(14); Margin = Padding.Empty;
             Table = Fields(labelWidth);
-            Controls.Add(Table);
+            var viewport = new AntdUI.Panel { Dock = DockStyle.Fill, AutoScroll = true };
+            viewport.Controls.Add(Table);
+            Controls.Add(viewport);
         }
 
         public void CompleteInitialization()

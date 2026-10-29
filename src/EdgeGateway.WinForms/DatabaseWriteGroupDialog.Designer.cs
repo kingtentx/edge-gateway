@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DatabaseWriteGroupDialog
 {
     private TabPage writeFieldsTab = null!;
-    private Panel writeFieldsViewport = null!;
+    private AntdUI.Panel writeFieldsViewport = null!;
     private TableLayoutPanel writeFields = null!;
     private Label writeFieldsSection1 = null!;
     private GatewayInput _name = null!;
@@ -79,7 +79,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         writeFieldsTab.Name = "writeFieldsTab";
         writeFieldsTab.Text = "写入设置";
         writeFieldsTab.BackColor = Color.White;
-        writeFieldsViewport = new Panel();
+        writeFieldsViewport = new AntdUI.Panel();
         writeFieldsViewport.Name = "writeFieldsViewport";
         writeFieldsViewport.Dock = DockStyle.Fill;
         writeFieldsViewport.AutoScroll = true;

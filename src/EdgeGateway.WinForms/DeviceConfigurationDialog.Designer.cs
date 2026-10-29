@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DeviceConfigurationDialog
 {
     private TabPage acquisitionTab = null!;
-    private Panel acquisitionViewport = null!;
+    private AntdUI.Panel acquisitionViewport = null!;
     private TableLayoutPanel acquisition = null!;
     private Label acquisitionSection1 = null!;
     private GatewaySwitch _enabled = null!;
@@ -35,7 +35,7 @@ internal sealed partial class DeviceConfigurationDialog
     private Label acquisitionHint4 = null!;
     private Label _driverDetails = null!;
     private TabPage scanningTab = null!;
-    private Panel scanningViewport = null!;
+    private AntdUI.Panel scanningViewport = null!;
     private TableLayoutPanel scanning = null!;
     private Label scanningSection5 = null!;
     private Label scanningHint6 = null!;
@@ -59,7 +59,7 @@ internal sealed partial class DeviceConfigurationDialog
         acquisitionTab.Name = "acquisitionTab";
         acquisitionTab.Text = "采集设置";
         acquisitionTab.BackColor = Color.White;
-        acquisitionViewport = new Panel();
+        acquisitionViewport = new AntdUI.Panel();
         acquisitionViewport.Name = "acquisitionViewport";
         acquisitionViewport.Dock = DockStyle.Fill;
         acquisitionViewport.AutoScroll = true;
@@ -363,7 +363,7 @@ internal sealed partial class DeviceConfigurationDialog
         scanningTab.Name = "scanningTab";
         scanningTab.Text = "扫描与恢复";
         scanningTab.BackColor = Color.White;
-        scanningViewport = new Panel();
+        scanningViewport = new AntdUI.Panel();
         scanningViewport.Name = "scanningViewport";
         scanningViewport.Dock = DockStyle.Fill;
         scanningViewport.AutoScroll = true;

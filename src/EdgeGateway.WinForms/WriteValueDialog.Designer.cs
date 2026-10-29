@@ -10,7 +10,7 @@ internal sealed partial class WriteValueDialog
     private TableLayoutPanel heading = null!;
     private Label title = null!;
     private Label _description = null!;
-    private Panel _viewport = null!;
+    private AntdUI.Panel _viewport = null!;
     private TableLayoutPanel content = null!;
     private Label contentSection1 = null!;
     private Label targetLabel = null!;
@@ -82,7 +82,7 @@ internal sealed partial class WriteValueDialog
         _description.Margin = new Padding(0, 4, 0, 4);
         heading.Controls.Add(title, 0, 0);
         heading.Controls.Add(_description, 0, 1);
-        _viewport = new Panel();
+        _viewport = new AntdUI.Panel();
         _viewport.Name = "_viewport";
         _viewport.Dock = DockStyle.Fill;
         _viewport.AutoScroll = true;

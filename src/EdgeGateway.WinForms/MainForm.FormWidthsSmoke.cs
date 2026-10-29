@@ -8,6 +8,7 @@ public sealed partial class MainForm
     {
         if (!_smokeTest || _application.IsRunning) throw new InvalidOperationException("FormWidths requires an isolated stopped host.");
         _refreshTimer.Stop();
+        if (SurfacesListsOnly) { await SmokeListSurfacesAsync(); return; }
         var originalSize = Size;
         var directory = SmokeOutputDirectory("form-widths");
         Directory.CreateDirectory(directory);
@@ -19,6 +20,7 @@ public sealed partial class MainForm
                 ShowPage(key);
                 await Task.Yield();
                 PerformLayoutRecursively(this);
+                if (SurfacesSmoke) AssertSurfaceStyles(_pages[key]);
                 AssertPageToolbarsFit(_pages[key], "form widths " + key);
                 if (!Descendants(_pages[key]).OfType<TabControl>().Any()) AssertHorizontalFilters(_pages[key]);
                 if (!Descendants(_pages[key]).OfType<TabControl>().Any()) AssertSwitchSizes(_pages[key]);
@@ -40,6 +42,7 @@ public sealed partial class MainForm
                 SaveEditorScreenshot(this, "form-widths", key + (narrow ? "-narrow" : "-wide"));
             }
         }
+        if (SurfacesSmoke) await SmokeListSurfacesAsync();
         // Exercise actual editor controls and dynamic parameters without starting collection or external I/O.
         SmokeDriverEditors();
         SmokeDynamicDriverSwitch();

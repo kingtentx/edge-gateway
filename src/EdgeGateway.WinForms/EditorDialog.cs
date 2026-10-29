@@ -15,6 +15,20 @@ public partial class EditorDialog : DpiAwareForm
     internal Exception? LastApplyErrorForSmoke { get; private set; }
     internal bool SuppressApplyErrorDialogForSmoke { get; set; }
     internal IReadOnlyList<TabPage> SmokeTabs => Tabs.TabPages.Cast<TabPage>().ToArray();
+    // Set by list-preview Designers so pagination is the final content row.
+    protected bool ListCommandsAboveContent
+    {
+        set
+        {
+            if (!value) return;
+            _layout.SetRow(Tabs, 3);
+            _layout.SetRow(_feedback, 1);
+            _layout.SetRow(_buttons, 2);
+            _layout.RowStyles[1].SizeType = SizeType.AutoSize;
+            _layout.RowStyles[3].SizeType = SizeType.Percent;
+            _layout.RowStyles[3].Height = 100;
+        }
+    }
     internal TabPage? SelectedSmokeTab { get => Tabs.SelectedTab; set => Tabs.SelectedTab = value; }
     internal IReadOnlyList<Control> SmokeCommands => _readOnlyView ? new Control[] { _cancel } : new Control[] { _confirm, _cancel };
     public EditorDialog() : this("配置", "") { }

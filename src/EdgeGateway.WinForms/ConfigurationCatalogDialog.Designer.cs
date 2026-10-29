@@ -145,8 +145,8 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPaginationBar = new TableLayoutPanel();
         catalogGridPaginationBar.Name = "catalogGridPaginationBar";
         catalogGridPaginationBar.Dock = DockStyle.Bottom;
-        catalogGridPaginationBar.Height = 46;
-        catalogGridPaginationBar.Padding = new Padding(0, 4, 0, 4);
+        catalogGridPaginationBar.Height = 36;
+        catalogGridPaginationBar.Padding = new Padding(0, 2, 0, 2);
         catalogGridPaginationBar.Margin = Padding.Empty;
         catalogGridPaginationBar.ColumnCount = 4;
         catalogGridPaginationBar.RowCount = 1;
@@ -176,9 +176,12 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPaginationBar.Controls.Add(catalogGridPaginationSize, 2, 0);
         catalogGridPaginationBar.Controls.Add(catalogGridPagination, 3, 0);
         catalogGridPageHost.Controls.Add(catalogGridPaginationBar);
-        layout.Controls.Add(catalogGridPageHost, 0, 2);
-        layout.Controls.Add(statusLabel, 0, 3);
-        layout.Controls.Add(footer, 0, 4);
+        layout.Controls.Add(catalogGridPageHost, 0, 4);
+        layout.Controls.Add(statusLabel, 0, 2);
+        layout.Controls.Add(footer, 0, 3);
+        layout.RowStyles[2].SizeType = SizeType.AutoSize;
+        layout.RowStyles[4].SizeType = SizeType.Percent;
+        layout.RowStyles[4].Height = 100;
         Controls.Add(layout);
         ResumeLayout(false);
     }

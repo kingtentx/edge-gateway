@@ -1,8 +1,8 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'Surfaces', 'SurfaceLists', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -132,6 +132,8 @@ namespace EdgeGateway {
                 };
                 var arguments = scenario == "UiRedesign" ? " --smoke-test --screenshot "
                     : scenario == "ButtonAppearance" ? " --smoke-button-appearance --screenshot "
+                    : scenario == "SurfaceLists" ? " --smoke-surfaces-lists --screenshot "
+                    : scenario == "Surfaces" ? " --smoke-surfaces --screenshot "
                     : scenario == "FormWidths" ? " --smoke-form-widths --screenshot "
                     : scenario == "HistorySources" ? " --smoke-history-sources --screenshot "
                     : scenario == "Pagination" ? " --smoke-pagination --screenshot "
@@ -247,6 +249,14 @@ if ($Scenario -eq 'DpiConfirmation' -or $Scenario -eq 'DpiRoundTrip') {
     $marker = if ($Scenario -eq 'DpiRoundTrip') { 'DPI roundtrip smoke passed:' } else { 'DPI confirmation smoke passed:' }
     if ($outputText -notmatch $marker) { throw 'DPI completion marker is missing.' }
     Write-Output "Background $Scenario smoke passed."
+    return
+}
+if ($Scenario -in @('Surfaces', 'SurfaceLists')) {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'Surfaces wrote errors.' }
+    if ($outputText -notmatch 'List surfaces passed:' -or ($Scenario -eq 'Surfaces' -and $outputText -notmatch 'FormWidths smoke passed:')) { throw 'Surfaces completion marker is missing.' }
+    Write-Output 'Background surfaces smoke passed.'
     return
 }
 if ($Scenario -eq 'DeviceColumns') {

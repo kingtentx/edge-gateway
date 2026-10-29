@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DatabasePreviewDialog
 {
     private TabPage summaryFieldsTab = null!;
-    private Panel summaryFieldsViewport = null!;
+    private AntdUI.Panel summaryFieldsViewport = null!;
     private TableLayoutPanel summaryFields = null!;
     private Label schemaState = null!;
     private Label rowState = null!;
@@ -34,7 +34,7 @@ internal sealed partial class DatabasePreviewDialog
         summaryFieldsTab.Name = "summaryFieldsTab";
         summaryFieldsTab.Text = "检查结果";
         summaryFieldsTab.BackColor = Color.White;
-        summaryFieldsViewport = new Panel();
+        summaryFieldsViewport = new AntdUI.Panel();
         summaryFieldsViewport.Name = "summaryFieldsViewport";
         summaryFieldsViewport.Dock = DockStyle.Fill;
         summaryFieldsViewport.AutoScroll = true;
@@ -207,8 +207,8 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridPaginationBar = new TableLayoutPanel();
         valuesGridPaginationBar.Name = "valuesGridPaginationBar";
         valuesGridPaginationBar.Dock = DockStyle.Bottom;
-        valuesGridPaginationBar.Height = 46;
-        valuesGridPaginationBar.Padding = new Padding(0, 4, 0, 4);
+        valuesGridPaginationBar.Height = 36;
+        valuesGridPaginationBar.Padding = new Padding(0, 2, 0, 2);
         valuesGridPaginationBar.Margin = Padding.Empty;
         valuesGridPaginationBar.ColumnCount = 4;
         valuesGridPaginationBar.RowCount = 1;
@@ -241,6 +241,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesTab.Controls.Add(valuesGridPageHost);
         Tabs.TabPages.Add(valuesTab);
         summaryFields.RowCount = 4;
+        ListCommandsAboveContent = true;
         ResumeLayout(false);
     }
 }

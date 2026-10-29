@@ -7,7 +7,7 @@ internal static class UiTheme
     public const int ActionHeight = 38;
     public static readonly Color Navy = Color.FromArgb(18, 31, 51);
     public static readonly Color Blue = Color.FromArgb(22, 119, 255);
-    public static readonly Color Background = Color.FromArgb(245, 245, 245);
+    public static readonly Color Background = Color.White;
     public static readonly Color Ink = Color.FromArgb(31, 31, 31);
     public static readonly Color Muted = Color.FromArgb(115, 115, 115);
     public static readonly Color Border = Color.FromArgb(232, 232, 232);

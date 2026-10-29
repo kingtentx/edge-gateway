@@ -532,7 +532,7 @@ public sealed partial class MainForm
         {
             AssertVisibleBounds(control, context + " pagination size selector");
             if (control.Width > UiTheme.Scale(control, 136) + 1
-                || Math.Abs(control.Height - UiTheme.Scale(control, UiTheme.ActionHeight)) > 1)
+                || Math.Abs(control.Height - UiTheme.Scale(control, 32)) > 1)
                 throw new InvalidOperationException(context + ": pagination size selector has incorrect dimensions: " + control.Bounds);
             return;
         }

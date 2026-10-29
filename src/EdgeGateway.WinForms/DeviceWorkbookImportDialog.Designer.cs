@@ -7,7 +7,7 @@ namespace EdgeGateway.WinForms;
 internal sealed partial class DeviceWorkbookImportDialog
 {
     private TabPage fieldsTab = null!;
-    private Panel fieldsViewport = null!;
+    private AntdUI.Panel fieldsViewport = null!;
     private TableLayoutPanel fields = null!;
     private Label fieldsSection1 = null!;
     private Label fieldsHint2 = null!;
@@ -37,7 +37,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         fieldsTab.Name = "fieldsTab";
         fieldsTab.Text = "导入预览";
         fieldsTab.BackColor = Color.White;
-        fieldsViewport = new Panel();
+        fieldsViewport = new AntdUI.Panel();
         fieldsViewport.Name = "fieldsViewport";
         fieldsViewport.Dock = DockStyle.Fill;
         fieldsViewport.AutoScroll = true;
@@ -142,7 +142,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         fieldsSection3.Padding = new Padding(10, 6, 10, 6);
         fieldsSection3.Margin = new Padding(0, 8, 0, 6);
         fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        fields.Controls.Add(fieldsSection3, 0, 4);
+        fields.Controls.Add(fieldsSection3, 0, 7);
         fields.SetColumnSpan(fieldsSection3, 2);
         _preview = new GatewayTable();
         _preview.Name = "_preview";
@@ -228,8 +228,8 @@ internal sealed partial class DeviceWorkbookImportDialog
         _previewPaginationBar = new TableLayoutPanel();
         _previewPaginationBar.Name = "_previewPaginationBar";
         _previewPaginationBar.Dock = DockStyle.Bottom;
-        _previewPaginationBar.Height = 46;
-        _previewPaginationBar.Padding = new Padding(0, 4, 0, 4);
+        _previewPaginationBar.Height = 36;
+        _previewPaginationBar.Padding = new Padding(0, 2, 0, 2);
         _previewPaginationBar.Margin = Padding.Empty;
         _previewPaginationBar.ColumnCount = 4;
         _previewPaginationBar.RowCount = 1;
@@ -261,7 +261,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         _previewPageHost.Controls.Add(_previewPaginationBar);
         _previewPageHost.Dock = DockStyle.Top;
         _previewPageHost.Height = 288;
-        fields.Controls.Add(_previewPageHost, 0, 5);
+        fields.Controls.Add(_previewPageHost, 0, 8);
         fields.SetColumnSpan(_previewPageHost, 2);
         fieldsSection4 = new Label();
         fieldsSection4.Name = "fieldsSection4";
@@ -275,7 +275,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         fieldsSection4.Padding = new Padding(10, 6, 10, 6);
         fieldsSection4.Margin = new Padding(0, 8, 0, 6);
         fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        fields.Controls.Add(fieldsSection4, 0, 6);
+        fields.Controls.Add(fieldsSection4, 0, 4);
         fields.SetColumnSpan(fieldsSection4, 2);
         _errors = new GatewayInput();
         _errors.Name = "_errors";
@@ -290,7 +290,7 @@ internal sealed partial class DeviceWorkbookImportDialog
         _errors.Name = "DeviceWorkbookErrors";
         _errors.AccessibleName = "校验结果";
         fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        fields.Controls.Add(_errors, 0, 7);
+        fields.Controls.Add(_errors, 0, 5);
         fields.SetColumnSpan(_errors, 2);
         fieldsHint5 = new Label();
         fieldsHint5.Name = "fieldsHint5";
@@ -303,9 +303,10 @@ internal sealed partial class DeviceWorkbookImportDialog
         fieldsHint5.Padding = new Padding(8);
         fieldsHint5.Margin = new Padding(0, 4, 0, 8);
         fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        fields.Controls.Add(fieldsHint5, 0, 8);
+        fields.Controls.Add(fieldsHint5, 0, 6);
         fields.SetColumnSpan(fieldsHint5, 2);
         fields.RowCount = 9;
+        ListCommandsAboveContent = true;
         ResumeLayout(false);
     }
 }

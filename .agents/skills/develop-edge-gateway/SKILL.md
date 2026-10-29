@@ -111,6 +111,8 @@ TCP 读取按协议长度组帧，不假设一次 `ReadAsync` 得到完整报文
 
 ## 6. 实现可操作的桌面界面
 
+2026-10-29 最新界面要求：内容区统一白底；表格选中行使用官方 RowSelectedBg 和 PrimaryBgHover 增强识别。分页底栏为 36 逻辑像素、上下各 2，列表类弹窗将说明、反馈及必要操作放在列表上方，分页为最后一行。表单滚动使用 AntdUI.Panel 的官方滚动条，保留焦点滚入及 DPI 行为；不自绘滚动条。该要求覆盖此前分页栏高度约定，详见 `docs/ui-surfaces-and-list-footers.md`。
+
 全部界面开发使用 AntdUI-Demo 规范样式：主窗体、页面、弹窗、表单、导航、页签、表格、动态参数和详情都采用对应官方基础示例。禁止逐页仿制皮肤；既有原生宿主适配须如实记录，不能将规范更新称为控件全部替换完成。
 
 界面以 [AntdUI-Demo 样式规范](../../../docs/ui-antdui-style-guide.md) 为准。用户 2026-10-28 要求普通按钮采用官方基础 Default / Primary 样式并统一 BorderWidth=1，设备启动使用官方 Success 绿色、停止使用 Error 红色：普通控件使用 GatewayButton，颜色与交互由 AntdUI 默认主题处理，WaveSize 按基础 Demo 统一为 0；禁止逐页设置自定义悬停、按下、禁用颜色或仿制按钮皮肤；设备启停使用真正的 AntdUI.CellButton Success / Error，不再手绘颜色、文字或焦点。全部表格继承 AntdUI.Table，单元格采用 CellText / CellLink / CellSwitch，字段编辑采用 Select / Input。保留稳定 ID、键盘、分页、滚动与无障碍合同。日志页在三个页签上方由 Designer 创建统一标题与说明。其他表单控件、导航、页签也采用 Demo 基础规范；版本依据和例外记录在上述文档，不升级目标框架或改动 Designer 边界。
