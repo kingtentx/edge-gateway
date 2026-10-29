@@ -115,12 +115,20 @@ public sealed partial class MainForm
                     throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error());
                 FitToWorkingArea(testWorkArea: area);
                 await Task.Yield(); PerformLayoutRecursively(this);
-                foreach (var value in new[] { 9.9, 10.1, 100.0, 0.0 })
+                foreach (var value in new[] { 9.9, 10.1, 20.1, 100.0, 0.0 })
                 {
+                    _serverCpu.Update(); _serverMemory.Update();
+                    var cpuDirty = false; var memoryDirty = false;
+                    InvalidateEventHandler cpuInvalidated = (_, _) => cpuDirty = true;
+                    InvalidateEventHandler memoryInvalidated = (_, _) => memoryDirty = true;
+                    _serverCpu.Invalidated += cpuInvalidated; _serverMemory.Invalidated += memoryInvalidated;
                     RefreshServerResources(new(now, "图表验证示例", 22, value,
                         new(1000L << 20, (long)((100 - value) * 10) << 20),
                         [new("C:\\", 100L << 30, 5L << 30), new("D:\\", 500L << 30, 250L << 30),
                          new("E:\\", null, null, "示例：磁盘暂不可用"), new("F:\\", 3000L << 30, 1728L << 30)], []) { History = recoveredHistory });
+                    _serverCpu.Invalidated -= cpuInvalidated; _serverMemory.Invalidated -= memoryInvalidated;
+                    if (!cpuDirty || !memoryDirty) throw new InvalidOperationException("Resource text changed without invalidating its displayed pixels.");
+                    _serverCpu.Update(); _serverMemory.Update();
                     PerformLayoutRecursively(this);
                     AssertResourceValueFits();
                 }
@@ -163,6 +171,9 @@ public sealed partial class MainForm
                     var drive = Descendants(bar).OfType<Label>().Single(label => label.Name == "DiskName");
                     if (progress.Visible && Math.Abs(drive.Top + drive.Height / 2d - progress.Top - progress.Height / 2d) > UiTheme.Scale(drive, 1))
                         throw new InvalidOperationException($"Disk name is not vertically centered: {drive.Bounds}, progress={progress.Bounds}.");
+                    if (progress.Visible && details.Left != progress.Left)
+                        throw new InvalidOperationException("Disk capacity details do not align with the progress bar.");
+                    if (details.Text.Contains("空间偏紧")) throw new InvalidOperationException("Disk details contain removed explanation.");
                     if (progress.UseSystemText || !progress.UseTextCenter || progress.ShowTextDot != 1
                         || Descendants(bar).Any(control => control.Name == "DiskUsed"))
                         throw new InvalidOperationException("Disk percentage must appear once, inside the official progress bar.");

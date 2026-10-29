@@ -162,6 +162,10 @@ public sealed partial class MainForm
         _serverMemory.Text = snapshot.Memory is { } memory ? Load(memory.UsedPercent) : "不可用";
         _serverMemory.ForeColor = snapshot.Memory?.UsedPercent >= 85 ? UiTheme.Warning : snapshot.Memory is null ? UiTheme.Muted : UiTheme.Green;
         SizeResourceValues();
+        // AntdUI 2.4.16 Label may skip invalidation when AutoSize keeps the same
+        // bounds. Resource text must repaint even when only the digits change.
+        _serverCpu.Invalidate();
+        _serverMemory.Invalidate();
         if (snapshot.History.Count > 0)
         {
             // The worker's history is authoritative, including samples taken while another page was open.

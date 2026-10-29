@@ -69,7 +69,7 @@ internal sealed partial class ServerDiskBar : AntdUI.Panel
         _disk = disk; AccessibleName = $"磁盘 {disk.Name}";
         diskName.Text = disk.Name;
         var usage = UsedPercent is { } used ? $"{used:F1}%{(used >= 90 ? " · 空间偏紧" : " 已用")}" : "不可用";
-        diskDetails.Text = UsedPercent is not null ? (UsedPercent >= 90 ? "空间偏紧 · " : "") + $"可用 {Capacity(disk.FreeBytes!.Value)} / 总量 {Capacity(disk.TotalBytes!.Value)}" : "不可用：" + disk.Error;
+        diskDetails.Text = UsedPercent is not null ? $"可用 {Capacity(disk.FreeBytes!.Value)} / 总量 {Capacity(disk.TotalBytes!.Value)}" : "不可用：" + disk.Error;
         diskProgress.Visible = UsedPercent.HasValue;
         diskProgress.Value = (float)(Math.Clamp(UsedPercent ?? 0, 0, 100) / 100);
         diskProgress.State = AntdUI.TType.None;
@@ -89,7 +89,7 @@ internal sealed partial class ServerDiskBar : AntdUI.Panel
             var progressHeight = UiTheme.Scale(this, 24);
             if (diskLayout.RowStyles[0].Height != progressHeight) diskLayout.RowStyles[0].Height = progressHeight;
             var details = TextRenderer.MeasureText(diskDetails.Text, diskDetails.Font,
-                new Size(Math.Max(1, ClientSize.Width - Padding.Horizontal), int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.WordBreak);
+                new Size(Math.Max(1, ClientSize.Width - Padding.Horizontal - diskName.Width - diskName.Margin.Horizontal), int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.WordBreak);
             var height = details.Height + Padding.Vertical + Math.Max(progressHeight, diskName.PreferredHeight);
             if (Height != height) Height = height;
         }

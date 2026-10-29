@@ -17,7 +17,7 @@ internal sealed partial class ServerDiskBar
         diskDetails = new Label { Name = "DiskDetails", Dock = DockStyle.Fill, TextMultiLine = true, ForeColor = UiTheme.Muted, Margin = Padding.Empty };
         diskLayout.Controls.Add(diskName, 0, 0);
         diskLayout.Controls.Add(diskProgress, 1, 0);
-        diskLayout.Controls.Add(diskDetails, 0, 1); diskLayout.SetColumnSpan(diskDetails, 2);
+        diskLayout.Controls.Add(diskDetails, 1, 1);
         Radius = 6; Padding = new Padding(8, 6, 8, 6); Margin = Padding.Empty;
         Back = Color.White; Controls.Add(diskLayout);
     }
