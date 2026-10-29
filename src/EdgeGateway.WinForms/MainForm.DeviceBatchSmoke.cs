@@ -66,9 +66,13 @@ public sealed partial class MainForm
             Require(_lastFeedback.Contains("成功 1 台，跳过 1 台，失败 1 台"), "Partial results were not reported accurately.");
             await RunDeviceBatchAsync([first, last], DeviceBatchAction.Stop);
             Require(!_application.IsDeviceRunning(first) && _application.IsDeviceRunning(independent), "Batch stop affected unselected session.");
+            Require(_footer.ForeColor == UiTheme.Muted, "Zero failures incorrectly shows error color.");
             pager.Current = 1; await Task.Delay(100);
             _devicesPageView.deviceBatchButton.OpenMenu(); await Task.Delay(100);
+            Require(_devicesPageView.deviceBatchButton.OpenedMenu.Visible
+                && _devicesPageView.deviceBatchButton.OpenedCommands.Count == 6, "Batch menu did not open all six commands.");
             SaveEditorScreenshot(this, "device-batch", "checked-menu");
+            SaveEditorScreenshot(_devicesPageView.deviceBatchButton.OpenedMenu, "device-batch", "menu-popup");
             _devicesPageView.deviceBatchButton.OpenedMenu.Close();
             await BuildDeviceBatchMenu().Single(c => c.Key == "CheckFilteredDevices").Execute();
             Require(_checkedDeviceIds.Count == 13, "Select filtered did not include all pages.");

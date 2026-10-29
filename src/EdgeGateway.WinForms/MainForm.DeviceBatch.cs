@@ -77,6 +77,7 @@ public sealed partial class MainForm
         var report = summary + Environment.NewLine + string.Join(Environment.NewLine, details.Concat(failures));
         _log.Write(failures.Count > 0 ? GatewayLogLevel.Warning : GatewayLogLevel.Information, report);
         SetFooter(report);
+        _footer.ForeColor = failures.Count > 0 ? UiTheme.Red : UiTheme.Muted;
         UpdateDeviceConfigurationCommands();
     });
 }

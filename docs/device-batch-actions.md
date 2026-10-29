@@ -13,4 +13,12 @@
 
 ## 验证状态
 
-2026-10-29：源码实现及手动差异审查完成。新增应用层原子保存、失败保持、目标缺失、并发编辑及 Worker IPC 定向用例；新增隔离后台 `DeviceBatch` 界面检查入口。尚未执行本次构建、测试、架构检查、Designer 往返或 Windows 界面检查，等待用户授权。未进行真实设备测试。
+2026-10-29 经用户授权执行 Release 编译、应用层/Worker IPC 定向测试、架构检查及隔离后台 `DeviceBatch` 验证，允许同范围修复重跑。
+
+- Release：`artifacts/device-batch/build-1.log` 成功，0 错误，420 个既有驱动/代理警告；修正反馈颜色后的 `build-2.log` 成功，0 错误，1 个既有 `GatewayWorkerClient.cs:283` CS8602 警告。
+- 定向测试：`artifacts/device-batch/test-1/device-batch.trx`，5/5 通过；覆盖一次保存与未选会话隔离、保存失败不变更、缺失目标拒绝、并发编辑保留及 Worker IPC ID/结果传递。未运行其他核心测试。
+- 架构：`artifacts/device-batch/architecture-1.log` 通过，8 层边界、24 个项目无环，UI/Application 隔离与 MQTT 包归属通过。
+- 隔离后台：`ui-1` 行为检查通过；截图检查发现汇总含“失败 0 台”导致底部错误色，已修正为按实际失败数着色。`ui-2` 复验通过，stderr 为空，包含主页面和六项菜单的 3 张截图。
+- UI 实测 DeviceDpi=192（200%），`ProcessWindowVerified=true`、`InputDesktopSwitch=false`。13 台模拟设备覆盖鼠标和键盘勾选、跨页/刷新保留、菜单目标捕获、批量启停/启用禁用、未选设备持续运行、保存失败保持、部分成功/跳过/失败、筛选清除隐藏目标及空勾选禁用。
+
+本轮未执行全量回归、其他 DPI/跨屏矩阵、Designer 往返或真实设备测试。以上通过结果仅对应列出的定向范围，不等同于现场验收。
