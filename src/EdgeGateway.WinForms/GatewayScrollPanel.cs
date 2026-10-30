@@ -6,6 +6,7 @@ public class GatewayScrollPanel : AntdUI.Panel
 {
     private Size _scrollExtent;
     private Point _pendingPosition;
+    private bool _syncingScrollbars;
     internal ScrollableControl? ScrollHost => Controls.Owner as ScrollableControl;
     internal Size ScrollClientSize => ScrollHost?.ClientSize ?? ClientSize;
     public GatewayScrollPanel() { AutoScroll = true; Radius = 0; }
@@ -13,7 +14,7 @@ public class GatewayScrollPanel : AntdUI.Panel
     public Size AutoScrollMinSize
     {
         get => ScrollHost?.AutoScrollMinSize ?? _scrollExtent;
-        set { _scrollExtent = value; if (ScrollHost is { } host) host.AutoScrollMinSize = value; }
+        set { _scrollExtent = value; if (ScrollHost is { } host) host.AutoScrollMinSize = value; SynchronizeScrollbars(); }
     }
     public Point AutoScrollPosition
     {
@@ -50,5 +51,25 @@ public class GatewayScrollPanel : AntdUI.Panel
     private void BarScrolled(object? sender, AntdUI.IntEventArgs e) => OnViewportScroll();
     private void HostScrolled(object? sender, ScrollEventArgs e) => OnViewportScroll();
     private void HostResized(object? sender, EventArgs e) => PerformLayout();
-    protected virtual void OnViewportScroll() { }
+    protected virtual void OnViewportScroll() => SynchronizeScrollbars();
+
+    protected override void OnLayout(LayoutEventArgs e)
+    {
+        base.OnLayout(e);
+        SynchronizeScrollbars();
+    }
+
+    private void SynchronizeScrollbars()
+    {
+        if (_syncingScrollbars || ScrollHost is not { } host) return;
+        _syncingScrollbars = true;
+        try
+        {
+            // AutoScrollPosition changes do not necessarily send WM_MOUSEWHEEL/WM_PAINT
+            // to AntdUI's inner host. Load its actual position through the official API.
+            YScroll?.LoadValue(host.VerticalScroll);
+            XScroll?.LoadValue(host.HorizontalScroll);
+        }
+        finally { _syncingScrollbars = false; }
+    }
 }

@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**首页滚动同步修复：** 修复滚轮移动内容但滑块位置不变；编译及隔离后台滚动定向检查通过。[原因与验证](docs/ui-overview-scroll-sync.md)。
+
 **2026-10-30 旧配置启动修复：** 按本次明确授权，版本 6 配置库启动时先生成一致性备份，再事务升级到 7，保留原有配置；其他旧版本仍拒绝。[修复与验证](docs/configuration-v6-startup-fix.md)。
 
 **2026-10-30 参数表单补齐：** 新增/编辑提供名称、标识、值、类型和说明；名称与说明随设备保存，手工类型校验。SQLite 结构为 7，版本 6 先备份后升级，其他旧版本不自动迁移。[配置方式与验证](docs/driver-parameter-configuration.md)。

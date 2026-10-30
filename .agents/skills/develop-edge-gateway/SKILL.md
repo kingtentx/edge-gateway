@@ -119,6 +119,8 @@ TCP 读取按协议长度组帧，不假设一次 `ReadAsync` 得到完整报文
 
 界面以 [AntdUI-Demo 样式规范](../../../docs/ui-antdui-style-guide.md) 为准。用户 2026-10-28 要求普通按钮采用官方基础 Default / Primary 样式并统一 BorderWidth=1，设备启动使用官方 Success 绿色、停止使用 Error 红色：普通控件使用 GatewayButton，颜色与交互由 AntdUI 默认主题处理，WaveSize 按基础 Demo 统一为 0；禁止逐页设置自定义悬停、按下、禁用颜色或仿制按钮皮肤；设备启停使用真正的 AntdUI.CellButton Success / Error，不再手绘颜色、文字或焦点。全部表格继承 AntdUI.Table，单元格采用 CellText / CellLink / CellSwitch，字段编辑采用 Select / Input。保留稳定 ID、键盘、分页、滚动与无障碍合同。日志页在三个页签上方由 Designer 创建统一标题与说明。其他表单控件、导航、页签也采用 Demo 基础规范；版本依据和例外记录在上述文档，不升级目标框架或改动 Designer 边界。
 
+程序设置 GatewayScrollPanel 滚动位置或范围后，须通过官方滚动条 LoadValue 同步内层真实滚动状态，不能依赖内层 WM_PAINT 偶然更新滑块；验证滚轮到底、向上、拖动与刷新时滑块和内容一致。见 docs/ui-overview-scroll-sync.md。
+
 用户 2026-10-28 要求有现成 AntdUI 控件就直接使用；窗口、标签、卡片、曲线、容量条、确认/提示、Tooltip 和托盘菜单也采用对应官方控件。只保留原生布局/滚动宿主和 Windows 文件选择器、NotifyIcon 集成；品牌图标不属于控件皮肤。源码清单与当前验收状态见 [全页面控件迁移](../../../docs/ui-antdui-migration.md)，历史 DataGridView 例外不再作为新实现依据。
 
 软件中的容量单位统一显示为 `M`，涵盖界面标签、状态、提示和错误信息；1 M 按 1024 × 1024 字节计算，不因显示名称改变容量数值或限制。

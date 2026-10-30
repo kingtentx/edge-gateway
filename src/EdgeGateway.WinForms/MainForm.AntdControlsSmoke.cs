@@ -95,6 +95,20 @@ public sealed partial class MainForm
             await Task.Delay(150);
             if (viewport.AutoScrollPosition.Y >= 0) throw new InvalidOperationException("First-display dashboard wheel did not scroll.");
             var wheelPosition = viewport.AutoScrollPosition.Y;
+            if (viewport.YScroll?.Value != -wheelPosition) throw new InvalidOperationException("Wheel moved content but not the official thumb.");
+            for (var step = 0; step < 80 && -viewport.AutoScrollPosition.Y < viewport.YScroll!.GetValue(int.MaxValue); step++)
+            {
+                PostControlSmokeMessage(_overviewDeviceSummary.Handle, 0x020A, new IntPtr(unchecked(-120 << 16)), packedPoint);
+                await Task.Delay(20);
+                if (viewport.YScroll!.Value != -viewport.AutoScrollPosition.Y) throw new InvalidOperationException("Wheel position and thumb diverged.");
+            }
+            if (viewport.YScroll!.Value != viewport.YScroll.GetValue(int.MaxValue)) throw new InvalidOperationException("Wheel could not reach the bottom.");
+            SaveEditorScreenshot(this, "antd", "overview-wheel-bottom");
+            PostControlSmokeMessage(_overviewDeviceSummary.Handle, 0x020A, new IntPtr(120 << 16), packedPoint);
+            await Task.Delay(100);
+            if (viewport.YScroll.Value != -viewport.AutoScrollPosition.Y || viewport.YScroll.Value >= viewport.YScroll.GetValue(int.MaxValue))
+                throw new InvalidOperationException("Wheel up did not move both content and thumb.");
+            wheelPosition = viewport.AutoScrollPosition.Y;
             await RefreshSnapshotsAsync();
             PerformLayoutRecursively(this);
             if (viewport.AutoScrollPosition.Y != wheelPosition) throw new InvalidOperationException("Dashboard refresh reset the wheel position.");
@@ -105,7 +119,16 @@ public sealed partial class MainForm
             if (bottom >= 0) throw new InvalidOperationException("Dashboard scrollbar did not reach a lower position.");
             await RefreshSnapshotsAsync();
             PerformLayoutRecursively(this);
+            if (viewport.YScroll.Value != -viewport.AutoScrollPosition.Y) throw new InvalidOperationException("Refresh desynchronized thumb and content.");
             if (viewport.AutoScrollPosition.Y != bottom) throw new InvalidOperationException("Dashboard refresh reset the scrollbar position.");
+            var dragStart = new IntPtr(((scrollbar.Height - 4) << 16) | (scrollbar.Width / 2));
+            var dragEnd = new IntPtr((4 << 16) | (scrollbar.Width / 2));
+            SendControlSmokeMessage(scrollbar.Handle, 0x0201, new IntPtr(1), dragStart);
+            SendControlSmokeMessage(scrollbar.Handle, 0x0200, new IntPtr(1), dragEnd);
+            SendControlSmokeMessage(scrollbar.Handle, 0x0202, IntPtr.Zero, dragEnd);
+            if (scrollbar.Value >= -bottom || scrollbar.Value != -viewport.AutoScrollPosition.Y)
+                throw new InvalidOperationException("Thumb drag did not synchronize with content.");
+            scrollbar.Value = scrollbar.GetValue(int.MaxValue);
             SaveEditorScreenshot(this, "antd", "overview-scrolled");
             Console.WriteLine($"Initial overview scroll passed at {DeviceDpi} DPI: wheel over content, native scrollbar, position retained across resource refresh.");
         }

@@ -3,6 +3,30 @@ namespace EdgeGateway.WinForms;
 public sealed partial class MainForm
 {
     internal bool ScrollbarsSmoke { get; set; }
+    internal bool OverviewScrollSmoke { get; set; }
+    private async Task SmokeOverviewScrollSyncAsync()
+    {
+        _refreshTimer.Stop(); ShowPage("overview");
+        await SmokeInitialOverviewScrollAsync();
+        collapseNavigationButton.PerformClick();
+        await Task.Delay(100); await SmokeInitialOverviewScrollAsync();
+        collapseNavigationButton.PerformClick();
+        using var dialog = new Form { Size = new Size(500, 360) };
+        using var list = new GatewayCheckList { Dock = DockStyle.Fill };
+        dialog.Controls.Add(list);
+        for (var i = 0; i < 100; i++) list.Items.Add("点位 " + i, false);
+        dialog.Show(this);
+        try
+        {
+            await Task.Yield(); list.TopIndex = 70;
+            if (list.TopIndex < 60 || list.YScroll?.Value != -list.AutoScrollPosition.Y)
+                throw new InvalidOperationException("Virtual checklist thumb lost its content position.");
+            list.SetItemChecked(70, true);
+            if (!list.Items.Checked[70]) throw new InvalidOperationException("Checklist selection lost after scroll sync.");
+        }
+        finally { dialog.Close(); }
+        Console.WriteLine("Overview scroll sync smoke passed: wheel bottom/up, official thumb/content equality, refresh, collapsed/expanded navigation and virtual checklist.");
+    }
 
     private async Task SmokeScrollbarsAsync()
     {
