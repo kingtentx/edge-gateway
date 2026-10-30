@@ -98,7 +98,7 @@ public sealed partial class MainForm
             ScanMode = DeviceScanMode.TagRate, AutoDemotionEnabled = true, DemotionFailureCount = 4, DemotionIntervalMs = 42000,
             SerialPortName = "COM17", BaudRate = 19200, DataBits = 8, Parity = "Odd", StopBits = "Two",
             Tags = [firstTag, secondTag],
-            Properties = descriptor.Parameters.Where(x => x.BoundProperty is null)
+            Properties = descriptor.Parameters.Where(x => x.BoundProperty is null && x.DeviceProperty is null)
                 .ToDictionary(x => x.Key, x => ConfigurationSmokeParameterValue(descriptor, x, false), StringComparer.Ordinal)
         };
     }
@@ -112,15 +112,16 @@ public sealed partial class MainForm
         result.PollIntervalMs = 2190; result.TimeoutMs = 5430;
         result.ScanMode = DeviceScanMode.DeviceRate; result.AutoDemotionEnabled = false;
         result.DemotionFailureCount = 5; result.DemotionIntervalMs = 12500;
-        if (descriptor.IsLegacy || descriptor.Parameters.Count > 0)
-        {
-            foreach (var parameter in descriptor.Parameters.Where(x => x.BoundProperty is null && !x.IsReadOnly))
-                result.Properties[parameter.Key] = ConfigurationSmokeParameterValue(descriptor, parameter, true);
-        }
-        else if (descriptor.Id == "modbus-tcp")
+        if (descriptor.Id == "modbus-tcp")
         {
             result.Host = "192.0.2.11"; result.Port = 15022; result.UnitId = 9;
         }
+        else if (descriptor.IsLegacy || descriptor.Parameters.Count > 0)
+        {
+            foreach (var parameter in descriptor.Parameters.Where(x => x.BoundProperty is null && x.DeviceProperty is null && !x.IsReadOnly))
+                result.Properties[parameter.Key] = ConfigurationSmokeParameterValue(descriptor, parameter, true);
+        }
+
         return result;
     }
 
@@ -155,7 +156,7 @@ public sealed partial class MainForm
             ["DemotionFailureCount"] = device.DemotionFailureCount.ToString(CultureInfo.InvariantCulture),
             ["DemotionIntervalMs"] = device.DemotionIntervalMs.ToString(CultureInfo.InvariantCulture)
         };
-        if (descriptor.IsLegacy || descriptor.Parameters.Count > 0) return values;
+        if (!descriptor.Parameters.Any(parameter => parameter.DeviceProperty is not null)) return values;
         if (descriptor.Id == "modbus-tcp")
         {
             values["Host"] = device.Host; values["Port"] = device.Port.ToString(CultureInfo.InvariantCulture);
@@ -173,7 +174,7 @@ public sealed partial class MainForm
     private static void SetConfigurationSmokeFields(DeviceConfigurationDialog editor, DriverDescriptor descriptor, DeviceConfiguration expected)
     {
         foreach (var field in ConfigurationSmokeNativeValues(expected, descriptor)) editor.SetFieldForSmoke(field.Key, field.Value);
-        foreach (var parameter in descriptor.Parameters.Where(x => x.BoundProperty is null && !x.IsReadOnly))
+        foreach (var parameter in descriptor.Parameters.Where(x => x.BoundProperty is null && x.DeviceProperty is null && !x.IsReadOnly))
             editor.SetFieldForSmoke("Properties." + parameter.Key, expected.Properties[parameter.Key]);
     }
 
@@ -182,13 +183,15 @@ public sealed partial class MainForm
         if (editor.Value is not null) throw new InvalidOperationException(descriptor.Id + ": configuration result exists before confirmation.");
         editor.VerifyBindingsForSmoke();
         var parameterPage = descriptor.IsLegacy || descriptor.Parameters.Count > 0;
-        const string defaultTab = "AcquisitionSettings";
+        const string defaultTab = "DriverConfigurationParameters";
         if (editor.SelectedSmokeTab?.Name != defaultTab)
             throw new InvalidOperationException($"{descriptor.Id}: dedicated configuration opened '{editor.SelectedSmokeTab?.Name}', expected '{defaultTab}'.");
         var values = ConfigurationSmokeNativeValues(expected, descriptor);
         values["DriverId"] = expected.DriverId;
         var inputs = Descendants(editor).Where(x => x.Name.StartsWith("DeviceConfiguration_", StringComparison.Ordinal))
             .ToDictionary(x => x.Name[20..], StringComparer.Ordinal);
+        foreach (var parameter in descriptor.Parameters.Where(parameter => parameter.DeviceProperty is not null))
+            inputs.Add(parameter.DeviceProperty!, editor.SmokeParameterInputs.Single(input => input.Name == "DriverParameter_" + parameter.Key));
         if (!values.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(inputs.Keys))
             throw new InvalidOperationException($"{descriptor.Id}: dedicated configuration has unrelated or missing native fields: {string.Join(", ", inputs.Keys)}.");
         foreach (var field in values)
@@ -204,7 +207,7 @@ public sealed partial class MainForm
         {
             // The shared panel already verifies bound values and enum options. Here
             // verify the new dialog actually loaded this device's saved properties.
-            foreach (var parameter in descriptor.Parameters.Where(x => x.BoundProperty is null))
+            foreach (var parameter in descriptor.Parameters.Where(x => x.BoundProperty is null && x.DeviceProperty is null))
                 AssertConfigurationSmokeInput(editor.SmokeParameterInputs.Single(x => x.Name == "DriverParameter_" + parameter.Key),
                     expected.Properties.GetValueOrDefault(parameter.Key, parameter.DefaultValue), descriptor.Id);
         }

@@ -72,11 +72,19 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
         _scanMode.Items.AddRange(Enum.GetValues<DeviceScanMode>().Cast<object>().ToArray());
         _scanMode.SelectedItem = _original.ScanMode;
         _scanMode.Format += (_, e) => e.Value = e.ListItem is DeviceScanMode.TagRate ? "按点位周期扫描" : "按设备周期扫描";
-        _driver.SelectedIndexChanged += (_, _) => UpdateProtocolFields();
+        _driver.SelectedIndexChanged += (_, _) =>
+        {
+            try { UpdateProtocolFields(); }
+            catch (Exception exception)
+            {
+                _driver.SelectedItem = _descriptor;
+                MessageBox.Show(this, exception.Message, "驱动参数", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        };
         _cycle.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
         _timeout.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
         UpdateProtocolFields();
-        Tabs.SelectedTab = acquisitionTab;
+        Tabs.SelectedTab = isNew ? acquisitionTab : _protocolPage ?? acquisitionTab;
         if (isNew && !readOnly) SetConfirmText("添加设备");
         if (readOnly) SetReadOnlyView();
     }
@@ -115,16 +123,22 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
                 draft.Properties = new Dictionary<string, string>(StringComparer.Ordinal);
                 _driverDrafts.Add(descriptor.Id, draft);
             }
-            if (descriptor.IsLegacy || descriptor.Parameters.Count > 0)
+            _parameters = new DriverParameterPanel();
+            _parameters.SetReadOnly(_readOnly);
+            _protocolPage = new TabPage(descriptor.Name + " · 参数") { Name = "DriverConfigurationParameters", BackColor = Color.White };
+            _protocolPage.Controls.Add(_parameters);
+            Tabs.TabPages.Add(_protocolPage);
+            var parameterDevice = Clone(draft);
+            parameterDevice.PollIntervalMs = IntegerValue(_cycle);
+            parameterDevice.TimeoutMs = IntegerValue(_timeout);
+            _parameters.LoadParameters(descriptor, parameterDevice, draft.Properties, "通用设置");
+            customParameters.LoadValues(draft.Properties, descriptor.Parameters.Select(parameter => parameter.Key), _readOnly);
+            foreach (var field in _parameters.Fields.Where(field => field.Metadata.DeviceProperty is not null))
             {
-                _parameters = new DriverParameterPanel();
-                _parameters.SetReadOnly(_readOnly);
-                _protocolPage = new TabPage("驱动参数") { Name = "DriverConfigurationParameters", BackColor = Color.White };
-                _protocolPage.Controls.Add(_parameters);
-                Tabs.TabPages.Add(_protocolPage);
-                _parameters.LoadParameters(descriptor, BoundDevice(), draft.Properties, "采集设置");
+                _fields.Add(field.Metadata.DeviceProperty!, field.Input);
+                _connectionKeys.Add(field.Metadata.DeviceProperty!);
             }
-            else if (descriptor.Id is "modbus-tcp" or "modbus-rtu") BuildNativePage(descriptor.Id, draft);
+            Tabs.SelectedTab = _protocolPage;
             _driverDetails.Text = descriptor.Description
                 + (string.IsNullOrWhiteSpace(descriptor.Prerequisites) ? "" : "\n运行条件：" + descriptor.Prerequisites)
                 + (descriptor.RequiresSta ? "\n此驱动使用专用 STA 线程运行。" : "");
@@ -132,39 +146,6 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
             Value = null;
         }
         finally { Tabs.ResumeLayout(true); }
-    }
-
-    private void BuildNativePage(string driverId, DeviceConfiguration draft)
-    {
-        // Build the complete 96-DPI subtree before attaching it to an already shown
-        // TabControl. The viewport then scales only this new protocol page once.
-        var viewport = new EditorLayout.FieldViewport();
-        var connection = viewport.Table;
-        var rtu = driverId == "modbus-rtu";
-        _protocolPage = new TabPage(rtu ? "串口连接" : "网络连接") { Name = "NativeConnection", BackColor = Color.White };
-        Section(connection, rtu ? "串口连接参数" : "网络连接参数", rtu ? "与设备端的串口设置保持一致。" : "填写设备实际使用的主机地址、端口与站号。");
-        if (rtu)
-        {
-            AddConnection(connection, "SerialPortName", "串口名称", TextInput(draft.SerialPortName));
-            AddConnection(connection, "BaudRate", "波特率", Number(draft.BaudRate, 300, 4_000_000));
-            AddConnection(connection, "DataBits", "数据位", Number(draft.DataBits, 5, 8));
-            AddConnection(connection, "Parity", "校验位", Choice(["None", "Odd", "Even", "Mark", "Space"], draft.Parity));
-            AddConnection(connection, "StopBits", "停止位", Choice(["One", "Two"], draft.StopBits));
-            AddConnection(connection, "UnitId", "Modbus 站号", Number(draft.UnitId, 1, 247));
-            Hint(connection, "Modbus RTU 二进制通信要求 8 个数据位，停止位选择 One 或 Two；同一串口当前只允许一个启用设备。");
-        }
-        else
-        {
-            AddConnection(connection, "Host", "主机地址", TextInput(draft.Host));
-            AddConnection(connection, "Port", "TCP 端口", Number(draft.Port, 1, 65535));
-            AddConnection(connection, "UnitId", "Modbus 站号", Number(draft.UnitId, 1, 247));
-            Hint(connection, "主机填写设备 IP 或域名；TCP 端口为 1–65535，站号为 1–247。寄存器地址、类型与字节序在点位中配置。");
-        }
-        _protocolPage.Controls.Add(viewport);
-        Tabs.TabPages.Add(_protocolPage);
-        viewport.CompleteInitialization();
-        viewport.PerformAutoScale();
-        viewport.PerformLayout();
     }
 
     private void ApplyReadOnlyState()
@@ -181,21 +162,11 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
     {
         var descriptor = _descriptor ?? throw new InvalidOperationException("请选择采集驱动。");
         var candidate = Clone(_driverDrafts[descriptor.Id]);
-        if (_parameters is not null) candidate.Properties = _parameters.CaptureProperties();
-        else if (descriptor.Id == "modbus-tcp")
+        if (_parameters is not null)
         {
-            candidate.Host = _fields["Host"].Text.Trim();
-            candidate.Port = IntegerValue((NumericUpDown)_fields["Port"]);
-            candidate.UnitId = IntegerValue((NumericUpDown)_fields["UnitId"]);
-        }
-        else if (descriptor.Id == "modbus-rtu")
-        {
-            candidate.SerialPortName = _fields["SerialPortName"].Text.Trim();
-            candidate.BaudRate = IntegerValue((NumericUpDown)_fields["BaudRate"]);
-            candidate.DataBits = IntegerValue((NumericUpDown)_fields["DataBits"]);
-            candidate.Parity = ((ComboBox)_fields["Parity"]).SelectedItem?.ToString() ?? "";
-            candidate.StopBits = ((ComboBox)_fields["StopBits"]).SelectedItem?.ToString() ?? "";
-            candidate.UnitId = IntegerValue((NumericUpDown)_fields["UnitId"]);
+            candidate.Properties = _parameters.CaptureProperties();
+            _parameters.CaptureConnection(candidate);
+            customParameters.ApplyTo(candidate.Properties);
         }
         _driverDrafts[descriptor.Id] = candidate;
         return candidate;
@@ -321,33 +292,18 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
         return Value ?? throw new InvalidOperationException("设备配置尚未通过验证。");
     }
 
-    private DeviceConfiguration BoundDevice() => new()
+    private DeviceConfiguration BoundDevice()
     {
-        Id = _original.Id, PollIntervalMs = IntegerValue(_cycle), TimeoutMs = IntegerValue(_timeout)
-    };
+        var device = Clone(_descriptor is not null ? _driverDrafts[_descriptor.Id] : _original);
+        device.PollIntervalMs = IntegerValue(_cycle); device.TimeoutMs = IntegerValue(_timeout);
+        return device;
+    }
 
     private T Register<T>(string key, T input) where T : Control
     {
         input.Name = "DeviceConfiguration_" + key;
         _fields.Add(key, input);
         return input;
-    }
-
-    private void AddConnection(TableLayoutPanel table, string key, string caption, Control input)
-    {
-        Field(table, caption, Register(key, input));
-        _connectionKeys.Add(key);
-        _connectionInputs.Add(input);
-    }
-
-    private static NumericUpDown Number(int value, int minimum, int maximum) =>
-        NumberInput(value, Math.Min(value, minimum), Math.Max(value, maximum));
-
-    private static ComboBox Choice(string[] options, string selected)
-    {
-        var values = options.Cast<object>().ToList();
-        if (!options.Contains(selected, StringComparer.Ordinal)) values.Add(selected);
-        return SelectInput(values.ToArray(), selected);
     }
 
     private static int IntegerValue(NumericUpDown input)

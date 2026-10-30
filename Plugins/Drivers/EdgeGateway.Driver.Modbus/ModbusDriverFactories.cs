@@ -7,7 +7,14 @@ namespace EdgeGateway.Driver.Modbus;
 
 public sealed class ModbusTcpDriverFactory : IDriverFactory
 {
-    public DriverDescriptor Descriptor { get; } = new("modbus-tcp", "Modbus TCP", "FC01/02/03/04 采集，FC05/06/16 写入；0 基址", true);
+    public DriverDescriptor Descriptor { get; } = new("modbus-tcp", "Modbus TCP", "FC01/02/03/04 采集，FC05/06/16 写入；0 基址", true)
+    {
+        Parameters = [
+            new("Host", "主机地址", "设备 IP 或域名。", "String", "127.0.0.1", []) { DeviceProperty = "Host" },
+            new("Port", "TCP 端口", "范围 1–65535。", "Int32", "502", []) { DeviceProperty = "Port" },
+            new("UnitId", "Modbus 站号", "范围 1–247，不支持广播读写。", "Byte", "1", []) { DeviceProperty = "UnitId" }
+        ]
+    };
     public IDeviceDriver Create(DeviceConfiguration configuration)
     {
         ModbusValidation.ThrowIfInvalid(Validate(configuration));
@@ -24,7 +31,17 @@ public sealed class ModbusTcpDriverFactory : IDriverFactory
 
 public sealed class ModbusRtuDriverFactory : IDriverFactory
 {
-    public DriverDescriptor Descriptor { get; } = new("modbus-rtu", "Modbus RTU", "串口 RTU / CRC16；首版同一串口仅允许配置一个设备", true);
+    public DriverDescriptor Descriptor { get; } = new("modbus-rtu", "Modbus RTU", "串口 RTU / CRC16；首版同一串口仅允许配置一个设备", true)
+    {
+        Parameters = [
+            new("SerialPortName", "串口名称", "同一串口当前只允许一个启用设备。", "String", "COM1", []) { DeviceProperty = "SerialPortName" },
+            new("BaudRate", "波特率", "范围 300–4000000，与设备端一致。", "Int32", "9600", []) { DeviceProperty = "BaudRate" },
+            new("DataBits", "数据位", "Modbus RTU 二进制通信要求 8 个数据位。", "Int32", "8", []) { DeviceProperty = "DataBits" },
+            new("Parity", "校验位", "与设备端一致。", "String", "None", ["None", "Odd", "Even", "Mark", "Space"]) { DeviceProperty = "Parity" },
+            new("StopBits", "停止位", "与设备端一致。", "String", "One", ["One", "Two"]) { DeviceProperty = "StopBits" },
+            new("UnitId", "Modbus 站号", "范围 1–247，不支持广播读写。", "Byte", "1", []) { DeviceProperty = "UnitId" }
+        ]
+    };
     public IDeviceDriver Create(DeviceConfiguration configuration)
     {
         ModbusValidation.ThrowIfInvalid(Validate(configuration));

@@ -12,6 +12,7 @@ internal sealed class DriverParameterPanel : UserControl
     private Dictionary<string, string> _original = [];
     private bool _readOnly;
     public IReadOnlyCollection<Control> Inputs => _fields.Values.Select(x => x.Input).ToArray();
+    internal IEnumerable<(DriverParameterDescriptor Metadata, Control Input)> Fields => _fields.Values;
 
     public DriverParameterPanel()
     {
@@ -44,7 +45,9 @@ internal sealed class DriverParameterPanel : UserControl
                     boundGroup ? $"下列参数只读；周期和超时请在“{basicTabName}”中修改。" : "按现场设备填写，参数选项与范围由驱动提供。");
                 previousBoundGroup = boundGroup;
             }
-            var value = bound ?? (properties.TryGetValue(parameter.Key, out var saved) ? saved : parameter.DefaultValue);
+            var value = bound ?? (parameter.DeviceProperty is { } property
+                ? Convert.ToString(ConnectionProperty(property).GetValue(device), CultureInfo.InvariantCulture) ?? ""
+                : properties.TryGetValue(parameter.Key, out var saved) ? saved : parameter.DefaultValue);
             var input = CreateInput(parameter, value);
             input.Name = "DriverParameter_" + parameter.Key;
             if (bound is not null || parameter.IsReadOnly)
@@ -69,7 +72,7 @@ internal sealed class DriverParameterPanel : UserControl
             else if (!string.IsNullOrWhiteSpace(parameter.Description)) EditorLayout.FieldNote(table, parameter.Description);
             _fields.Add(parameter.Key, (parameter, input));
         }
-        if (descriptor.Parameters.Count == 0) EditorDialog.Hint(table, "此驱动没有额外参数。");
+        if (descriptor.Parameters.Count == 0) EditorDialog.Hint(table, "此驱动无需额外连接配置。采集地址和数据类型在点位中设置。");
         table.ResumeLayout(false);
         Controls.Add(_page);
         _page.CompleteInitialization();
@@ -105,10 +108,28 @@ internal sealed class DriverParameterPanel : UserControl
         var result = new Dictionary<string, string>(_original, StringComparer.Ordinal);
         foreach (var field in _fields.Values)
         {
+            if (field.Metadata.DeviceProperty is not null) continue;
             if (field.Metadata.BoundProperty is not null) { result.Remove(field.Metadata.Key); continue; }
             result[field.Metadata.Key] = ReadInput(field.Input);
         }
         return result;
+    }
+
+    public void CaptureConnection(DeviceConfiguration device)
+    {
+        foreach (var field in _fields.Values.Where(field => field.Metadata.DeviceProperty is not null))
+        {
+            var property = ConnectionProperty(field.Metadata.DeviceProperty!);
+            property.SetValue(device, Convert.ChangeType(ReadInput(field.Input), property.PropertyType, CultureInfo.InvariantCulture));
+        }
+    }
+
+    private static System.Reflection.PropertyInfo ConnectionProperty(string name)
+    {
+        // Metadata may bind connection fields only; identity and lifecycle settings remain protected.
+        if (name is not ("Host" or "Port" or "UnitId" or "SerialPortName" or "BaudRate" or "DataBits" or "Parity" or "StopBits"))
+            throw new InvalidOperationException("不支持的驱动连接字段：" + name);
+        return typeof(DeviceConfiguration).GetProperty(name)!;
     }
 
     internal Control? FindValidationInput(string message)
@@ -129,7 +150,9 @@ internal sealed class DriverParameterPanel : UserControl
         {
             if (field.Metadata.Options.Count > 0 && field.Input is ComboBox combo)
             {
-                var expected = _original.GetValueOrDefault(field.Metadata.Key, field.Metadata.DefaultValue);
+                var expected = field.Metadata.DeviceProperty is { } property
+                    ? Convert.ToString(ConnectionProperty(property).GetValue(device), CultureInfo.InvariantCulture)
+                    : _original.GetValueOrDefault(field.Metadata.Key, field.Metadata.DefaultValue);
                 if (combo.SelectedIndex < 0 || verifyInitialSelection && combo.SelectedItem?.ToString() != expected)
                     throw new InvalidOperationException($"{descriptor.Id}: parameter {field.Metadata.Key} lost its configured selection.");
                 foreach (var option in field.Metadata.Options)
@@ -140,7 +163,7 @@ internal sealed class DriverParameterPanel : UserControl
             {
                 if (ReadInput(field.Input) != bound || captured.ContainsKey(field.Metadata.Key)) throw new InvalidOperationException($"{descriptor.Id}: invalid bound parameter {field.Metadata.Key}.");
             }
-            else if (!captured.TryGetValue(field.Metadata.Key, out var value) || value != ReadInput(field.Input))
+            else if (field.Metadata.DeviceProperty is null && (!captured.TryGetValue(field.Metadata.Key, out var value) || value != ReadInput(field.Input)))
                 throw new InvalidOperationException($"{descriptor.Id}: parameter {field.Metadata.Key} does not round-trip.");
         }
     }

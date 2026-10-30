@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**2026-10-30 驱动参数统一：** 原生、迁移与上传插件共用元数据驱动的 AntdUI 参数编辑；支持按驱动保存手工参数草稿，参数是否生效由插件实现及校验决定。[配置方式与验证](docs/driver-parameter-configuration.md)。
+
 **2026-10-29 首页与纵向滚动：** 首页卡片分层，CPU/内存图增高 50%，磁盘每行四项且百分比显示在条内，删除重复导航按钮；各页面及编辑器使用 AntdUI 官方滚动容器。Release 编译和隔离后台定向验证通过。[实现与验证边界](docs/ui-overview-scroll-layout.md)。
 
 **2026-10-29 内容区与列表底栏：** 统一白色内容底色、增强主题选中行，压缩分页栏；表单使用 AntdUI 官方滚动条，列表弹窗操作及提示移至表格上方。Release 编译和隔离后台定向验证通过。[实现与验证边界](docs/ui-surfaces-and-list-footers.md)。

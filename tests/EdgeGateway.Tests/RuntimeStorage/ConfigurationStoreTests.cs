@@ -13,6 +13,34 @@ public sealed class ConfigurationStoreTests : IDisposable
     private string DatabasePath => Path.Combine(_directory, "gateway.config.db");
 
     [Fact]
+    public async Task DriverTypedAndCustomParametersSurviveReopenAndDeletion()
+    {
+        var configuration = DemoConfiguration.Create();
+        var device = configuration.Devices[0];
+        device.Host = "192.0.2.25"; device.Port = 15025;
+        device.SerialPortName = "COM17"; device.Parity = "Odd";
+        device.Properties = new() { ["Endpoint"] = "  fixture://设备  ", ["Token"] = "fake-secret", ["Empty"] = "" };
+        await using (var store = new SqliteConfigurationStore(DatabasePath)) await store.SaveAsync(configuration);
+        await using (var store = new SqliteConfigurationStore(DatabasePath))
+        {
+            var saved = await store.LoadAsync();
+            var actual = saved.Devices.Single(d => d.Id == device.Id);
+            Assert.Equal(device.Properties.OrderBy(p => p.Key), actual.Properties.OrderBy(p => p.Key));
+            Assert.Equal(device.Host, actual.Host); Assert.Equal(device.Port, actual.Port);
+            Assert.Equal(device.SerialPortName, actual.SerialPortName); Assert.Equal(device.Parity, actual.Parity);
+            actual.Properties["Secret"] = actual.Properties["Token"];
+            actual.Properties.Remove("Token"); actual.Properties.Remove("Empty");
+            await store.SaveAsync(saved);
+        }
+        await using var reopened = new SqliteConfigurationStore(DatabasePath);
+        var edited = (await reopened.LoadAsync()).Devices.Single(d => d.Id == device.Id);
+        Assert.Equal(2, edited.Properties.Count);
+        Assert.Equal("fake-secret", edited.Properties["Secret"]);
+        Assert.Equal("  fixture://设备  ", edited.Properties["Endpoint"]);
+        Assert.Equal(device.Tags.Select(t => t.Id), edited.Tags.Select(t => t.Id));
+    }
+
+    [Fact]
     public async Task LiteralCredentialsSurviveSqliteRestartAndConfigurationExchange()
     {
         var configuration = DemoConfiguration.Create();

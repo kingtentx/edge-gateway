@@ -17,6 +17,26 @@ public sealed class CatalogFixture
 
 public sealed class CatalogTests(CatalogFixture catalog) : IClassFixture<CatalogFixture>
 {
+    [Theory]
+    [InlineData(false, 3)]
+    [InlineData(true, 6)]
+    public void NativeConnectionMetadataSurvivesCatalogSerialization(bool serial, int count)
+    {
+        var descriptor = serial ? new ModbusRtuDriverFactory().Descriptor : new ModbusTcpDriverFactory().Descriptor;
+        var restored = JsonSerializer.Deserialize<DriverDescriptor>(JsonSerializer.Serialize(descriptor, GatewayJson.Options), GatewayJson.Options)!;
+        Assert.Equal(count, restored.Parameters.Count);
+        Assert.All(restored.Parameters, parameter =>
+        {
+            Assert.Equal(parameter.Key, parameter.DeviceProperty);
+            Assert.Null(parameter.BoundProperty);
+            var property = typeof(DeviceConfiguration).GetProperty(parameter.DeviceProperty!);
+            Assert.NotNull(property);
+            Assert.NotNull(Convert.ChangeType(parameter.DefaultValue, property.PropertyType, System.Globalization.CultureInfo.InvariantCulture));
+        });
+        if (serial)
+            Assert.Equal(new[] { "None", "Odd", "Even", "Mark", "Space" }, restored.Parameters.Single(p => p.Key == "Parity").Options);
+    }
+
     [Fact]
     public void HslAuthorizationInputIsSecretAndAllowsLiteralValues()
     {

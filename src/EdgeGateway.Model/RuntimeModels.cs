@@ -16,6 +16,8 @@ public sealed record DriverParameterDescriptor(string Key, string Name, string D
     string DefaultValue, IReadOnlyList<string> Options, bool IsReadOnly = false, bool IsSecret = false)
 {
     public string? BoundProperty { get; init; }
+    // Editable connection fields stored in the typed device model, not Properties.
+    public string? DeviceProperty { get; init; }
 }
 public sealed record DriverMethodDescriptor(string Name, string DisplayName, string Description, bool SupportsWrite = false)
 {

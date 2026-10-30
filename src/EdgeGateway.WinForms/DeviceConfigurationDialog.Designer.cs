@@ -6,6 +6,8 @@ namespace EdgeGateway.WinForms;
 
 internal sealed partial class DeviceConfigurationDialog
 {
+    private TabPage customParametersTab = null!;
+    private DriverCustomParametersView customParameters = null!;
     private TabPage acquisitionTab = null!;
     private AntdUI.Panel acquisitionViewport = null!;
     private TableLayoutPanel acquisition = null!;
@@ -55,9 +57,12 @@ internal sealed partial class DeviceConfigurationDialog
     private void InitializeComponent()
     {
         SuspendLayout();
+        customParametersTab = new TabPage("自定义参数") { Name = "CustomDriverParametersTab", BackColor = Color.White };
+        customParameters = new DriverCustomParametersView();
+        customParametersTab.Controls.Add(customParameters);
         acquisitionTab = new TabPage();
         acquisitionTab.Name = "acquisitionTab";
-        acquisitionTab.Text = "采集设置";
+        acquisitionTab.Text = "通用设置";
         acquisitionTab.BackColor = Color.White;
         acquisitionViewport = new AntdUI.Panel();
         acquisitionViewport.Name = "acquisitionViewport";
@@ -197,7 +202,7 @@ internal sealed partial class DeviceConfigurationDialog
         acquisition.SetColumnSpan(acquisitionSection2, 2);
         acquisitionHint3 = new Label();
         acquisitionHint3.Name = "acquisitionHint3";
-        acquisitionHint3.Text = "选择驱动后，在对应连接页配置设备地址。";
+        acquisitionHint3.Text = "选择驱动后自动显示该驱动的配置项；在驱动参数页填写连接设置。";
         acquisitionHint3.AutoSize = true;
         acquisitionHint3.Dock = DockStyle.Fill;
         acquisitionHint3.ForeColor = UiTheme.Muted;
@@ -554,6 +559,7 @@ internal sealed partial class DeviceConfigurationDialog
         scanning.SetColumnSpan(scanningHint7, 2);
         acquisition.RowCount = 12;
         scanning.RowCount = 7;
+        Tabs.TabPages.Add(customParametersTab);
         ResumeLayout(false);
     }
 }
