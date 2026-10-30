@@ -18,6 +18,7 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
 
     /// <summary>Set by LoadAsync/SaveAsync; creating an empty configuration database does not mark defaults saved.</summary>
     public bool HasSavedConfiguration => _hasSavedConfiguration;
+    public string? UpgradeBackupPath { get; private set; }
 
     public async Task<GatewayConfiguration> LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -77,8 +78,13 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
             using var command = connection.CreateCommand();
             command.CommandText = "PRAGMA user_version";
             var version = Convert.ToInt32(command.ExecuteScalar());
+            if (version == 6)
+            {
+                UpgradeVersionSix(connection);
+                version = RelationalConfiguration.StorageVersion;
+            }
             if (version != 0 && version != RelationalConfiguration.StorageVersion)
-                throw new InvalidDataException($"配置数据库结构版本 {version} 不受支持；当前需要版本 {RelationalConfiguration.StorageVersion}。旧库不会自动迁移或清空，请使用新的空数据目录。");
+                throw new InvalidDataException($"配置数据库结构版本 {version} 不受支持；当前需要版本 {RelationalConfiguration.StorageVersion}。仅支持备份后从版本 6 升级至 7，其他旧库不会迁移或清空。");
             command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";
             var tableCount = Convert.ToInt32(command.ExecuteScalar());
             if (version == 0 && tableCount != 0)
@@ -112,6 +118,41 @@ public sealed class SqliteConfigurationStore(string path, Func<GatewayConfigurat
             return _connection = connection;
         }
         catch { connection.Dispose(); throw; }
+    }
+
+
+    private void UpgradeVersionSix(SqliteConnection connection)
+    {
+        string? backupPath = null;
+        try
+        {
+            // SQLite's backup API includes committed WAL content; copying only the .db file would not.
+            backupPath = _path + ".v6-backup-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N") + ".db";
+            using (var backup = new SqliteConnection(new SqliteConnectionStringBuilder
+                { DataSource = backupPath, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false }.ToString()))
+            {
+                backup.Open(); connection.BackupDatabase(backup);
+            }
+            UpgradeBackupPath = backupPath;
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "PRAGMA user_version";
+            if (Convert.ToInt32(command.ExecuteScalar()) != 6) throw new InvalidDataException("升级期间数据库版本已改变。");
+            command.CommandText = "PRAGMA quick_check";
+            if (command.ExecuteScalar()?.ToString() != "ok") throw new InvalidDataException("原配置库完整性检查未通过。");
+            // Do not treat an arbitrary database carrying user_version=6 as a gateway database.
+            command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('configuration_snapshots','devices','device_properties','device_groups','driver_registry')";
+            if (Convert.ToInt32(command.ExecuteScalar()) != 5) throw new InvalidDataException("版本 6 配置库缺少必要配置表。");
+            command.CommandText = RelationalConfiguration.ParameterMetadataTableSql + "PRAGMA user_version=7;";
+            command.ExecuteNonQuery();
+            transaction.Commit();
+        }
+        catch (Exception exception) when (exception is SqliteException or IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            throw new InvalidDataException("配置库 6→7 升级未完成，未提交结构变更。"
+                + (UpgradeBackupPath is null ? "请检查备份目录权限和磁盘空间。" : "原库备份：" + backupPath), exception);
+        }
     }
 
 

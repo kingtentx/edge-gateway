@@ -61,6 +61,28 @@ public sealed class HostDefaultInitializationTests : IDisposable
         using var lease = new FileStream(Path.Combine(_root, "gateway.lock"), FileMode.Open, FileAccess.ReadWrite, FileShare.None);
     }
 
+    [Fact]
+    public async Task VersionSixConfigurationStartsAfterBackupUpgradeAndKeepsIdentities()
+    {
+        StageDrivers("installed");
+        Guid[] identities;
+        await using (var host = await Start()) identities = host.Application.GetConfiguration().Devices.Select(device => device.Id).ToArray();
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={Database};Pooling=False"))
+        {
+            connection.Open(); using var command = connection.CreateCommand();
+            command.CommandText = "DROP TABLE device_parameter_metadata; PRAGMA user_version=6;"; command.ExecuteNonQuery();
+        }
+        await using (var host = await Start())
+        {
+            Assert.False(host.Application.IsRunning);
+            Assert.Equal(identities, host.Application.GetConfiguration().Devices.Select(device => device.Id));
+        }
+        Assert.Single(Directory.GetFiles(Data, "*.v6-backup-*.db"));
+        await using var reopened = await Start();
+        Assert.Equal(identities, reopened.Application.GetConfiguration().Devices.Select(device => device.Id));
+        Assert.Single(Directory.GetFiles(Data, "*.v6-backup-*.db"));
+    }
+
     private Task<GatewayHost> Start() => GatewayHost.CreateCoreAsync(Data, Drivers, CancellationToken.None, false, _root, Drivers);
 
     private void StageDrivers(string state)

@@ -132,7 +132,7 @@ public sealed class SeparatedLoggingTests : IDisposable
         var before = await File.ReadAllBytesAsync(path);
         await using var store = new SqliteConfigurationStore(path);
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => store.LoadAsync());
-        Assert.Contains("需要版本 7", error.Message); Assert.Equal(before, await File.ReadAllBytesAsync(path));
+        Assert.Contains(version == 6 ? "升级未完成" : "需要版本 7", error.Message); Assert.Equal(before, await File.ReadAllBytesAsync(path));
     }
 
     public void Dispose() { try { Directory.Delete(_root, true); } catch { } }

@@ -44,3 +44,5 @@ SQLite 物理版本升级为 7，JSON 交换 schema 仍为 3。按仓库只维�
 本轮用户已授权同范围修复重跑。Release 编译通过，0 错误，最终增量构建 1 项既有 GatewayWorkerClient CS8602 警告。架构检查通过。5 项定向测试通过，包含参数信息 SQLite 重开、上一份快照、JSON 交换、功能表清单和 4/6 版旧库拒绝且不改写；证据 `artifacts/parameter-fields-tests/parameter-fields-final.trx`。
 
 首轮功能表清单断言漏掉已有的 device_groups，已更正；首次界面验证发现保存时 Tabs 临时禁用导致类型校验被跳过，修正为使用参数契约状态。第二轮界面检查已通过；补入五项表单宽窄往返检查后的最终复验亦通过，退出码 0、stderr 为空；证据 `artifacts/parameter-fields-ui-final`。已人工复核驱动已有参数编辑和手工 Int32 参数窄窗口截图。运行 DPI 192，未更改用户桌面缩放。没有全量或真实设备验收结论。
+
+2026-10-30 后续修复：用户已明确授权版本 6→7 备份与事务升级，替代此前对版本 6 一律拒绝的行为；其他旧结构仍不支持。见 [配置启动修复](configuration-v6-startup-fix.md)。本次不直接更改用户运行库。

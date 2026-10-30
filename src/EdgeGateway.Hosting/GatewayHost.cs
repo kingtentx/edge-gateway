@@ -84,6 +84,8 @@ public sealed class GatewayHost : IAsyncDisposable
             await store.InitializeAsync(cancellationToken).ConfigureAwait(false);
             log = new GatewayLog(Path.Combine(runtimeRoot, "logs"));
             log.ApplyConfiguration(configuration.Logging);
+            if (configurations.UpgradeBackupPath is { } backupPath)
+                log.Write(Model.GatewayLogLevel.Information, "配置数据库已从版本 6 升级至 7，升级前备份：" + backupPath);
             acquisitionSpool = new SqliteAcquisitionSpool(Path.Combine(runtimeRoot, "messaging", "acquisition-spool.db"));
             var packagedDriversDirectory = Path.GetFullPath(packagedDriverDirectory);
             var driversDirectory = Path.GetFullPath(pluginDirectory ?? packagedDriversDirectory);

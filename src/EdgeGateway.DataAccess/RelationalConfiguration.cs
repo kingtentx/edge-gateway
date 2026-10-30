@@ -66,6 +66,14 @@ internal static class RelationalConfiguration
         Slot + ", group_id TEXT NOT NULL, position INTEGER NOT NULL CHECK(position>=0)", "PRIMARY KEY(slot,group_id,position), UNIQUE(slot,group_id,\"column\"), " + GroupForeignKey + ", FOREIGN KEY(slot,tag_id) REFERENCES tags(slot,id)",
         nameof(DatabaseColumnMapping.Column), nameof(DatabaseColumnMapping.Source), nameof(DatabaseColumnMapping.TagId), nameof(DatabaseColumnMapping.FieldType), nameof(DatabaseColumnMapping.ConstantValue));
 
+    internal const string ParameterMetadataTableSql = """
+        CREATE TABLE device_parameter_metadata (
+            slot TEXT NOT NULL, device_id TEXT NOT NULL, name TEXT NOT NULL,
+            display_name TEXT NOT NULL, type_name TEXT NOT NULL, description TEXT NOT NULL,
+            PRIMARY KEY(slot,device_id,name),
+            FOREIGN KEY(slot,device_id) REFERENCES devices(slot,id) ON DELETE CASCADE ON UPDATE CASCADE) STRICT;
+        """;
+
     internal static string CreateSql => """
         CREATE TABLE configuration_snapshots (
             slot TEXT PRIMARY KEY NOT NULL CHECK(slot IN ('current','previous')),
@@ -85,6 +93,7 @@ internal static class RelationalConfiguration
         Databases.CreateSql +
         Groups.CreateSql +
         Columns.CreateSql +
+        ParameterMetadataTableSql +
         """
         CREATE TABLE device_groups (
             slot TEXT NOT NULL, position INTEGER NOT NULL CHECK(position>=0), name TEXT NOT NULL COLLATE NOCASE CHECK(length(trim(name)) BETWEEN 1 AND 80 AND name=trim(name)),
@@ -92,11 +101,6 @@ internal static class RelationalConfiguration
             FOREIGN KEY(slot) REFERENCES configuration_snapshots(slot) ON DELETE CASCADE ON UPDATE CASCADE) STRICT;
         CREATE TABLE device_properties (
             slot TEXT NOT NULL, device_id TEXT NOT NULL, name TEXT NOT NULL, value TEXT NOT NULL,
-            PRIMARY KEY(slot,device_id,name),
-            FOREIGN KEY(slot,device_id) REFERENCES devices(slot,id) ON DELETE CASCADE ON UPDATE CASCADE) STRICT;
-        CREATE TABLE device_parameter_metadata (
-            slot TEXT NOT NULL, device_id TEXT NOT NULL, name TEXT NOT NULL,
-            display_name TEXT NOT NULL, type_name TEXT NOT NULL, description TEXT NOT NULL,
             PRIMARY KEY(slot,device_id,name),
             FOREIGN KEY(slot,device_id) REFERENCES devices(slot,id) ON DELETE CASCADE ON UPDATE CASCADE) STRICT;
         CREATE TABLE database_write_group_tags (

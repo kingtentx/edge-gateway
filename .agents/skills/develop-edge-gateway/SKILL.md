@@ -208,3 +208,5 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-bui
 发布前检查全部 12 个原驱动 DLL、PluginInterface、适配层与托管依赖存在。原生厂商运行库不在源仓库时说明取得和安装条件，不把缺少现场运行依赖混同于遗漏驱动源码。保留第三方许可证，不用本项目 MIT 许可覆盖商业库或 FANUC 版权。
 
 按用户指定仓库和分支提交。提交前检查 diff、构建输出、测试结果与敏感信息；不覆盖已有分支历史。把本 skill 与代码一起提交，使规范持续可追溯。报告实际 commit、构建状态和未执行验收项，不把“配置了 CI”写成“CI 已通过”。
+
+- 2026-10-30 用户明确例外：为修复升级后启动失败，允许 SQLite 配置结构 6→7 一次升级。先用 SQLite Backup API 生成含已提交 WAL 的独立备份，再在事务中仅新增 device_parameter_metadata 并更新版本；失败回滚，保留备份。保留全部原配置与身份，不自动清空；其他旧结构仍拒绝。详见 docs/configuration-v6-startup-fix.md。
