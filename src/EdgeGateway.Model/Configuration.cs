@@ -68,6 +68,7 @@ public sealed class DeviceConfiguration
     [Category("串口连接"), DisplayName("停止位")] public string StopBits { get; set; } = "One";
     [Browsable(false)] public List<TagConfiguration> Tags { get; set; } = [];
     [Browsable(false)] public Dictionary<string, string> Properties { get; set; } = [];
+    [Browsable(false)] public Dictionary<string, DeviceParameterMetadata> ParameterMetadata { get; set; } = [];
 }
 
 public sealed class TagConfiguration
@@ -110,3 +111,10 @@ public enum RegisterByteOrder { ABCD, BADC, CDAB, DCBA }
 public enum SampleQuality { Good, Bad, Uncertain }
 public enum DeviceState { Stopped, Connecting, Running, Reconnecting, Faulted }
 public enum GatewayLogLevel { Debug, Information, Warning, Error }
+
+public sealed class DeviceParameterMetadata
+{
+    public string Name { get; set; } = "";
+    public string TypeName { get; set; } = "String";
+    public string Description { get; set; } = "";
+}

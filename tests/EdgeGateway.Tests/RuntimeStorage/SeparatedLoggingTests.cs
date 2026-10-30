@@ -117,20 +117,22 @@ public sealed class SeparatedLoggingTests : IDisposable
         Assert.All(sampleFiles, file => Assert.InRange(new FileInfo(file).Length, 1, 1024 * 1024));
     }
 
-    [Fact]
-    public async Task VersionFourDatabaseIsRejectedWithoutModification()
+    [Theory]
+    [InlineData(4)]
+    [InlineData(6)]
+    public async Task VersionFourDatabaseIsRejectedWithoutModification(int version)
     {
         Directory.CreateDirectory(_root); var path = Path.Combine(_root, "old.db");
         using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
         {
             connection.Open(); using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version=4; CREATE TABLE original(value TEXT); INSERT INTO original VALUES('keep')";
+            command.CommandText = $"PRAGMA user_version={version}; CREATE TABLE original(value TEXT); INSERT INTO original VALUES('keep')";
             command.ExecuteNonQuery();
         }
         var before = await File.ReadAllBytesAsync(path);
         await using var store = new SqliteConfigurationStore(path);
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => store.LoadAsync());
-        Assert.Contains("需要版本 6", error.Message); Assert.Equal(before, await File.ReadAllBytesAsync(path));
+        Assert.Contains("需要版本 7", error.Message); Assert.Equal(before, await File.ReadAllBytesAsync(path));
     }
 
     public void Dispose() { try { Directory.Delete(_root, true); } catch { } }

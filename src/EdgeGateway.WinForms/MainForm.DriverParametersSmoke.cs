@@ -48,6 +48,8 @@ public sealed partial class MainForm
         if (custom.Values["EndpointRenamed"] != "fixture://edited") throw new InvalidOperationException("Cancelled parameter edit changed draft.");
         await VerifyParameterModalAsync(custom, null, "EndpointRenamed", "duplicate", false, reject: true);
         await VerifyParameterModalAsync(custom, null, "", "missing-key", false, reject: true);
+        await VerifyParameterModalAsync(custom, null, "Retries", "3", false);
+        await VerifyParameterModalAsync(custom, null, "RetriesBad", "invalid-number", false, reject: true);
         await VerifyParameterModalAsync(custom, "Host", "Host", "192.0.2.21", false);
         VerifyEditorLayout(switching, "device parameter list");
         await Task.Delay(200);
@@ -58,6 +60,10 @@ public sealed partial class MainForm
         var switched = switching.CommitForSmoke();
         if (switched.Host != "192.0.2.21" || switched.Properties["Extra"] != "draft" || tcp.Host != "192.0.2.20")
             throw new InvalidOperationException("Driver switch discarded typed/custom draft or mutated source.");
+        if (switched.ParameterMetadata["Retries"].Name != "重试次数" || switched.ParameterMetadata["Retries"].TypeName != "Int32"
+            || switched.ParameterMetadata["Retries"].Description != "失败重试上限") throw new InvalidOperationException("Parameter metadata lost across driver switch.");
+        if (switched.ParameterMetadata["Host"].Name != "采集主机" || switched.ParameterMetadata["Host"].Description != "设备通信主机")
+            throw new InvalidOperationException("Declared parameter display metadata was discarded.");
         switching.Close();
         using (var cancelled = new DeviceConfigurationDialog(tcp, _drivers))
         {
@@ -85,7 +91,21 @@ public sealed partial class MainForm
             try
             {
                 dialog.SetForSmoke(key, value);
+                if (key.StartsWith("Retries", StringComparison.Ordinal)) dialog.SetMetadataForSmoke("重试次数", "Int32", "失败重试上限");
+                else if (key == "Host")
+                {
+                    if (Descendants(dialog).Single(control => control.Name == "ParameterType").Enabled)
+                        throw new InvalidOperationException("Declared wire type should remain read-only.");
+                    dialog.SetMetadataForSmoke("采集主机", "String", "设备通信主机");
+                }
+                else if (key == "EndpointRenamed") dialog.SetMetadataForSmoke("服务地址", "String", "用于插件连接");
                 VerifyEditorLayout(dialog, "parameter modal");
+                var originalSize = dialog.Size;
+                dialog.Width = Math.Max(dialog.MinimumSize.Width, UiTheme.Scale(dialog, 480));
+                VerifyEditorLayout(dialog, "five-field parameter narrow modal");
+                SaveEditorScreenshot(dialog, "driver-parameters", "edit-" + key + "-narrow");
+                dialog.Size = originalSize;
+                VerifyEditorLayout(dialog, "five-field parameter restored modal");
                 SaveEditorScreenshot(dialog, "driver-parameters", "edit-" + key);
                 if (cancel) ((Button)dialog.CancelButton!).PerformClick();
                 else if (reject)

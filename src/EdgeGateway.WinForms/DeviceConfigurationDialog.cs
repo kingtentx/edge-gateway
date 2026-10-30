@@ -108,6 +108,7 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
                 // Each protocol owns its properties. Keep the former protocol's unknown
                 // keys in its draft, so switching back never silently discards them.
                 draft.Properties = new Dictionary<string, string>(StringComparer.Ordinal);
+                draft.ParameterMetadata = [];
                 _driverDrafts.Add(descriptor.Id, draft);
             }
             var parameterDevice = Clone(draft);

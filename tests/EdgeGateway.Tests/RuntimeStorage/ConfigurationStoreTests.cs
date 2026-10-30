@@ -19,6 +19,7 @@ public sealed class ConfigurationStoreTests : IDisposable
         var device = configuration.Devices[0];
         device.Host = "192.0.2.25"; device.Port = 15025;
         device.SerialPortName = "COM17"; device.Parity = "Odd";
+        device.ParameterMetadata = new() { ["Endpoint"] = new() { Name = "服务地址", TypeName = "String", Description = "地址说明" } };
         device.Properties = new() { ["Endpoint"] = "  fixture://设备  ", ["Token"] = "fake-secret", ["Empty"] = "" };
         await using (var store = new SqliteConfigurationStore(DatabasePath)) await store.SaveAsync(configuration);
         await using (var store = new SqliteConfigurationStore(DatabasePath))
@@ -26,14 +27,25 @@ public sealed class ConfigurationStoreTests : IDisposable
             var saved = await store.LoadAsync();
             var actual = saved.Devices.Single(d => d.Id == device.Id);
             Assert.Equal(device.Properties.OrderBy(p => p.Key), actual.Properties.OrderBy(p => p.Key));
+            Assert.Equal("服务地址", actual.ParameterMetadata["Endpoint"].Name);
+            Assert.Equal("地址说明", actual.ParameterMetadata["Endpoint"].Description);
+            Assert.Equal("String", actual.ParameterMetadata["Endpoint"].TypeName);
             Assert.Equal(device.Host, actual.Host); Assert.Equal(device.Port, actual.Port);
             Assert.Equal(device.SerialPortName, actual.SerialPortName); Assert.Equal(device.Parity, actual.Parity);
+            actual.ParameterMetadata["Endpoint"].Description = "已更新说明";
             actual.Properties["Secret"] = actual.Properties["Token"];
             actual.Properties.Remove("Token"); actual.Properties.Remove("Empty");
             await store.SaveAsync(saved);
         }
         await using var reopened = new SqliteConfigurationStore(DatabasePath);
         var edited = (await reopened.LoadAsync()).Devices.Single(d => d.Id == device.Id);
+        Assert.Equal("已更新说明", edited.ParameterMetadata["Endpoint"].Description);
+        var previous = (await reopened.LoadPreviousAsync())!.Devices.Single(d => d.Id == device.Id);
+        Assert.Equal("地址说明", previous.ParameterMetadata["Endpoint"].Description);
+        var exchange = Path.Combine(_directory, "parameters.json");
+        var files = new JsonConfigurationFiles();
+        await files.ExportAsync(exchange, await reopened.LoadAsync());
+        Assert.Equal("已更新说明", (await files.ReadAsync(exchange)).Devices.Single(d => d.Id == device.Id).ParameterMetadata["Endpoint"].Description);
         Assert.Equal(2, edited.Properties.Count);
         Assert.Equal("fake-secret", edited.Properties["Secret"]);
         Assert.Equal("  fixture://设备  ", edited.Properties["Endpoint"]);
@@ -120,7 +132,7 @@ public sealed class ConfigurationStoreTests : IDisposable
         var tables = new List<string>();
         while (reader.Read()) tables.Add(reader.GetString(0));
         Assert.Equal(new[] { "channels", "configuration_snapshots", "database_column_mappings", "database_connections",
-            "database_write_group_tags", "database_write_groups", "device_network_settings", "device_properties",
+            "database_write_group_tags", "database_write_groups", "device_groups", "device_network_settings", "device_parameter_metadata", "device_properties",
             "device_serial_settings", "devices", "driver_registry", "gateway_settings", "logging_settings", "mqtt_settings",
             "rpc_settings", "tags", "telemetry_settings" }, tables);
     }

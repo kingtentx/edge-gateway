@@ -7,13 +7,14 @@ internal sealed partial class DriverCustomParametersView : UserControl
 {
     private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
     private Dictionary<string, DriverParameterDescriptor> _metadata = new(StringComparer.Ordinal);
+    private Dictionary<string, DeviceParameterMetadata> _display = new(StringComparer.Ordinal);
     private bool _readOnly;
     public DriverCustomParametersView()
     {
         InitializeComponent();
         addButton.Click += (_, _) => EditParameter(null);
         editButton.Click += (_, _) => EditParameter(SelectedKey);
-        removeButton.Click += (_, _) => { if (SelectedKey is { } key && !_readOnly && !_metadata.ContainsKey(key)) { _values.Remove(key); Rebind(); } };
+        removeButton.Click += (_, _) => { if (SelectedKey is { } key && !_readOnly && !_metadata.ContainsKey(key)) { _values.Remove(key); _display.Remove(key); Rebind(); } };
         grid.CellDoubleClick += (_, _) => EditParameter(SelectedKey);
         grid.SelectionChanged += (_, _) => UpdateCommands();
         search.TextChanged += (_, _) => Rebind(SelectedKey);
@@ -33,15 +34,17 @@ internal sealed partial class DriverCustomParametersView : UserControl
         if (_readOnly || key is not null && Locked(key)) return;
         _metadata.TryGetValue(key ?? "", out var metadata);
         using var editor = new DeviceParameterDialog(key ?? "", key is null ? "" : _values[key], metadata is not null,
-            metadata?.IsSecret == true, candidate => candidate != key && _values.ContainsKey(candidate));
+            metadata?.IsSecret == true, candidate => candidate != key && _values.ContainsKey(candidate), DisplayMetadata(key ?? "", metadata));
         if (editor.ShowDialog(FindForm()) != DialogResult.OK) return;
-        if (key is not null && key != editor.ParameterKey) _values.Remove(key);
+        if (key is not null && key != editor.ParameterKey) { _values.Remove(key); _display.Remove(key); }
         _values[editor.ParameterKey] = editor.ParameterValue;
+        _display[editor.ParameterKey] = editor.Metadata;
         Rebind(editor.ParameterKey);
     }
     public void LoadDriver(DriverDescriptor descriptor, DeviceConfiguration device, bool readOnly)
     {
         _metadata = descriptor.Parameters.ToDictionary(p => p.Key, StringComparer.Ordinal);
+        _display = device.ParameterMetadata.ToDictionary(pair => pair.Key, pair => new DeviceParameterMetadata { Name = pair.Value.Name, TypeName = pair.Value.TypeName, Description = pair.Value.Description }, StringComparer.Ordinal);
         _values.Clear();
         foreach (var pair in device.Properties) _values[pair.Key] = pair.Value;
         foreach (var meta in descriptor.Parameters)
@@ -76,6 +79,8 @@ internal sealed partial class DriverCustomParametersView : UserControl
             properties.Add(pair.Key, pair.Value);
         }
         device.Properties = properties;
+        device.ParameterMetadata = _display.Where(pair => _values.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key,
+            pair => new DeviceParameterMetadata { Name = pair.Value.Name, TypeName = pair.Value.TypeName, Description = pair.Value.Description }, StringComparer.Ordinal);
     }
     private static System.Reflection.PropertyInfo ConnectionProperty(string name)
     {
@@ -88,19 +93,26 @@ internal sealed partial class DriverCustomParametersView : UserControl
         "Id" => device.Id.ToString(), "TimeoutMs" => device.TimeoutMs.ToString(CultureInfo.InvariantCulture),
         "PollIntervalMs" => device.PollIntervalMs.ToString(CultureInfo.InvariantCulture), _ => null
     };
+    private DeviceParameterMetadata DisplayMetadata(string key, DriverParameterDescriptor? meta)
+    {
+        _display.TryGetValue(key, out var saved);
+        return new DeviceParameterMetadata { Name = saved?.Name ?? meta?.Name ?? key,
+            TypeName = meta?.TypeName ?? saved?.TypeName ?? "String", Description = saved?.Description ?? meta?.Description ?? "" };
+    }
     private void Rebind(string? key = null)
     {
         var query = search.Text.Trim();
         var rows = _values.Select(pair =>
         {
             _metadata.TryGetValue(pair.Key, out var meta);
-            var description = meta?.Description ?? "手工参数";
+            var display = DisplayMetadata(pair.Key, meta);
+            var description = display.Description;
             if (meta?.BoundProperty is not null) description = "由通用设置自动关联（只读）";
             else if (meta?.IsReadOnly == true) description = "只读 · " + description;
             else if (meta?.Options.Count > 0) description += " 可选：" + string.Join("、", meta.Options);
-            return new ParameterRow(pair.Key, meta?.Name ?? pair.Key,
+            return new ParameterRow(pair.Key, display.Name,
                 (meta?.IsSecret == true || IsSecret(pair.Key)) && pair.Value.Length > 0 ? "••••••" : pair.Value,
-                meta?.TypeName ?? "String", description);
+                display.TypeName, description);
         }).Where(row => query.Length == 0 || row.Key.Contains(query, StringComparison.OrdinalIgnoreCase) || row.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
         GridViewState.Rebind(grid, rows, row => row.Key, key);
         UpdateCommands();

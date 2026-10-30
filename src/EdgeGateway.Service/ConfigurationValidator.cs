@@ -81,6 +81,14 @@ public static class ConfigurationValidator
             IDriverFactory? factory = null;
             try { factory = registry.GetFactory(device.DriverId ?? ""); }
             catch (Exception ex) { errors.Add($"{label}：{ex.Message}"); }
+            if (device.ParameterMetadata is null) errors.Add($"{label} 的参数说明不能为 null。");
+            else foreach (var pair in device.ParameterMetadata)
+            {
+                if (string.IsNullOrWhiteSpace(pair.Key) || pair.Value is null || string.IsNullOrWhiteSpace(pair.Value.Name)
+                    || pair.Value.Name.Length > 120 || string.IsNullOrWhiteSpace(pair.Value.TypeName) || pair.Value.TypeName.Length > 120
+                    || pair.Value.Description is null || pair.Value.Description.Length > 1000)
+                    errors.Add($"{label} 的参数名称、类型或说明无效。");
+            }
             var canonicalDriverId = factory?.Descriptor.Id ?? device.DriverId;
             var masterType = device.Properties?.GetValueOrDefault("MasterType", "Tcp")?.Trim();
             var serialPort = string.Equals(canonicalDriverId, "modbus-rtu", StringComparison.OrdinalIgnoreCase) ? device.SerialPortName :

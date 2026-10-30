@@ -3,10 +3,10 @@ using Microsoft.Data.Sqlite;
 
 namespace EdgeGateway.DataAccess;
 
-/// <summary>Functional schema. JSON schema 3 is an exchange contract; SQLite layout version 6 is independent.</summary>
+/// <summary>Functional schema. JSON schema 3 is an exchange contract; SQLite layout version 7 is independent.</summary>
 internal static class RelationalConfiguration
 {
-    internal const int StorageVersion = 6;
+    internal const int StorageVersion = 7;
     private const string Slot = "slot TEXT NOT NULL";
     private const string SnapshotForeignKey = "FOREIGN KEY(slot) REFERENCES configuration_snapshots(slot) ON DELETE CASCADE ON UPDATE CASCADE";
     private const string Singleton = "PRIMARY KEY(slot), " + SnapshotForeignKey;
@@ -94,6 +94,11 @@ internal static class RelationalConfiguration
             slot TEXT NOT NULL, device_id TEXT NOT NULL, name TEXT NOT NULL, value TEXT NOT NULL,
             PRIMARY KEY(slot,device_id,name),
             FOREIGN KEY(slot,device_id) REFERENCES devices(slot,id) ON DELETE CASCADE ON UPDATE CASCADE) STRICT;
+        CREATE TABLE device_parameter_metadata (
+            slot TEXT NOT NULL, device_id TEXT NOT NULL, name TEXT NOT NULL,
+            display_name TEXT NOT NULL, type_name TEXT NOT NULL, description TEXT NOT NULL,
+            PRIMARY KEY(slot,device_id,name),
+            FOREIGN KEY(slot,device_id) REFERENCES devices(slot,id) ON DELETE CASCADE ON UPDATE CASCADE) STRICT;
         CREATE TABLE database_write_group_tags (
             slot TEXT NOT NULL, group_id TEXT NOT NULL, position INTEGER NOT NULL CHECK(position>=0), tag_id TEXT NOT NULL,
             PRIMARY KEY(slot,group_id,tag_id), UNIQUE(slot,group_id,position),
@@ -141,6 +146,13 @@ internal static class RelationalConfiguration
                 var value = pair.Value ?? throw new ArgumentException("驱动参数不能为空。");
                 rows.Add((connection, transaction) => Execute(connection, transaction,
                     "INSERT INTO device_properties(slot,device_id,name,value) VALUES('current',$p0,$p1,$p2)", id, name, value));
+            }
+            foreach (var pair in device.ParameterMetadata)
+            {
+                var key = pair.Key; var metadata = pair.Value;
+                rows.Add((connection, transaction) => Execute(connection, transaction,
+                    "INSERT INTO device_parameter_metadata(slot,device_id,name,display_name,type_name,description) VALUES('current',$p0,$p1,$p2,$p3,$p4)",
+                    id, key, metadata.Name, metadata.TypeName, metadata.Description));
             }
             for (var j = 0; j < device.Tags.Count; j++) Add(Tags, device.Tags[j], ("device_id", id), ("position", j));
         }
@@ -212,6 +224,11 @@ internal static class RelationalConfiguration
             command.Parameters.AddWithValue("$id", device.Id.ToString("D"));
             using var reader = command.ExecuteReader();
             while (reader.Read()) device.Properties.Add(reader.GetString(0), reader.GetString(1));
+            reader.Close();
+            command.CommandText = "SELECT name,display_name,type_name,description FROM device_parameter_metadata WHERE slot=$slot AND device_id=$id ORDER BY name";
+            using var metadataReader = command.ExecuteReader();
+            while (metadataReader.Read()) device.ParameterMetadata.Add(metadataReader.GetString(0), new DeviceParameterMetadata
+            { Name = metadataReader.GetString(1), TypeName = metadataReader.GetString(2), Description = metadataReader.GetString(3) });
         }
         configuration.Databases = Databases.Read(connection, transaction, slot, "position");
         configuration.DatabaseWriteGroups = Groups.Read(connection, transaction, slot, "position");
