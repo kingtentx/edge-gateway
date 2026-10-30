@@ -10,7 +10,7 @@ internal sealed partial class DeviceParameterDialog : EditorDialog
         : base(key.Length == 0 ? "添加设备参数" : "编辑设备参数", "参数标识须与驱动读取的名称一致；数值和选项按驱动说明填写。")
     {
         _duplicate = duplicate; InitializeComponent();
-        ConfigureWindow(new Size(620, 360), new Size(500, 320));
+        ConfigureWindow(new Size(560, 280), new Size(480, 260));
         keyInput.Text = key; keyInput.ReadOnly = declared;
         valueInput.Text = value;
         valueInput.UseSystemPasswordChar = secret || DriverCustomParametersView.IsSecret(key);

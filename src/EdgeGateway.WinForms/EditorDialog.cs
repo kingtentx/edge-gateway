@@ -7,7 +7,6 @@ namespace EdgeGateway.WinForms;
 public partial class EditorDialog : DpiAwareForm
 {
     private bool _arranging;
-    private bool? _compactMode;
     private bool _readOnlyView;
     private bool _applying;
     private Func<Task>? _applyChanges;
@@ -46,10 +45,7 @@ public partial class EditorDialog : DpiAwareForm
         ShowInTaskbar = false;
 
         InitializeComponent();
-        _title.Text = title;
         _description.Text = hint;
-        _help.AccessibleDescription = hint;
-        _help.Click += (_, _) => MessageBox.Show(this, _description.Text, "配置说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
         _confirm.Click += async (_, _) =>
         {
             if (_applying) return;
@@ -62,21 +58,16 @@ public partial class EditorDialog : DpiAwareForm
 
     internal void VerifyHeadingForSmoke(string context)
     {
-        var bounds = _title.RectangleToScreen(_title.ClientRectangle);
-        if (!_title.Visible || bounds.Width <= 0 || bounds.Height <= 0
-            || !_heading.RectangleToScreen(_heading.ClientRectangle).Contains(bounds)
-            || !RectangleToScreen(ClientRectangle).Contains(bounds))
-            throw new InvalidOperationException($"{context}: editor heading has no fully visible area ({bounds}).");
-
-        var singleLine = _title.GetPreferredSize(new Size(int.MaxValue, int.MaxValue));
-        var availableWidth = _heading.ClientSize.Width - _heading.Padding.Horizontal
-            - _titleRow.Margin.Horizontal - _titleRow.Padding.Horizontal - _title.Margin.Horizontal
-            - (_help.Visible ? _help.Width + _help.Margin.Horizontal : 0);
-        var tolerance = UiTheme.Scale(this, 2);
-        if (availableWidth >= singleLine.Width
-            && (_title.ClientSize.Width + tolerance < singleLine.Width
-                || Math.Abs(_title.ClientSize.Height - singleLine.Height) > tolerance))
-            throw new InvalidOperationException($"{context}: heading '{_title.Text}' wraps or is clipped despite available width {availableWidth}; bounds {_title.Bounds}, single-line preferred size {singleLine}.");
+        if (string.IsNullOrWhiteSpace(Text))
+            throw new InvalidOperationException(context + ": dialog has no window title.");
+        if (_description.Visible && !string.IsNullOrWhiteSpace(_description.Text))
+        {
+            var bounds = _description.RectangleToScreen(_description.ClientRectangle);
+            if (bounds.Width <= 0 || bounds.Height <= 0 || !RectangleToScreen(ClientRectangle).Contains(bounds))
+                throw new InvalidOperationException(context + ": dialog description is clipped.");
+        }
+        if (Controls.Find("EditorHeadingTitle", true).Length != 0)
+            throw new InvalidOperationException(context + ": duplicate content title remains.");
     }
 
     protected override void OnLayout(LayoutEventArgs levent)
@@ -93,12 +84,12 @@ public partial class EditorDialog : DpiAwareForm
             if (_heading.Padding != headingPadding) _heading.Padding = headingPadding;
             var buttonPadding = UiTheme.Scale(this, new Padding(12, compact ? 6 : 10, 4, 4));
             if (_buttons.Padding != buttonPadding) _buttons.Padding = buttonPadding;
-            if (_compactMode != compact)
-            {
-                _compactMode = compact;
-                _description.Visible = !compact;
-                _help.Visible = compact;
-            }
+            var hasDescription = !string.IsNullOrWhiteSpace(_description.Text);
+            _heading.Visible = hasDescription;
+            _description.Visible = hasDescription;
+            var showTabs = Tabs.TabPages.Count > 1;
+            if (Tabs.TabMenuVisible != showTabs) Tabs.TabMenuVisible = showTabs;
+
         }
         finally { _arranging = false; }
     }
@@ -117,7 +108,6 @@ public partial class EditorDialog : DpiAwareForm
         if (!runningDevice) return;
         _confirm.Text = "保存并应用";
         _description.Text = "该设备正在采集。修改后保存将仅重新连接此设备；禁用设备将停止它。其他设备继续采集。";
-        _help.AccessibleDescription = _description.Text;
     }
 
     private async Task ApplyAndAcceptAsync()

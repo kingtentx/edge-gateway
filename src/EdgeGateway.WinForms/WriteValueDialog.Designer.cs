@@ -68,6 +68,8 @@ internal sealed partial class WriteValueDialog
         title.Name = "title";
         title.Text = "写入点位";
         title.AutoSize = true;
+        title.Visible = false;
+        title.Margin = Padding.Empty;
         title.Dock = DockStyle.Fill;
         title.ForeColor = UiTheme.Ink;
         title.Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold);

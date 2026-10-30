@@ -8,11 +8,8 @@ public partial class EditorDialog
 {
     private TableLayoutPanel _layout = null!;
     private TableLayoutPanel _heading = null!;
-    private TableLayoutPanel _titleRow = null!;
     private FlowLayoutPanel _buttons = null!;
-    private Label _title = null!;
     private Label _description = null!;
-    private GatewayButton _help = null!;
     private AntdUI.Button _confirm = null!;
     private AntdUI.Button _cancel = null!;
     private EditorFeedback _feedback = null!;
@@ -33,27 +30,9 @@ public partial class EditorDialog
         _heading.AutoSize = true;
         _heading.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         _heading.ColumnCount = 1;
-        _heading.RowCount = 2;
+        _heading.RowCount = 1;
         _heading.Margin = Padding.Empty;
-        _heading.Padding = new Padding(0, 0, 0, 14);
-        _titleRow = new TableLayoutPanel();
-        _titleRow.Name = "EditorTitleRow";
-        _titleRow.Dock = DockStyle.Fill;
-        _titleRow.AutoSize = true;
-        _titleRow.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        _titleRow.ColumnCount = 2;
-        _titleRow.RowCount = 1;
-        _titleRow.Margin = Padding.Empty;
-        _titleRow.Padding = Padding.Empty;
-        _title = new Label();
-        _title.Name = "_title";
-        _title.Text = "";
-        _title.AutoSize = true;
-        _title.Dock = DockStyle.Fill;
-        _title.ForeColor = UiTheme.Ink;
-        _title.Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold);
-        _title.Margin = new Padding(0, 4, 0, 4);
-        _title.Name = "EditorHeadingTitle";
+        _heading.Padding = new Padding(0, 0, 0, 6);
         _description = new Label();
         _description.Name = "_description";
         _description.Text = "";
@@ -63,14 +42,6 @@ public partial class EditorDialog
         _description.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
         _description.Margin = new Padding(0, 4, 0, 4);
         _description.Name = "EditorHeadingDescription";
-        _help = new GatewayButton();
-        _help.Name = "EditorHelp";
-        _help.Text = "查看说明";
-        _help.AutoSize = true;
-        _help.Visible = false;
-        _help.TabStop = true;
-        _help.Anchor = AnchorStyles.Right;
-        _help.Margin = new Padding(12, 8, 0, 0);
         Tabs = new EditorLayout.EditorTabs();
         Tabs.Name = "EditorTabs";
         Tabs.Dock = DockStyle.Fill;
@@ -127,7 +98,6 @@ public partial class EditorDialog
 
         _layout.SuspendLayout();
         _heading.SuspendLayout();
-        _titleRow.SuspendLayout();
         _buttons.SuspendLayout();
         _layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         _layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -136,14 +106,7 @@ public partial class EditorDialog
         _layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _heading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         _heading.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _heading.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        _titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        _titleRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _titleRow.Controls.Add(_title, 0, 0);
-        _titleRow.Controls.Add(_help, 1, 0);
-        _heading.Controls.Add(_titleRow, 0, 0);
-        _heading.Controls.Add(_description, 0, 1);
+        _heading.Controls.Add(_description, 0, 0);
         _layout.Controls.Add(_heading, 0, 0);
         _layout.Controls.Add(Tabs, 0, 1);
         _layout.Controls.Add(_feedback, 0, 2);
@@ -152,8 +115,6 @@ public partial class EditorDialog
         _buttons.ResumeLayout(false);
         _heading.ResumeLayout(false);
         _heading.PerformLayout();
-        _titleRow.ResumeLayout(false);
-        _titleRow.PerformLayout();
         _layout.ResumeLayout(false);
         _layout.PerformLayout();
     }

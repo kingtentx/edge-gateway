@@ -47,6 +47,8 @@ internal sealed partial class ConfigurationCatalogDialog
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         titleLabel.AutoSize = true;
+        titleLabel.Visible = false;
+        titleLabel.Margin = Padding.Empty;
         titleLabel.Dock = DockStyle.Fill;
         titleLabel.Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Bold);
         titleLabel.Margin = new Padding(0, 0, 0, 12);

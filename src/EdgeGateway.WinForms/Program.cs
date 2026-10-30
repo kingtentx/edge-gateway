@@ -24,7 +24,8 @@ internal static class Program
         var deviceColumnsSmoke = args.Contains("--smoke-device-columns", StringComparer.OrdinalIgnoreCase);
         var deviceBatchSmoke = args.Contains("--smoke-device-batch", StringComparer.OrdinalIgnoreCase);
         var driverParametersSmoke = args.Contains("--smoke-driver-parameters", StringComparer.OrdinalIgnoreCase);
-        var rowDensitySmoke = driverParametersSmoke || deviceBatchSmoke || deviceColumnsSmoke || args.Contains("--smoke-row-density", StringComparer.OrdinalIgnoreCase);
+        var dialogTitlesSmoke = args.Contains("--smoke-dialog-titles", StringComparer.OrdinalIgnoreCase);
+        var rowDensitySmoke = dialogTitlesSmoke || driverParametersSmoke || deviceBatchSmoke || deviceColumnsSmoke || args.Contains("--smoke-row-density", StringComparer.OrdinalIgnoreCase);
         var dpiRoundTripOnly = args.Contains("--smoke-dpi-roundtrip", StringComparer.OrdinalIgnoreCase);
         var dpiConfirmationSmoke = dpiRoundTripOnly || args.Contains("--smoke-dpi-confirmation", StringComparer.OrdinalIgnoreCase);
         var pageRefreshSmoke = dpiConfirmationSmoke || rowDensitySmoke || args.Contains("--smoke-page-refresh", StringComparer.OrdinalIgnoreCase);
@@ -89,6 +90,7 @@ internal static class Program
             window.DeviceColumnsSmoke = deviceColumnsSmoke;
             window.DeviceBatchSmoke = deviceBatchSmoke;
             window.DriverParametersSmoke = driverParametersSmoke;
+            window.DialogTitlesSmoke = dialogTitlesSmoke;
             window.DpiConfirmationSmoke = dpiConfirmationSmoke;
             window.DpiRoundTripOnly = dpiRoundTripOnly;
             window.LiveLogsSmoke = liveLogsSmoke;
