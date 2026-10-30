@@ -14,7 +14,28 @@ internal sealed partial class DevicesPageView : UserControl
     internal AntdUI.Button AddDeviceButton => addDeviceButton;
     internal AntdUI.Button ProbeDeviceButton => probeDeviceButton;
     internal Label DeviceSummary => deviceSummaryLabel;
-    public DevicesPageView() { InitializeComponent(); pageViewport.Layout += (_, _) => PerformLayout(); GridPagination.Attach(deviceGrid, deviceGridPagination, deviceGridPaginationTotal, deviceGridPaginationSize); }
+    public DevicesPageView()
+    {
+        InitializeComponent();
+        deviceGrid.Paint += (_, _) => ArrangeHeaderCheck();
+        deviceGrid.Layout += (_, _) => ArrangeHeaderCheck();
+        deviceGrid.DataBindingComplete += (_, _) => ArrangeHeaderCheck();
+        deviceGrid.ScrollBar.ValueXChanged += (_, _) => ArrangeHeaderCheck();
+        deviceGrid.ScrollBar.ValueYChanged += (_, _) => ArrangeHeaderCheck();
+        pageViewport.Layout += (_, _) => PerformLayout();
+        GridPagination.Attach(deviceGrid, deviceGridPagination, deviceGridPaginationTotal, deviceGridPaginationSize);
+    }
+
+    private void ArrangeHeaderCheck()
+    {
+        if (!deviceGrid.IsHandleCreated) return;
+        var bounds = deviceGrid.GetCellDisplayRectangle(0, -1, true);
+        var size = UiTheme.Scale(deviceGrid, 28);
+        deviceHeaderCheck.Visible = bounds.Width >= size && bounds.Height >= size;
+        if (!deviceHeaderCheck.Visible) return;
+        deviceHeaderCheck.Bounds = new Rectangle(bounds.Left + (bounds.Width - size) / 2, bounds.Top + (bounds.Height - size) / 2, size, size);
+        deviceHeaderCheck.BringToFront();
+    }
 
     protected override void OnLayout(LayoutEventArgs e)
     {

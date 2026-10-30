@@ -22,6 +22,7 @@ internal sealed partial class DevicesPageView
 
     internal GatewayTableColumn deviceGridColumnName = null!;
     internal GatewayTableCheckColumn deviceGridColumnChecked = null!;
+    internal AntdUI.Checkbox deviceHeaderCheck = null!;
     internal CommandMenuButton deviceBatchButton = null!;
     internal GatewayTableButtonColumn deviceGridColumnDeviceStart = null!;
     internal GatewayTableButtonColumn deviceGridColumnDeviceStop = null!;
@@ -70,6 +71,9 @@ internal sealed partial class DevicesPageView
         deviceToolbarHost = new WrappingToolbar();
         deviceFiltersHost = new TableLayoutPanel();
         deviceGrid = new GatewayTable();
+        deviceHeaderCheck = new AntdUI.Checkbox { Name = "DeviceHeaderCheck", Text = "", Size = new Size(28, 28), BackColor = UiTheme.SurfaceSubtle,
+            AccessibleName = "全选或取消全部筛选设备（含全部页）", TabStop = true };
+        deviceGrid.Controls.Add(deviceHeaderCheck);
         deviceGrid.Name = "deviceGrid";
         deviceGrid.Gaps = new Size(16, 6);
         deviceGrid.Dock = DockStyle.Fill;
@@ -260,7 +264,7 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         contentLayout.PerformLayout();
         deviceGridColumnChecked = new GatewayTableCheckColumn();
         deviceGridColumnChecked.Name = "DeviceChecked";
-        deviceGridColumnChecked.HeaderText = "勾选";
+        deviceGridColumnChecked.HeaderText = "";
         deviceGridColumnChecked.MinimumWidth = 64;
         deviceGridColumnChecked.Width = 64;
         deviceGridColumnChecked.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;

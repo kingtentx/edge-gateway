@@ -7,29 +7,36 @@ public sealed partial class MainForm
     private readonly HashSet<Guid> _checkedDeviceIds = [];
     private Guid[] _filteredDeviceIds = [];
 
-    private void UpdateDeviceCheckSummary() => _deviceSummary.Text =
-        $"{_filteredDeviceIds.Length} / {_configuration.Devices.Count} 台设备 · 已勾选 {_checkedDeviceIds.Count} 台";
+    private bool _syncingDeviceHeaderCheck;
+    private void UpdateDeviceCheckSummary()
+    {
+        _deviceSummary.Text = $"{_filteredDeviceIds.Length} / {_configuration.Devices.Count} 台设备 · 已勾选 {_checkedDeviceIds.Count} 台";
+        SyncDeviceHeaderCheck();
+    }
+    private void SyncDeviceHeaderCheck()
+    {
+        if (_devicesPageView is null) return;
+        _syncingDeviceHeaderCheck = true;
+        try
+        {
+            var count = _filteredDeviceIds.Count(_checkedDeviceIds.Contains);
+            _devicesPageView.deviceHeaderCheck.CheckState = count == 0 ? CheckState.Unchecked
+                : count == _filteredDeviceIds.Length ? CheckState.Checked : CheckState.Indeterminate;
+            _devicesPageView.deviceHeaderCheck.Enabled = CanEdit() && _filteredDeviceIds.Length > 0;
+        }
+        finally { _syncingDeviceHeaderCheck = false; }
+    }
 
     private IReadOnlyList<MenuCommand> BuildDeviceBatchMenu()
     {
         // Capture identities when the menu opens, independently of the highlighted row.
         var ids = _filteredDeviceIds.Where(_checkedDeviceIds.Contains).ToArray();
-        var filtered = _filteredDeviceIds.ToArray();
         bool Targets() => CanEdit() && ids.Length > 0;
         return [
             new("BatchStartDevices", $"批量启动（{ids.Length} 台）", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Start), Targets, "请先勾选设备"),
             new("BatchStopDevices", $"批量停止（{ids.Length} 台）", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Stop), Targets, "请先勾选设备"),
             new("BatchEnableDevices", "批量启用", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Enable), Targets, "请先勾选设备", SeparateBefore: true),
-            new("BatchDisableDevices", "批量禁用（停止对应设备）", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Disable), Targets, "请先勾选设备"),
-            new("CheckFilteredDevices", $"勾选筛选结果（{filtered.Length} 台，含全部页）", () =>
-            {
-                _checkedDeviceIds.UnionWith(filtered.Where(_filteredDeviceIds.Contains));
-                UpdateDeviceCheckSummary(); _deviceGrid.RepaintRows(); return Task.CompletedTask;
-            }, () => CanEdit() && filtered.Length > 0, SeparateBefore: true),
-            new("ClearCheckedDevices", "清空勾选", () =>
-            {
-                _checkedDeviceIds.Clear(); UpdateDeviceCheckSummary(); _deviceGrid.RepaintRows(); return Task.CompletedTask;
-            }, () => CanEdit() && _checkedDeviceIds.Count > 0)
+            new("BatchDisableDevices", "批量禁用（停止对应设备）", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Disable), Targets, "请先勾选设备")
         ];
     }
 

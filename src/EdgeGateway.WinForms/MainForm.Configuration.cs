@@ -52,6 +52,16 @@ public sealed partial class MainForm
             if (value) _checkedDeviceIds.Add(row.Id); else _checkedDeviceIds.Remove(row.Id);
             UpdateDeviceCheckSummary();
         };
+        _devicesPageView.deviceHeaderCheck.CheckedChanged += (_, e) =>
+        {
+            if (_syncingDeviceHeaderCheck) return;
+            if (CanEdit())
+            {
+                if (e.Value) _checkedDeviceIds.UnionWith(_filteredDeviceIds);
+                else _checkedDeviceIds.ExceptWith(_filteredDeviceIds);
+            }
+            UpdateDeviceCheckSummary(); _deviceGrid.RepaintRows();
+        };
         _devicesPageView.deviceBatchButton.Bind(BuildDeviceBatchMenu, exception => ShowError(exception.Message));
         _configurationCommands.Add(_devicesPageView.deviceBatchButton);
         _deviceGrid.DataBindingComplete += (_, _) => UpdateDeviceConfigurationCommands();
@@ -281,6 +291,7 @@ public sealed partial class MainForm
 
     private void UpdateDeviceConfigurationCommands()
     {
+        SyncDeviceHeaderCheck();
         if (_deviceGrid.Columns[DeviceConfigurationColumnName] is not GatewayTableLinkColumn column) return;
         column.Text = "配置";
         var statuses = _application.GetDeviceStatuses().ToDictionary(x => x.DeviceId);
