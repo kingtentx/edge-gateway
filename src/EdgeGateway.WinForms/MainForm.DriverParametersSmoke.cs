@@ -15,6 +15,8 @@ public sealed partial class MainForm
             editor.Show(this);
             try
             {
+                if (editor.SmokeTabs.Count != 3 || editor.SmokeTabs.Any(tab => tab.Name == "DriverConfigurationParameters"))
+                    throw new InvalidOperationException("Device parameters must use exactly three shared tabs.");
                 VerifyConfigurationSmokeFields(editor, descriptor, device);
                 var result = editor.CommitForSmoke();
                 AssertConfigurationSmokeEqual(device, result, descriptor.Id + " all parameter values");
@@ -27,7 +29,7 @@ public sealed partial class MainForm
                         editor.SelectedSmokeTab = tab;
                         VerifyEditorLayout(editor, descriptor.Id + " unified parameters");
                     }
-                    editor.SelectedSmokeTab = editor.SmokeTabs.Single(tab => tab.Name == "DriverConfigurationParameters");
+                    editor.SelectedSmokeTab = editor.SmokeTabs.Single(tab => tab.Name == "DeviceParametersTab");
                     await Task.Delay(200);
                     SaveEditorScreenshot(editor, "driver-parameters", descriptor.Id + (narrow ? "-narrow" : "-wide"));
                 }
@@ -40,11 +42,16 @@ public sealed partial class MainForm
         var custom = Descendants(switching).OfType<DriverCustomParametersView>().Single();
         switching.SelectedSmokeTab = switching.SmokeTabs.Single(tab => tab.Controls.Contains(custom));
         custom.VerifyEditingForSmoke();
-        custom.LoadValues(new Dictionary<string, string> { ["Endpoint"] = "fixture://设备", ["Token"] = "fake-token" }, [], false);
-        VerifyEditorLayout(switching, "custom parameters");
+        await VerifyParameterModalAsync(custom, null, "Endpoint", "fixture://new", false);
+        await VerifyParameterModalAsync(custom, "Endpoint", "EndpointRenamed", "fixture://edited", false);
+        await VerifyParameterModalAsync(custom, "EndpointRenamed", "EndpointRenamed", "cancelled", true);
+        if (custom.Values["EndpointRenamed"] != "fixture://edited") throw new InvalidOperationException("Cancelled parameter edit changed draft.");
+        await VerifyParameterModalAsync(custom, null, "EndpointRenamed", "duplicate", false, reject: true);
+        await VerifyParameterModalAsync(custom, null, "", "missing-key", false, reject: true);
+        await VerifyParameterModalAsync(custom, "Host", "Host", "192.0.2.21", false);
+        VerifyEditorLayout(switching, "device parameter list");
         await Task.Delay(200);
-        SaveEditorScreenshot(switching, "driver-parameters", "custom");
-        custom.LoadValues(tcp.Properties, _drivers.GetDescriptor("modbus-tcp").Parameters.Select(p => p.Key), false);
+        SaveEditorScreenshot(switching, "driver-parameters", "unified-list");
         switching.SetFieldForSmoke("Host", "192.0.2.21");
         switching.SelectDriverForSmoke("simulator");
         switching.SelectDriverForSmoke("modbus-tcp");
@@ -63,6 +70,40 @@ public sealed partial class MainForm
         SmokeReadOnlyDeviceConfiguration();
         SmokeInvalidDeviceConfiguration();
         await Task.Yield();
-        Console.WriteLine($"Driver parameters smoke passed: {_drivers.Drivers.Count} drivers, typed/custom round trips, add/edit/rename/delete/duplicate/reserved/masking/read-only, driver drafts and wide/narrow tabs; DeviceDpi={DeviceDpi}.");
+        Console.WriteLine($"Driver parameters smoke passed: {_drivers.Drivers.Count} drivers, typed/custom round trips, three shared tabs, actual add/edit/rename/cancel modals, delete/duplicate/empty-name/masking/read-only, driver drafts and wide/narrow tabs; DeviceDpi={DeviceDpi}.");
+    }
+
+    private async Task VerifyParameterModalAsync(DriverCustomParametersView view, string? originalKey, string key, string value, bool cancel, bool reject = false)
+    {
+        Exception? failure = null; var observed = false;
+        using var timer = new System.Windows.Forms.Timer { Interval = 30 };
+        timer.Tick += async (_, _) =>
+        {
+            var dialog = System.Windows.Forms.Application.OpenForms.OfType<DeviceParameterDialog>().FirstOrDefault(form => form.Visible);
+            if (dialog is null) return;
+            timer.Stop(); observed = true;
+            try
+            {
+                dialog.SetForSmoke(key, value);
+                VerifyEditorLayout(dialog, "parameter modal");
+                SaveEditorScreenshot(dialog, "driver-parameters", "edit-" + key);
+                if (cancel) ((Button)dialog.CancelButton!).PerformClick();
+                else if (reject)
+                {
+                    dialog.SuppressApplyErrorDialogForSmoke = true;
+                    try { await dialog.ApplyAndAcceptForSmokeAsync(); }
+                    catch (EditorValidationException) { }
+                    if (dialog.LastApplyErrorForSmoke is null || dialog.DialogResult == DialogResult.OK)
+                        throw new InvalidOperationException("Invalid parameter name was accepted.");
+                }
+                else await dialog.ApplyAndAcceptForSmokeAsync();
+            }
+            catch (Exception exception) { failure = exception; }
+            finally { dialog.Close(); }
+        };
+        timer.Start(); view.OpenForSmoke(originalKey); timer.Stop();
+        if (failure is not null) throw failure;
+        if (!observed) throw new InvalidOperationException("Parameter modal did not open.");
+        await Task.Yield();
     }
 }

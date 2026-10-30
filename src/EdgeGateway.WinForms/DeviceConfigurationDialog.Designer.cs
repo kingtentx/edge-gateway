@@ -57,7 +57,7 @@ internal sealed partial class DeviceConfigurationDialog
     private void InitializeComponent()
     {
         SuspendLayout();
-        customParametersTab = new TabPage("自定义参数") { Name = "CustomDriverParametersTab", BackColor = Color.White };
+        customParametersTab = new TabPage("设备参数") { Name = "DeviceParametersTab", BackColor = Color.White };
         customParameters = new DriverCustomParametersView();
         customParametersTab.Controls.Add(customParameters);
         acquisitionTab = new TabPage();

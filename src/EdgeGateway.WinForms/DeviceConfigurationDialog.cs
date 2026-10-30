@@ -11,16 +11,12 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
     private readonly IDriverCatalog _drivers;
     private readonly bool _readOnly, _isNew;
     private readonly Dictionary<string, Control> _fields = new(StringComparer.Ordinal);
-    private readonly List<Control> _connectionInputs = [];
-    private readonly List<string> _connectionKeys = [];
     private readonly Dictionary<string, DeviceConfiguration> _driverDrafts = new(StringComparer.OrdinalIgnoreCase);
     private DriverDescriptor? _descriptor;
-    private DriverParameterPanel? _parameters;
-    private TabPage? _protocolPage;
 
     /// <summary>Available only after a successful commit; never aliases the caller's device or tags.</summary>
     public DeviceConfiguration? Value { get; private set; }
-    internal IReadOnlyCollection<Control> SmokeParameterInputs => _parameters?.Inputs ?? _connectionInputs;
+    internal IReadOnlyCollection<Control> SmokeParameterInputs => Array.Empty<Control>();
     internal Guid? SmokeChannelId => (_channel.SelectedItem as ChannelOption)?.Id;
 
     public DeviceConfigurationDialog() : base("设备配置", "配置设备与采集参数。")
@@ -81,10 +77,10 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
                 MessageBox.Show(this, exception.Message, "驱动参数", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         };
-        _cycle.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
-        _timeout.ValueChanged += (_, _) => _parameters?.RefreshBindings(BoundDevice());
+        _cycle.ValueChanged += (_, _) => customParameters.RefreshBindings(BoundDevice());
+        _timeout.ValueChanged += (_, _) => customParameters.RefreshBindings(BoundDevice());
         UpdateProtocolFields();
-        Tabs.SelectedTab = isNew ? acquisitionTab : _protocolPage ?? acquisitionTab;
+        Tabs.SelectedTab = isNew ? acquisitionTab : customParametersTab;
         if (isNew && !readOnly) SetConfirmText("添加设备");
         if (readOnly) SetReadOnlyView();
     }
@@ -104,15 +100,6 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
         Tabs.SuspendLayout();
         try
         {
-            foreach (var key in _connectionKeys) _fields.Remove(key);
-            _connectionKeys.Clear(); _connectionInputs.Clear();
-            if (_protocolPage is not null)
-            {
-                Tabs.TabPages.Remove(_protocolPage);
-                _protocolPage.Dispose();
-                _protocolPage = null;
-            }
-            _parameters = null;
             _descriptor = descriptor;
             if (!_driverDrafts.TryGetValue(descriptor.Id, out var draft))
             {
@@ -123,22 +110,11 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
                 draft.Properties = new Dictionary<string, string>(StringComparer.Ordinal);
                 _driverDrafts.Add(descriptor.Id, draft);
             }
-            _parameters = new DriverParameterPanel();
-            _parameters.SetReadOnly(_readOnly);
-            _protocolPage = new TabPage(descriptor.Name + " · 参数") { Name = "DriverConfigurationParameters", BackColor = Color.White };
-            _protocolPage.Controls.Add(_parameters);
-            Tabs.TabPages.Add(_protocolPage);
             var parameterDevice = Clone(draft);
             parameterDevice.PollIntervalMs = IntegerValue(_cycle);
             parameterDevice.TimeoutMs = IntegerValue(_timeout);
-            _parameters.LoadParameters(descriptor, parameterDevice, draft.Properties, "通用设置");
-            customParameters.LoadValues(draft.Properties, descriptor.Parameters.Select(parameter => parameter.Key), _readOnly);
-            foreach (var field in _parameters.Fields.Where(field => field.Metadata.DeviceProperty is not null))
-            {
-                _fields.Add(field.Metadata.DeviceProperty!, field.Input);
-                _connectionKeys.Add(field.Metadata.DeviceProperty!);
-            }
-            Tabs.SelectedTab = _protocolPage;
+            customParameters.LoadDriver(descriptor, parameterDevice, _readOnly);
+            Tabs.SelectedTab = customParametersTab;
             _driverDetails.Text = descriptor.Description
                 + (string.IsNullOrWhiteSpace(descriptor.Prerequisites) ? "" : "\n运行条件：" + descriptor.Prerequisites)
                 + (descriptor.RequiresSta ? "\n此驱动使用专用 STA 线程运行。" : "");
@@ -155,19 +131,13 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
             if (input is TextBox text) text.ReadOnly = _readOnly;
             else input.Enabled = !_readOnly;
         }
-        _parameters?.SetReadOnly(_readOnly);
     }
 
     private DeviceConfiguration CaptureDriverDraft()
     {
         var descriptor = _descriptor ?? throw new InvalidOperationException("请选择采集驱动。");
         var candidate = Clone(_driverDrafts[descriptor.Id]);
-        if (_parameters is not null)
-        {
-            candidate.Properties = _parameters.CaptureProperties();
-            _parameters.CaptureConnection(candidate);
-            customParameters.ApplyTo(candidate.Properties);
-        }
+        customParameters.ApplyToDevice(candidate);
         _driverDrafts[descriptor.Id] = candidate;
         return candidate;
     }
@@ -214,8 +184,6 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
     {
         if (error.Contains("采集周期", StringComparison.Ordinal) || error.Contains("MinPeriod", StringComparison.Ordinal)) return _cycle;
         if (error.Contains("超时", StringComparison.Ordinal) || error.Contains("Timeout", StringComparison.Ordinal)) return _timeout;
-        var parameter = _parameters?.FindValidationInput(error);
-        if (parameter is not null) return parameter;
         foreach (var (key, caption) in new[] { ("Host", "主机"), ("Port", "端口"), ("UnitId", "站号"),
                      ("SerialPortName", "串口名称"), ("BaudRate", "波特率"), ("DataBits", "数据位"), ("Parity", "校验位"), ("StopBits", "停止位") })
             if (error.Contains(caption, StringComparison.Ordinal) && _fields.TryGetValue(key, out var field)) return field;
@@ -232,9 +200,6 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
         var descriptor = _descriptor ?? throw new InvalidOperationException("Device configuration has no selected driver.");
         if (!ReferenceEquals(_driver.SelectedItem, descriptor))
             throw new InvalidOperationException("Device configuration lost the current driver selection.");
-        if (descriptor.IsLegacy && _connectionInputs.Count > 0)
-            throw new InvalidOperationException("A migrated driver shows unrelated native connection fields.");
-        _parameters?.VerifyBindingsForSmoke(descriptor, BoundDevice(), verifyInitialSelection: false);
         if (_readOnly)
         {
             if (Value is not null || SmokeCommands.Count != 1 || SmokeCommands[0].Text != "关闭"
@@ -246,15 +211,17 @@ internal sealed partial class DeviceConfigurationDialog : EditorDialog
         }
     }
 
+    internal IReadOnlyDictionary<string, string> ParameterValuesForSmoke => customParameters.Values;
+
     internal void SetFieldForSmoke(string key, string value)
     {
         if (_readOnly) throw new InvalidOperationException("当前设备配置为只读，不能修改字段。");
         if (key == "DriverId") { SelectDriverForSmoke(value); return; }
         Control input;
-        if (key.StartsWith("Properties.", StringComparison.Ordinal))
-            input = _parameters?.Inputs.Single(x => x.Name == "DriverParameter_" + key[11..])
-                ?? throw new ArgumentException("当前驱动没有参数字段。", nameof(key));
-        else if (!_fields.TryGetValue(key, out input!)) throw new ArgumentException("未找到配置字段：" + key, nameof(key));
+        var parameterKey = key.StartsWith("Properties.", StringComparison.Ordinal) ? key[11..] : key;
+        if (customParameters.Values.ContainsKey(parameterKey))
+        { customParameters.SetForSmoke(parameterKey, value); return; }
+        if (!_fields.TryGetValue(key, out input!)) throw new ArgumentException("未找到配置字段：" + key, nameof(key));
         if (!input.Enabled || input is TextBox { ReadOnly: true })
             throw new InvalidOperationException("该配置字段为只读。");
         switch (input)

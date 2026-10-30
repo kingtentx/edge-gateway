@@ -183,7 +183,7 @@ public sealed partial class MainForm
         if (editor.Value is not null) throw new InvalidOperationException(descriptor.Id + ": configuration result exists before confirmation.");
         editor.VerifyBindingsForSmoke();
         var parameterPage = descriptor.IsLegacy || descriptor.Parameters.Count > 0;
-        const string defaultTab = "DriverConfigurationParameters";
+        const string defaultTab = "DeviceParametersTab";
         if (editor.SelectedSmokeTab?.Name != defaultTab)
             throw new InvalidOperationException($"{descriptor.Id}: dedicated configuration opened '{editor.SelectedSmokeTab?.Name}', expected '{defaultTab}'.");
         var values = ConfigurationSmokeNativeValues(expected, descriptor);
@@ -191,7 +191,11 @@ public sealed partial class MainForm
         var inputs = Descendants(editor).Where(x => x.Name.StartsWith("DeviceConfiguration_", StringComparison.Ordinal))
             .ToDictionary(x => x.Name[20..], StringComparer.Ordinal);
         foreach (var parameter in descriptor.Parameters.Where(parameter => parameter.DeviceProperty is not null))
-            inputs.Add(parameter.DeviceProperty!, editor.SmokeParameterInputs.Single(input => input.Name == "DriverParameter_" + parameter.Key));
+        {
+            if (editor.ParameterValuesForSmoke[parameter.Key] != values[parameter.DeviceProperty!])
+                throw new InvalidOperationException("Device parameter value differs: " + parameter.Key);
+            values.Remove(parameter.DeviceProperty!);
+        }
         if (!values.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(inputs.Keys))
             throw new InvalidOperationException($"{descriptor.Id}: dedicated configuration has unrelated or missing native fields: {string.Join(", ", inputs.Keys)}.");
         foreach (var field in values)
@@ -203,16 +207,9 @@ public sealed partial class MainForm
             }
             else AssertConfigurationSmokeInput(inputs[field.Key], field.Value, descriptor.Id);
         }
-        if (parameterPage)
-        {
-            // The shared panel already verifies bound values and enum options. Here
-            // verify the new dialog actually loaded this device's saved properties.
-            foreach (var parameter in descriptor.Parameters.Where(x => x.BoundProperty is null && x.DeviceProperty is null))
-                AssertConfigurationSmokeInput(editor.SmokeParameterInputs.Single(x => x.Name == "DriverParameter_" + parameter.Key),
-                    expected.Properties.GetValueOrDefault(parameter.Key, parameter.DefaultValue), descriptor.Id);
-        }
-        else if (editor.SmokeParameterInputs.Count != values.Count - 11)
-            throw new InvalidOperationException(descriptor.Id + ": native connection field coverage differs from the displayed driver.");
+        foreach (var parameter in descriptor.Parameters.Where(x => x.BoundProperty is null && x.DeviceProperty is null))
+            if (editor.ParameterValuesForSmoke[parameter.Key] != expected.Properties.GetValueOrDefault(parameter.Key, parameter.DefaultValue))
+                throw new InvalidOperationException("Device parameter did not preserve value: " + parameter.Key);
     }
 
     private static void AssertConfigurationSmokeInput(Control control, string expected, string context)
