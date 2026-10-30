@@ -33,18 +33,39 @@ public sealed partial class MainForm
         var ids = _filteredDeviceIds.Where(_checkedDeviceIds.Contains).ToArray();
         bool Targets() => CanEdit() && ids.Length > 0;
         return [
-            new("BatchStartDevices", $"批量启动（{ids.Length} 台）", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Start), Targets, "请先勾选设备"),
-            new("BatchStopDevices", $"批量停止（{ids.Length} 台）", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Stop), Targets, "请先勾选设备"),
-            new("BatchEnableDevices", "批量启用", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Enable), Targets, "请先勾选设备", SeparateBefore: true),
-            new("BatchDisableDevices", "批量禁用（停止对应设备）", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Disable), Targets, "请先勾选设备")
+            new("BatchStartDevices", "批量启动", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Start), Targets, ""),
+            new("BatchStopDevices", "批量停止", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Stop), Targets, ""),
+            new("BatchEnableDevices", "批量启用", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Enable), Targets, "", SeparateBefore: true),
+            new("BatchDisableDevices", "批量禁用", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Disable), Targets, ""),
+            new("BatchCopyDevices", "批量复制", () => RunDeviceBatchAsync(ids, DeviceBatchAction.Copy), Targets, "", SeparateBefore: true),
+            new("BatchDeleteDevices", "批量删除…", () => DeleteCheckedDevicesAsync(ids), Targets, "", Dangerous: true)
         ];
     }
 
-    private enum DeviceBatchAction { Start, Stop, Enable, Disable }
+    private async Task DeleteCheckedDevicesAsync(Guid[] ids)
+    {
+        if (!CanEdit() || ids.Length == 0) return;
+        var devices = ids.Distinct().Select(id => _configuration.Devices.FirstOrDefault(d => d.Id == id)
+            ?? throw new InvalidOperationException("勾选设备已不存在，请刷新列表。")).ToArray();
+        if (DatabasePointReferenceWarning(devices.SelectMany(d => d.Tags)) is { } warning) { ShowError(warning); return; }
+        var names = string.Join("、", devices.Take(8).Select(d => d.Name)) + (devices.Length > 8 ? "等" : "");
+        if (MessageBox.Show(this, $"删除勾选的 {devices.Length} 台设备及其 {devices.Sum(d => d.Tags.Count)} 个配置点位？\n{names}\n删除成功后停止对应设备，其他设备继续采集；已有外部数据和日志保留。",
+            "批量删除设备", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+        await RunBusyAsync(async () => CompleteConfigurationCommit(await _application.DeleteDevicesAsync(ids),
+            successMessage: $"已删除 {devices.Length} 台勾选设备及其点位。"));
+    }
+
+    private enum DeviceBatchAction { Start, Stop, Enable, Disable, Copy }
 
     private Task RunDeviceBatchAsync(Guid[] ids, DeviceBatchAction action) => RunBusyAsync(async () =>
     {
         if (ids.Length == 0) return;
+        if (action == DeviceBatchAction.Copy)
+        {
+            var result = await _application.CopyDevicesAsync(ids);
+            CompleteConfigurationCommit(result, successMessage: $"已复制 {result.Added.Count} 台设备及其点位；副本默认停用，请配置后再启用。");
+            return;
+        }
         if (action is DeviceBatchAction.Enable or DeviceBatchAction.Disable)
         {
             var enabled = action == DeviceBatchAction.Enable;

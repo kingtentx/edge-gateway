@@ -71,7 +71,10 @@ public sealed partial class MainForm
             pager.Current = 1; await Task.Delay(100);
             _devicesPageView.deviceBatchButton.OpenMenu(); await Task.Delay(100);
             Require(_devicesPageView.deviceBatchButton.OpenedMenu.Visible
-                && _devicesPageView.deviceBatchButton.OpenedCommands.Count == 4, "Batch menu must expose only the four batch operations.");
+                && _devicesPageView.deviceBatchButton.OpenedCommands.Count == 6, "Batch menu must expose the six batch operations.");
+            Require(_devicesPageView.deviceBatchButton.OpenedItems.All(item => string.IsNullOrEmpty(item.SubText)), "Batch menu still shows hint text.");
+            Require(!Descendants(_devicesPageView).Any(c => c.Name == "DeviceMoreActions"), "Removed menu button remains.");
+            Require(BuildDeviceExchangeMenu().Count == 4 && BuildDeviceExchangeMenu().All(c => !c.Text.Contains("Excel")), "Exchange menu labels or entries changed incorrectly.");
             SaveEditorScreenshot(this, "device-batch", "checked-menu");
             SaveEditorScreenshot(_devicesPageView.deviceBatchButton.OpenedMenu, "device-batch", "menu-popup");
             _devicesPageView.deviceBatchButton.OpenedMenu.Close();
@@ -96,8 +99,24 @@ public sealed partial class MainForm
             Require(!header.Enabled && header.CheckState == CheckState.Unchecked, "Empty result kept header selectable.");
             _deviceSearch.Clear();
             Require(!BuildDeviceBatchMenu().Single(c => c.Key == "BatchStartDevices").CanExecute(), "Empty batch command enabled.");
+            _checkedDeviceIds.UnionWith([first, last]); UpdateDeviceCheckSummary();
+            var copyCommand = BuildDeviceBatchMenu().Single(c => c.Key == "BatchCopyDevices");
+            _checkedDeviceIds.Clear(); _checkedDeviceIds.Add(independent); UpdateDeviceCheckSummary();
+            var beforeCopy = _configuration.Devices.Select(d => d.Id).ToHashSet();
+            await copyCommand.Execute();
+            var copies = _configuration.Devices.Where(d => !beforeCopy.Contains(d.Id)).ToArray();
+            Require(copies.Length == 2 && copies.All(d => !d.Enabled)
+                && copies.Any(d => d.Name.StartsWith(fixture.Devices[0].Name + " 副本"))
+                && copies.Any(d => d.Name.StartsWith(fixture.Devices[10].Name + " 副本")), "Batch copy lost captured targets or enabled copies.");
+            Require(_application.IsDeviceRunning(independent), "Batch copy interrupted unselected device.");
+            var copyIds = copies.Select(d => d.Id).ToArray();
+            await SmokeBatchDeleteConfirmationAsync(copyIds, accept: false);
+            Require(copyIds.All(id => _configuration.Devices.Any(d => d.Id == id)), "Cancelled deletion removed devices.");
+            await SmokeBatchDeleteConfirmationAsync(copyIds, accept: true);
+            Require(_application.IsDeviceRunning(independent) && _configuration.Devices.Count == 13, "Batch delete changed unrelated devices.");
+            _checkedDeviceIds.Clear(); UpdateDeviceCheckSummary();
             SaveEditorScreenshot(this, "device-batch", "cleared");
-            Console.WriteLine($"Device batch smoke passed: official mouse/keyboard checkbox, cross-page selection, refresh, captured targets, start/stop/enable/disable isolation, failed save, partial results and filter cleanup; DeviceDpi={DeviceDpi}.");
+            Console.WriteLine($"Device batch smoke passed: official mouse/keyboard checkbox, cross-page selection, refresh, captured targets, start/stop/enable/disable/copy/delete isolation, delete confirmation/cancellation, failed save, partial results and filter cleanup; DeviceDpi={DeviceDpi}.");
         }
         finally
         {
@@ -106,4 +125,28 @@ public sealed partial class MainForm
             await RestoreConfigurationForSmokeAsync(original);
         }
     }
+    private async Task SmokeBatchDeleteConfirmationAsync(Guid[] ids, bool accept)
+    {
+        Exception? failure = null;
+        var observed = false;
+        using var timer = new System.Windows.Forms.Timer { Interval = 250 };
+        timer.Tick += (_, _) =>
+        {
+            var modal = System.Windows.Forms.Application.OpenForms.Cast<Form>()
+                .FirstOrDefault(form => form.Visible && form.GetType().FullName == "AntdUI.LayeredFormModal");
+            if (modal is null) return;
+            timer.Stop(); observed = true;
+            try
+            {
+                SaveEditorScreenshot(modal, "device-batch", accept ? "delete-confirm" : "delete-cancel");
+                Descendants(modal).OfType<AntdUI.Button>().Single(button => button.Text == (accept ? "确定" : "取消")).PerformClick();
+            }
+            catch (Exception exception) { failure = exception; modal.Close(); }
+        };
+        timer.Start();
+        await DeleteCheckedDevicesAsync(ids);
+        if (failure is not null) throw failure;
+        if (!observed) throw new InvalidOperationException("Batch deletion did not show confirmation.");
+    }
+
 }

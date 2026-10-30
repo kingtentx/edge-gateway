@@ -40,6 +40,31 @@ public sealed partial class GatewayApplication
         }, cancellationToken);
     }
 
+    public Task<ConfigurationApplyResult> CopyDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(deviceIds);
+        var ids = deviceIds.Distinct().ToArray();
+        if (ids.Length == 0) throw new ArgumentException("请先勾选设备。", nameof(deviceIds));
+        return ChangeAsync(candidate =>
+        {
+            var originals = ids.Select(id => FindDevice(candidate, id)).ToArray();
+            foreach (var original in originals)
+                candidate.Devices.Add(DeviceConfigurationOperations.Copy(original, candidate.Devices.Select(d => d.Name)));
+        }, cancellationToken);
+    }
+
+    public Task<ConfigurationApplyResult> DeleteDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(deviceIds);
+        var ids = deviceIds.Distinct().ToArray();
+        if (ids.Length == 0) throw new ArgumentException("请先勾选设备。", nameof(deviceIds));
+        return ChangeAsync(candidate =>
+        {
+            var devices = ids.Select(id => FindDevice(candidate, id)).ToArray();
+            foreach (var device in devices) candidate.Devices.Remove(device);
+        }, cancellationToken);
+    }
+
     public Task<ConfigurationApplyResult> DeleteDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default) =>
         ChangeAsync(candidate => candidate.Devices.Remove(FindDevice(candidate, deviceId)), cancellationToken);
 

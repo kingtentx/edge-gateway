@@ -7,11 +7,11 @@ public sealed partial class MainForm
         var id = SelectedDevice()?.Id;
         bool Target() => CanEdit() && id.HasValue && _configuration.Devices.Any(device => device.Id == id);
         return [
-            new("ImportDeviceExcel", "导入设备 Excel…", ImportDeviceWorkbookAsync, CanEdit),
-            new("ExportSelectedDeviceExcel", "导出所选设备 Excel…", () => RunBusyAsync(() => ExportDeviceWorkbookAsync(id)), Target, "请先选择设备"),
-            new("ExportAllDevicesExcel", "导出全部设备 Excel…", () => RunBusyAsync(() => ExportDeviceWorkbookAsync()),
+            new("ImportDeviceExcel", "导入设备…", ImportDeviceWorkbookAsync, CanEdit),
+            new("ExportSelectedDeviceExcel", "导出所选设备…", () => RunBusyAsync(() => ExportDeviceWorkbookAsync(id)), Target, "请先选择设备"),
+            new("ExportAllDevicesExcel", "导出全部设备…", () => RunBusyAsync(() => ExportDeviceWorkbookAsync()),
                 () => CanEdit() && _configuration.Devices.Count > 0, "尚无设备"),
-            new("DeviceExcelTemplate", "下载设备 Excel 模板…", () => RunBusyAsync(() => ExportDeviceWorkbookAsync(template: true)), CanEdit)
+            new("DeviceExcelTemplate", "下载设备模板…", () => RunBusyAsync(() => ExportDeviceWorkbookAsync(template: true)), CanEdit)
         ];
     }
 

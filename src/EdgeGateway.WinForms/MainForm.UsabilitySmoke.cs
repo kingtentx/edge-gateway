@@ -47,28 +47,26 @@ public sealed partial class MainForm
             _tagSearch.Clear();
 
             _deviceSearch.Text = "no-such-device-for-usability-smoke";
-            OpenMenuForSmoke(_deviceMore, "empty device menu");
-            CheckUsability(!MenuItem(_deviceMore, "ConfigureDevice").Enabled && !MenuItem(_deviceMore, "DeleteDevice").Enabled,
+            OpenMenuForSmoke(_devicesPageView.deviceBatchButton, "empty device menu");
+            CheckUsability(!MenuItem(_devicesPageView.deviceBatchButton, "BatchCopyDevices").Enabled && !MenuItem(_devicesPageView.deviceBatchButton, "BatchDeleteDevices").Enabled,
                 "selection commands remain enabled without a selected device.");
-            _deviceMore.OpenedMenu.Close();
+            _devicesPageView.deviceBatchButton.OpenedMenu.Close();
             _deviceSearch.Clear(); RebindConfigurationViews(a.Id);
-            OpenMenuForSmoke(_deviceMore, "device command menu", keyboard: true);
-            var configure = MenuItem(_deviceMore, "ConfigureDevice");
-            SendMenuKeyForSmoke(_deviceMore, Keys.Down);
-            CheckUsability(configure.Enabled, "menu command is unavailable.");
-            SaveUsabilityMenuScreenshot(_deviceMore.OpenedMenu);
-            // The open menu owns A's identity even if a background rebind changes
-            // selection to B before activation.
+            _checkedDeviceIds.Add(a.Id);
+            OpenMenuForSmoke(_devicesPageView.deviceBatchButton, "device batch menu", keyboard: true);
+            CheckUsability(MenuItem(_devicesPageView.deviceBatchButton, "BatchCopyDevices").Enabled, "Batch copy unavailable.");
+            SaveUsabilityMenuScreenshot(_devicesPageView.deviceBatchButton.OpenedMenu);
+            _devicesPageView.deviceBatchButton.OpenedMenu.Close();
             RebindConfigurationViews(b.Id);
-            await SmokeDeviceConfigurationModalAsync(() => _deviceMore.ExecuteCommandAsync((MenuCommand)configure.Tag!), editor =>
+            await SmokeDeviceConfigurationModalAsync(() => ConfigureDeviceAsync(a.Id), editor =>
             {
                 var name = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DeviceConfiguration_Name");
-                CheckUsability(name.Text == a.Name, "an opened menu redirected its target to a later selection.");
-                editor.SetFieldForSmoke("Group", "从菜单保存");
-            }, "captured menu device identity");
-            _deviceMore.OpenedMenu.Close();
-            CheckUsability(_configuration.Devices.Single(device => device.Id == a.Id).Group == "从菜单保存"
-                && _configuration.Devices.Single(device => device.Id == b.Id).Group == b.Group, "menu edited another device.");
+                CheckUsability(name.Text == a.Name, "row configuration redirected to a later selection.");
+                editor.SetFieldForSmoke("Group", "从行内保存");
+            }, "device row identity");
+            CheckUsability(_configuration.Devices.Single(device => device.Id == a.Id).Group == "从行内保存"
+                && _configuration.Devices.Single(device => device.Id == b.Id).Group == b.Group, "row edited another device.");
+            _checkedDeviceIds.Clear(); UpdateDeviceCheckSummary();
 
             _pointsDialog.Show(this);
             OpenMenuForSmoke(_tagMore, "point menu");
@@ -166,7 +164,7 @@ public sealed partial class MainForm
         finally
         {
             _pointsDialog.Hide();
-            _deviceMore.OpenedMenu.Close(); _tagMore.OpenedMenu.Close();
+            _devicesPageView.deviceBatchButton.OpenedMenu.Close(); _tagMore.OpenedMenu.Close();
             _deviceSearch.Clear(); _tagSearch.Clear();
             await RestoreConfigurationForSmokeAsync(original);
             RebindConfigurationViews(originalSelection); ShowPage(page); UpdateCommands();

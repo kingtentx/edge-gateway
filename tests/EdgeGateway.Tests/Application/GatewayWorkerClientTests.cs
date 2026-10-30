@@ -15,6 +15,22 @@ public sealed class GatewayWorkerClientTests
         ValueTask<StoreStatistics> ReadAsync(CancellationToken cancellationToken = default);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task BatchCopyDeleteIdsAndResultSurviveWorkerIpc(bool copy)
+    {
+        var id = Guid.NewGuid();
+        var response = System.Text.Json.JsonSerializer.Serialize(new { Added = new[] { id }, Removed = new[] { id }, Updated = Array.Empty<Guid>(), Restarted = Array.Empty<Guid>(), Stopped = Array.Empty<Guid>() });
+        await using var server = new PipeFixture(response);
+        var proxy = server.CreateProxy<IGatewayApplication>();
+        var result = copy ? await proxy.CopyDevicesAsync([id]) : await proxy.DeleteDevicesAsync([id]);
+        Assert.Equal(id, Assert.Single(copy ? result.Added : result.Removed));
+        var request = await server.Request;
+        Assert.Equal(copy ? nameof(IGatewayApplication.CopyDevicesAsync) : nameof(IGatewayApplication.DeleteDevicesAsync), request.GetProperty("Method").GetString());
+        Assert.Equal(id, request.GetProperty("Arguments")[0][0].GetGuid());
+    }
+
     [Fact]
     public async Task BatchEnableIdsAndResultSurviveWorkerIpc()
     {

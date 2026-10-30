@@ -28,7 +28,7 @@ public sealed partial class MainForm
     private Label _tagSummary = null!;
     private readonly List<(Control Control, Func<bool> Available)> _selectionCommands = [];
     private Guid? _tagDeviceId;
-    private CommandMenuButton _deviceMore = null!, _deviceExchange = null!, _tagMore = null!;
+    private CommandMenuButton _deviceExchange = null!, _tagMore = null!;
     private DevicesPageView _devicesPageView = null!;
 
     private Control BuildDevicesPage()
@@ -92,13 +92,11 @@ public sealed partial class MainForm
         probeDevice.Click += async (_, _) => await RunBusyAsync(() => ProbeSelectionAsync(false));
         _configurationCommands.Add(probeDevice);
         _selectionCommands.Add((probeDevice, () => SelectedDevice() is not null));
-        _deviceMore = _devicesPageView.deviceMoreButton;
-        _deviceMore.Bind(BuildDeviceMenu, exception => ShowError(exception.Message));
         _devicesPageView.channelButton.Click += (_, _) => ShowConfigurationCatalog(false);
         _devicesPageView.groupButton.Click += (_, _) => ShowConfigurationCatalog(true);
         _deviceExchange = _devicesPageView.deviceExchangeButton;
         _deviceExchange.Bind(BuildDeviceExchangeMenu, exception => ShowError(exception.Message));
-        _configurationCommands.AddRange([_deviceMore, _deviceExchange, _devicesPageView.channelButton, _devicesPageView.groupButton]);
+        _configurationCommands.AddRange([_deviceExchange, _devicesPageView.channelButton, _devicesPageView.groupButton]);
         _deviceSummary.Margin = new Padding(4, 9, 0, 0);
         _deviceGroupFilter = _devicesPageView.groupFilter;
         _deviceChannelFilter = _devicesPageView.channelFilter;
@@ -146,21 +144,6 @@ public sealed partial class MainForm
         // action block when it would consume the small monitor's horizontal viewport.
         _deviceGrid.Columns["Name"].Frozen = _deviceGrid.ClientSize.Width >= UiTheme.Scale(_deviceGrid, 340);
         _devicesPageView.deviceGridColumnChecked.Frozen = _deviceGrid.Columns["Name"].Frozen;
-    }
-
-    private IReadOnlyList<MenuCommand> BuildDeviceMenu()
-    {
-        var id = SelectedDevice()?.Id;
-        bool Target() => CanEdit() && id.HasValue && _configuration.Devices.Any(d => d.Id == id);
-        return [
-            new("ConfigureDevice", "配置所选设备", () => id.HasValue ? ConfigureDeviceAsync(id.Value) : Task.CompletedTask, Target, "请先选择设备", Shortcut: "F2"),
-            new("CopyDevice", "复制所选设备", () => CopyDeviceAsync(id), Target, "请先选择设备"),
-            new("ImportDevices", "追加导入设备 JSON…", () => RunBusyAsync(ImportDevicesAsync), CanEdit, SeparateBefore: true),
-            new("ExportConfiguration", "导出网关配置…", () => RunBusyAsync(ExportConfigurationAsync), CanEdit),
-            new("ReplaceConfiguration", "替换整份配置…", () => RunBusyAsync(ImportConfigurationAsync), () => CanEdit() && !_application.IsRunning,
-                "请先停止全部设备；整份配置将替换当前设备及平台设置"),
-            new("DeleteDevice", "删除所选设备…", () => DeleteDeviceAsync(id), Target, "请先选择设备", SeparateBefore: true, Dangerous: true)
-        ];
     }
 
     private IReadOnlyList<MenuCommand> BuildTagMenu()

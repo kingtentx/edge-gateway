@@ -52,6 +52,8 @@ public interface IGatewayApplication : IAsyncDisposable
     Task<ConfigurationApplyResult> AddDeviceAsync(DeviceConfiguration device, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> UpdateDeviceAsync(DeviceConfiguration device, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> SetDevicesEnabledAsync(IReadOnlyList<Guid> deviceIds, bool enabled, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> CopyDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken cancellationToken = default);
+    Task<ConfigurationApplyResult> DeleteDevicesAsync(IReadOnlyList<Guid> deviceIds, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> DeleteDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> AppendDevicesAsync(IReadOnlyList<DeviceConfiguration> devices, CancellationToken cancellationToken = default);
     Task<ConfigurationApplyResult> AddTagAsync(Guid deviceId, TagConfiguration tag, CancellationToken cancellationToken = default);

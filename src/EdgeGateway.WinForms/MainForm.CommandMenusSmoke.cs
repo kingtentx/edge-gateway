@@ -5,7 +5,7 @@ public sealed partial class MainForm
     private async Task SmokeCommandMenusAsync()
     {
         ShowPage("devices");
-        foreach (var button in new[] { _deviceExchange, _deviceMore })
+        foreach (var button in new[] { _deviceExchange, _devicesPageView.deviceBatchButton })
         {
             OpenMenuForSmoke(button, "command appearance " + button.Name, keyboard: true);
             await Task.Delay(300);
@@ -20,19 +20,13 @@ public sealed partial class MainForm
                 throw new InvalidOperationException("Escape did not close menu/reset arrow.");
         }
         var target = SelectedDevice() ?? throw new InvalidOperationException("No menu target.");
-        OpenMenuForSmoke(_deviceMore, "captured device menu", keyboard: true);
         var other = _configuration.Devices.First(device => device.Id != target.Id);
         RebindConfigurationViews(other.Id);
-        await SmokeDeviceConfigurationModalAsync(async () =>
-        {
-            SendMenuKeyForSmoke(_deviceMore, Keys.Down);
-            SendMenuKeyForSmoke(_deviceMore, Keys.Enter);
-            await Task.Delay(800);
-        }, editor =>
+        await SmokeDeviceConfigurationModalAsync(() => ConfigureDeviceAsync(target.Id), editor =>
         {
             var name = Descendants(editor).OfType<TextBox>().Single(control => control.Name == "DeviceConfiguration_Name");
-            if (name.Text != target.Name) throw new InvalidOperationException("Menu changed its captured target.");
-            VerifyEditorLayout(editor, "menu device form");
+            if (name.Text != target.Name) throw new InvalidOperationException("Configuration changed its target.");
+            VerifyEditorLayout(editor, "row device form");
             foreach (var tabs in Descendants(editor).OfType<TabControl>())
             {
                 var scanning = tabs.TabPages.Cast<TabPage>().FirstOrDefault(tab => tab.Text == "扫描与恢复");
@@ -44,19 +38,16 @@ public sealed partial class MainForm
                     throw new InvalidOperationException("Scanning form widths differ.");
                 SaveEditorScreenshot(editor, "menus", "scanning-form");
             }
-        }, "official keyboard menu captured identity");
-        var completed = System.Diagnostics.Stopwatch.StartNew();
-        while (_deviceMore.IsExecuting && completed.Elapsed < TimeSpan.FromSeconds(5)) await Task.Delay(20);
-        if (_deviceMore.IsExecuting) throw new InvalidOperationException("Device menu did not finish its modal command.");
+        }, "device row identity");
         RebindConfigurationViews(target.Id);
         _deviceSearch.Text = "no-device-menu-check";
-        OpenMenuForSmoke(_deviceMore, "disabled menu");
-        var disabled = MenuItem(_deviceMore, "ConfigureDevice");
-        if (disabled.Enabled || string.IsNullOrWhiteSpace(disabled.SubText))
-            throw new InvalidOperationException("Disabled menu reason missing.");
-        await _deviceMore.ExecuteCommandAsync((MenuCommand)disabled.Tag!);
-        SaveEditorScreenshot(_deviceMore.OpenedMenu, "menus", "disabled");
-        _deviceMore.OpenedMenu.Close();
+        OpenMenuForSmoke(_devicesPageView.deviceBatchButton, "disabled menu");
+        var disabled = MenuItem(_devicesPageView.deviceBatchButton, "BatchCopyDevices");
+        if (disabled.Enabled || !string.IsNullOrEmpty(disabled.SubText))
+            throw new InvalidOperationException("Disabled batch menu must not show hint text.");
+        await _devicesPageView.deviceBatchButton.ExecuteCommandAsync((MenuCommand)disabled.Tag!);
+        SaveEditorScreenshot(_devicesPageView.deviceBatchButton.OpenedMenu, "menus", "disabled");
+        _devicesPageView.deviceBatchButton.OpenedMenu.Close();
         _deviceSearch.Clear();
         RebindConfigurationViews(target.Id);
         _pointsDialog.Show(this);
@@ -81,6 +72,6 @@ public sealed partial class MainForm
             SaveEditorScreenshot(popup, "menus", "select-width");
         }
         finally { _deviceGroupFilter.ExpandDrop = false; }
-        Console.WriteLine("CommandMenus passed: three official popups, arrows, keyboard selection/Enter/Escape, captured target, disabled reasons and accessibility, aligned scanning fields.");
+        Console.WriteLine("CommandMenus passed: three official popups, arrows, keyboard opening/Escape, row target, disabled commands and accessibility, aligned scanning fields.");
     }
 }

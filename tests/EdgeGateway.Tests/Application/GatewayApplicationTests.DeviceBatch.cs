@@ -75,4 +75,67 @@ public sealed partial class GatewayApplicationTests
         Assert.False(device.Enabled);
         Assert.True(saved.Devices.Single(d => d.Id == h.B.Id).Enabled);
     }
+
+    [Fact]
+    public async Task BatchCopyUsesFreshIdentitiesAndOneSaveWithoutChangingOriginals()
+    {
+        await using var h = await Harness.CreateAsync();
+        await h.App.StartDeviceAsync(h.A.Id);
+        var before = h.App.GetConfiguration();
+        var result = await h.App.CopyDevicesAsync([h.A.Id, h.B.Id, h.A.Id]);
+        Assert.Equal(2, result.Added.Count);
+        Assert.Equal(1, h.Configurations.Saves);
+        var saved = await h.App.ReadSavedConfigurationAsync();
+        Assert.Equal(4, saved.Devices.Count);
+        Assert.Equal(Json(before.Devices), Json(saved.Devices.Where(d => !result.Added.Contains(d.Id)).ToList()));
+        var oldTags = before.Devices.SelectMany(d => d.Tags).Select(t => t.Id).ToHashSet();
+        Assert.All(saved.Devices.Where(d => result.Added.Contains(d.Id)), copy =>
+        {
+            Assert.False(copy.Enabled);
+            Assert.False(h.App.IsDeviceRunning(copy.Id));
+            Assert.All(copy.Tags, tag => Assert.DoesNotContain(tag.Id, oldTags));
+        });
+        Assert.True(h.App.IsDeviceRunning(h.A.Id));
+        Assert.Empty(h.Factory.Disposed);
+        await h.App.CopyDevicesAsync([h.A.Id]);
+        var names = h.App.GetConfiguration().Devices.Select(d => d.Name).ToArray();
+        Assert.Equal(names.Length, names.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+    }
+
+    [Fact]
+    public async Task BatchDeleteSavesOnceAndStopsOnlyTargets()
+    {
+        await using var h = await Harness.CreateAsync();
+        var third = Device("保留设备");
+        await h.App.AddDeviceAsync(third);
+        foreach (var id in new[] { h.A.Id, h.B.Id, third.Id }) await h.App.StartDeviceAsync(id);
+        var saves = h.Configurations.Saves;
+        var result = await h.App.DeleteDevicesAsync([h.A.Id, h.B.Id, h.A.Id]);
+        Assert.Equal(2, result.Removed.Count);
+        Assert.Equal(saves + 1, h.Configurations.Saves);
+        Assert.Equal(third.Id, Assert.Single((await h.App.ReadSavedConfigurationAsync()).Devices).Id);
+        Assert.False(h.App.IsDeviceRunning(h.A.Id));
+        Assert.False(h.App.IsDeviceRunning(h.B.Id));
+        Assert.True(h.App.IsDeviceRunning(third.Id));
+        Assert.False(h.Factory.Disposed.ContainsKey(third.Id));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task BatchCopyDeleteRejectMissingTargetsAndSaveFailureAtomically(bool copy)
+    {
+        await using var h = await Harness.CreateAsync();
+        await h.App.StartDeviceAsync(h.A.Id);
+        var before = Json(h.App.GetConfiguration());
+        Task Execute(Guid[] ids) => copy ? h.App.CopyDevicesAsync(ids) : h.App.DeleteDevicesAsync(ids);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Execute([h.A.Id, Guid.NewGuid()]));
+        Assert.Equal(0, h.Configurations.Saves);
+        h.Configurations.FailSave = true;
+        await Assert.ThrowsAsync<IOException>(() => Execute([h.A.Id, h.B.Id]));
+        Assert.Equal(before, Json(h.App.GetConfiguration()));
+        Assert.Equal(before, Json(await h.App.ReadSavedConfigurationAsync()));
+        Assert.True(h.App.IsDeviceRunning(h.A.Id));
+        Assert.Empty(h.Factory.Disposed);
+    }
 }
