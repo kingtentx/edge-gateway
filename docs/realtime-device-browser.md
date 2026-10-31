@@ -17,4 +17,12 @@
 
 新增 RealtimeDisplayStateTests 和隔离桌面 RealtimeBrowser 场景，覆盖离线冻结/恢复、质量、未采样点位、分组/设备/搜索、分页选择保持、模拟设备启停以及宽窄布局。
 
-本次源码修改尚未执行构建、自动测试、架构门禁或 Windows 界面验证，等待用户授权。未连接真实设备或实际外库，未修改现场配置；Designer 代码结构已调整，但设计器可编辑性尚未人工验收。
+用户已明确授权本次范围及同范围修复重跑。2026-11-01 执行结果：
+
+- Release 编译通过：0 错误、420 项现有驱动与 Worker 警告。日志 `artifacts/realtime-browser-build.log`，运行目录 `artifacts/realtime-browser-runtime`。
+- RealtimeDisplayStateTests 共 9 项通过，0 失败/跳过。覆盖停止/连接/重连/故障时冻结值和时间、保留真实错误质量、恢复刷新、首次离线显示、未采样、禁用、地址变更/删除及同名不同 ID 设备独立更新。TRX：`artifacts/realtime-browser-tests/realtime-display.trx`。
+- 架构检查通过：8 个层间边界、24 个无环工程。日志 `artifacts/realtime-browser-architecture.log`。
+- 隔离后台 RealtimeBrowser 通过，实际 DeviceDpi=192，退出码 0，stderr 为空。覆盖分组筛选/空组、树节点选择、搜索/空结果、未采样点位、模拟离线值与时间保持、模拟设备停止/恢复、写入可用状态、页码与选择保持、节点复用、连续刷新和 1400→1008→1400 逻辑像素宽度往返。
+- 人工查看宽、窄及离线三张截图：两栏无重叠，窄窗口表格保留横向滚动，分页可达，离线质量显示异常且写入入口禁用。证据位于 `artifacts/realtime-browser-ui`。
+
+未执行全量或真实设备测试，未连接实际外库、修改现场配置；未改变用户桌面缩放，未验证真实跨屏 DPI 切换。固定控件已在 Designer 中创建，设计器可编辑性尚未人工验收。
