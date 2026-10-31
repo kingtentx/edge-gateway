@@ -61,7 +61,43 @@ public sealed partial class MainForm
             Require(_queriedHistory.Count == 0 && !_historyExport.Enabled && _historySummary.Text.Contains("未找到"),
                 "Empty query kept stale results or an enabled export.");
             SaveEditorScreenshot(this, "history-sources", "empty");
-            Console.WriteLine($"HistorySources smoke passed: DeviceDpi={DeviceDpi}; local logs without database, quality, trend, pagination, captured CSV, source/scan changes, empty results.");
+            // Availability is evaluated from the applied configuration, never by attempting a write.
+            var connection = new DatabaseConnectionConfiguration
+                { Name = "历史数据库", Provider = ExternalDatabaseProvider.PostgreSql, Enabled = true, Username = "test" };
+            var group = new DatabaseWriteGroupConfiguration
+            {
+                Name = "逐点映射历史", ConnectionId = connection.Id, Enabled = true, Mode = DatabaseStorageMode.PointMapping,
+                Columns = new[] { DatabaseValueSource.DeviceId, DatabaseValueSource.TagId, DatabaseValueSource.SampleTime,
+                    DatabaseValueSource.EngineeringValue, DatabaseValueSource.Quality }
+                    .Select(source => new DatabaseColumnMapping { Column = source.ToString(), Source = source }).ToList()
+            };
+            CompleteConfigurationCommit(await _application.ApplyDatabaseSettingsAsync([connection], [group]));
+            _historySource.SelectedIndex = 1;
+            SelectChoice(_historyGroup, group.Id);
+            Require(_historyQuery.Enabled && (_historyGroup.SelectedItem as Choice)?.Id == group.Id,
+                "Compatible PointMapping group was excluded from external history.");
+            SaveEditorScreenshot(this, "history-sources", "external-point-mapping");
+            var chosen = group.Id;
+            BindHistoryGroups();
+            Require((_historyGroup.SelectedItem as Choice)?.Id == chosen && _historyQuery.Enabled,
+                "History group selection was lost on rebind.");
+            group.Columns.RemoveAll(column => column.Source == DatabaseValueSource.Quality);
+            CompleteConfigurationCommit(await _application.ApplyDatabaseSettingsAsync([connection], [group]));
+            Require((_historyGroup.SelectedItem as Choice)?.Id == chosen && !_historyQuery.Enabled
+                && _historySummary.Text.Contains("质量"), "Missing quality mapping was hidden or not explained.");
+            SaveEditorScreenshot(this, "history-sources", "external-missing-quality");
+            group.Mode = DatabaseStorageMode.PointRows; group.Columns.Clear();
+            CompleteConfigurationCommit(await _application.ApplyDatabaseSettingsAsync([connection], [group]));
+            Require(_historyQuery.Enabled, "Standard point-row history regressed.");
+            connection.Enabled = false;
+            CompleteConfigurationCommit(await _application.ApplyDatabaseSettingsAsync([connection], [group]));
+            Require(!_historyQuery.Enabled && _historySummary.Text.Contains("连接未启用"), "Disabled connection reason was lost.");
+            connection.Enabled = true; group.Enabled = false;
+            CompleteConfigurationCommit(await _application.ApplyDatabaseSettingsAsync([connection], [group]));
+            Require(!_historyQuery.Enabled && _historySummary.Text.Contains("写入组未启用"), "Disabled group reason was lost.");
+            _historySource.SelectedIndex = 0;
+            Require(_historyQuery.Enabled, "External source restrictions leaked into local-log history.");
+            Console.WriteLine($"HistorySources smoke passed: DeviceDpi={DeviceDpi}; local logs without database, quality, trend, pagination, captured CSV, source/scan changes, empty results; mapped/standard groups, missing-quality and disabled reasons, selection retention; no external database contacted.");
         }
         finally { await CommitConfigurationAsync(original, replaceCloudDraft: true); }
     }

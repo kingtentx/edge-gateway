@@ -2,6 +2,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using EdgeGateway.Abstractions;
 using EdgeGateway.DataAccess;
 using EdgeGateway.Model;
 using MySqlConnector;
@@ -412,6 +413,114 @@ public sealed class ExternalDatabaseConnectorTests
     }
 
     [Theory]
+    [InlineData("timestamp with time zone")]
+    [InlineData("timestamp without time zone")]
+    public async Task MappedHistoryUsesConfiguredColumnsAndActualTimeType(string timeType)
+    {
+        var group = HistoryMappingFixture();
+        var device = Guid.NewGuid(); var tag = Guid.NewGuid();
+        var rows = HistoryMappedRows(device, tag);
+        var database = new RecordingConnection
+        {
+            HistoryColumns = group.Columns.Select(column => new DatabaseColumnInfo(column.Column,
+                column.Source == DatabaseValueSource.SampleTime ? timeType : "character varying", true)).ToArray(),
+            HistoryData = rows
+        };
+        var connector = new ExternalDatabaseConnector(_ => database);
+        var from = new DateTimeOffset(2026, 10, 31, 12, 0, 0, TimeSpan.FromHours(8));
+        var results = await connector.QueryPointHistoryAsync(Configuration(), group, new(device, tag, from, from.AddHours(1), 29));
+        var sample = Assert.Single(results);
+        Assert.Equal(device, sample.DeviceId); Assert.Equal(tag, sample.TagId);
+        Assert.Equal("42.5", sample.Value); Assert.Equal(42.5, sample.NumericValue);
+        Assert.Equal(long.MaxValue, sample.RawValue);
+        Assert.Equal(SampleQuality.Uncertain, sample.Quality);
+        Assert.Equal("℃", sample.Unit); Assert.Equal("读取不确定", sample.Error);
+        var expected = timeType.Contains("without")
+            ? new DateTimeOffset(DateTime.SpecifyKind((DateTime)rows.Rows[0][8], DateTimeKind.Unspecified))
+            : new DateTimeOffset(DateTime.SpecifyKind((DateTime)rows.Rows[0][8], DateTimeKind.Utc)).ToLocalTime();
+        Assert.Equal(expected, sample.Timestamp);
+        var command = database.Commands.Last();
+        Assert.Contains("\"sample_clock\" >= @from_time", command.Sql);
+        Assert.Contains("\"point_key\" = @tag", command.Sql);
+        Assert.Contains("\"device_key\" = @device", command.Sql);
+        Assert.Contains("LIMIT @row_limit", command.Sql);
+        Assert.Equal(29, command.Values["row_limit"]);
+        Assert.Equal(tag.ToString("D"), command.Values["tag"]);
+        Assert.Equal(timeType.Contains("without") ? from.LocalDateTime : from.UtcDateTime, command.Values["from_time"]);
+        Assert.DoesNotContain(device.ToString("D"), command.Sql);
+        Assert.All(database.Commands, item => Assert.StartsWith("SELECT ", item.Sql));
+    }
+
+    [Theory]
+    [InlineData("device_key", "integer")]
+    [InlineData("point_key", "uuid")]
+    [InlineData("sample_quality", "integer")]
+    [InlineData("sample_clock", "text")]
+    [InlineData("sample_clock", "missing")]
+    public async Task MappedHistoryRejectsIncompatibleSchemaBeforeReadingSamples(string field, string type)
+    {
+        var group = HistoryMappingFixture();
+        var metadata = group.Columns.Where(column => column.Column != field || type != "missing")
+            .Select(column => new DatabaseColumnInfo(column.Column, column.Column == field ? type
+                : column.Source == DatabaseValueSource.SampleTime ? "timestamp with time zone" : "text", true)).ToArray();
+        var database = new RecordingConnection { HistoryColumns = metadata };
+        var connector = new ExternalDatabaseConnector(_ => database);
+        var error = await Assert.ThrowsAnyAsync<DatabaseWriteException>(() => connector.QueryPointHistoryAsync(Configuration(), group,
+            new(null, null, DateTimeOffset.Now.AddHours(-1), DateTimeOffset.Now)));
+        Assert.Contains(field, error.Message);
+        Assert.Single(database.Commands); // catalog read only; no sample query or writes
+    }
+
+    [Theory]
+    [InlineData(1, "not-an-id")]
+    [InlineData(3, "not-an-id")]
+    [InlineData(9, "999")]
+    [InlineData(8, null)]
+    public void MappedHistoryRejectsInvalidIdentityQualityAndTime(int ordinal, string? invalid)
+    {
+        var table = HistoryMappedRows(Guid.NewGuid(), Guid.NewGuid());
+        table.Rows[0][ordinal] = (object?)invalid ?? DBNull.Value;
+        using var reader = table.CreateDataReader(); reader.Read();
+        Assert.ThrowsAny<DatabaseWriteException>(() => ExternalDatabaseConnector.ReadMappedHistorySample(reader,
+            ExternalDatabaseProvider.PostgreSql, "timestamp with time zone"));
+    }
+
+    [Fact]
+    public void MappedHistoryPreservesNullAndPlainTextWithoutJsonGuessing()
+    {
+        var table = HistoryMappedRows(Guid.NewGuid(), Guid.NewGuid());
+        table.Rows[0][6] = DBNull.Value; table.Rows[0][7] = "plain text";
+        table.Rows[0][9] = "Bad"; table.Rows[0][10] = DBNull.Value; table.Rows[0][11] = DBNull.Value;
+        using var reader = table.CreateDataReader(); reader.Read();
+        var sample = ExternalDatabaseConnector.ReadMappedHistorySample(reader, ExternalDatabaseProvider.PostgreSql, "timestamp with time zone");
+        Assert.Null(sample.RawValue); Assert.Equal("plain text", sample.Value); Assert.Null(sample.NumericValue);
+        Assert.Equal(SampleQuality.Bad, sample.Quality); Assert.Equal("", sample.Unit); Assert.Null(sample.Error);
+    }
+
+    private static DatabaseWriteGroupConfiguration HistoryMappingFixture() => new()
+    {
+        Mode = DatabaseStorageMode.PointMapping, Table = "custom_samples",
+        Columns = new[]
+        {
+            ("event_key", DatabaseValueSource.EventId), ("device_key", DatabaseValueSource.DeviceId),
+            ("device_label", DatabaseValueSource.DeviceName), ("point_key", DatabaseValueSource.TagId),
+            ("point_label", DatabaseValueSource.TagName), ("point_address", DatabaseValueSource.Address),
+            ("raw", DatabaseValueSource.RawValue), ("engineering", DatabaseValueSource.EngineeringValue),
+            ("sample_clock", DatabaseValueSource.SampleTime), ("sample_quality", DatabaseValueSource.Quality),
+            ("unit", DatabaseValueSource.Unit), ("error", DatabaseValueSource.Error)
+        }.Select(item => new DatabaseColumnMapping { Column = item.Item1, Source = item.Item2 }).ToList()
+    };
+
+    private static DataTable HistoryMappedRows(Guid device, Guid tag)
+    {
+        var table = new DataTable();
+        for (var index = 0; index < 12; index++) table.Columns.Add("c" + index, typeof(object));
+        table.Rows.Add("event", device.ToString("D"), "设备", tag.ToString("D"), "点", "0", long.MaxValue,
+            "42.5", new DateTime(2026, 10, 31, 4, 30, 0), "Uncertain", "℃", "读取不确定");
+        return table;
+    }
+
+    [Theory]
     [InlineData("device_name")]
     [InlineData("tag_name")]
     [InlineData("address")]
@@ -597,6 +706,8 @@ public sealed class ExternalDatabaseConnectorTests
         public int FailWriteNumber { get; init; }
         public bool BlockWrite { get; init; }
         public bool History { get; init; }
+        public IReadOnlyList<DatabaseColumnInfo>? HistoryColumns { get; init; }
+        public DataTable? HistoryData { get; init; }
         public string MetadataMode { get; init; } = "normal";
         public string? CreateFailure { get; init; }
         public bool MetadataFailure { get; init; }
@@ -654,7 +765,14 @@ public sealed class ExternalDatabaseConnectorTests
             Capture(command);
             if (MetadataFailure) throw new PostgresException("provider-secret", "ERROR", "ERROR", "42501");
             var table = new DataTable();
-            if (_standardTableCreated && command.CommandText.Contains("information_schema.table_constraints"))
+            if (HistoryColumns is not null && command.CommandText.Contains("information_schema.columns"))
+            {
+                for (var index = 0; index < 6; index++) table.Columns.Add("c" + index, typeof(string));
+                foreach (var column in HistoryColumns)
+                    table.Rows.Add(column.Name, column.DataType, "YES", "N", "NO", "NEVER");
+            }
+            else if (HistoryData is not null) return HistoryData.CreateDataReader();
+            else if (_standardTableCreated && command.CommandText.Contains("information_schema.table_constraints"))
             {
                 table.Columns.Add("constraint_name", typeof(string));
                 table.Columns.Add("column_name", typeof(string));

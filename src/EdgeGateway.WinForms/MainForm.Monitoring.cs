@@ -117,12 +117,25 @@ public sealed partial class MainForm
     private void BindHistoryGroups()
     {
         var selected = (_historyGroup.SelectedItem as Choice)?.Id;
-        var choices = _configuration.DatabaseWriteGroups.Where(group => group.Enabled && group.Mode == DatabaseStorageMode.PointRows
-            && _configuration.Databases.Any(connection => connection.Id == group.ConnectionId && connection.Enabled))
-            .Select(group => new Choice(group.Id, _configuration.Databases.Single(connection => connection.Id == group.ConnectionId).Name + " / " + group.Name)).ToArray();
-        _historyGroup.DataSource = choices.Length == 0 ? new[] { new Choice(null, "尚无已启用的标准点行写入组") } : choices;
+        var choices = _configuration.DatabaseWriteGroups
+            .OrderBy(group => HistoryGroupUnavailableReason(group.Id) is not null)
+            .Select(group => new Choice(group.Id,
+                (_configuration.Databases.FirstOrDefault(connection => connection.Id == group.ConnectionId)?.Name ?? "连接不存在")
+                + " / " + group.Name)).ToArray();
+        _historyGroup.DataSource = choices.Length == 0 ? new[] { new Choice(null, "尚未配置数据库写入组") } : choices;
         SelectChoice(_historyGroup, selected);
         UpdateHistoryQueryState();
+    }
+
+    private string? HistoryGroupUnavailableReason(Guid? groupId)
+    {
+        var group = _configuration.DatabaseWriteGroups.FirstOrDefault(item => item.Id == groupId);
+        if (group is null) return "尚未配置数据库写入组，请在“数据库”页添加连接与写入组，或切换到采样日志。";
+        var connection = _configuration.Databases.FirstOrDefault(item => item.Id == group.ConnectionId);
+        if (connection is null) return "该写入组的数据库连接不存在。";
+        if (!connection.Enabled) return "该数据库连接未启用，请在“数据库”页启用连接。";
+        if (!group.Enabled) return "该数据库写入组未启用，请在“数据库”页启用写入组。";
+        return DatabaseHistoryMapping.GetUnavailableReason(group);
     }
 
     private void BindHistoryTags()
@@ -204,7 +217,7 @@ public sealed partial class MainForm
         var fromLogs = HistoryFromLogs;
         var scanLimit = (int)_historyScanLimit.Value;
         var groupId = fromLogs ? null : (_historyGroup.SelectedItem as Choice)?.Id;
-        if (!fromLogs && !groupId.HasValue) throw new InvalidOperationException("请先配置并启用外部数据库的标准点行写入组。");
+        if (!fromLogs && HistoryGroupUnavailableReason(groupId) is { } reason) throw new InvalidOperationException(reason);
         var queriedGroupName = _historyGroup.Text;
         var queriedDeviceName = _historyDevice.Text;
         var queriedTagName = _historyTag.Text;
@@ -259,11 +272,13 @@ public sealed partial class MainForm
         _historyConditionsChanged = _executedHistoryQuery is not null && (current != _executedHistoryQuery
             || fromLogs != _executedHistoryFromLogs
             || (fromLogs ? (int)_historyScanLimit.Value != _executedHistoryScanLimit : source != _executedHistoryGroupId));
-        if (_historyQuery is not null) _historyQuery.Enabled = !_busy && !_closing && (fromLogs || source.HasValue);
+        var unavailable = fromLogs ? null : HistoryGroupUnavailableReason(source);
+        if (_historyQuery is not null) _historyQuery.Enabled = !_busy && !_closing && unavailable is null;
         _historySummary.Text = _executedHistoryQuery is null ? fromLogs
             ? "查询本地保留的采样日志，无需数据库连接。选择单个数值点位查看趋势；坏质量或非数值采样不连线。"
-            : source.HasValue ? "选择查询条件后点击“查询”。可按单个点位查看趋势。" : "尚未配置可查询的数据库。请在“数据库”页启用连接与标准点行写入组；默认采集结果保存在日志文件。"
-            : (_historyConditionsChanged ? "查询条件已修改，请重新查询。下方仍为上次结果：\n" : "查询结果：") + _executedHistorySummary;
+            : unavailable ?? "选择查询条件后点击“查询”。可按单个点位查看趋势。"
+            : (unavailable is not null ? unavailable + "\n下方仍为上次结果：\n"
+                : _historyConditionsChanged ? "查询条件已修改，请重新查询。下方仍为上次结果：\n" : "查询结果：") + _executedHistorySummary;
         _historySummary.ForeColor = _historyConditionsChanged ? UiTheme.Warning : UiTheme.Muted;
         _historyExport.Text = _historyConditionsChanged ? "导出上次结果" : "导出查询结果";
         _historyExport.Enabled = !_busy && !_closing && _queriedHistory.Count > 0;

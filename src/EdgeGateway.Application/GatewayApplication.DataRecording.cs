@@ -47,7 +47,7 @@ public sealed partial class GatewayApplication
         var configuration = GetConfiguration();
         var group = configuration.DatabaseWriteGroups.FirstOrDefault(item => item.Id == groupId)
             ?? throw new InvalidOperationException("数据库写入组不存在。");
-        if (group.Mode != DatabaseStorageMode.PointRows) throw new InvalidOperationException("内置趋势查询仅适用于标准点表；自定义业务表请使用对应数据库查询工具。");
+        if (DatabaseHistoryMapping.GetUnavailableReason(group) is { } reason) throw new InvalidOperationException(reason);
         var connection = configuration.Databases.FirstOrDefault(item => item.Id == group.ConnectionId)
             ?? throw new InvalidOperationException("数据库连接不存在。");
         return ExternalDatabases().QueryPointHistoryAsync(connection, group, query, cancellationToken);

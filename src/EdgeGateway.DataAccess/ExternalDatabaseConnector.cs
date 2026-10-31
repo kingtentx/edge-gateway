@@ -246,7 +246,8 @@ public sealed partial class ExternalDatabaseConnector : IExternalDatabaseConnect
     {
         ArgumentNullException.ThrowIfNull(group);
         ArgumentNullException.ThrowIfNull(query);
-        if (group.Mode != DatabaseStorageMode.PointRows) throw new ArgumentException("历史趋势仅支持标准点表；自定义业务表请使用其业务查询。");
+        if (DatabaseHistoryMapping.GetUnavailableReason(group) is { } reason) throw new ArgumentException(reason);
+        if (group.Mode == DatabaseStorageMode.PointMapping) return QueryMappedPointHistoryAsync(connection, group, query, cancellationToken);
         if (query.From > query.To) throw new ArgumentException("查询开始时间不能晚于结束时间。");
         QualifiedTable(connection.Provider, Table(group));
         return WithConnectionAsync<IReadOnlyList<TelemetrySample>>(connection, async (database, token) =>

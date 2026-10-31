@@ -80,7 +80,7 @@ internal sealed partial class HistoryPageView
         titleLabel.Margin = new Padding(0, 0, 0, 2);
         descriptionLabel = new Label();
         descriptionLabel.Name = "HistoryPageDescription";
-        descriptionLabel.Text = "查询本地采样日志或外部数据库标准点行表；选择单个数值点位查看趋势。";
+        descriptionLabel.Text = "查询采样日志、外部标准点行或逐点映射表；选择单个数值点位查看趋势。";
         descriptionLabel.AutoSize = true;
         descriptionLabel.Dock = DockStyle.Fill;
         descriptionLabel.Font = new Font("Microsoft YaHei UI", 10F);
