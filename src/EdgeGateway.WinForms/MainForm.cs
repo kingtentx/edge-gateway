@@ -743,7 +743,6 @@ public sealed partial class MainForm : DpiAwareForm
         _lastFeedback = message;
         if (_pointsDialog is { Visible: true }) _pointsDialog.SetFeedback(message);
         _footer.Text = DateTime.Now.ToString("HH:mm:ss") + "  ·  " + message.Replace('\n', ' ');
-        _feedbackTip.SetTip(_footer, message + "\n点击查看完整说明");
         _footer.ForeColor = message.Contains("失败", StringComparison.Ordinal) ? UiTheme.Red : UiTheme.Muted;
     }
     private void ShowError(string message)
