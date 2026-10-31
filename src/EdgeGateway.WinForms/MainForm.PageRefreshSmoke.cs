@@ -25,7 +25,7 @@ public sealed partial class MainForm
             var timestamp = DateTimeOffset.UtcNow;
             var samples = device.Tags.Select((tag, index) => new TelemetrySample(device.Id, device.Name, tag.Id, tag.Name,
                 tag.Address, (double)index, (double)index, SampleQuality.Good, timestamp, tag.Unit)).ToArray();
-            RefreshRealtime(samples);
+            RefreshRealtime(samples, [new(device.Id, device.Name, DeviceState.Running, timestamp, 0, null)]);
             GridPagination.GetPager(_realtimeGrid).PageSize = 50;
             PerformLayoutRecursively(this);
             AssertNavigationShell(false, "initial page layout without toggling");
@@ -39,8 +39,8 @@ public sealed partial class MainForm
             _realtimeGrid.DataSourceChanged += SourceChanged;
             try
             {
-                RefreshRealtime(samples);
-                RefreshRealtime(samples.Select(sample => sample with { Value = 42D, Timestamp = timestamp.AddSeconds(1) }).ToArray());
+                RefreshRealtime(samples, [new(device.Id, device.Name, DeviceState.Running, timestamp, 0, null)]);
+                RefreshRealtime(samples.Select(sample => sample with { Value = 42D, Timestamp = timestamp.AddSeconds(1) }).ToArray(), [new(device.Id, device.Name, DeviceState.Running, timestamp, 0, null)]);
             }
             finally { _realtimeGrid.DataSourceChanged -= SourceChanged; }
             if (resets != 0 || !ReferenceEquals(source, _realtimeGrid.DataSource) || !ReferenceEquals(selectedRow, _realtimeGrid.Rows[25])
@@ -48,7 +48,7 @@ public sealed partial class MainForm
                 || !Equals(_realtimeGrid.Rows[25].Cells["Value"].Value, "42"))
                 throw new InvalidOperationException($"Realtime polling rebuilt rows, lost reading position or failed to update values (source changes={resets}; row same={ReferenceEquals(selectedRow, _realtimeGrid.Rows[25])}; before={state}; after={GridViewState.Capture(_realtimeGrid, row => ((SampleRow)row).Sample.TagId)}; value={_realtimeGrid.Rows[25].Cells["Value"].Value}).");
             _realtimeSearch.Text = "点位 001";
-            RefreshRealtime(samples);
+            RefreshRealtime(samples, [new(device.Id, device.Name, DeviceState.Running, timestamp, 0, null)]);
             if (_realtimeGrid.Rows.Count != 1 || ((SampleRow)_realtimeGrid.Rows[0].DataBoundItem!).Sample.TagId != device.Tags[0].Id)
                 throw new InvalidOperationException("Realtime filter did not update row structure.");
             _realtimeSearch.Clear();

@@ -265,6 +265,15 @@ public sealed partial class MainForm : DpiAwareForm
 
     private async void OnShown(object? sender, EventArgs e)
     {
+        if (RealtimeBrowserSmoke)
+        {
+            try { await SmokeRealtimeBrowserAsync(); }
+            catch (Exception exception)
+            {
+                SmokeTestFailed = true; TrySaveSmokeFailure(this, "realtime-browser-failed"); Console.Error.WriteLine(exception);
+            }
+            _allowClose = true; Close(); return;
+        }
         if (_buttonAppearanceSmoke)
         {
             try { await SmokeButtonAppearanceAsync(); }

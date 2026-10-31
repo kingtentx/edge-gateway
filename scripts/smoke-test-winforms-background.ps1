@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'Scrollbars', 'Surfaces', 'SurfaceLists', 'OverviewScroll', 'DatabaseSelection', 'DialogTitles', 'DriverParameters', 'DeviceBatch', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'Scrollbars', 'Surfaces', 'SurfaceLists', 'OverviewScroll', 'DatabaseSelection', 'DialogTitles', 'DriverParameters', 'DeviceBatch', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'RealtimeBrowser', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -136,6 +136,7 @@ namespace EdgeGateway {
                     : scenario == "SurfaceLists" ? " --smoke-surfaces-lists --screenshot "
                     : scenario == "Surfaces" ? " --smoke-surfaces --screenshot "
                     : scenario == "FormWidths" ? " --smoke-form-widths --screenshot "
+                    : scenario == "RealtimeBrowser" ? " --smoke-realtime-browser --screenshot "
                     : scenario == "HistorySources" ? " --smoke-history-sources --screenshot "
                     : scenario == "Pagination" ? " --smoke-pagination --screenshot "
                     : scenario == "Navigation" ? " --smoke-navigation-collapse --screenshot "
@@ -220,6 +221,14 @@ if ($Scenario -eq 'FormWidths') {
     if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'FormWidths smoke wrote errors.' }
     if ($outputText -notmatch 'FormWidths smoke passed:') { throw 'FormWidths completion marker is missing.' }
     Write-Output "FormWidths smoke passed: $outputRoot"
+    exit 0
+}
+if ($Scenario -eq 'RealtimeBrowser') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'RealtimeBrowser smoke wrote errors.' }
+    if ($outputText -notmatch 'RealtimeBrowser smoke passed:') { throw 'RealtimeBrowser completion marker is missing.' }
+    Write-Output "RealtimeBrowser smoke passed: $outputRoot"
     exit 0
 }
 if ($Scenario -eq 'HistorySources') {

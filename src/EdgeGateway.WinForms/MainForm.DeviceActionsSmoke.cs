@@ -16,7 +16,7 @@ public sealed partial class MainForm
         var originalSelection = SelectedDevice()?.Id;
         var originalPage = _activePage;
         var originalFooter = _lastFeedback;
-        var originalFilter = (_realtimeDevice.SelectedItem as Choice)?.Id;
+        var originalFilter = _realtimeDeviceId;
         var originalSearch = _realtimeSearch.Text;
         static void Check(bool condition, string message)
         {
@@ -61,12 +61,12 @@ public sealed partial class MainForm
             Check(_application.IsRunning && _application.IsDeviceRunning(a) && !_application.IsDeviceRunning(b)
                 && _application.GetLatest().Single(x => x.DeviceId == b).Quality == SampleQuality.Uncertain, "B's stopped snapshot or A's running state is incorrect.");
             ShowPage("realtime");
-            SelectChoice(_realtimeDevice, b); _realtimeSearch.Text = "";
+            SelectRealtimeDevice(b); _realtimeSearch.Text = "";
             RefreshRealtime(_application.GetLatest());
             Check(_realtimeGrid.Rows.Count == 1, "stopped B must retain its visible last sample.");
             _realtimeGrid.CurrentCell = _realtimeGrid.Rows[0].Cells[0]; UpdateWriteButton();
             Check(!_writeButton.Enabled, "stopped B still allows point writes while A runs.");
-            SelectChoice(_realtimeDevice, a); RefreshRealtime(_application.GetLatest());
+            SelectRealtimeDevice(a); RefreshRealtime(_application.GetLatest());
             Check(_writeButton.Enabled, "running A lost point-write availability when B stopped.");
             await DeviceRowActionAsync(a, DeviceStopColumnName);
             Check(!_application.IsRunning, "last device did not finish stopping shared services.");
@@ -118,7 +118,7 @@ public sealed partial class MainForm
             await RestoreConfigurationForSmokeAsync(original);
             _dirty = originalDirty;
             RebindConfigurationViews(originalSelection);
-            SelectChoice(_realtimeDevice, originalFilter); _realtimeSearch.Text = originalSearch;
+            SelectRealtimeDevice(originalFilter); _realtimeSearch.Text = originalSearch;
             ShowPage(originalPage); SetFooter(originalFooter); UpdateCommands();
         }
     }

@@ -8,7 +8,6 @@ public sealed partial class MainForm
 {
     private GatewayTable _realtimeGrid = null!;
     private GatewayTable _historyGrid = null!;
-    private ComboBox _realtimeDevice = null!;
     private TextBox _realtimeSearch = null!;
     private ComboBox _historySource = null!;
     private NumericUpDown _historyScanLimit = null!;
@@ -36,11 +35,10 @@ public sealed partial class MainForm
     {
         _realtimePageView = new RealtimePageView();
         _realtimeGrid = _realtimePageView.RealtimeGrid;
-        _realtimeDevice = _realtimePageView.DeviceSelector;
+        BindRealtimeBrowserEvents();
         _realtimeSearch = _realtimePageView.PointSearch;
         _realtimeGrid.CellFormatting += SampleCellFormatting;
         _realtimeGrid.SelectionChanged += (_, _) => UpdateWriteButton();
-        _realtimeDevice.SelectedIndexChanged += (_, _) => RefreshRealtime(_application.GetLatest());
         _realtimeSearch.TextChanged += (_, _) => RefreshRealtime(_application.GetLatest());
         _writeButton = _realtimePageView.writeButton;
         _writeButton.Click += async (_, _) => await RunBusyAsync(WritePointAsync);
@@ -101,11 +99,11 @@ public sealed partial class MainForm
 
     private void BindDeviceChoices()
     {
-        var realtimeSelected = (_realtimeDevice.SelectedItem as Choice)?.Id;
         var historySelected = (_historyDevice.SelectedItem as Choice)?.Id;
         var choices = new[] { new Choice(null, "全部设备") }.Concat(_configuration.Devices.Select(x => new Choice(x.Id, x.Name))).ToArray();
-        _realtimeDevice.DataSource = choices.ToArray(); _historyDevice.DataSource = choices.ToArray();
-        SelectChoice(_realtimeDevice, realtimeSelected); SelectChoice(_historyDevice, historySelected); BindHistoryTags();
+        _historyDevice.DataSource = choices.ToArray();
+        SelectChoice(_historyDevice, historySelected); BindHistoryTags();
+        BindRealtimeGroups();
     }
 
     private static void SelectChoice(ComboBox box, Guid? id)
@@ -148,36 +146,16 @@ public sealed partial class MainForm
         SelectChoice(_historyTag, prior);
     }
 
-    private void RefreshRealtime(IReadOnlyList<TelemetrySample> samples)
-    {
-        if (_writeButton is null) return;
-        var deviceId = (_realtimeDevice.SelectedItem as Choice)?.Id;
-        var search = _realtimeSearch.Text.Trim();
-        var accessByTag = _configuration.Devices
-            .SelectMany(device => device.Tags.Select(tag => new
-            {
-                Key = (device.Id, tag.Id), Access = tag.Writable ? "读 / 写" : "只读"
-            }))
-            .ToDictionary(tag => tag.Key, tag => tag.Access);
-        var rows = samples.Where(sample => (!deviceId.HasValue || sample.DeviceId == deviceId)
-            && (search.Length == 0 || sample.TagName.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || sample.Address.Contains(search, StringComparison.OrdinalIgnoreCase)))
-            .OrderBy(sample => sample.DeviceName).ThenBy(sample => sample.TagName)
-            .Select(sample => ToRow(sample) with
-            {
-                Access = accessByTag.GetValueOrDefault((sample.DeviceId, sample.TagId), "—")
-            }).ToList();
-        GridViewState.UpdateRows(_realtimeGrid, rows, row => (row.Sample.DeviceId, row.Sample.TagId));
-        UpdateWriteButton();
-    }
-
     private void UpdateWriteButton()
     {
         if (_writeButton is null) return;
         var sample = (_realtimeGrid.CurrentRow?.DataBoundItem as SampleRow)?.Sample;
         var device = _configuration.Devices.FirstOrDefault(x => x.Id == sample?.DeviceId);
         var tag = device?.Tags.FirstOrDefault(x => x.Id == sample?.TagId);
-        _writeButton.Enabled = !_busy && !_closing && device is not null && _application.IsDeviceRunning(device.Id) && device.Enabled && tag?.Enabled == true && tag.Writable;
+        _writeButton.Enabled = !_busy && !_closing && device is not null && device.Enabled
+            && _application.IsDeviceRunning(device.Id)
+            && _application.GetDeviceStatuses().Any(status => status.DeviceId == device.Id && status.State == DeviceState.Running)
+            && tag?.Enabled == true && tag.Writable;
     }
 
     private async Task WritePointAsync()
@@ -185,7 +163,8 @@ public sealed partial class MainForm
         var sample = (_realtimeGrid.CurrentRow?.DataBoundItem as SampleRow)?.Sample;
         if (sample is null) return;
         var tag = _configuration.Devices.First(d => d.Id == sample.DeviceId).Tags.First(t => t.Id == sample.TagId);
-        if (!tag.Enabled || !tag.Writable || !_application.IsDeviceRunning(sample.DeviceId)) throw new InvalidOperationException("该点位未启用写入，或采集尚未启动。");
+        if (!tag.Enabled || !tag.Writable || !_application.IsDeviceRunning(sample.DeviceId)
+            || !_application.GetDeviceStatuses().Any(status => status.DeviceId == sample.DeviceId && status.State == DeviceState.Running)) throw new InvalidOperationException("该点位未启用写入，或设备当前未在线。");
         var current = sample.Value switch
         {
             null => "", double number => number.ToString("R", System.Globalization.CultureInfo.InvariantCulture),

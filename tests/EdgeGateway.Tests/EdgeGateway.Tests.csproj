@@ -31,6 +31,7 @@
     <Using Include="EdgeGateway.Infrastructure.Mqtt" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../../src/EdgeGateway.WinForms/RealtimeDisplayState.cs" Link="RealtimeDisplayState.cs" />
     <Compile Include="../../src/EdgeGateway.WinForms/DpiLayoutMath.cs" Link="DpiLayoutMath.cs" />
     <Compile Include="../../src/EdgeGateway.WinForms/GatewayWorkerClient.cs" Link="GatewayWorkerClient.cs" />
   </ItemGroup>

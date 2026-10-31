@@ -97,7 +97,7 @@ public sealed partial class MainForm
             ResetScrollPositions(_pages["cloud"], navigationMenu);
             SaveEditorScreenshot(this, "usability", "platform");
 
-            ShowPage("realtime"); SelectChoice(_realtimeDevice, a.Id);
+            ShowPage("realtime"); SelectRealtimeDevice(a.Id);
             var timestamp = DateTimeOffset.UtcNow;
             var samples = a.Tags.Select((tag, index) => new TelemetrySample(a.Id, a.Name, tag.Id, tag.Name,
                 tag.Address, (double)index, (double)index, SampleQuality.Good, timestamp, tag.Unit)).ToList();

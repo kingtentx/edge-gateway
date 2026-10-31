@@ -16,6 +16,7 @@ internal static class Program
         var surfacesSmoke = surfacesListsOnly || args.Contains("--smoke-surfaces", StringComparer.OrdinalIgnoreCase);
         var scrollbarsSmoke = args.Contains("--smoke-scrollbars", StringComparer.OrdinalIgnoreCase);
         var formWidthsSmoke = scrollbarsSmoke || surfacesSmoke || args.Contains("--smoke-form-widths", StringComparer.OrdinalIgnoreCase);
+        var realtimeBrowserSmoke = args.Contains("--smoke-realtime-browser", StringComparer.OrdinalIgnoreCase);
         var historySourcesSmoke = args.Contains("--smoke-history-sources", StringComparer.OrdinalIgnoreCase);
         var paginationSmoke = args.Contains("--smoke-pagination", StringComparer.OrdinalIgnoreCase);
         var layoutMatrix = args.Contains("--layout-matrix", StringComparer.OrdinalIgnoreCase);
@@ -36,7 +37,7 @@ internal static class Program
         var liveLogsSmoke = args.Contains("--smoke-live-logs", StringComparer.OrdinalIgnoreCase);
         var loggingSmoke = liveLogsSmoke || args.Contains("--smoke-logging", StringComparer.OrdinalIgnoreCase);
         var workbookSmoke = args.Contains("--smoke-workbooks", StringComparer.OrdinalIgnoreCase);
-        var smokeTest = buttonAppearanceSmoke || formWidthsSmoke || historySourcesSmoke || paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
+        var smokeTest = realtimeBrowserSmoke || buttonAppearanceSmoke || formWidthsSmoke || historySourcesSmoke || paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
         var screenshotIndex = Array.FindIndex(args, x => x.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
         var screenshotPath = screenshotIndex >= 0 && screenshotIndex + 1 < args.Length ? args[screenshotIndex + 1] : null;
         var runtimeRoot = smokeTest
@@ -88,6 +89,7 @@ internal static class Program
                 enableVerificationFaults: smokeTest, runtimeDirectory: runtimeRoot).GetAwaiter().GetResult();
             using var window = new MainForm(host.Application, smokeTest, screenshotPath, layoutMatrix,
                 host.BeginConfigurationWriteFailureForVerification, driverDirectory, databaseMappingSmoke, serverResourcesSmoke, workbookSmoke, loggingSmoke: loggingSmoke, databaseRefreshSmoke: databaseRefreshSmoke, pageRefreshSmoke: pageRefreshSmoke, navigationSmoke: navigationSmoke, paginationSmoke: paginationSmoke, historySourcesSmoke: historySourcesSmoke, formWidthsSmoke: formWidthsSmoke, buttonAppearanceSmoke: buttonAppearanceSmoke);
+            window.RealtimeBrowserSmoke = realtimeBrowserSmoke;
             window.RowDensitySmoke = rowDensitySmoke;
             window.DeviceColumnsSmoke = deviceColumnsSmoke;
             window.DeviceBatchSmoke = deviceBatchSmoke;

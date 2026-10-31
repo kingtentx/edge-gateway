@@ -45,6 +45,7 @@ public sealed partial class MainForm
             _deviceSearch.Clear();
             ShowPage("realtime");
             var device = fixture.Devices[0];
+            SelectRealtimeDevice(device.Id);
             var now = DateTimeOffset.Now;
             var samples = device.Tags.Select((tag, i) => new TelemetrySample(device.Id, device.Name, tag.Id, tag.Name,
                 tag.Address, i, i, SampleQuality.Good, now, tag.Unit)).ToArray();
