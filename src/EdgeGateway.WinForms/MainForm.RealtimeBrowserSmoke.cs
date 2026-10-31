@@ -58,6 +58,8 @@ public sealed partial class MainForm
                 10D, 10D, SampleQuality.Good, time, tag.Unit)).ToArray();
             DeviceRuntimeStatus[] online = [new(a.Id, a.Name, DeviceState.Running, time, 0, null)];
             RefreshRealtime(samples, online);
+            Require(_realtimeDeviceNodes[a.Id].IconSvg == "PlayCircleFilled"
+                && _realtimeDeviceNodes[a.Id].Text == a.Name, "running icon/name");
             pager.Current = 2;
             _realtimeGrid.CurrentCell = _realtimeGrid.Rows[3].Cells["Value"];
             var selected = ((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem!).Sample.TagId;
@@ -70,6 +72,7 @@ public sealed partial class MainForm
                 && ReferenceEquals(node, _realtimeDeviceNodes[a.Id]), "refresh lost page, selected ID or tree node");
             RefreshRealtime(samples.Select(sample => sample with { Value = 30D, Timestamp = time.AddSeconds(2),
                 Quality = SampleQuality.Bad, Error = "模拟离线" }).ToArray(), [new(a.Id, a.Name, DeviceState.Faulted, time, 1, "模拟离线")]);
+            Require(_realtimeDeviceNodes[a.Id].IconSvg == "ExclamationCircleFilled", "fault icon");
             var held = (SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem!;
             Require(held.Value == "20" && held.Sample.Timestamp == time.AddSeconds(1)
                 && held.Sample.Quality == SampleQuality.Bad && held.Error.Contains("模拟离线") && !_writeButton.Enabled,
@@ -84,6 +87,7 @@ public sealed partial class MainForm
                 && _writeButton.Enabled && !_application.IsDeviceRunning(b.Id), "online recovery or write availability");
             await _application.StopDeviceAsync(a.Id);
             RefreshRealtime(_application.GetLatest());
+            Require(_realtimeDeviceNodes[a.Id].IconSvg == "PauseCircleOutlined", "stopped icon");
             var stopped = ((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem!).Sample;
             await Task.Delay(220); RefreshRealtime(_application.GetLatest());
             Require(((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem!).Sample.Timestamp == stopped.Timestamp
@@ -92,6 +96,33 @@ public sealed partial class MainForm
             await WaitFor(() => _application.GetLatest().Any(sample => sample.DeviceId == a.Id && sample.Timestamp > stopped.Timestamp));
             RefreshRealtime(_application.GetLatest());
             Require(((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem!).Sample.Timestamp > stopped.Timestamp, "restart did not resume values");
+            var splitter = _realtimePageView.BrowserSplitter;
+            void DragSplitter(int delta)
+            {
+                var rect = splitter.SplitterRectangle;
+                var x = rect.Left + rect.Width / 2;
+                var y = rect.Top + rect.Height / 2;
+                void Mouse(string method, MouseButtons button, int mouseX) =>
+                    typeof(AntdUI.Splitter).GetMethod(method,
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                        .Invoke(splitter, [new MouseEventArgs(button, 1, mouseX, y, 0)]);
+                Mouse("OnMouseMove", MouseButtons.None, x);
+                Mouse("OnMouseDown", MouseButtons.Left, x);
+                Mouse("OnMouseMove", MouseButtons.Left, x + delta);
+                Mouse("OnMouseUp", MouseButtons.Left, x + delta);
+            }
+            ClientSize = new Size(UiTheme.Scale(this, 1400), UiTheme.Scale(this, 720));
+            await Task.Delay(100); PerformLayoutRecursively(this);
+            var initialDistance = splitter.SplitterDistance;
+            DragSplitter(UiTheme.Scale(this, 60));
+            Require(splitter.SplitterDistance >= initialDistance + UiTheme.Scale(this, 58), "drag right did not enlarge tree");
+            var enlarged = splitter.SplitterDistance;
+            DragSplitter(-UiTheme.Scale(this, 24));
+            Require(splitter.SplitterDistance <= enlarged - UiTheme.Scale(this, 22), "drag left did not shrink tree");
+            var preferredDistance = splitter.SplitterDistance;
+            Console.WriteLine($"Realtime splitter drag: {initialDistance} -> {enlarged} -> {preferredDistance}.");
+            ShowPage("devices"); ShowPage("realtime");
+            Require(splitter.SplitterDistance == preferredDistance, "page switch reset splitter");
             foreach (var width in new[] { 1400, 1008, 1400 })
             {
                 ClientSize = new Size(UiTheme.Scale(this, width), UiTheme.Scale(this, 720));
@@ -102,13 +133,17 @@ public sealed partial class MainForm
                 BringIntoViewAndAssert(_writeButton, "realtime write button");
                 Require(tree.RectangleToScreen(tree.ClientRectangle).Right < _realtimeGrid.RectangleToScreen(_realtimeGrid.ClientRectangle).Left,
                     "left/right panes overlap");
+                var expectedDistance = Math.Clamp(preferredDistance, splitter.Panel1MinSize,
+                    splitter.ClientSize.Width - ((SplitContainer)splitter).SplitterWidth - splitter.Panel2MinSize);
+                Require(Math.Abs(splitter.SplitterDistance - expectedDistance) <= 1, "resize lost preferred width or minimum constraints");
                 var selectedBefore = ((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem!).Sample.TagId;
                 await VerifyPageRefreshStabilityAsync(_realtimePageView, "realtime browser " + width);
                 Require(pager.Current == 2 && ((SampleRow)_realtimeGrid.CurrentRow!.DataBoundItem!).Sample.TagId == selectedBefore,
                     "timer refresh lost selection or page");
+                Require(splitter.SplitterDistance == expectedDistance, "refresh reset splitter");
                 SaveEditorScreenshot(this, "realtime-browser", width == 1008 ? "narrow" : "wide");
             }
-            Console.WriteLine($"RealtimeBrowser smoke passed: DeviceDpi={DeviceDpi}; groups, tree, point search, unsampled points, offline retention/quality, simulator stop/restart, write guard, page/selection and width round trip. No hardware or external database.");
+            Console.WriteLine($"RealtimeBrowser smoke passed: DeviceDpi={DeviceDpi}; groups, tree, point search, unsampled points, offline retention/quality, simulator stop/restart, write guard, page/selection and width round trip. Status icons, official splitter drag and width retention passed. No hardware or external database.");
         }
         finally
         {
