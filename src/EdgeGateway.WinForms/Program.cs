@@ -25,8 +25,9 @@ internal static class Program
         var deviceBatchSmoke = args.Contains("--smoke-device-batch", StringComparer.OrdinalIgnoreCase);
         var driverParametersSmoke = args.Contains("--smoke-driver-parameters", StringComparer.OrdinalIgnoreCase);
         var dialogTitlesSmoke = args.Contains("--smoke-dialog-titles", StringComparer.OrdinalIgnoreCase);
+        var databaseSelectionSmoke = args.Contains("--smoke-database-selection", StringComparer.OrdinalIgnoreCase);
         var overviewScrollSmoke = args.Contains("--smoke-overview-scroll", StringComparer.OrdinalIgnoreCase);
-        var rowDensitySmoke = overviewScrollSmoke || dialogTitlesSmoke || driverParametersSmoke || deviceBatchSmoke || deviceColumnsSmoke || args.Contains("--smoke-row-density", StringComparer.OrdinalIgnoreCase);
+        var rowDensitySmoke = databaseSelectionSmoke || overviewScrollSmoke || dialogTitlesSmoke || driverParametersSmoke || deviceBatchSmoke || deviceColumnsSmoke || args.Contains("--smoke-row-density", StringComparer.OrdinalIgnoreCase);
         var dpiRoundTripOnly = args.Contains("--smoke-dpi-roundtrip", StringComparer.OrdinalIgnoreCase);
         var dpiConfirmationSmoke = dpiRoundTripOnly || args.Contains("--smoke-dpi-confirmation", StringComparer.OrdinalIgnoreCase);
         var pageRefreshSmoke = dpiConfirmationSmoke || rowDensitySmoke || args.Contains("--smoke-page-refresh", StringComparer.OrdinalIgnoreCase);
@@ -93,6 +94,7 @@ internal static class Program
             window.DriverParametersSmoke = driverParametersSmoke;
             window.DialogTitlesSmoke = dialogTitlesSmoke;
             window.OverviewScrollSmoke = overviewScrollSmoke;
+            window.DatabaseSelectionSmoke = databaseSelectionSmoke;
             window.DpiConfirmationSmoke = dpiConfirmationSmoke;
             window.DpiRoundTripOnly = dpiRoundTripOnly;
             window.LiveLogsSmoke = liveLogsSmoke;

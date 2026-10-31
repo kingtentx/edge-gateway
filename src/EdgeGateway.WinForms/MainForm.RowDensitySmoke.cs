@@ -9,6 +9,7 @@ public sealed partial class MainForm
 
     private async Task SmokeRowDensityAsync()
     {
+        if (DatabaseSelectionSmoke) { await SmokeDatabaseSelectionAsync(); return; }
         if (OverviewScrollSmoke) { await SmokeOverviewScrollSyncAsync(); return; }
         if (DialogTitlesSmoke) { await SmokeDialogTitlesAsync(); return; }
         if (DriverParametersSmoke) { await SmokeDriverParametersAsync(); return; }

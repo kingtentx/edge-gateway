@@ -212,3 +212,5 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-bui
 按用户指定仓库和分支提交。提交前检查 diff、构建输出、测试结果与敏感信息；不覆盖已有分支历史。把本 skill 与代码一起提交，使规范持续可追溯。报告实际 commit、构建状态和未执行验收项，不把“配置了 CI”写成“CI 已通过”。
 
 - 2026-10-30 用户明确例外：为修复升级后启动失败，允许 SQLite 配置结构 6→7 一次升级。先用 SQLite Backup API 生成含已提交 WAL 的独立备份，再在事务中仅新增 device_parameter_metadata 并更新版本；失败回滚，保留备份。保留全部原配置与身份，不自动清空；其他旧结构仍拒绝。详见 docs/configuration-v6-startup-fix.md。
+
+- 2026-10-31 数据库写入组选点：左侧按分组筛选的官方 Tree，选择分组/设备后右侧显示点位 Checkbox；全选仅作用当前可见列表，跨分组/设备/搜索保留稳定 ID 勾选。全部启用点位使用 Checkbox，保留空 TagIds 自动包含后续启用点位及恢复手动草稿语义。固定结构在 Designer，动态节点/行来自数据；不恢复逐点开关。详见 docs/database-point-selection.md。

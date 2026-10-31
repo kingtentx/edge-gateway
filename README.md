@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**数据库点位选择：** 写入组选点改为左侧分组/设备树、右侧复选框列表，支持搜索及跨范围保留勾选。Release 编译及隔离后台选点定向检查通过。[实现与 PostgreSQL 排查](docs/database-point-selection.md)。
+
 **设备表头全选：** 首列表头改用复选框，支持筛选结果跨页全选/取消及半选状态；批量菜单提供启停、启用/禁用及复制/删除，移除所选设备操作按钮。[说明与验证](docs/device-batch-actions.md)。
 
 **首页滚动同步修复：** 修复滚轮移动内容但滑块位置不变；编译及隔离后台滚动定向检查通过。[原因与验证](docs/ui-overview-scroll-sync.md)。

@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'Scrollbars', 'Surfaces', 'SurfaceLists', 'OverviewScroll', 'DialogTitles', 'DriverParameters', 'DeviceBatch', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'Scrollbars', 'Surfaces', 'SurfaceLists', 'OverviewScroll', 'DatabaseSelection', 'DialogTitles', 'DriverParameters', 'DeviceBatch', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -142,6 +142,7 @@ namespace EdgeGateway {
                     : scenario == "PageRefresh" ? " --smoke-page-refresh --screenshot "
                     : scenario == "DpiConfirmation" ? " --smoke-dpi-confirmation --screenshot "
                     : scenario == "DpiRoundTrip" ? " --smoke-dpi-roundtrip --screenshot "
+                    : scenario == "DatabaseSelection" ? " --smoke-database-selection --screenshot "
                     : scenario == "OverviewScroll" ? " --smoke-overview-scroll --screenshot "
                     : scenario == "DialogTitles" ? " --smoke-dialog-titles --screenshot "
                     : scenario == "DriverParameters" ? " --smoke-driver-parameters --screenshot "
@@ -269,6 +270,14 @@ if ($Scenario -in @('Surfaces', 'SurfaceLists')) {
     if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'Surfaces wrote errors.' }
     if ($outputText -notmatch 'List surfaces passed:' -or ($Scenario -eq 'Surfaces' -and $outputText -notmatch 'FormWidths smoke passed:')) { throw 'Surfaces completion marker is missing.' }
     Write-Output 'Background surfaces smoke passed.'
+    return
+}
+if ($Scenario -eq 'DatabaseSelection') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'Database selection wrote errors.' }
+    if ($outputText -notmatch 'Database selection smoke passed:') { throw 'Database selection completion marker is missing.' }
+    Write-Output 'Background database selection smoke passed.'
     return
 }
 if ($Scenario -eq 'OverviewScroll') {

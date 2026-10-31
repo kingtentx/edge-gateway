@@ -10,6 +10,9 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
     private readonly IReadOnlyList<DatabaseConnectionConfiguration> _connections;
     private readonly IReadOnlyList<DatabaseUiText.PointItem> _points;
     private readonly HashSet<Guid> _selectedPoints;
+    private readonly IReadOnlyList<DeviceConfiguration> _devices = [];
+    private HashSet<Guid>? _visibleDeviceIds;
+    private bool _bindingSelection;
     private IReadOnlyList<DatabaseColumnInfo> _columns = [];
     private string? _metadataKey;
     private bool _loading, _bindingPoints, _bindingTable;
@@ -31,6 +34,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         ConfigureWindow(new Size(1024, 680), new Size(604, 481));
         _source = GatewayJson.Clone(configuration); _connections = GatewayJson.Clone(connections); _application = application;
         _selectedPoints = _source.TagIds.ToHashSet();
+        _devices = GatewayJson.Clone(devices);
         _points = devices.SelectMany(device => device.Tags.Select(tag => new DatabaseUiText.PointItem(tag.Id,
             device.Name + " / " + tag.Name + (!device.Enabled || !tag.Enabled ? "（未启用）" : "")))).ToArray();
         InitializeComponent();
@@ -69,9 +73,35 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         _mappingLoadColumns.Click += async (_, _) => await ReadColumnsAsync();
         _switchPointMapping.Click += (_, _) => _mode.SelectedItem = DatabaseStorageMode.PointMapping;
         ConfigureMappingGrid();
-        _pointList.ItemCheck += (_, e) => { if (_bindingPoints) return; var id = ((DatabaseUiText.PointItem)_pointList.Items[e.Index]).Id; if (e.NewValue == CheckState.Checked) _selectedPoints.Add(id); else _selectedPoints.Remove(id); };
-        _pointSearch.TextChanged += (_, _) => BindPoints(); _allPoints.CheckedChanged += (_, _) => _pointList.Enabled = !_allPoints.Checked;
-        BindPoints(); _pointList.Enabled = !_allPoints.Checked;
+        _pointList.ItemCheck += (_, e) =>
+        {
+            if (_bindingPoints) return;
+            var id = ((DatabaseUiText.PointItem)_pointList.Items[e.Index]).Id;
+            if (e.NewValue == CheckState.Checked) _selectedPoints.Add(id); else _selectedPoints.Remove(id);
+            UpdatePointSelection();
+        };
+        _pointSearch.TextChanged += (_, _) => BindPoints();
+        _allPoints.CheckedChanged += (_, _) => { BindPoints(); UpdatePointSelection(); };
+        _visiblePoints.CheckedChanged += (_, _) =>
+        {
+            if (_bindingSelection || _allPoints.Checked) return;
+            foreach (var point in _pointList.Items.Cast<DatabaseUiText.PointItem>())
+                if (_visiblePoints.Checked) _selectedPoints.Add(point.Id); else _selectedPoints.Remove(point.Id);
+            BindPoints();
+        };
+        _deviceTree.SelectChanged += (_, e) =>
+        {
+            if (e.Item.Tag is not DeviceScope scope) return;
+            _visibleDeviceIds = scope.DeviceIds;
+            BindPoints();
+        };
+        BindChoice(_groupFilter, new[] { new GroupChoice(null, "全部分组") }
+            .Concat(_devices.Select(device => device.Group).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(group => group).Select(group => new GroupChoice(group, string.IsNullOrWhiteSpace(group) ? "未分组" : group)))
+            .Cast<object>().ToArray(), null);
+        _groupFilter.SelectedIndex = 0;
+        _groupFilter.SelectedIndexChanged += (_, _) => BindDeviceTree();
+        BindDeviceTree();
 
         mappingLayout.SizeChanged += (_, _) =>
         {
@@ -121,17 +151,68 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         if (_mappingEmpty.Visible) _mappingEmpty.BringToFront();
         foreach (GatewayTableRow row in _mapping.Rows) UpdateMappingRow(row);
     }
+    private void BindDeviceTree()
+    {
+        var group = (_groupFilter.SelectedItem as GroupChoice)?.Group;
+        var devices = _devices.Where(device => group is null || string.Equals(device.Group, group, StringComparison.OrdinalIgnoreCase)).ToArray();
+        _deviceTree.Items.Clear();
+        var root = new AntdUI.TreeItem(group is null ? "全部设备" : (_groupFilter.SelectedItem?.ToString() ?? "设备"))
+        { Expand = true, Tag = new DeviceScope(devices.Select(device => device.Id).ToHashSet()) };
+        foreach (var grouping in devices.GroupBy(device => device.Group, StringComparer.OrdinalIgnoreCase))
+        {
+            var node = new AntdUI.TreeItem(string.IsNullOrWhiteSpace(grouping.Key) ? "未分组" : grouping.Key)
+            { Expand = true, Tag = new DeviceScope(grouping.Select(device => device.Id).ToHashSet()) };
+            foreach (var device in grouping)
+                node.Sub.Add(new AntdUI.TreeItem(device.Name)
+                { ID = device.Id.ToString(), Tag = new DeviceScope([device.Id]) });
+            root.Sub.Add(node);
+        }
+        _deviceTree.Items.Add(root);
+        _visibleDeviceIds = devices.Select(device => device.Id).ToHashSet();
+        _deviceTree.Select(root, false);
+        BindPoints();
+    }
+
     private void BindPoints()
     {
         _bindingPoints = true;
+        _pointList.SuspendLayout();
         try
         {
-            _pointList.Items.Clear(); var search = _pointSearch.Text.Trim();
-            foreach (var point in _points.Where(point => search.Length == 0 || point.Text.Contains(search, StringComparison.OrdinalIgnoreCase)))
-                _pointList.Items.Add(point, _selectedPoints.Contains(point.Id));
+            var items = new List<(object Item, bool IsChecked)>();
+            var search = _pointSearch.Text.Trim();
+            foreach (var device in _devices.Where(device => _visibleDeviceIds is null || _visibleDeviceIds.Contains(device.Id)))
+            foreach (var tag in device.Tags.Where(tag => search.Length == 0 || tag.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || tag.Address.Contains(search, StringComparison.OrdinalIgnoreCase) || device.Name.Contains(search, StringComparison.OrdinalIgnoreCase)))
+            {
+                var text = tag.Name + " · " + tag.Address + " · " + device.Name + (!device.Enabled || !tag.Enabled ? "（未启用）" : "");
+                items.Add((new DatabaseUiText.PointItem(tag.Id, text),
+                    _allPoints.Checked ? device.Enabled && tag.Enabled : _selectedPoints.Contains(tag.Id)));
+            }
+            _pointList.Items.Replace(items);
         }
-        finally { _bindingPoints = false; }
+        finally { _bindingPoints = false; _pointList.ResumeLayout(); }
+        UpdatePointSelection();
     }
+
+    private void UpdatePointSelection()
+    {
+        _bindingSelection = true;
+        try
+        {
+            var visible = _pointList.Items.Cast<DatabaseUiText.PointItem>().ToArray();
+            var count = _allPoints.Checked ? _pointList.Items.Checked.Count(value => value) : visible.Count(point => _selectedPoints.Contains(point.Id));
+            _pointList.Enabled = !_allPoints.Checked;
+            _visiblePoints.Enabled = !_allPoints.Checked && visible.Length > 0;
+            _visiblePoints.CheckState = count == 0 ? CheckState.Unchecked : count == visible.Length ? CheckState.Checked : CheckState.Indeterminate;
+            _pointCount.Text = visible.Length == 0 ? "没有匹配的点位" : $"当前 {visible.Length} 个点位";
+            _pointCount.Text += _allPoints.Checked ? " · 自动包含全部启用点位" : $" · 已勾选 {_selectedPoints.Count} 个点位";
+        }
+        finally { _bindingSelection = false; }
+    }
+
+    private sealed record DeviceScope(HashSet<Guid> DeviceIds);
+    private sealed record GroupChoice(string? Group, string Name) { public override string ToString() => Name; }
 
     private void ConfigureMappingGrid()
     {
@@ -318,7 +399,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         value.WriteIntervalMs = (int)_interval.Value; value.MaxSampleAgeMs = (int)_maxAge.Value; value.RequireGoodQuality = _goodOnly.Checked;
         value.TagIds = _allPoints.Checked ? [] : _selectedPoints.ToList();
         if (value.Mode != DatabaseStorageMode.ColumnMapping && !_allPoints.Checked && value.TagIds.Count == 0)
-            throw new EditorValidationException("请选择至少一个点位，或打开开关“全部启用点位”。", _allPoints);
+            throw new EditorValidationException("请选择至少一个点位，或勾选“全部启用点位”。", _allPoints);
         if (value.Mode == DatabaseStorageMode.PointRows)
         {
             value.Columns = [];

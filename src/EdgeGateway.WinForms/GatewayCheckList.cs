@@ -2,10 +2,10 @@ using System.Collections;
 
 namespace EdgeGateway.WinForms;
 
-/// <summary>Virtualized data rows with AntdUI switches for explicit point selection.</summary>
+/// <summary>Virtualized data rows with AntdUI checkboxes for explicit point selection.</summary>
 public sealed class GatewayCheckList : GatewayScrollPanel
 {
-    private readonly List<GatewaySwitch> _rows = [];
+    private readonly List<AntdUI.Checkbox> _rows = [];
     private readonly List<Label> _names = [];
     private bool _arranging;
     private int _selectedIndex = -1;
@@ -69,7 +69,7 @@ public sealed class GatewayCheckList : GatewayScrollPanel
             var count = Math.Min(Items.Count - first, Math.Max(0, ScrollClientSize.Height / RowHeight + 2));
             while (_rows.Count < count)
             {
-                var row = new GatewaySwitch { AutoSize = false, TabStop = false };
+                var row = new AntdUI.Checkbox { AutoSizeMode = AntdUI.TAutoSize.None, TabStop = false };
                 var name = new Label { AutoSize = false, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false };
                 name.Click += (_, _) =>
                 {
@@ -94,15 +94,16 @@ public sealed class GatewayCheckList : GatewayScrollPanel
                 var name = _names[i]; name.Visible = i < count;
                 if (i >= count) continue;
                 var index = first + i;
-                row.Tag = index; row.Text = Items[index].ToString() ?? "";
+                row.Tag = index; row.Text = "";
+                row.AccessibleName = Items[index].ToString() ?? "";
                 var bounds = GetItemRectangle(index);
-                var switchWidth = UiTheme.Scale(this, 56);
+                var checkWidth = UiTheme.Scale(this, 34);
                 row.Checked = Items.Checked[index];
-                row.Bounds = new Rectangle(Math.Max(0, bounds.Right - switchWidth), bounds.Top, switchWidth, bounds.Height);
+                row.Bounds = new Rectangle(bounds.Left, bounds.Top, checkWidth, bounds.Height);
                 row.BackColor = index == SelectedIndex ? UiTheme.BlueSoft : Color.White;
-                name.Text = row.Text;
-                name.AccessibleName = row.Text;
-                name.Bounds = new Rectangle(bounds.Left, bounds.Top, Math.Max(0, bounds.Width - switchWidth), bounds.Height);
+                name.Text = row.AccessibleName;
+                name.AccessibleName = row.AccessibleName;
+                name.Bounds = new Rectangle(bounds.Left + checkWidth, bounds.Top, Math.Max(0, bounds.Width - checkWidth), bounds.Height);
                 name.BackColor = row.BackColor;
             }
         }
@@ -115,6 +116,18 @@ public sealed class GatewayCheckList : GatewayScrollPanel
         public int Count => _values.Count;
         public object this[int index] => _values[index];
         public void Clear() { _values.Clear(); Checked.Clear(); owner._selectedIndex = -1; owner.AutoScrollPosition = Point.Empty; owner.RenderRows(); }
+        internal void Replace(IEnumerable<(object Item, bool IsChecked)> items)
+        {
+            owner._arranging = true;
+            try
+            {
+                _values.Clear(); Checked.Clear(); owner._selectedIndex = -1;
+                owner.AutoScrollPosition = Point.Empty;
+                foreach (var (item, isChecked) in items) { _values.Add(item); Checked.Add(isChecked); }
+            }
+            finally { owner._arranging = false; }
+            owner.RenderRows();
+        }
         public int Add(object item, bool isChecked)
         { _values.Add(item); Checked.Add(isChecked); owner.RenderRows(); return Count - 1; }
         public IEnumerator<object> GetEnumerator() => _values.GetEnumerator();

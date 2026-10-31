@@ -345,7 +345,7 @@ public sealed partial class MainForm
                     VerifyEditorLayout(editor, "standard point rows");
                     VerifyDatabasePointSelectionForSmoke(editor, "standard point rows");
                     Check(editor.CommitForSmoke().TagIds.SequenceEqual(group.TagIds), "standard group did not preserve explicit point selection.");
-                    var allPoints = Descendants(editor).OfType<CheckBox>().Single(control => control.Name == "DatabaseAllEnabledPoints");
+                    var allPoints = Descendants(editor).OfType<AntdUI.Checkbox>().Single(control => control.Name == "DatabaseAllEnabledPoints");
                     allPoints.Checked = true;
                     Check(editor.CommitForSmoke().TagIds.Count == 0, "all-enabled mode should persist an empty point filter.");
                     allPoints.Checked = false;
@@ -529,7 +529,7 @@ public sealed partial class MainForm
             var pointId = ((DatabaseUiText.PointItem)list.Items[index]).Id;
             var selectedIds = editor.CommitForSmoke().TagIds;
             var selectedBefore = selectedIds.Contains(pointId);
-            var checkbox = list.Controls.OfType<GatewaySwitch>().Single(control => control.Visible && Equals(control.Tag, index));
+            var checkbox = list.Controls.OfType<AntdUI.Checkbox>().Single(control => control.Visible && Equals(control.Tag, index));
             checkbox.Checked = !selectedBefore;
             bool selectedAfter;
             try { selectedAfter = editor.CommitForSmoke().TagIds.Contains(pointId); }
