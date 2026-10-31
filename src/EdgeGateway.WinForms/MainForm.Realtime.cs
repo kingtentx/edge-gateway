@@ -71,7 +71,7 @@ public sealed partial class MainForm
                 foreach (var device in grouping.OrderBy(device => device.Name))
                 {
                     var leaf = new AntdUI.TreeItem(device.Name)
-                        { ID = device.Id.ToString("D"), Tag = new RealtimeScope(device.Id, device.Group) };
+                        { ID = device.Id.ToString("D"), IconSvg = "PauseCircleOutlined", Tag = new RealtimeScope(device.Id, device.Group) };
                     node.Sub.Add(leaf); _realtimeDeviceNodes.Add(device.Id, leaf);
                     if (device.Id == _realtimeDeviceId) { selection = leaf; node.Expand = true; }
                 }
@@ -107,9 +107,16 @@ public sealed partial class MainForm
         foreach (var device in _configuration.Devices)
         {
             if (!_realtimeDeviceNodes.TryGetValue(device.Id, out var node)) continue;
-            var label = device.Name + " · " + (!device.Enabled ? "未启用" : stateById.TryGetValue(device.Id, out var state)
-                ? StateText(state.State) : "已停止");
-            if (node.Text != label) node.Text = label;
+            var state = stateById.TryGetValue(device.Id, out var status) ? status.State : DeviceState.Stopped;
+            var icon = !device.Enabled ? "MinusCircleOutlined" : state switch
+            {
+                DeviceState.Running => "PlayCircleFilled",
+                DeviceState.Connecting or DeviceState.Reconnecting => "SyncOutlined",
+                DeviceState.Faulted => "ExclamationCircleFilled",
+                _ => "PauseCircleOutlined"
+            };
+            if (node.Text != device.Name) node.Text = device.Name;
+            if (node.IconSvg != icon) node.IconSvg = icon;
         }
         var search = _realtimeSearch.Text.Trim();
         var devices = _configuration.Devices.ToDictionary(device => device.Id);
