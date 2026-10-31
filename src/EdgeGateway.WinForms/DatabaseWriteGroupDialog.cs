@@ -3,6 +3,8 @@ using EdgeGateway.Model;
 
 namespace EdgeGateway.WinForms;
 
+internal enum MappingWriteMode { Omit, Sample, Constant }
+
 internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
 {
     private readonly DatabaseWriteGroupConfiguration _source;
@@ -71,6 +73,11 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         _loadColumns.Click += async (_, _) => await ReadColumnsAsync();
         _createTable.Click += async (_, _) => await CreateTableAsync();
         _mappingLoadColumns.Click += async (_, _) => await ReadColumnsAsync();
+        _matchFields.Click += (_, _) =>
+        {
+            if (MessageBox.Show(this, "按字段名匹配将替换已识别字段的来源与转换类型，其他字段保持原样。是否继续？",
+                "匹配字段", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) MatchFieldsByName();
+        };
         _switchPointMapping.Click += (_, _) => _mode.SelectedItem = DatabaseStorageMode.PointMapping;
         ConfigureMappingGrid();
         _pointList.ItemCheck += (_, e) =>
@@ -127,6 +134,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
     private void InvalidateMetadata()
     {
         _metadataKey = null;
+        _matchFields.Enabled = false;
         _status.Text = "目标已变更。映射草稿已保留；保存前请在“字段映射”页重新读取目标表字段。";
         _status.ForeColor = UiTheme.Muted;
     }
@@ -137,14 +145,15 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         _pointTab.Text = standard || pointMapping ? "点位选择" : "点位选择（逐点模式）";
         _mappingTab.Text = "字段映射";
         _loadColumns.Enabled = !standard; _createTable.Enabled = standard;
+        _matchFields.Enabled = !standard && _metadataKey is not null && _columns.Count > 0;
         _mappingLoadColumns.Enabled = !standard; _switchPointMapping.Visible = standard;
         _interval.Enabled = !standard && !pointMapping; _maxAge.Enabled = _goodOnly.Enabled = !standard;
         _goodOnly.Text = pointMapping ? "仅写入质量为 Good 的采样" : "仅在关联点位全部为 Good 时写入整行";
         _pointTab.Enabled = standard || pointMapping; _mapping.Enabled = !standard;
         _mapping.Columns["Point"].Visible = !pointMapping;
         _mappingHint.Text = standard ? "当前为标准点行模式，字段固定。已有业务表请切换为自定义逐点，再读取字段。"
-            : pointMapping ? "打开开关“使用采样”取当前点位值；关闭开关后填写手动常量，仍写入该字段。不需要的字段请选择“不写入”；自增列自动跳过。"
-            : "打开开关“使用采样”并绑定点位；关闭开关后填写手动常量，仍写入该字段。不需要的字段请选择“不写入”；自增列自动跳过。";
+            : pointMapping ? "选择写入方式：采样取值、手动常量或不写入。自动转换按目标字段类型处理；自增字段自动跳过。"
+            : "选择写入方式；采样来源按需绑定点位，手动常量无需点位。不写入时使用数据库默认值或 NULL。";
         _mappingEmpty.Visible = _mapping.Rows.Count == 0;
         _mappingEmpty.Text = standard ? "已有自定义表？点击上方“使用自定义逐点映射”。"
             : "尚未读取表字段。\n请先在“写入设置”选择数据库和表名，\n再点击上方“读取 / 刷新字段”。";
@@ -214,8 +223,17 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
     private sealed record DeviceScope(HashSet<Guid> DeviceIds);
     private sealed record GroupChoice(string? Group, string Name) { public override string ToString() => Name; }
 
+    private static MappingWriteMode WriteMode(DatabaseValueSource source) => source == OmittedSource
+        ? MappingWriteMode.Omit : source == DatabaseValueSource.Constant ? MappingWriteMode.Constant : MappingWriteMode.Sample;
+
     private void ConfigureMappingGrid()
     {
+        ((GatewayGridSelectColumn)_mapping.Columns["Include"]).DataSource = new[]
+        {
+            new DatabaseUiText.EnumItem<MappingWriteMode>(MappingWriteMode.Omit, "不写入"),
+            new DatabaseUiText.EnumItem<MappingWriteMode>(MappingWriteMode.Sample, "采样取值"),
+            new DatabaseUiText.EnumItem<MappingWriteMode>(MappingWriteMode.Constant, "手动常量")
+        };
         ((GatewayGridSelectColumn)_mapping.Columns["Source"]).DataSource = Enumerable.Append(Enum.GetValues<DatabaseValueSource>(), OmittedSource).Select(value => new DatabaseUiText.EnumItem<DatabaseValueSource>(value, DatabaseUiText.Source(value))).ToArray();
         ((GatewayGridSelectColumn)_mapping.Columns["Point"]).DataSource = new[] { new DatabaseUiText.PointItem(Guid.Empty, "不绑定点位") }.Concat(_points).ToArray();
         ((GatewayGridSelectColumn)_mapping.Columns["FieldType"]).DataSource = Enum.GetValues<DatabaseFieldType>().Select(value => new DatabaseUiText.EnumItem<DatabaseFieldType>(value, DatabaseUiText.FieldType(value))).ToArray();
@@ -249,16 +267,19 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
                 if (_mapping.Columns[e.ColumnIndex].Name == "Include")
                 {
                     if (source is not (DatabaseValueSource.Constant or OmittedSource)) _samplingSources[column.Name] = source;
-                    row.Cells["Source"].Value = row.Cells["Include"].Value is true
-                        ? _samplingSources.GetValueOrDefault(column.Name, DatabaseValueSource.EngineeringValue) : DatabaseValueSource.Constant;
+                    row.Cells["Source"].Value = row.Cells["Include"].Value switch
+                    {
+                        MappingWriteMode.Sample => _samplingSources.GetValueOrDefault(column.Name,
+                            DatabaseMappingTools.SuggestSource(column.Name) ?? DatabaseValueSource.EngineeringValue),
+                        MappingWriteMode.Constant => DatabaseValueSource.Constant,
+                        _ => OmittedSource
+                    };
                 }
                 else if (_mapping.Columns[e.ColumnIndex].Name == "Source")
                 {
-                    row.Cells["Include"].Value = source is not (DatabaseValueSource.Constant or OmittedSource);
+                    row.Cells["Include"].Value = WriteMode(source);
                     if (source is not (DatabaseValueSource.Constant or OmittedSource)) _samplingSources[column.Name] = source;
                 }
-                else if (_mapping.Columns[e.ColumnIndex].Name == "Constant" && source == OmittedSource)
-                    row.Cells["Source"].Value = DatabaseValueSource.Constant;
                 UpdateMappingRow(row);
             }
             finally { _updatingMapping = false; }
@@ -277,7 +298,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         };
     }
 
-    private void BindMappingRows(IReadOnlyList<DatabaseColumnMapping> mappings, IReadOnlyList<DatabaseColumnInfo> columns)
+    private void BindMappingRows(IReadOnlyList<DatabaseColumnMapping> mappings, IReadOnlyList<DatabaseColumnInfo> columns, bool suggest = false)
     {
         _bindingMappings = true;
         try
@@ -287,9 +308,9 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
             {
                 var mapping = mappings.FirstOrDefault(item => string.Equals(item.Column, column.Name, StringComparison.Ordinal));
                 var required = !column.IsNullable && !column.HasDefault && !column.IsGenerated;
-                var source = column.IsGenerated ? OmittedSource : mapping?.Source ?? (required ? DatabaseValueSource.EngineeringValue : OmittedSource);
+                var source = column.IsGenerated ? OmittedSource : mapping?.Source ?? (suggest ? DatabaseMappingTools.SuggestSource(column.Name) ?? OmittedSource : OmittedSource);
                 if (source is not (DatabaseValueSource.Constant or OmittedSource)) _samplingSources[column.Name] = source;
-                var index = _mapping.Rows.Add(source is not (DatabaseValueSource.Constant or OmittedSource), column.Name,
+                var index = _mapping.Rows.Add(WriteMode(source), column.Name,
                     column.DataType + (column.IsGenerated ? " · 自动生成" : required ? " · 必填" : column.HasDefault ? " · 有默认值" : " · 可空"),
                     source, mapping?.TagId ?? Guid.Empty, mapping?.FieldType ?? DatabaseFieldType.Auto, mapping?.ConstantValue ?? "");
                 var row = _mapping.Rows[index]; row.Tag = column;
@@ -307,11 +328,11 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         var generated = row.Tag is DatabaseColumnInfo { IsGenerated: true };
         var omitted = source == OmittedSource;
         row.Cells["Point"].ReadOnly = generated || omitted || _mode.SelectedItem is DatabaseStorageMode.PointMapping || !DatabaseUiText.NeedsPoint(source);
-        row.Cells["Constant"].ReadOnly = generated || row.Cells["Include"].Value is true;
+        row.Cells["Constant"].ReadOnly = generated || source != DatabaseValueSource.Constant;
+        row.Cells["Source"].ReadOnly = generated || omitted || source == DatabaseValueSource.Constant;
         row.Cells["FieldType"].ReadOnly = generated || omitted;
-        row.Cells["Constant"].ToolTipText = row.Cells["Include"].Value is not true
-            ? "填写后作为手动常量写入；空的未配置列保持省略。自动类型按读取到的目标字段类型转换。"
-            : "关闭开关“使用采样”后可填写常量。";
+        row.Cells["Constant"].ToolTipText = source == DatabaseValueSource.Constant
+            ? "填写固定值；自动转换按目标字段类型处理。" : "选择“手动常量”后填写。";
         row.Cells["Point"].Style.BackColor = row.Cells["Point"].ReadOnly ? UiTheme.Background : Color.White;
         row.Cells["Constant"].Style.BackColor = row.Cells["Constant"].ReadOnly ? UiTheme.Background : Color.White;
         _mapping.InvalidateCell(row.Cells["Constant"]);
@@ -327,16 +348,20 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
             if (row.Tag is not DatabaseColumnInfo column || column.IsGenerated) continue;
             var source = row.Cells["Source"].Value is DatabaseValueSource selected ? selected : DatabaseValueSource.EngineeringValue;
             if (source == OmittedSource) continue;
-            if (row.Cells["Include"].Value is not true) source = DatabaseValueSource.Constant;
             var point = row.Cells["Point"].Value is Guid id && id != Guid.Empty ? id : (Guid?)null;
             if (validate && !pointMapping && DatabaseUiText.NeedsPoint(source) && (point is null || !_points.Any(item => item.Id == point)))
                 throw new EditorValidationException($"字段“{row.Cells["Column"].Value}”的值来源为{DatabaseUiText.Source(source)}，请绑定有效点位。", _mapping);
             var type = row.Cells["FieldType"].Value is DatabaseFieldType selectedType ? selectedType : DatabaseFieldType.Auto;
-            if (validate && type == DatabaseFieldType.Auto && source is DatabaseValueSource.Constant or DatabaseValueSource.Quality)
-                type = DatabaseMappingTools.InferFieldType(column.DataType);
             var mapping = new DatabaseColumnMapping { Column = column.Name, Source = source,
                 TagId = !pointMapping && DatabaseUiText.NeedsPoint(source) ? point : null,
                 FieldType = type, ConstantValue = row.Cells["Constant"].Value?.ToString() ?? "" };
+            if (validate && DatabaseMappingTools.ValidateTarget(mapping, column.DataType) is { } targetError)
+            {
+                _mapping.CurrentCell = row.Cells["Source"];
+                throw new EditorValidationException(targetError, _mapping);
+            }
+            if (validate && mapping.FieldType == DatabaseFieldType.Auto)
+                mapping.FieldType = DatabaseMappingTools.InferFieldType(column.DataType);
             if (validate && DatabaseMappingTools.ValidateValue(mapping) is { } error)
             {
                 _mapping.CurrentCell = row.Cells[source == DatabaseValueSource.Constant ? "Constant" : "Source"];
@@ -350,8 +375,49 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
     private void LoadColumns(IReadOnlyList<DatabaseColumnInfo> columns)
     {
         if (columns.Count == 0) throw new InvalidDataException("该表不存在、无可读字段或当前账号没有权限。");
-        var mappings = CaptureMappings(false); _columns = columns; _metadataKey = CurrentMetadataKey();
-        BindMappingRows(mappings, columns);
+        var mappings = CaptureMappings(false);
+        var selectedName = (_mapping.CurrentRow?.Tag as DatabaseColumnInfo)?.Name;
+        var selectedColumn = _mapping.CurrentCell?.OwningColumn.Name;
+        var scrollX = _mapping.HorizontalScrollingOffset;
+        var scrollY = _mapping.VerticalScrollingOffset;
+        var drafts = _mapping.Rows.Cast<GatewayTableRow>().ToDictionary(row => ((DatabaseColumnInfo)row.Tag!).Name,
+            row => new[] { "Source", "Point", "FieldType", "Constant" }.ToDictionary(name => name, name => row.Cells[name].Value), StringComparer.Ordinal);
+        _columns = columns; _metadataKey = CurrentMetadataKey();
+        BindMappingRows(mappings, columns, suggest: drafts.Count == 0 && _source.Columns.Count == 0);
+        _bindingMappings = true;
+        try
+        {
+            foreach (GatewayTableRow row in _mapping.Rows)
+            {
+                if (row.Tag is not DatabaseColumnInfo { IsGenerated: false } column || !drafts.TryGetValue(column.Name, out var draft)) continue;
+                foreach (var cell in draft) row.Cells[cell.Key].Value = cell.Value;
+                row.Cells["Include"].Value = WriteMode((DatabaseValueSource)row.Cells["Source"].Value!);
+                UpdateMappingRow(row);
+            }
+        }
+        finally { _bindingMappings = false; }
+        UpdateMode();
+        var selected = _mapping.Rows.Cast<GatewayTableRow>().FirstOrDefault(row => (row.Tag as DatabaseColumnInfo)?.Name == selectedName);
+        if (selected is not null && selectedColumn is not null && _mapping.Columns[selectedColumn].Visible)
+            _mapping.CurrentCell = selected.Cells[selectedColumn];
+        _mapping.HorizontalScrollingOffset = scrollX;
+        _mapping.VerticalScrollingOffset = scrollY;
+    }
+
+    internal void MatchFieldsByName()
+    {
+        if (_metadataKey is null || _mode.SelectedItem is DatabaseStorageMode.PointRows) return;
+        if (!_mapping.EndEdit()) return;
+        var matched = 0;
+        foreach (GatewayTableRow row in _mapping.Rows)
+        {
+            if (row.Tag is not DatabaseColumnInfo { IsGenerated: false } column
+                || DatabaseMappingTools.SuggestSource(column.Name) is not { } source) continue;
+            row.Cells["Source"].Value = source;
+            row.Cells["FieldType"].Value = DatabaseMappingTools.InferFieldType(column.DataType);
+            matched++;
+        }
+        _status.Text = $"已匹配 {matched} 个字段；未识别字段保持原样。请核对后保存。";
     }
 
     private Task ReadColumnsAsync() => InspectAsync(async () =>
@@ -362,7 +428,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         var columns = await _application.GetDatabaseColumnsAsync(connection, table);
         LoadColumns(columns);
         Tabs.SelectedTab = _mappingTab;
-        _status.Text = $"目标：{connection.Name} / {table}；已读取 {columns.Count} 个字段。打开开关使用采样，关闭开关填写常量；自增列由数据库生成。";
+        _status.Text = $"目标：{connection.Name} / {table}；已读取 {columns.Count} 个字段。请核对写入方式与来源；刷新保留已有编辑。";
     });
 
     private async Task InspectAsync(Func<Task> action)

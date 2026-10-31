@@ -214,3 +214,5 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-bui
 - 2026-10-30 用户明确例外：为修复升级后启动失败，允许 SQLite 配置结构 6→7 一次升级。先用 SQLite Backup API 生成含已提交 WAL 的独立备份，再在事务中仅新增 device_parameter_metadata 并更新版本；失败回滚，保留备份。保留全部原配置与身份，不自动清空；其他旧结构仍拒绝。详见 docs/configuration-v6-startup-fix.md。
 
 - 2026-10-31 数据库写入组选点：左侧按分组筛选的官方 Tree，选择分组/设备后右侧显示点位 Checkbox；全选仅作用当前可见列表，跨分组/设备/搜索保留稳定 ID 勾选。全部启用点位使用 Checkbox，保留空 TagIds 自动包含后续启用点位及恢复手动草稿语义。固定结构在 Designer，动态节点/行来自数据；不恢复逐点开关。详见 docs/database-point-selection.md。
+
+- 2026-10-31 字段映射采用“不写入 / 采样取值 / 手动常量”三态下拉，替代使用采样开关。新建空映射可按标准字段名建议来源，刷新不能覆盖手工选择或恢复已省略列；显式匹配确认后才覆盖已识别字段。自动转换按读取到的目标类型解析，时间列明显误配在保存前拒绝；不修改实际数据库或重放旧缓冲。详见 docs/database-field-mapping-editor.md。

@@ -68,4 +68,37 @@ public sealed class DatabaseMappingRulesTests
         Assert.Equal(DatabaseFieldType.Int64, copy.FieldType);
         Assert.Equal("192", copy.ConstantValue);
     }
+    [Theory]
+    [InlineData("timestamp(6) with time zone", DatabaseFieldType.Timestamp)]
+    [InlineData("timestamp(3) without time zone", DatabaseFieldType.Timestamp)]
+    public void TimestampPrecisionKeepsTimeZoneSuffix(string type, DatabaseFieldType expected)
+        => Assert.Equal(expected, DatabaseMappingRules.InferFieldType(type));
+
+    [Theory]
+    [InlineData("EVENT_ID", DatabaseValueSource.EventId)]
+    [InlineData("device_id", DatabaseValueSource.DeviceId)]
+    [InlineData("tag_id", DatabaseValueSource.TagId)]
+    [InlineData("timestamp", DatabaseValueSource.SampleTime)]
+    [InlineData("raw_value", DatabaseValueSource.RawValue)]
+    [InlineData("value_text", DatabaseValueSource.EngineeringValue)]
+    [InlineData("address", DatabaseValueSource.Address)]
+    public void KnownColumnNamesSuggestTheirActualSource(string name, DatabaseValueSource expected)
+        => Assert.Equal(expected, DatabaseMappingRules.SuggestSource(name));
+
+    [Fact]
+    public void UnknownBusinessFieldsHaveNoGuessedSource()
+        => Assert.Null(DatabaseMappingRules.SuggestSource("custom_required_field"));
+
+    [Fact]
+    public void TimeTargetRejectsAccidentalEngineeringValueButAllowsExplicitTimeConversion()
+    {
+        var mapping = new DatabaseColumnMapping { Column = "timestamp", Source = DatabaseValueSource.EngineeringValue };
+        Assert.Contains("时间字段", DatabaseMappingRules.ValidateTarget(mapping, "timestamp with time zone"));
+        mapping.Source = DatabaseValueSource.SampleTime;
+        Assert.Null(DatabaseMappingRules.ValidateTarget(mapping, "timestamp with time zone"));
+        mapping.FieldType = DatabaseFieldType.Text;
+        Assert.Contains("时间", DatabaseMappingRules.ValidateTarget(mapping, "timestamp with time zone"));
+        mapping.Source = DatabaseValueSource.RawValue; mapping.FieldType = DatabaseFieldType.Timestamp;
+        Assert.Null(DatabaseMappingRules.ValidateTarget(mapping, "timestamp with time zone"));
+    }
 }

@@ -13,7 +13,7 @@
 - 普通控件使用 `GatewayButton : AntdUI.Button`，保留官方圆角 6、边框宽度 1、非 Ghost；`BorderWidth=1` 与基础 Demo 的 `WaveSize=0` 在共享基类中统一，普通白底按钮也能区分可点击轮廓。不要自行设置 Back、Fore、DefaultBack、DefaultBorderColor、BackHover、BackActive、ForeHover、ForeActive，也不要通过 WinForms BackColor / ForeColor 叠加按钮皮肤。
 - 2026-10-29 用户指定例外：侧栏折叠按钮使用无边框官方方向图标，`BorderWidth=0`；普通业务按钮仍保留边框。展开侧栏保持 184 逻辑像素并增加菜单项高度及左侧留白，收缩为 64，详见 [导航与筛选布局](ui-compact-layout.md)。
 - 默认、悬停、按下、禁用及焦点状态交由官方按钮处理，不通过鼠标事件切换自定义配色或模拟普通按钮。保留 Enter / Space、Tab、默认按钮、取消和无障碍语义。图标使用官方主题色，保持现有 DPI 与资源释放规则。
-- 全部业务表格使用 `GatewayTable : AntdUI.Table`，设备启停直接使用官方 `CellButton` 的 Success / Error；配置与查看点位为 `CellLink`，字段映射开关为 `CellSwitch`。不再保留原生 DataGridView 或自行绘制行按钮。绑定适配层保留稳定 ID、选择、分页、滚动、键盘及无障碍行/单元格树。
+- 全部业务表格使用 `GatewayTable : AntdUI.Table`，设备启停直接使用官方 `CellButton` 的 Success / Error；配置与查看点位为 `CellLink`，字段映射写入方式使用官方下拉编辑器。不再保留原生 DataGridView 或自行绘制行按钮。绑定适配层保留稳定 ID、选择、分页、滚动、键盘及无障碍行/单元格树。
 - 2026-10-29 用户要求取消所有数据行操作的悬停提示。公共单元格呈现入口统一将 `CellLink`（包含派生的 `CellButton`）的 Tooltip 设为 null，覆盖启停、配置、查看点位和单元格下拉触发按钮；操作说明仍供无障碍读取。本次仅作源码差异审查，未执行编译或界面验证。
 - 38 逻辑像素操作高度、中文 10 pt 正文、工具栏换行和可点击面积继续按项目 DPI 规范维护；不为照搬 Demo 示例窗口尺寸缩小字号或裁切文字。
 

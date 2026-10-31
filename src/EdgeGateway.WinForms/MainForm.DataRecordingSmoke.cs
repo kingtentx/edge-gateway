@@ -87,31 +87,29 @@ public sealed partial class MainForm
                 new("_TIMESTAMP", "timestamp", true), new("_QUALITY", "int", true), new("optional_note", "varchar", true, HasDefault: true)];
             editor.LoadColumnsForSmoke(columns);
             var grid = editor.SmokeMapping;
-            var switchCell = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY")).Cells["Include"];
-            BringIntoViewAndAssert(grid, "mapping switch");
-            grid.CurrentCell = switchCell;
-            var switchBefore = (bool)switchCell.Value!;
-            var cellBounds = grid.GetCellDisplayRectangle(switchCell.ColumnIndex, switchCell.RowIndex, false);
-            var trackBounds = switchCell.GetContentBounds(switchCell.RowIndex);
-            var switchPoint = new IntPtr(((cellBounds.Top + trackBounds.Top + trackBounds.Height / 2) << 16)
-                | (cellBounds.Left + trackBounds.Left + trackBounds.Width / 2));
-            SendControlSmokeMessage(grid.Handle, 0x0201, new IntPtr(1), switchPoint);
-            SendControlSmokeMessage(grid.Handle, 0x0202, IntPtr.Zero, switchPoint);
-            grid.EndEdit();
-            Check((bool)switchCell.Value! != switchBefore, "mapping switch click did not commit.");
-            SendControlSmokeMessage(grid.Handle, 0x0100, new IntPtr((int)Keys.Space), IntPtr.Zero);
-            SendControlSmokeMessage(grid.Handle, 0x0101, new IntPtr((int)Keys.Space), IntPtr.Zero);
-            grid.EndEdit();
-            Check((bool)switchCell.Value! == switchBefore, "mapping switch Space did not restore sampling.");
+            var modeCell = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY")).Cells["Include"];
+            BringIntoViewAndAssert(grid, "mapping mode");
+            grid.CurrentCell = modeCell;
+            FocusForSmoke(grid, grid, editor, "mapping write mode");
+            Check(grid.BeginEdit(true) && grid.EditingControl is ComboBox, "write mode dropdown is not editable.");
+            ((ComboBox)grid.EditingControl!).SelectedValue = MappingWriteMode.Sample;
+            grid.NotifyCurrentCellDirty(true); grid.CommitEdit(DataGridViewDataErrorContexts.Commit); grid.EndEdit();
+            Check(Equals(modeCell.Value, MappingWriteMode.Sample), "write mode did not commit.");
             Check(!grid.Columns["Point"].Visible, "point mode still asks each field for a fixed point binding.");
             var generated = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "id"));
-            Check(generated.ReadOnly && generated.Cells["Include"].Value is false, "auto-increment id is writable.");
+            Check(generated.ReadOnly && Equals(generated.Cells["Include"].Value, MappingWriteMode.Omit), "auto-increment id is writable.");
             var optional = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "optional_note"));
-            Check(optional.Cells["Include"].Value is false && !optional.Cells["Constant"].ReadOnly,
-                "an initially unchecked optional field cannot accept a manual constant.");
+            Check(Equals(optional.Cells["Include"].Value, MappingWriteMode.Omit) && optional.Cells["Constant"].ReadOnly
+                && optional.Cells["Source"].ReadOnly, "omitted fields still expose active value editors.");
+            optional.Cells["Include"].Value = MappingWriteMode.Constant;
             optional.Cells["Constant"].Value = "line-A";
-            Check(Equals(optional.Cells["Source"].Value, DatabaseValueSource.Constant), "typing an unchecked constant did not include the column.");
-            optional.Cells["Source"].Value = (DatabaseValueSource)(-1);
+            Check(Equals(optional.Cells["Source"].Value, DatabaseValueSource.Constant) && !optional.Cells["Constant"].ReadOnly,
+                "constant mode did not enable constant editing.");
+            optional.Cells["Include"].Value = MappingWriteMode.Omit;
+            editor.LoadColumnsForSmoke(columns);
+            optional = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "optional_note"));
+            Check(Equals(optional.Cells["Include"].Value, MappingWriteMode.Omit) && Equals(optional.Cells["Constant"].Value, "line-A"),
+                "refresh lost omitted mode or its constant draft.");
             var choices = new[]
             {
                 ("_NAME", DatabaseValueSource.TagName, DatabaseFieldType.Text),
@@ -123,7 +121,7 @@ public sealed partial class MainForm
             foreach (var (column, source, type) in choices)
             {
                 var row = grid.Rows.Cast<GatewayTableRow>().Single(item => Equals(item.Cells["Column"].Value, column));
-                row.Cells["Include"].Value = true;
+                row.Cells["Include"].Value = MappingWriteMode.Sample;
                 foreach (var (name, value) in new[] { ("Source", (object)source), ("FieldType", (object)type) })
                 {
                     grid.CurrentCell = row.Cells[name];
@@ -138,7 +136,7 @@ public sealed partial class MainForm
             rejected = false;
             try { editor.CommitForSmoke(); } catch (EditorValidationException exception) { rejected = exception.Message.Contains("Good / Bad / Uncertain"); }
             Check(rejected, "quality text was allowed into an integer database column.");
-            grid.EndEdit(); quality.Cells["Include"].Value = false;
+            grid.EndEdit(); quality.Cells["Include"].Value = MappingWriteMode.Constant;
             Check(Equals(quality.Cells["Source"].Value, DatabaseValueSource.Constant) && !quality.Cells["Constant"].ReadOnly,
                 "unchecking sampling did not enable the constant source/editor.");
             grid.CurrentCell = quality.Cells["Constant"];
@@ -147,10 +145,10 @@ public sealed partial class MainForm
             Check(((TextBox)grid.EditingControl!).BorderStyle == BorderStyle.FixedSingle
                 && ((TextBox)grid.EditingControl!).PlaceholderText == "请输入常量", "manual constant editor has no visible input border or placeholder.");
             ((TextBox)grid.EditingControl!).Text = "192"; grid.EndEdit();
-            quality.Cells["Include"].Value = true;
+            quality.Cells["Include"].Value = MappingWriteMode.Sample;
             Check(Equals(quality.Cells["Source"].Value, DatabaseValueSource.Quality) && Equals(quality.Cells["Constant"].Value, "192"),
                 "switching back to sampling lost the original source or constant draft.");
-            quality.Cells["Include"].Value = false;
+            quality.Cells["Include"].Value = MappingWriteMode.Constant;
             quality.Cells["Constant"].Value = "Good"; rejected = false;
             try { editor.CommitForSmoke(); } catch (EditorValidationException exception) { rejected = exception.Message.Contains("常量"); }
             Check(rejected, "invalid integer constant was not rejected before save.");
@@ -165,7 +163,7 @@ public sealed partial class MainForm
             editor.LoadColumnsForSmoke(columns);
             Check(RecordingSmokeJson(valueBeforeRefresh) == RecordingSmokeJson(editor.CommitForSmoke()), "refresh lost mapping drafts.");
             quality = grid.Rows.Cast<GatewayTableRow>().Single(row => Equals(row.Cells["Column"].Value, "_QUALITY"));
-            Check(quality.Cells["Include"].Value is false && !quality.Cells["Constant"].ReadOnly,
+            Check(Equals(quality.Cells["Include"].Value, MappingWriteMode.Constant) && !quality.Cells["Constant"].ReadOnly,
                 "refresh re-enabled sampling or disabled an unchecked constant.");
             using (var reopened = new DatabaseWriteGroupDialog(valueBeforeRefresh, [connection], [device], _application))
             {
@@ -226,10 +224,56 @@ public sealed partial class MainForm
                 reopened.SmokeMapping.CurrentCell = manualRow.Cells["Column"];
                 SaveEditorScreenshot(reopened, "recording", "manual-constant-empty");
                 manualRow.Cells["Constant"].Value = "192";
-                SaveEditorScreenshot(reopened, "recording", "custom-point-mapping"); reopened.Close();
+                foreach (var size in new[] { new Size(1024, 680), new Size(640, 520), new Size(1024, 680) })
+                {
+                    reopened.ClientSize = new Size(UiTheme.Scale(reopened, size.Width), UiTheme.Scale(reopened, size.Height));
+                    await Task.Delay(150);
+                    VerifyEditorLayout(reopened, "mapping width round trip");
+                    foreach (var column in new[] { "Include", "Source", "FieldType", "Constant" })
+                    {
+                        reopened.SmokeMapping.CurrentCell = manualRow.Cells[column];
+                        FocusForSmoke(reopened.SmokeMapping, reopened.SmokeMapping, reopened, "mapping width " + column);
+                        reopened.SmokeMapping.FirstDisplayedScrollingColumnIndex = manualRow.Cells[column].ColumnIndex;
+                        Check(reopened.SmokeMapping.GetCellDisplayRectangle(manualRow.Cells[column].ColumnIndex, manualRow.Index, false)
+                            == reopened.SmokeMapping.GetCellDisplayRectangle(manualRow.Cells[column].ColumnIndex, manualRow.Index, true),
+                            "width round trip clips " + column);
+                    }
+                    reopened.SmokeMapping.EndEdit(); reopened.SmokeMapping.HorizontalScrollingOffset = 0;
+                    Check(RecordingSmokeJson(savedDraft) == RecordingSmokeJson(reopened.CommitForSmoke()), "resize changed the draft.");
+                    SaveEditorScreenshot(reopened, "recording", size.Width == 640 ? "mapping-narrow" : "custom-point-mapping");
+                }
+                reopened.Close();
+            }
+            var namedGroup = GatewayJson.Clone(group); namedGroup.Mode = DatabaseStorageMode.PointMapping;
+            DatabaseColumnInfo[] namedColumns = [new("event_id", "varchar", false), new("device_id", "varchar", false),
+                new("tag_id", "varchar", false), new("timestamp", "timestamp(6) with time zone", false),
+                new("value_text", "varchar", true), new("address", "varchar", true), new("custom_note", "varchar", true)];
+            using (var named = new DatabaseWriteGroupDialog(namedGroup, [connection], [device], _application))
+            {
+                named.LoadColumnsForSmoke(namedColumns);
+                var auto = named.CommitForSmoke();
+                Check(auto.Columns.Single(c => c.Column == "timestamp") is { Source: DatabaseValueSource.SampleTime, FieldType: DatabaseFieldType.Timestamp }
+                    && auto.Columns.Single(c => c.Column == "device_id").Source == DatabaseValueSource.DeviceId
+                    && auto.Columns.Single(c => c.Column == "value_text").FieldType == DatabaseFieldType.Text,
+                    "standard fields were not matched to typed sources.");
+                var time = named.SmokeMapping.Rows.Cast<GatewayTableRow>().Single(r => Equals(r.Cells["Column"].Value, "timestamp"));
+                time.Cells["Source"].Value = DatabaseValueSource.EngineeringValue;
+                rejected = false;
+                try { named.CommitForSmoke(); } catch (EditorValidationException ex) { rejected = ex.Message.Contains("时间字段"); }
+                Check(rejected, "automatic engineering-value mapping to a time column was accepted.");
+                named.MatchFieldsByName();
+                var address = named.SmokeMapping.Rows.Cast<GatewayTableRow>().Single(r => Equals(r.Cells["Column"].Value, "address"));
+                address.Cells["Include"].Value = MappingWriteMode.Omit;
+                named.LoadColumnsForSmoke(namedColumns);
+                var saved = named.CommitForSmoke();
+                Check(saved.Columns.All(c => c.Column != "address") && saved.Columns.All(c => c.Column != "custom_note"),
+                    "refresh rematched an omitted field or guessed an unknown field.");
+                using var again = new DatabaseWriteGroupDialog(saved, [connection], [device], _application);
+                again.LoadColumnsForSmoke(namedColumns);
+                Check(RecordingSmokeJson(saved) == RecordingSmokeJson(again.CommitForSmoke()), "reopen rematched omitted standard fields.");
             }
             AssertRecordingSmokeUnchanged(before, group, "custom point mapping source isolation");
-            Console.WriteLine($"Custom point mapping smoke passed: unchecked sampling writes manual 192 as Int64; quality/integer and invalid-constant rejection; real column source labels; omitted/default and generated columns; refresh/reopen/toggle drafts; unique names, focus and target invalidation at actual {DeviceDpi} DPI; no external database contacted.");
+            Console.WriteLine($"Custom point mapping smoke passed: explicit write modes; manual 192 as Int64; quality/integer and invalid-constant rejection; real column source labels; omitted/default and generated columns; refresh/reopen/toggle drafts; known-name matching, time target validation, wide/narrow round trip; unique names, focus and target invalidation at actual {DeviceDpi} DPI; no external database contacted.");
         }
         finally { editor.Close(); }
     }
@@ -377,7 +421,7 @@ public sealed partial class MainForm
                     temperature.Cells["Source"].Value = (DatabaseValueSource)(-1); rejected = false;
                     try { editor.CommitForSmoke(); } catch (EditorValidationException) { rejected = true; }
                     Check(rejected, "custom mapping accepted an omitted non-null, non-default field.");
-                    temperature.Cells["Include"].Value = true; temperature.Cells["Point"].Value = Guid.Empty; rejected = false;
+                    temperature.Cells["Include"].Value = MappingWriteMode.Sample; temperature.Cells["Point"].Value = Guid.Empty; rejected = false;
                     try { editor.CommitForSmoke(); } catch (EditorValidationException) { rejected = true; }
                     Check(rejected, "custom mapping accepted an unbound point source.");
                     temperature.Cells["Point"].Value = device.Tags[0].Id;
@@ -490,13 +534,14 @@ public sealed partial class MainForm
         Select(temperature, "FieldType", DatabaseFieldType.Text);
         foreach (var source in Enum.GetValues<DatabaseValueSource>())
         {
-            Select(temperature, "Source", source);
+            Select(temperature, "Include", source == DatabaseValueSource.Constant ? MappingWriteMode.Constant : MappingWriteMode.Sample);
+            if (source != DatabaseValueSource.Constant) Select(temperature, "Source", source);
             if (DatabaseUiText.NeedsPoint(source)) Select(temperature, "Point", pointId);
             var captured = editor.CommitForSmoke().Columns.Single(column => column.Column == "temperature");
             if (captured.Source != source || (DatabaseUiText.NeedsPoint(source) ? captured.TagId != pointId : captured.TagId is not null))
                 throw new InvalidOperationException("Database value-source binding did not round-trip: " + source);
         }
-        Select(temperature, "Source", DatabaseValueSource.Constant);
+        Select(temperature, "Include", MappingWriteMode.Constant);
         foreach (var type in Enum.GetValues<DatabaseFieldType>())
         {
             Select(temperature, "FieldType", type);
@@ -507,9 +552,9 @@ public sealed partial class MainForm
             if (captured.FieldType != expectedType || captured.ConstantValue != (string)temperature.Cells["Constant"].Value!)
                 throw new InvalidOperationException("Database conversion/constant binding did not round-trip: " + type);
         }
-        Select(temperature, "Source", DatabaseValueSource.EngineeringValue); Select(temperature, "Point", pointId);
+        Select(temperature, "Include", MappingWriteMode.Sample); Select(temperature, "Source", DatabaseValueSource.EngineeringValue); Select(temperature, "Point", pointId);
         Select(temperature, "FieldType", DatabaseFieldType.Double); temperature.Cells["Constant"].Value = "";
-        Select(note, "Source", DatabaseValueSource.Constant); Select(note, "FieldType", DatabaseFieldType.Text);
+        Select(note, "Include", MappingWriteMode.Constant); Select(note, "FieldType", DatabaseFieldType.Text);
         note.Cells["Constant"].Value = "生产一线";
     }
 

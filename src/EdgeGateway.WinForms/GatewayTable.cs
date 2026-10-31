@@ -305,7 +305,9 @@ public partial class GatewayTable : AntdUI.Table
         if (!column.FillsAvailableWidth) return column.FixedLogicalWidth.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var visible = Columns.Where(c => c.Visible).ToArray();
         var weight = visible.Where(c => c.FillsAvailableWidth).Sum(c => Math.Max(1, c.FillWeight));
-        var viewport = Math.Max(1, ClientSize.Width);
+        // Use the same padded/bordered rectangle as AntdUI Table.Layout.
+        // Even Bordered=false retains the half-border inset for row separators.
+        var viewport = Math.Max(1, AntdUI.Helper.PaddingRect(ClientRectangle, Padding, Dpi, BorderWidth / 2F).Width);
         var available = viewport - (ScrollBar.ShowY ? ScrollBar.SIZE : 0);
         var minimumWidth = visible.Sum(c => UiTheme.Scale(this, c.FillsAvailableWidth ? c.LogicalMinimum : c.FixedLogicalWidth));
         // Reserve readable minimums first, then share only the spare space.

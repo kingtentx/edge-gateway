@@ -10,6 +10,8 @@ public static class ConfigurationValidator
 
 public static class DatabaseMappingTools
 {
+    public static DatabaseValueSource? SuggestSource(string columnName) => Service.DatabaseMappingRules.SuggestSource(columnName);
+    public static string? ValidateTarget(DatabaseColumnMapping mapping, string databaseType) => Service.DatabaseMappingRules.ValidateTarget(mapping, databaseType);
     public static DatabaseFieldType InferFieldType(string databaseType) => Service.DatabaseMappingRules.InferFieldType(databaseType);
     public static string? ValidateValue(DatabaseColumnMapping mapping) => Service.DatabaseMappingRules.ValidateValue(mapping);
 }
