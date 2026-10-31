@@ -118,7 +118,6 @@ public sealed partial class MainForm
                             foreach (var command in new Control[] { _loggingApply, _loggingReset })
                                 BringIntoViewAndAssert(command, name + " logging command");
                             BringIntoViewAndAssert(Descendants(_pages["logs"]).Single(control => control.Name == "OpenLogDirectory"), name + " log directory command");
-                            BringIntoViewAndAssert(_loggingFileState, name + " log file status");
                             result.LoggingInputMetrics = _loggingFields.Values.Select(ControlMetric.From).ToList();
                             _logTabs.SelectedTab = _loggingPageView.SettingsTab;
                         }

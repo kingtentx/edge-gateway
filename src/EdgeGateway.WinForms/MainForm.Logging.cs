@@ -8,9 +8,6 @@ public sealed partial class MainForm
     private TabControl _logTabs = null!;
     private readonly Dictionary<string, Control> _loggingFields = [];
     private Label _loggingState = null!;
-    // Keep the status scrollable instead of an unbounded wrapping label: at the
-    // smallest supported work area the settings viewport is only 58 logical pixels high.
-    private TextBox _loggingFileState = null!;
     private AntdUI.Button _loggingApply = null!, _loggingReset = null!;
     private LoggingPageView _loggingPageView = null!;
     private bool _loggingDirty, _bindingLogging;
@@ -22,7 +19,6 @@ public sealed partial class MainForm
         _loggingState = _loggingPageView.SettingsState;
         _loggingApply = _loggingPageView.ApplyButton;
         _loggingReset = _loggingPageView.ResetButton;
-        _loggingFileState = _loggingPageView.FileState;
         _loggingFields.Add("MinimumLevel", _loggingPageView.MinimumLevelInput);
         _loggingFields.Add("MaxFileSizeMb", _loggingPageView.MaxFileSizeMbInput);
         _loggingFields.Add("RetainedFileCount", _loggingPageView.RetainedFileCountInput);
@@ -44,9 +40,6 @@ public sealed partial class MainForm
         var level = _loggingPageView.MinimumLevelInput;
         level.Items.AddRange(Enum.GetValues<GatewayLogLevel>().Cast<object>().ToArray());
         level.Format += (_, e) => { if (e.ListItem is GatewayLogLevel value) e.Value = LogLevelText(value); };
-        var logPaths = _application.GetLoggingStatus();
-        _loggingPageView.logPathsLabel.Text = "程序日志：" + (logPaths.DirectoryPath ?? "未启用文件日志") + Environment.NewLine
-            + "点位采样日志：" + (logPaths.SampleDirectoryPath ?? "未启用文件日志");
         _loggingPageView.openLogsButton.Click += (_, _) =>
         {
             try
@@ -105,10 +98,5 @@ public sealed partial class MainForm
         _loggingApply.Enabled = CanEdit() && _loggingDirty; _loggingReset.Enabled = CanEdit() && _loggingDirty;
         _loggingState.Text = _loggingDirty ? "有未保存的修改。应用后立即生效，正在采集的设备继续运行。" : "日志设置已保存；可在设备运行期间调整。";
         _loggingState.ForeColor = _loggingDirty ? UiTheme.Warning : UiTheme.Muted;
-        var status = _application.GetLoggingStatus();
-        _loggingFileState.Text = $"日志队列：{status.PendingEntries:F0} 条；累计丢弃：{status.DroppedEntries:F0} 条；写入失败：{status.FailedEntries:F0} 条。"
-            + $"\n队列载荷：{status.PendingBytes / 1048576d:F2} M；可用磁盘：{(status.AvailableDiskBytes.HasValue ? (status.AvailableDiskBytes.Value / 1048576d).ToString("F0") + " M" : "未探测")}；磁盘保护：{(status.DiskProtectionActive ? "已暂停" : "未触发")}；保护丢弃：{status.DiskRejectedEntries:F0}。"
-            + (string.IsNullOrWhiteSpace(status.FileError) ? "" : "\n文件写入错误：" + status.FileError);
-        _loggingFileState.ForeColor = string.IsNullOrWhiteSpace(status.FileError) ? UiTheme.Muted : UiTheme.Red;
     }
 }

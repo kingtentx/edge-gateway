@@ -20,7 +20,6 @@ internal sealed partial class LoggingPageView
     private Label settingsState = null!;
     private AntdUI.Button applyButton = null!;
     private AntdUI.Button resetButton = null!;
-    private GatewayInput fileState = null!;
 
 
     internal TableLayoutPanel settingsFields = null!;
@@ -59,7 +58,6 @@ internal sealed partial class LoggingPageView
     internal NumericUpDown DiskResumeMarginMbInput = null!;
     internal Label DiskResumeMarginMbInputLabel = null!;
     internal InputFrame DiskResumeMarginMbInputSurface = null!;
-    internal Label logPathsLabel = null!;
     internal AntdUI.Button openLogsButton = null!;
     internal LogArchivePageView eventView = null!;
     internal LogArchivePageView sampleView = null!;
@@ -165,19 +163,6 @@ internal sealed partial class LoggingPageView
         resetButton.Margin = new Padding(0, 0, 8, 6);
         resetButton.Cursor = Cursors.Hand;
         resetButton.Name = "ResetLoggingSettings";
-        fileState = new GatewayInput();
-        fileState.Name = "LoggingFileStatus";
-        fileState.Multiline = true;
-        fileState.ReadOnly = true;
-        fileState.AutoSize = false;
-        fileState.Height = 48;
-        fileState.ScrollBars = ScrollBars.Vertical;
-        fileState.Dock = DockStyle.Top;
-        fileState.BorderStyle = BorderStyle.FixedSingle;
-        fileState.BackColor = Color.White;
-        fileState.ForeColor = UiTheme.Muted;
-        fileState.AccessibleName = "日志文件状态，可滚动查看并复制完整内容";
-
         settingsContent.SuspendLayout();
         settingsFooter.SuspendLayout();
         settingsTab.SuspendLayout();
@@ -648,22 +633,6 @@ internal sealed partial class LoggingPageView
         DiskResumeMarginMbInput.Margin = Padding.Empty;
         DiskResumeMarginMbInputSurface.Controls.Add(DiskResumeMarginMbInput);
         settingsFields.Controls.Add(DiskResumeMarginMbInputSurface, 1, 15);
-        logPathsLabel = new Label();
-        logPathsLabel.Name = "logPathsLabel";
-        logPathsLabel.Text = "";
-        logPathsLabel.AutoSize = true;
-        logPathsLabel.Dock = DockStyle.Fill;
-        logPathsLabel.ForeColor = UiTheme.Muted;
-        logPathsLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
-        logPathsLabel.Margin = new Padding(0, 4, 0, 4);
-        logPathsLabel.Padding = new Padding(8);
-        logPathsLabel.Margin = new Padding(0, 4, 0, 8);
-        settingsFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        settingsFields.Controls.Add(logPathsLabel, 0, 16);
-        settingsFields.SetColumnSpan(logPathsLabel, 2);
-        settingsFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        settingsFields.Controls.Add(fileState, 0, 17);
-        settingsFields.SetColumnSpan(fileState, 2);
         openLogsButton = new GatewayButton();
         openLogsButton.Name = "openLogsButton";
         openLogsButton.Text = "打开日志目录";
@@ -679,7 +648,7 @@ internal sealed partial class LoggingPageView
         openLogsButton.Cursor = Cursors.Hand;
         openLogsButton.Name = "OpenLogDirectory";
         settingsFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        settingsFields.Controls.Add(openLogsButton, 0, 18);
+        settingsFields.Controls.Add(openLogsButton, 0, 16);
         settingsFields.SetColumnSpan(openLogsButton, 2);
         eventView = new LogArchivePageView();
         eventView.Name = "eventView";
@@ -689,7 +658,7 @@ internal sealed partial class LoggingPageView
         sampleView.Name = "sampleView";
         sampleView.Dock = DockStyle.Fill;
         sampleLogsTab.Controls.Add(sampleView);
-        settingsFields.RowCount = 19;
+        settingsFields.RowCount = 17;
         ResumeLayout(false);
     }
 
