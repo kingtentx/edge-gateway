@@ -160,7 +160,7 @@ diagnosticsGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         exportButton.Margin = new Padding(0, 0, 8, 6);
         exportButton.Cursor = Cursors.Hand;
         toolbarHost.Controls.Add(exportButton);
-        clearScopeButton = new GatewayButton { Name = "DiagnosticsClearScope", Text = "全部设备", AutoSize = true, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
+        clearScopeButton = new GatewayButton { Name = "DiagnosticsClearScope", Text = "全部设备", AutoSize = true, Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
         scopeLabel = new Label { Name = "DiagnosticsScope", Text = "全部设备与公共输出", AutoSize = true, Height = 38 };
         toolbarHost.Controls.Add(clearScopeButton); toolbarHost.Controls.Add(scopeLabel);
         ResumeLayout(false);

@@ -13,9 +13,9 @@ internal sealed partial class DriverCustomParametersView
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var actions = new WrappingToolbar { Dock = DockStyle.Top, AutoSize = true };
-        addButton = new GatewayButton { Text = "添加参数", AutoSize = true, MinimumSize = new Size(100, 38), Type = AntdUI.TTypeMini.Primary, Margin = new Padding(0, 0, 8, 6) };
-        editButton = new GatewayButton { Text = "编辑参数", AutoSize = true, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
-        removeButton = new GatewayButton { Text = "删除参数", AutoSize = true, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
+        addButton = new GatewayButton { Text = "添加参数", AutoSize = true, Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(100, 38), Type = AntdUI.TTypeMini.Primary, Margin = new Padding(0, 0, 8, 6) };
+        editButton = new GatewayButton { Text = "编辑参数", AutoSize = true, Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
+        removeButton = new GatewayButton { Text = "删除参数", AutoSize = true, Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
         search = new GatewayInput { Name = "DeviceParameterSearch", PlaceholderText = "搜索参数名称 / 标识", Dock = DockStyle.Fill };
         var searchFrame = new InputFrame { ContentWidth = 260, Width = 260, Height = 38, Margin = new Padding(0, 0, 0, 6) };
         searchFrame.Controls.Add(search);

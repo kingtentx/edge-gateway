@@ -40,6 +40,7 @@ public sealed partial class MainForm
                     PerformLayoutRecursively(this);
                     foreach (var button in Descendants(_pages[key]).OfType<GatewayButton>())
                         if (button.BorderWidth != 1) throw new InvalidOperationException("Missing common button outline: " + key + "/" + button.Name);
+                    AssertActionButtonSizes(_pages[key], key);
                     AssertPageToolbarsFit(_pages[key], "button appearance " + key);
                     foreach (var tabs in Descendants(_pages[key]).OfType<TabControl>().ToArray())
                     {
@@ -47,6 +48,7 @@ public sealed partial class MainForm
                         {
                             tabs.SelectedTab = tab;
                             PerformLayoutRecursively(this);
+                            AssertActionButtonSizes(tab, key + "/" + tab.Text);
                             AssertPageToolbarsFit(tab, "button appearance " + key + "/" + tab.Text);
                             if (key == "logs")
                             {
@@ -65,6 +67,22 @@ public sealed partial class MainForm
                 }
             }
             Size = originalSize;
+            foreach (var dialog in new EditorDialog[] { new DataRoutesDialog(), new DeviceConfigurationDialog(Clone(fixture.Devices[0]), _drivers) })
+            using (dialog)
+            {
+                dialog.Show(this);
+                try
+                {
+                    foreach (var tab in dialog.SmokeTabs)
+                    {
+                        dialog.SelectedSmokeTab = tab;
+                        PerformLayoutRecursively(dialog);
+                        AssertActionButtonSizes(dialog, dialog.GetType().Name + "/" + tab.Text);
+                        SaveEditorScreenshot(dialog, "button-appearance", dialog.GetType().Name + "-" + tab.Name);
+                    }
+                }
+                finally { dialog.Close(); }
+            }
             ShowPage("devices");
             await DeviceRowActionAsync(fixture.Devices[1].Id, DeviceStopColumnName);
             await RefreshSnapshotsAsync();
@@ -78,6 +96,28 @@ public sealed partial class MainForm
             await _application.StopAsync();
             await RestoreConfigurationForSmokeAsync(original);
             Size = originalSize;
+        }
+    }
+
+    private static void AssertActionButtonSizes(Control root, string context)
+    {
+        // Compare actual painted outlines, including disabled actions. Text length
+        // may change width; buttons beside each other must share height/alignment.
+        foreach (var group in Descendants(root).OfType<GatewayButton>()
+            .Where(button => button.Visible && !button.IsLink && button.Height >= UiTheme.Scale(button, 38))
+            .GroupBy(button => button.Parent))
+        {
+            var buttons = group.ToArray();
+            if (buttons.Length < 2) continue;
+            var first = buttons[0];
+            foreach (var button in buttons.Skip(1))
+            {
+                if (Math.Abs(button.ReadRectangle.Height - first.ReadRectangle.Height) > 1)
+                    throw new InvalidOperationException($"Button outline height mismatch: {context}, {first.Name}={first.ReadRectangle.Height}, {button.Name}={button.ReadRectangle.Height}.");
+                if (Math.Abs(button.Top - first.Top) <= UiTheme.Scale(button, 8)
+                    && Math.Abs(button.Top + button.ReadRectangle.Top - first.Top - first.ReadRectangle.Top) > 1)
+                    throw new InvalidOperationException($"Button outline alignment mismatch: {context}, {button.Name}.");
+            }
         }
     }
 }

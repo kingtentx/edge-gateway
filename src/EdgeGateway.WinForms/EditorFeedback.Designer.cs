@@ -24,6 +24,9 @@ internal sealed partial class EditorFeedback
         _locate = new GatewayButton();
         _locate.Name = "EditorValidationLocate";
         _locate.Text = "定位到字段";
+        _locate.Padding = new Padding(10, 4, 10, 4);
+        _locate.Height = 38;
+        _locate.MinimumSize = new Size(100, 38);
         _locate.AutoSize = true;
         _locate.Anchor = AnchorStyles.Right;
         _locate.Margin = new Padding(12, 0, 0, 0);

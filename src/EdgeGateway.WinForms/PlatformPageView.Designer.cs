@@ -850,6 +850,8 @@ internal sealed partial class PlatformPageView
         // Fixed action buttons.
         manageDriversButton.Name = "ManageDriverPlugins";
         manageDriversButton.Text = "驱动插件管理";
+        manageDriversButton.Padding = new Padding(10, 4, 10, 4);
+        manageDriversButton.Height = 38;
         manageDriversButton.AutoSize = true;
         manageDriversButton.MinimumSize = new Size(140, 38);
         manageDriversButton.Size = new Size(160, 38);
@@ -884,6 +886,8 @@ internal sealed partial class PlatformPageView
         actionPanel.Margin = Padding.Empty;
         applyButton.Name = "ApplyCloudSettings";
         applyButton.Text = "应用设置";
+        applyButton.Padding = new Padding(10, 4, 10, 4);
+        applyButton.Height = 38;
         applyButton.AutoSize = true;
         applyButton.MinimumSize = new Size(110, 38);
         applyButton.Size = new Size(120, 38);
@@ -894,6 +898,8 @@ internal sealed partial class PlatformPageView
         applyButton.TabIndex = 0;
         resetButton.Name = "ResetCloudSettings";
         resetButton.Text = "重置修改";
+        resetButton.Padding = new Padding(10, 4, 10, 4);
+        resetButton.Height = 38;
         resetButton.AutoSize = true;
         resetButton.MinimumSize = new Size(110, 38);
         resetButton.Size = new Size(120, 38);

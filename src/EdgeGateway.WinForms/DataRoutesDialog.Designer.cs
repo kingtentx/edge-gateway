@@ -16,11 +16,11 @@ internal sealed partial class DataRoutesDialog
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         actions = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
-        realtime = new GatewayButton { Name = "RouteRealtime", Text = "实时监控", AutoSize = true, MinimumSize = new Size(100, 38) };
-        history = new GatewayButton { Name = "RouteHistory", Text = "采样历史", AutoSize = true, MinimumSize = new Size(100, 38) };
-        logs = new GatewayButton { Name = "RouteLogs", Text = "相关日志", AutoSize = true, MinimumSize = new Size(100, 38) };
-        database = new GatewayButton { Name = "RouteDatabase", Text = "配置数据库写入", AutoSize = true, MinimumSize = new Size(150, 38) };
-        diagnostics = new GatewayButton { Name = "RouteDiagnostics", Text = "设备诊断", AutoSize = true, MinimumSize = new Size(100, 38) };
+        realtime = new GatewayButton { Name = "RouteRealtime", Text = "实时监控", AutoSize = true, Margin = new Padding(0, 0, 8, 6), Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(100, 38) };
+        history = new GatewayButton { Name = "RouteHistory", Text = "采样历史", AutoSize = true, Margin = new Padding(0, 0, 8, 6), Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(100, 38) };
+        logs = new GatewayButton { Name = "RouteLogs", Text = "相关日志", AutoSize = true, Margin = new Padding(0, 0, 8, 6), Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(100, 38) };
+        database = new GatewayButton { Name = "RouteDatabase", Text = "配置数据库写入", AutoSize = true, Margin = new Padding(0, 0, 8, 6), Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(150, 38) };
+        diagnostics = new GatewayButton { Name = "RouteDiagnostics", Text = "设备诊断", AutoSize = true, Margin = new Padding(0, 0, 8, 6), Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(100, 38) };
         actions.Controls.AddRange([realtime, history, logs, database, diagnostics]);
         details = new GatewayInput { Name = "DataRoutesDetails", Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical };
         layout.Controls.Add(actions, 0, 0); layout.Controls.Add(details, 0, 1);

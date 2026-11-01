@@ -678,7 +678,7 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         deviceBatchButton.Padding = new Padding(10, 4, 10, 4);
         deviceBatchButton.Margin = new Padding(0, 0, 8, 6);
         deviceToolbarHost.Controls.Add(deviceBatchButton);
-        routesButton = new GatewayButton { Name = "DeviceDataRoutes", Text = "数据去向", AutoSize = true, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
+        routesButton = new GatewayButton { Name = "DeviceDataRoutes", Text = "数据去向", AutoSize = true, Padding = new Padding(10, 4, 10, 4), Height = 38, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
         deviceToolbarHost.Controls.Add(routesButton);
         deviceToolbarHost.Controls.Add(deviceSummaryLabel);
         ResumeLayout(false);
