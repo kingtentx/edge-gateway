@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**实时监控全部设备：** 默认每页 20 条，显示当前结果的设备数、点位总数与翻页提示；更多点位仍可在底部分页查看。[说明与本次验证](docs/realtime-device-browser.md)。
+
 **数据库点位选择：** 写入组选点改为左侧分组/设备树、右侧复选框列表，支持搜索及跨范围保留勾选。Release 编译及隔离后台选点定向检查通过。[实现与 PostgreSQL 排查](docs/database-point-selection.md)。
 
 **设备表头全选：** 首列表头改用复选框，支持筛选结果跨页全选/取消及半选状态；批量菜单提供启停、启用/禁用及复制/删除，移除所选设备操作按钮。[说明与验证](docs/device-batch-actions.md)。

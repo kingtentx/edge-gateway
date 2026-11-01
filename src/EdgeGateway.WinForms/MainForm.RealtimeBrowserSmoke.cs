@@ -31,10 +31,39 @@ public sealed partial class MainForm
                 { Name = $"温度 {i:00}", Address = "ramp", DataType = TagDataType.Float64, Writable = true }).ToList() };
             var b = new DeviceConfiguration { Name = "二号设备", Group = "生产二组", DriverId = "simulator",
                 Tags = [new() { Name = "压力", Address = "constant:1", DataType = TagDataType.Float64 }] };
+            // Reproduce the reported all-devices view: 4 + 6 + 6 points, including
+            // identical point names on different devices and no samples yet.
+            fixture.Devices = Enumerable.Range(0, 3).Select(index => new DeviceConfiguration
+            {
+                Name = $"截图设备 {index}", Group = "截图分组", DriverId = "simulator",
+                Tags = Enumerable.Range(0, index == 0 ? 4 : 6).Select(tag => new TagConfiguration
+                { Name = $"点位 {tag}", Address = "constant:1", DataType = TagDataType.Float64 }).ToList()
+            }).ToList();
+            await CommitConfigurationAsync(fixture, replaceCloudDraft: true);
+            ShowPage("realtime"); SelectRealtimeDevice(null); RefreshRealtime([]); PerformLayoutRecursively(this);
+            var pager = GridPagination.GetPager(_realtimeGrid);
+            var expected = fixture.Devices.SelectMany(device => device.Tags.Select(tag => (device.Id, tag.Id))).ToHashSet();
+            var displayed = _realtimeGrid.Rows.Select(row => ((SampleRow)row.DataBoundItem!).Sample)
+                .Select(sample => (sample.DeviceId, sample.TagId)).ToHashSet();
+            Require(pager.PageSize == 20 && pager.Total == 16 && displayed.SetEquals(expected),
+                "all-devices default page omitted one of the 16 configured points");
+            SaveEditorScreenshot(this, "realtime-browser", "all-devices-16");
+            pager.PageSize = 10;
+            displayed.Clear();
+            foreach (var page in new[] { 1, 2 })
+            {
+                pager.Current = page;
+                foreach (var row in _realtimeGrid.Rows)
+                {
+                    var sample = ((SampleRow)row.DataBoundItem!).Sample;
+                    Require(displayed.Add((sample.DeviceId, sample.TagId)), "duplicate point across pages");
+                }
+            }
+            Require(displayed.SetEquals(expected), "all-devices pagination omitted a device or point");
+            pager.PageSize = 20; pager.Current = 1;
             fixture.Devices = [a, b]; fixture.DeviceGroups = [a.Group, b.Group, "空分组"];
             await CommitConfigurationAsync(fixture, replaceCloudDraft: true);
             ShowPage("realtime"); RefreshRealtime([]); PerformLayoutRecursively(this);
-            var pager = GridPagination.GetPager(_realtimeGrid);
             Require(pager.Total == 26, "configured unsampled points are missing");
             Require(((SampleRow)_realtimeGrid.Rows[0].DataBoundItem!).Time == "—" && !_writeButton.Enabled, "unsampled point looks live");
             var tree = _realtimePageView.DeviceTree;

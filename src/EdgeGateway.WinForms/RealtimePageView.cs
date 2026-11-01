@@ -8,6 +8,11 @@ internal sealed partial class RealtimePageView : UserControl
     internal GatewayInput PointSearch => pointSearch;
     internal GatewayTable RealtimeGrid => realtimeGrid;
     internal Control ToolbarHost => toolbarHost;
+    internal void UpdatePointSummary(int devices, int points)
+    {
+        var text = $"当前结果：{devices} 台设备，{points} 个点位；分页显示，可在底部翻页或调整每页条数。";
+        if (pointSummary.Text != text) pointSummary.Text = text;
+    }
     internal AntdUI.Splitter BrowserSplitter => browserSplitter;
     private float _preferredTreeWidth = 220F;
     private bool _arrangingBrowser;

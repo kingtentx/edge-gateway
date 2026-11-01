@@ -220,3 +220,5 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-bui
 - 2026-10-31 外库历史支持标准点行和具备身份、采样时间、工程值及质量映射的 PointMapping；按实际列名与数据库时间类型查询，不将自定义文本当标准 JSON 解码。不支持的写入组保留在下拉并说明原因，不伪造身份/质量或自动修改业务表与旧数据。详见 docs/history-mapped-database.md。
 
 - 2026-11-01 实时监控使用左侧分组筛选与官方设备树、右侧点位表。显示已配置点位；离线仅保留最后数值/时间，状态和质量继续更新，恢复在线后续刷。显示缓存不能回写运行时或伪造正常质量，离线禁用写入。固定结构保留在 Designer，详见 docs/realtime-device-browser.md。
+
+- 2026-11-01 实时监控默认每页 20 条，保留官方分页及每页条数选择；表格上方显示切片前搜索结果的设备数、点位总数与翻页提示，避免将排序后续页设备误认为漏点。全部设备完整性按设备/点位组合 ID 核对，包含跨设备同名点位，详见 docs/realtime-device-browser.md。
