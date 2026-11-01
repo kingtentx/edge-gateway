@@ -134,6 +134,12 @@ public sealed partial class MainForm
         private void UpdateSummary() => State.Text = (!_samples ? (_live ? "实时刷新 · 最近一小时 · 约每 2 秒更新。" : "已暂停实时刷新。") : "")
             + (_changed ? (_live ? "筛选条件待刷新；导出仍使用当前显示快照。\n" : "条件已修改，需重新查询；导出仍使用上次结果。\n") : "") + _summary;
 
+        private void ReportOperationStatus(string message)
+        {
+            State.Text = message;
+            _owner.SetFooter(message);
+        }
+
         internal async Task QueryAsync()
         {
             SetLive(false);
@@ -148,7 +154,7 @@ public sealed partial class MainForm
             try
             {
                 var query = Capture();
-                if (!automatic) State.Text = "正在查询…";
+                if (!automatic) ReportOperationStatus("正在查询…");
                 var result = await _owner._application.QueryLogFilesAsync(query, cancellation.Token);
                 if (_owner.IsDisposed || _owner.Disposing) return;
                 if (automatic && (revision != _revision || !_live)) return;
@@ -184,9 +190,10 @@ public sealed partial class MainForm
                 _summary = $"{query.From.ToLocalTime():MM-dd HH:mm:ss} 至 {query.To.ToLocalTime():MM-dd HH:mm:ss} · {result.Entries.Count:F0} 条 · 扫描 {result.ScannedBytes / 1048576d:F2} M · 损坏 {result.InvalidLines} 条。"
                     + (result.IsPartial ? "【受限结果】" : "") + "导出本次查询快照。" + string.Join("；", result.Warnings);
                 UpdateSummary();
+                if (!automatic) _owner.SetFooter($"查询完成，共 {result.Entries.Count} 条。");
             }
-            catch (OperationCanceledException) { if (!_owner.IsDisposed) State.Text = "查询已取消，保留上一次结果。"; }
-            catch (Exception exception) { if (!_owner.IsDisposed) State.Text = "查询失败，保留上一次结果：" + exception.Message; }
+            catch (OperationCanceledException) { if (!_owner.IsDisposed) ReportOperationStatus("查询已取消，保留上一次结果。"); }
+            catch (Exception exception) { if (!_owner.IsDisposed) ReportOperationStatus("查询失败，保留上一次结果：" + exception.Message); }
             finally { _cancellation = null; _nextRefresh = Environment.TickCount64 + 2000; if (!_owner.IsDisposed) Busy(false); }
         }
 
@@ -220,10 +227,10 @@ public sealed partial class MainForm
             try
             {
                 await _owner._application.ExportLogQueryAsync(result, dialog.FileName, cancellation.Token);
-                if (!_owner.IsDisposed) State.Text = $"已导出 {result.Entries.Count} 条{(result.IsPartial ? "受限" : "查询")}结果；导出文件包含已执行的查询条件。";
+                if (!_owner.IsDisposed) ReportOperationStatus($"已导出 {result.Entries.Count} 条{(result.IsPartial ? "受限" : "查询")}结果；导出文件包含已执行的查询条件。");
             }
-            catch (OperationCanceledException) { if (!_owner.IsDisposed) State.Text = "导出已取消，原目标文件保持不变。"; }
-            catch (Exception exception) { if (!_owner.IsDisposed) State.Text = "导出失败：" + exception.Message; }
+            catch (OperationCanceledException) { if (!_owner.IsDisposed) ReportOperationStatus("导出已取消，原目标文件保持不变。"); }
+            catch (Exception exception) { if (!_owner.IsDisposed) ReportOperationStatus("导出失败：" + exception.Message); }
             finally { _cancellation = null; if (!_owner.IsDisposed) Busy(false); }
         }
     }

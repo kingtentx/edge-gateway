@@ -22,6 +22,6 @@ internal sealed partial class LogArchivePageView : UserControl
         base.OnLayout(e);
         if (contentLayout is null || FindForm() is DpiAwareForm { IsDpiLayoutReady: false }) return;
         State.MaximumSize = new Size(Math.Max(1, contentLayout.ClientSize.Width - 32), 0);
-        contentLayout.MinimumSize = new Size(0, filterBar.Height + actions.Height + State.Height + UiTheme.Scale(this, 200));
+        contentLayout.MinimumSize = new Size(0, filterBar.Height + actions.Height + UiTheme.Scale(this, 200));
     }
 }

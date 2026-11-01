@@ -104,6 +104,7 @@ internal sealed partial class LogArchivePageView
         actions.Padding = new Padding(0, 4, 0, 4);
         State = new Label();
         State.Name = "State";
+        State.Visible = false;
         State.Text = "选择条件后查询；结果受扫描量、行数及 4 M 载荷限制。";
         State.AutoSize = true;
         State.Dock = DockStyle.Fill;
@@ -757,7 +758,7 @@ internal sealed partial class LogArchivePageView
         contentLayout.Controls.Add(filterBar, 0, 0);
         contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         contentLayout.Controls.Add(actions, 0, 1);
-        contentLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
         contentLayout.Controls.Add(State, 0, 2);
         contentLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         GridPageHost = new Panel();
