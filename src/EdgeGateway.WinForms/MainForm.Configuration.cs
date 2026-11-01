@@ -487,7 +487,18 @@ public sealed partial class MainForm
         public bool ActionEnabled { get => Enabled; set => Enabled = value; }
         public bool StartsDevice { get; set; }
         public override object Clone() => new DeviceActionButtonCell { ActionEnabled = ActionEnabled, StartsDevice = StartsDevice };
-        internal override AntdUI.ICell CreatePresentation() => new AntdUI.CellButton(OwningColumn.Name, FormattedValue?.ToString() ?? "",
+        internal override AntdUI.ICell CreatePresentation() => new DeviceActionButton(OwningColumn.Name, FormattedValue?.ToString() ?? "",
             StartsDevice ? AntdUI.TTypeMini.Success : AntdUI.TTypeMini.Error) { Enabled = ActionEnabled, Tooltip = ToolTipText, Gap = 0 };
+    }
+
+    // CellButton.Gap affects both axes. Keep its compact vertical measurement,
+    // and add horizontal space independently without changing official painting.
+    private sealed class DeviceActionButton(string id, string text, AntdUI.TTypeMini type) : AntdUI.CellButton(id, text, type)
+    {
+        public override Size GetSize(AntdUI.Canvas canvas, Font font, AntdUI.TableGaps gap)
+        {
+            var size = base.GetSize(canvas, font, gap);
+            return new Size(Math.Max((int)(52 * canvas.Dpi), size.Width + (int)(24 * canvas.Dpi)), size.Height);
+        }
     }
 }

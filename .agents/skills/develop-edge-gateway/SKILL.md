@@ -234,3 +234,5 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-bui
 - 2026-11-01 用户要求：所有分页列表默认每页 20 条，仅提供 20、50、100，删除 10；Designer、独立条数下拉和公共分页绑定须一致。设备单行数据与其他普通表格保持一致，不能被启停按钮的默认留白额外撑高；长文本仍可自动换行增高。
 
 - 2026-11-01 行高实现补充：除启停 CellButton 的 Gap=0 外，共享行勾选框在 GetSize 中扣除官方额外叠加的横向 gap 高度，继续使用原生 AntdUI 绘制、状态和点击处理。不要用固定全部行高度截断诊断长文本。授权范围内 RowDensity/Pagination 结果见 docs/ui-pagination.md。
+
+- 2026-11-01 启停按钮宽度补充：CellButton.Gap 同时影响横纵尺寸，紧凑行中须单独增加横向测量留白（24 逻辑像素、最小宽 52），不能通过重新加大 Gap 撑高行；绘制、状态与点击继续使用官方组件。

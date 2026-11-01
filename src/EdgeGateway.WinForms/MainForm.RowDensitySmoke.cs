@@ -53,6 +53,15 @@ public sealed partial class MainForm
                         throw new InvalidOperationException($"Invalid compact header: {page} {header}.");
                     if (page == "devices" && grid.Rows.Any(row => Math.Abs(row.Height - header) > 1))
                         throw new InvalidOperationException("Device actions expanded rows beyond the shared single-line table height.");
+                    if (page == "devices")
+                        foreach (var row in grid.Rows)
+                            foreach (var name in new[] { DeviceStartColumnName, DeviceStopColumnName })
+                            {
+                                var cell = row.Cells[name];
+                                var bounds = cell.GetContentBounds(row.Index);
+                                if (bounds.Width < UiTheme.Scale(grid, 52) || bounds.Left < 0 || bounds.Right > cell.OwningColumn.WidthPixel)
+                                    throw new InvalidOperationException($"Device button width/column mismatch: {name}, {bounds}.");
+                            }
                     if (page != "diagnostics")
                         foreach (var row in grid.Rows)
                         {

@@ -66,3 +66,6 @@ dotnet build src/EdgeGateway.WinForms/EdgeGateway.WinForms.csproj -c Release --n
 - RowDensity 首次未通过：仅缩小按钮留白仍被官方 CellCheckbox 的横向 gap 额外撑高。共享选择框仅调整 GetSize 返回的高度，继续复用官方绘制、点击和状态；随后复验通过。当前 DeviceDpi=192，设备表与实时表的表头/数据行均为 58 像素；1920×1080 的 100/125/150% 等效工作区均通过，窄工作区诊断长文本仍可增高至 92 像素。证据 `artifacts/row-pagination-density-1`（失败保留）、`artifacts/row-pagination-density-2`（通过）。
 - Pagination 通过并在选择框修正后复验通过，覆盖主窗体分页选项与默认值、20/50/100 切换、设备与点位稳定 ID、末页删除、空结果、实时刷新、完整历史 CSV 与运行日志 JSONL 导出；证据 `artifacts/row-pagination-pages-2`。全部 Designer 的页面和弹窗分页设置已源码核对，未逐个自动打开所有弹窗。
 - 人工查看最终设备页截图，核对行高和按钮可见；全量回归、真实跨屏 DPI 切换及设计器往返未执行。没有修改运行程序或现场配置。
+
+
+2026-11-01 启停宽度复验：按用户反馈，`CellButton.Gap=0` 虽保留行高但也去掉横向留白。现在单独增加 24 逻辑像素的横向留白，按钮最小宽度 52 逻辑像素，高度沿用紧凑测量，继续使用官方绘制和状态。沿用已授权同范围修复重跑：Release 编译通过（0 错误、420 项已有警告，`artifacts/device-action-width-build.log`），RowDensity 通过（`artifacts/device-action-width-ui`）；新增实际按钮宽度及列边界断言。当前 192 DPI 按钮宽至少 104 像素，设备与实时行仍均为 58 像素。人工查看窄窗口截图，文字居中、左右留白可见。
