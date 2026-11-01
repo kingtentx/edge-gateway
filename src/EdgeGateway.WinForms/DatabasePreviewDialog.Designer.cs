@@ -200,7 +200,8 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridPagination.RightToLeft = RightToLeft.Yes;
         valuesGridPagination.ShowSizeChanger = false;
         valuesGridPagination.MaxPageTotal = 8;
-        valuesGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        valuesGridPagination.PageSizeOptions = new int[] { 20, 50, 100 };
+        valuesGridPagination.PageSize = 20;
         valuesGridPagination.SizeChangerWidth = 100;
         valuesGrid.Dock = DockStyle.Fill;
         valuesGridPageHost.Controls.Add(valuesGrid);
@@ -231,7 +232,7 @@ internal sealed partial class DatabasePreviewDialog
         valuesGridPaginationSize.Dock = DockStyle.Fill;
         valuesGridPaginationSize.Margin = new Padding(0, 0, 16, 0);
         valuesGridPaginationSize.DropDownStyle = ComboBoxStyle.DropDownList;
-        valuesGridPaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
+        valuesGridPaginationSize.Items.AddRange(new object[] { "20条/页", "50条/页", "100条/页" });
         valuesGridPaginationSize.SelectedIndex = 0;
         valuesGridPagination.Margin = Padding.Empty;
         valuesGridPaginationBar.Controls.Add(valuesGridPaginationTotal, 1, 0);

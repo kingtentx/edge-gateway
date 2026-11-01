@@ -51,6 +51,8 @@ public sealed partial class MainForm
                     var header = grid.GetCellDisplayRectangle(0, -1, false).Height;
                     if (header < grid.Font.Height || header > UiTheme.Scale(grid, 40))
                         throw new InvalidOperationException($"Invalid compact header: {page} {header}.");
+                    if (page == "devices" && grid.Rows.Any(row => Math.Abs(row.Height - header) > 1))
+                        throw new InvalidOperationException("Device actions expanded rows beyond the shared single-line table height.");
                     if (page != "diagnostics")
                         foreach (var row in grid.Rows)
                         {

@@ -168,7 +168,7 @@ public sealed partial class MainForm
         grid.RepaintRows();
         var pager = GridPagination.GetPager(grid);
         var savedSize = pager.PageSize;
-        pager.PageSize = 10;
+        pager.PageSize = 20;
         pager.Current = 2;
         pager.Current = 1;
         pager.PageSize = savedSize;

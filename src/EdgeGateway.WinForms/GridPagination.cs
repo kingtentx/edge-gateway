@@ -9,7 +9,7 @@ internal sealed class GridPagination
     private readonly AntdUI.Pagination _pagination;
     private readonly Label _total;
     private readonly ComboBox _size;
-    private static readonly int[] PageSizes = [10, 20, 50, 100];
+    private static readonly int[] PageSizes = [20, 50, 100];
     private Action? _render;
     private bool _binding;
     private int _current = 1;

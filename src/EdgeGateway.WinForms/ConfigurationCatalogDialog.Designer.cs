@@ -128,7 +128,8 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPagination.RightToLeft = RightToLeft.Yes;
         catalogGridPagination.ShowSizeChanger = false;
         catalogGridPagination.MaxPageTotal = 8;
-        catalogGridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        catalogGridPagination.PageSizeOptions = new int[] { 20, 50, 100 };
+        catalogGridPagination.PageSize = 20;
         catalogGridPagination.SizeChangerWidth = 100;
         catalogGrid.Dock = DockStyle.Fill;
         catalogGridPageHost.Controls.Add(catalogGrid);
@@ -159,7 +160,7 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPaginationSize.Dock = DockStyle.Fill;
         catalogGridPaginationSize.Margin = new Padding(0, 0, 16, 0);
         catalogGridPaginationSize.DropDownStyle = ComboBoxStyle.DropDownList;
-        catalogGridPaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
+        catalogGridPaginationSize.Items.AddRange(new object[] { "20条/页", "50条/页", "100条/页" });
         catalogGridPaginationSize.SelectedIndex = 0;
         catalogGridPagination.Margin = Padding.Empty;
         catalogGridPaginationBar.Controls.Add(catalogGridPaginationTotal, 1, 0);

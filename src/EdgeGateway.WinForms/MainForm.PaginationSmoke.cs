@@ -26,18 +26,21 @@ public sealed partial class MainForm
             await CommitConfigurationAsync(fixture, replaceCloudDraft: true);
             ShowPage("devices"); PerformLayoutRecursively(this);
             await Task.Delay(100);
+            foreach (var control in Descendants(this).OfType<AntdUI.Pagination>())
+                Require(control.PageSizeOptions.SequenceEqual(new[] { 20, 50, 100 }) && control.PageSize == 20,
+                    "A page retained an unsupported size or default.");
             var devicePager = Pager(_deviceGrid);
-            Require(devicePager.Total == 23 && _deviceGrid.Rows.Count == 10, "Device first page/count incorrect.");
+            Require(devicePager.Total == 23 && devicePager.PageSize == 20 && _deviceGrid.Rows.Count == 20, "Device first page/count incorrect.");
             devicePager.Current = 2;
-            Require(SelectedDevice()?.Id == fixture.Devices[10].Id, "Page two selection has wrong stable device ID.");
-            Require(_deviceGrid.Rows[0].DataBoundItem is DeviceRow { Id: var id } && id == fixture.Devices[10].Id,
+            Require(SelectedDevice()?.Id == fixture.Devices[20].Id, "Page two selection has wrong stable device ID.");
+            Require(_deviceGrid.Rows[0].DataBoundItem is DeviceRow { Id: var id } && id == fixture.Devices[20].Id,
                 "Page two command target incorrect.");
             SaveEditorScreenshot(this, "pagination", "devices-page2");
             BindDeviceRows(fixture.Devices[22].Id);
-            Require(devicePager.Current == 3 && SelectedDevice()?.Id == fixture.Devices[22].Id, "Preferred device did not reveal its page.");
+            Require(devicePager.Current == 2 && SelectedDevice()?.Id == fixture.Devices[22].Id, "Preferred device did not reveal its page.");
             fixture.Devices.RemoveRange(20, 3);
             await CommitConfigurationAsync(fixture, replaceCloudDraft: true);
-            Require(devicePager.Current == 2 && _deviceGrid.Rows.Count == 10, "Deleting final page did not clamp page.");
+            Require(devicePager.Current == 1 && _deviceGrid.Rows.Count == 20, "Deleting final page did not clamp page.");
             devicePager.PageSize = 20;
             Require(devicePager.Current == 1 && _deviceGrid.Rows.Count == 20, "Page size did not update data.");
             _deviceSearch.Text = "no-such-device";
@@ -62,7 +65,7 @@ public sealed partial class MainForm
             ShowPage("history");
             PresentHistoryResults(null, "分页验证", device.Name, "全部点位", new HistoryQuery(device.Id, null, now.AddMinutes(-1), now.AddMinutes(1), 100), samples);
             PerformLayoutRecursively(this); await Task.Delay(100);
-            Pager(_historyGrid).Current = 3;
+            Pager(_historyGrid).Current = 2;
             Require(_historyGrid.Rows.Count == 3 && _queriedHistory.Count == 23, "History pagination changed export snapshot.");
             var csv = BuildHistoryCsv();
             Require(csv.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Length == 24,
@@ -78,8 +81,8 @@ public sealed partial class MainForm
             PerformLayoutRecursively(this);
             var pageButtons = (Array)typeof(AntdUI.Pagination).GetField("buttons",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(historyPager)!;
-            Require(historyPager.PageTotal == 50 && pageButtons.Length <= 10
-                && ((SampleRow)_historyGrid.Rows[0].DataBoundItem!).Sample.Timestamp == longHistory[110].Timestamp,
+            Require(historyPager.PageTotal == 25 && pageButtons.Length <= 10
+                && ((SampleRow)_historyGrid.Rows[0].DataBoundItem!).Sample.Timestamp == longHistory[220].Timestamp,
                 "Long-list pagination expanded beyond eight page slots or selected the wrong data.");
             SaveEditorScreenshot(this, "pagination", "history-50-pages-compact");
             PresentHistoryResults(null, "分页验证", device.Name, "全部点位",
@@ -97,12 +100,16 @@ public sealed partial class MainForm
                 "The complete pagination group must align with the right edge.");
             SaveEditorScreenshot(this, "pagination", "history-147-reference-layout");
             sizeSelect.SelectedIndex = 1;
+            Require(historyPager.PageSize == 50 && _historyGrid.Rows.Count == 50, "50-row selection failed.");
+            sizeSelect.SelectedIndex = 2;
+            Require(historyPager.PageSize == 100 && _historyGrid.Rows.Count == 100, "100-row selection failed.");
+            sizeSelect.SelectedIndex = 0;
             Require(historyPager.PageSize == 20 && _historyGrid.Rows.Count == 20,
                 "Separate page size selector did not update the bound page.");
             _pointsDeviceId = device.Id;
             BindTags(); _pointsDialog.Show(this);
             PerformLayoutRecursively(_pointsDialog); await Task.Delay(100);
-            Pager(_tagGrid).Current = 3;
+            Pager(_tagGrid).Current = 2;
             Require(_tagGrid.Rows.Count == 3 && SelectedTag()?.Id == device.Tags[20].Id,
                 "Point pagination lost the owning device or stable tag ID.");
             SaveEditorScreenshot(_pointsDialog, "pagination", "points-last-page");

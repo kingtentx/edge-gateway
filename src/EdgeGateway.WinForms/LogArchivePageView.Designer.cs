@@ -772,7 +772,8 @@ internal sealed partial class LogArchivePageView
         archivePagination.RightToLeft = RightToLeft.Yes;
         archivePagination.ShowSizeChanger = false;
         archivePagination.MaxPageTotal = 8;
-        archivePagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        archivePagination.PageSizeOptions = new int[] { 20, 50, 100 };
+        archivePagination.PageSize = 20;
         archivePagination.SizeChangerWidth = 100;
         Grid.Dock = DockStyle.Fill;
         GridPageHost.Controls.Add(Grid);
@@ -803,7 +804,7 @@ internal sealed partial class LogArchivePageView
         archivePaginationSize.Dock = DockStyle.Fill;
         archivePaginationSize.Margin = new Padding(0, 0, 16, 0);
         archivePaginationSize.DropDownStyle = ComboBoxStyle.DropDownList;
-        archivePaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
+        archivePaginationSize.Items.AddRange(new object[] { "20条/页", "50条/页", "100条/页" });
         archivePaginationSize.SelectedIndex = 0;
         archivePagination.Margin = Padding.Empty;
         archivePaginationBar.Controls.Add(archivePaginationTotal, 1, 0);

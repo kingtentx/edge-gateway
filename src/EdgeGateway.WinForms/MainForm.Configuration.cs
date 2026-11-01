@@ -488,6 +488,6 @@ public sealed partial class MainForm
         public bool StartsDevice { get; set; }
         public override object Clone() => new DeviceActionButtonCell { ActionEnabled = ActionEnabled, StartsDevice = StartsDevice };
         internal override AntdUI.ICell CreatePresentation() => new AntdUI.CellButton(OwningColumn.Name, FormattedValue?.ToString() ?? "",
-            StartsDevice ? AntdUI.TTypeMini.Success : AntdUI.TTypeMini.Error) { Enabled = ActionEnabled, Tooltip = ToolTipText };
+            StartsDevice ? AntdUI.TTypeMini.Success : AntdUI.TTypeMini.Error) { Enabled = ActionEnabled, Tooltip = ToolTipText, Gap = 0 };
     }
 }

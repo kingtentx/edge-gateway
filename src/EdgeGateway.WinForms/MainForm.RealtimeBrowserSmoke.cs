@@ -48,19 +48,9 @@ public sealed partial class MainForm
             Require(pager.PageSize == 20 && pager.Total == 16 && displayed.SetEquals(expected),
                 "all-devices default page omitted one of the 16 configured points");
             SaveEditorScreenshot(this, "realtime-browser", "all-devices-16");
-            pager.PageSize = 10;
-            displayed.Clear();
-            foreach (var page in new[] { 1, 2 })
-            {
-                pager.Current = page;
-                foreach (var row in _realtimeGrid.Rows)
-                {
-                    var sample = ((SampleRow)row.DataBoundItem!).Sample;
-                    Require(displayed.Add((sample.DeviceId, sample.TagId)), "duplicate point across pages");
-                }
-            }
-            Require(displayed.SetEquals(expected), "all-devices pagination omitted a device or point");
-            Require(_realtimePageView.PointSummaryText.Contains("11–16"), "page range did not follow pagination");
+            pager.PageSize = 50;
+            Require(_realtimeGrid.Rows.Count == 16 && _realtimePageView.PointSummaryText.Contains("1–16"),
+                "changing to 50 rows lost configured points or page range");
             pager.PageSize = 20; pager.Current = 1;
             fixture.Devices = [a, b]; fixture.DeviceGroups = [a.Group, b.Group, "空分组"];
             await CommitConfigurationAsync(fixture, replaceCloudDraft: true);

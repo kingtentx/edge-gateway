@@ -292,7 +292,8 @@ internal sealed partial class TagImportDialog
         _previewPagination.RightToLeft = RightToLeft.Yes;
         _previewPagination.ShowSizeChanger = false;
         _previewPagination.MaxPageTotal = 8;
-        _previewPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        _previewPagination.PageSizeOptions = new int[] { 20, 50, 100 };
+        _previewPagination.PageSize = 20;
         _previewPagination.SizeChangerWidth = 100;
         _preview.Dock = DockStyle.Fill;
         _previewPageHost.Controls.Add(_preview);
@@ -323,7 +324,7 @@ internal sealed partial class TagImportDialog
         _previewPaginationSize.Dock = DockStyle.Fill;
         _previewPaginationSize.Margin = new Padding(0, 0, 16, 0);
         _previewPaginationSize.DropDownStyle = ComboBoxStyle.DropDownList;
-        _previewPaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
+        _previewPaginationSize.Items.AddRange(new object[] { "20条/页", "50条/页", "100条/页" });
         _previewPaginationSize.SelectedIndex = 0;
         _previewPagination.Margin = Padding.Empty;
         _previewPaginationBar.Controls.Add(_previewPaginationTotal, 1, 0);

@@ -271,7 +271,8 @@ internal sealed partial class DriverPluginDialog
         _gridPagination.RightToLeft = RightToLeft.Yes;
         _gridPagination.ShowSizeChanger = false;
         _gridPagination.MaxPageTotal = 8;
-        _gridPagination.PageSizeOptions = new int[] { 10, 20, 50, 100 };
+        _gridPagination.PageSizeOptions = new int[] { 20, 50, 100 };
+        _gridPagination.PageSize = 20;
         _gridPagination.SizeChangerWidth = 100;
         _grid.Dock = DockStyle.Fill;
         _gridPageHost.Controls.Add(_grid);
@@ -302,7 +303,7 @@ internal sealed partial class DriverPluginDialog
         _gridPaginationSize.Dock = DockStyle.Fill;
         _gridPaginationSize.Margin = new Padding(0, 0, 16, 0);
         _gridPaginationSize.DropDownStyle = ComboBoxStyle.DropDownList;
-        _gridPaginationSize.Items.AddRange(new object[] { "10条/页", "20条/页", "50条/页", "100条/页" });
+        _gridPaginationSize.Items.AddRange(new object[] { "20条/页", "50条/页", "100条/页" });
         _gridPaginationSize.SelectedIndex = 0;
         _gridPagination.Margin = Padding.Empty;
         _gridPaginationBar.Controls.Add(_gridPaginationTotal, 1, 0);
