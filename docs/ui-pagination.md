@@ -69,3 +69,6 @@ dotnet build src/EdgeGateway.WinForms/EdgeGateway.WinForms.csproj -c Release --n
 
 
 2026-11-01 启停宽度复验：按用户反馈，`CellButton.Gap=0` 虽保留行高但也去掉横向留白。现在单独增加 24 逻辑像素的横向留白，按钮最小宽度 52 逻辑像素，高度沿用紧凑测量，继续使用官方绘制和状态。沿用已授权同范围修复重跑：Release 编译通过（0 错误、420 项已有警告，`artifacts/device-action-width-build.log`），RowDensity 通过（`artifacts/device-action-width-ui`）；新增实际按钮宽度及列边界断言。当前 192 DPI 按钮宽至少 104 像素，设备与实时行仍均为 58 像素。人工查看窄窗口截图，文字居中、左右留白可见。
+
+
+2026-11-01 启停高度微调：按用户要求，按钮可见高度增加 4 逻辑像素（上下各约 2），在官方 SetRect 中使用原数据行的留白；GetSize 不增加测量行高，宽度沿用最小 52。命中区域与可见按钮一致。沿用已授权 RowDensity 范围，Release 编译通过（0 错误、420 项已有警告；`artifacts/device-action-height-build.log`），后台 RowDensity 通过（`artifacts/device-action-height-ui`）。新增按钮上下边界与留白检查；实际 192 DPI 数据行仍为 58 像素，未撑高表格，人工查看截图确认居中。

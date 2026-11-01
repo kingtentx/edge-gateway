@@ -500,5 +500,13 @@ public sealed partial class MainForm
             var size = base.GetSize(canvas, font, gap);
             return new Size(Math.Max((int)(52 * canvas.Dpi), size.Width + (int)(24 * canvas.Dpi)), size.Height);
         }
+
+        public override void SetRect(AntdUI.Canvas canvas, Font font, Rectangle rect, Size size, int maxwidth, AntdUI.TableGaps gap)
+        {
+            // Use a little of the row's existing vertical whitespace. Keep row
+            // measurement unchanged; the official rectangle also owns hit testing.
+            var height = Math.Min(size.Height + (int)(4 * canvas.Dpi), rect.Height - (int)(4 * canvas.Dpi));
+            base.SetRect(canvas, font, rect, new Size(size.Width, Math.Max(size.Height, height)), maxwidth, gap);
+        }
     }
 }

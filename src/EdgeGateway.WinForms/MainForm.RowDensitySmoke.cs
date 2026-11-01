@@ -61,6 +61,9 @@ public sealed partial class MainForm
                                 var bounds = cell.GetContentBounds(row.Index);
                                 if (bounds.Width < UiTheme.Scale(grid, 52) || bounds.Left < 0 || bounds.Right > cell.OwningColumn.WidthPixel)
                                     throw new InvalidOperationException($"Device button width/column mismatch: {name}, {bounds}.");
+                                if (bounds.Height < grid.Font.Height + UiTheme.Scale(grid, 4)
+                                    || bounds.Top < UiTheme.Scale(grid, 2) || bounds.Bottom > row.Height - UiTheme.Scale(grid, 2))
+                                    throw new InvalidOperationException($"Device button vertical padding/row mismatch: {name}, {bounds}.");
                             }
                     if (page != "diagnostics")
                         foreach (var row in grid.Rows)
