@@ -41,13 +41,18 @@ internal sealed partial class ConfigurationCatalogDialog : DpiAwareForm
         UpdateActions();
     }
 
+    protected override bool ProcessDialogKey(Keys keyData)
+    {
+        if (keyData == Keys.Escape) { Close(); return true; }
+        return base.ProcessDialogKey(keyData);
+    }
+
     private void UpdateActions()
     {
         var editable = !_busy && _canEdit();
         addButton.Enabled = editable;
         editButton.Enabled = editable && Selected is not null;
         deleteButton.Enabled = editable && Selected is { DeviceCount: 0 };
-        closeButton.Enabled = !_busy;
         statusLabel.Text = !_canEdit() ? "请停止全部设备后进行新增、编辑或删除。"
             : Selected is { DeviceCount: > 0 } ? "所选项目正在被设备引用；请先修改设备配置，再删除。"
             : $"共 {catalogGridPagination.Total} 项；双击行可编辑，修改后自动保存。";

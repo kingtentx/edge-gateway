@@ -52,7 +52,7 @@ public sealed partial class MainForm
                             .Single(row => ((ConfigurationCatalogRow)row.DataBoundItem!).Name == name + "已编辑").Cells[0];
                         manager.ClientSize = new Size(UiTheme.Scale(manager, 620), UiTheme.Scale(manager, 400));
                         PerformLayoutRecursively(manager);
-                        foreach (var button in new[] { manager.addButton, manager.editButton, manager.deleteButton, manager.closeButton })
+                        foreach (var button in new[] { manager.addButton, manager.editButton, manager.deleteButton })
                             BringIntoViewAndAssert(button, "compact catalog action");
                         CheckUsability(manager.catalogGrid.Height >= manager.catalogGrid.ColumnHeadersHeight + manager.catalogGrid.RowTemplate.Height * 4,
                             "catalog list collapsed in compact window.");

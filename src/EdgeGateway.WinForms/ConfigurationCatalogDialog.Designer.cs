@@ -4,8 +4,8 @@ internal sealed partial class ConfigurationCatalogDialog
 {
     private TableLayoutPanel layout = null!;
     private Label titleLabel = null!, statusLabel = null!;
-    private FlowLayoutPanel toolbar = null!, footer = null!;
-    internal GatewayButton addButton = null!, editButton = null!, deleteButton = null!, closeButton = null!;
+    private FlowLayoutPanel toolbar = null!;
+    internal GatewayButton addButton = null!, editButton = null!, deleteButton = null!;
     internal GatewayTable catalogGrid = null!;
     private GatewayTableColumn nameColumn = null!, countColumn = null!, detailsColumn = null!;
 
@@ -20,11 +20,9 @@ internal sealed partial class ConfigurationCatalogDialog
         titleLabel = new Label();
         statusLabel = new Label();
         toolbar = new FlowLayoutPanel();
-        footer = new FlowLayoutPanel();
         addButton = new GatewayButton();
         editButton = new GatewayButton();
         deleteButton = new GatewayButton();
-        closeButton = new GatewayButton();
         catalogGrid = new GatewayTable();
         nameColumn = new GatewayTableColumn();
         countColumn = new GatewayTableColumn();
@@ -39,13 +37,12 @@ internal sealed partial class ConfigurationCatalogDialog
         layout.Dock = DockStyle.Fill;
         layout.Padding = new Padding(16);
         layout.ColumnCount = 1;
-        layout.RowCount = 5;
+        layout.RowCount = 4;
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         titleLabel.AutoSize = true;
         titleLabel.Visible = false;
         titleLabel.Margin = Padding.Empty;
@@ -117,15 +114,6 @@ internal sealed partial class ConfigurationCatalogDialog
         statusLabel.Dock = DockStyle.Fill;
         statusLabel.ForeColor = UiTheme.Muted;
         statusLabel.Margin = new Padding(0, 10, 0, 10);
-        footer.AutoSize = true;
-        footer.Dock = DockStyle.Fill;
-        footer.FlowDirection = FlowDirection.RightToLeft;
-        closeButton.Text = "关闭";
-        closeButton.Name = "CatalogClose";
-        closeButton.Size = new Size(88, 38);
-        closeButton.DialogResult = DialogResult.Cancel;
-        footer.Controls.Add(closeButton);
-        CancelButton = closeButton;
         layout.Controls.Add(titleLabel, 0, 0);
         layout.Controls.Add(toolbar, 0, 1);
         catalogGridPageHost = new Panel();
@@ -178,12 +166,8 @@ internal sealed partial class ConfigurationCatalogDialog
         catalogGridPaginationBar.Controls.Add(catalogGridPaginationSize, 2, 0);
         catalogGridPaginationBar.Controls.Add(catalogGridPagination, 3, 0);
         catalogGridPageHost.Controls.Add(catalogGridPaginationBar);
-        layout.Controls.Add(catalogGridPageHost, 0, 4);
+        layout.Controls.Add(catalogGridPageHost, 0, 3);
         layout.Controls.Add(statusLabel, 0, 2);
-        layout.Controls.Add(footer, 0, 3);
-        layout.RowStyles[2].SizeType = SizeType.AutoSize;
-        layout.RowStyles[4].SizeType = SizeType.Percent;
-        layout.RowStyles[4].Height = 100;
         Controls.Add(layout);
         ResumeLayout(false);
     }
