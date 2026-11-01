@@ -232,3 +232,5 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-bui
 - 2026-11-01 用户补充：筛选标签与输入采用左右结构，禁止标签在上、输入在下。动态选点的包含方式与规则目标同排，窄窗口按可用宽度收缩输入，不缩小字号或让控件越界。
 
 - 2026-11-01 用户要求：所有分页列表默认每页 20 条，仅提供 20、50、100，删除 10；Designer、独立条数下拉和公共分页绑定须一致。设备单行数据与其他普通表格保持一致，不能被启停按钮的默认留白额外撑高；长文本仍可自动换行增高。
+
+- 2026-11-01 行高实现补充：除启停 CellButton 的 Gap=0 外，共享行勾选框在 GetSize 中扣除官方额外叠加的横向 gap 高度，继续使用原生 AntdUI 绘制、状态和点击处理。不要用固定全部行高度截断诊断长文本。授权范围内 RowDensity/Pagination 结果见 docs/ui-pagination.md。

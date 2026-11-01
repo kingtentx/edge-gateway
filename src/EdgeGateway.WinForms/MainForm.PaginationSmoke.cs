@@ -27,7 +27,7 @@ public sealed partial class MainForm
             ShowPage("devices"); PerformLayoutRecursively(this);
             await Task.Delay(100);
             foreach (var control in Descendants(this).OfType<AntdUI.Pagination>())
-                Require(control.PageSizeOptions.SequenceEqual(new[] { 20, 50, 100 }) && control.PageSize == 20,
+                Require(control.PageSizeOptions is { } sizes && sizes.SequenceEqual(new[] { 20, 50, 100 }) && control.PageSize == 20,
                     "A page retained an unsupported size or default.");
             var devicePager = Pager(_deviceGrid);
             Require(devicePager.Total == 23 && devicePager.PageSize == 20 && _deviceGrid.Rows.Count == 20, "Device first page/count incorrect.");

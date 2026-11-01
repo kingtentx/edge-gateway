@@ -532,12 +532,23 @@ public class GatewayTableCell
         return RenderedCell = presentation;
     }
     internal AntdUI.ICell? RenderedCell { get; private set; }
+    // AntdUI adds the horizontal gap to checkbox height, then table layout adds
+    // vertical gaps again. Keep the official checkbox paint/hit behavior while
+    // measuring its content at text height, like the other single-line cells.
+    private sealed class CompactSelectionCheckbox(bool value) : AntdUI.CellCheckbox(value)
+    {
+        public override Size GetSize(AntdUI.Canvas canvas, Font font, AntdUI.TableGaps gap)
+        {
+            var size = base.GetSize(canvas, font, gap);
+            return new Size(size.Width, size.Height - gap.x);
+        }
+    }
     internal virtual AntdUI.ICell CreatePresentation()
     {
         if (OwningColumn is GatewayTableCheckColumn check)
         {
             var item = OwningRow.DataBoundItem;
-            var checkbox = new AntdUI.CellCheckbox(check.IsChecked(item)) { Enabled = check.CanCheck() };
+            var checkbox = new CompactSelectionCheckbox(check.IsChecked(item)) { Enabled = check.CanCheck() };
             checkbox.CheckedChanged += (_, e) => { if (check.CanCheck()) check.SetChecked(item, e.Value); };
             return checkbox;
         }
