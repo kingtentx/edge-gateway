@@ -20,7 +20,6 @@ public sealed partial class MainForm
         _databasePageView.addConnection.Click += async (_, _) => await RunBusyAsync(() => EditDatabaseConnectionAsync(true));
         _stoppedConfigurationCommands.Add(_databasePageView.addConnection);
         _databasePageView.editConnection.Click += async (_, _) => await RunBusyAsync(() => EditDatabaseConnectionAsync(false));
-        _stoppedConfigurationCommands.Add(_databasePageView.editConnection);
         _databasePageView.toggleConnection.Click += async (_, _) => await RunBusyAsync(() => ToggleDatabaseConnectionAsync());
         _stoppedConfigurationCommands.Add(_databasePageView.toggleConnection);
         _databasePageView.deleteConnection.Click += async (_, _) => await RunBusyAsync(() => DeleteDatabaseConnectionAsync());
@@ -29,15 +28,28 @@ public sealed partial class MainForm
         _databasePageView.addGroup.Click += async (_, _) => await RunBusyAsync(() => EditDatabaseGroupAsync(true));
         _stoppedConfigurationCommands.Add(_databasePageView.addGroup);
         _databasePageView.editGroup.Click += async (_, _) => await RunBusyAsync(() => EditDatabaseGroupAsync(false));
-        _stoppedConfigurationCommands.Add(_databasePageView.editGroup);
         _databasePageView.toggleGroup.Click += async (_, _) => await RunBusyAsync(() => ToggleDatabaseGroupAsync());
         _stoppedConfigurationCommands.Add(_databasePageView.toggleGroup);
         _databasePageView.deleteGroup.Click += async (_, _) => await RunBusyAsync(() => DeleteDatabaseGroupAsync());
         _stoppedConfigurationCommands.Add(_databasePageView.deleteGroup);
         _databasePageView.previewGroup.Click += async (_, _) => await RunBusyAsync(() => PreviewSelectedDatabaseGroupAsync());
-        _databaseGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseConnectionAsync(false)); };
-        _databaseGroupGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0 && !_application.IsRunning) await RunBusyAsync(() => EditDatabaseGroupAsync(false)); };
+        _databaseGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await RunBusyAsync(() => EditDatabaseConnectionAsync(false)); };
+        _databaseGroupGrid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await RunBusyAsync(() => EditDatabaseGroupAsync(false)); };
+        _databaseGrid.SelectionChanged += (_, _) => UpdateDatabaseCommands();
+        _databaseGroupGrid.SelectionChanged += (_, _) => UpdateDatabaseCommands();
         return _databasePageView;
+    }
+
+    private void UpdateDatabaseCommands()
+    {
+        if (_databasePageView is null) return;
+        var running = _application.IsRunning;
+        var connectionText = running ? "查看连接" : "编辑连接";
+        var groupText = running ? "查看写入组" : "编辑写入组";
+        if (_databasePageView.editConnection.Text != connectionText) _databasePageView.editConnection.Text = connectionText;
+        if (_databasePageView.editGroup.Text != groupText) _databasePageView.editGroup.Text = groupText;
+        _databasePageView.editConnection.Enabled = !_busy && !_closing && _databaseGrid.CurrentRow is not null;
+        _databasePageView.editGroup.Enabled = !_busy && !_closing && _databaseGroupGrid.CurrentRow is not null;
     }
 
     private void BindDatabaseViews(Guid? connectionId = null, Guid? groupId = null)
@@ -91,9 +103,13 @@ public sealed partial class MainForm
 
     private Task EditDatabaseConnectionAsync(bool isNew)
     {
-        RequireDatabaseStopped();
+        if (isNew) RequireDatabaseStopped();
         var source = isNew ? new DatabaseConnectionConfiguration() : _configuration.Databases.Single(connection => connection.Id == SelectedDatabaseId());
         using var editor = new DatabaseConnectionDialog(source, _application);
+        if (_application.IsRunning)
+        {
+            editor.InspectSavedConfiguration(); editor.ShowDialog(this); return Task.CompletedTask;
+        }
         editor.SetApplyHandler(async () =>
         {
             var current = _application.GetConfiguration(); var index = current.Databases.FindIndex(connection => connection.Id == source.Id);
@@ -107,12 +123,16 @@ public sealed partial class MainForm
 
     private Task EditDatabaseGroupAsync(bool isNew)
     {
-        RequireDatabaseStopped();
+        if (isNew) RequireDatabaseStopped();
         var configuration = _application.GetConfiguration();
         if (configuration.Databases.Count == 0) throw new InvalidOperationException("请先在“数据库连接”页添加连接。");
         var source = isNew ? DatabaseUiText.NewWriteGroup(configuration.Databases[0].Id, configuration.DatabaseWriteGroups)
             : configuration.DatabaseWriteGroups.Single(group => group.Id == SelectedDatabaseGroupId());
         using var editor = new DatabaseWriteGroupDialog(source, configuration.Databases, configuration.Devices, _application);
+        if (_application.IsRunning)
+        {
+            editor.InspectSavedConfiguration(); editor.ShowDialog(this); return Task.CompletedTask;
+        }
         editor.SetApplyHandler(async () =>
         {
             var current = _application.GetConfiguration(); var index = current.DatabaseWriteGroups.FindIndex(group => group.Id == source.Id);

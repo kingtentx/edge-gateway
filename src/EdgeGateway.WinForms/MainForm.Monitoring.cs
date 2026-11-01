@@ -42,6 +42,14 @@ public sealed partial class MainForm
         _realtimeSearch.TextChanged += (_, _) => RefreshRealtime(_application.GetLatest());
         _writeButton = _realtimePageView.writeButton;
         _writeButton.Click += async (_, _) => await RunBusyAsync(WritePointAsync);
+        _realtimePageView.clearFiltersButton.Click += (_, _) =>
+        {
+            _realtimeSearch.Clear();
+            _realtimePageView.GroupSelector.SelectedIndex = 0;
+            SelectRealtimeDevice(null);
+            GridPagination.GetPager(_realtimeGrid).Current = 1;
+            RefreshRealtime(_application.GetLatest());
+        };
         return _realtimePageView;
     }
 

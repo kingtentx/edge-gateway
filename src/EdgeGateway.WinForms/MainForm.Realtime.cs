@@ -135,8 +135,8 @@ public sealed partial class MainForm
                 Value = point.HasSample ? ValueText(point.Sample.Value) : "—",
                 RawValue = point.HasSample ? ValueText(point.Sample.RawValue) : "—"
             }).ToList();
-        _realtimePageView.UpdatePointSummary(rows.Select(row => row.Sample.DeviceId).Distinct().Count(), rows.Count);
         GridViewState.UpdateRows(_realtimeGrid, rows, row => (row.Sample.DeviceId, row.Sample.TagId));
+        _realtimePageView.UpdatePointSummary(rows.Select(row => row.Sample.DeviceId).Distinct().Count());
         UpdateWriteButton();
     }
 }

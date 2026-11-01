@@ -15,6 +15,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
     private readonly IReadOnlyList<DeviceConfiguration> _devices = [];
     private HashSet<Guid>? _visibleDeviceIds;
     private bool _bindingSelection;
+    private bool _inspectionOnly;
     private IReadOnlyList<DatabaseColumnInfo> _columns = [];
     private string? _metadataKey;
     private bool _loading, _bindingPoints, _bindingTable;
@@ -211,8 +212,8 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         {
             var visible = _pointList.Items.Cast<DatabaseUiText.PointItem>().ToArray();
             var count = _allPoints.Checked ? _pointList.Items.Checked.Count(value => value) : visible.Count(point => _selectedPoints.Contains(point.Id));
-            _pointList.Enabled = !_allPoints.Checked;
-            _visiblePoints.Enabled = !_allPoints.Checked && visible.Length > 0;
+            _pointList.Enabled = _inspectionOnly || !_allPoints.Checked;
+            _visiblePoints.Enabled = !_inspectionOnly && !_allPoints.Checked && visible.Length > 0;
             _visiblePoints.CheckState = count == 0 ? CheckState.Unchecked : count == visible.Length ? CheckState.Checked : CheckState.Indeterminate;
             _pointCount.Text = visible.Length == 0 ? "没有匹配的点位" : $"当前 {visible.Length} 个点位";
             _pointCount.Text += _allPoints.Checked ? " · 自动包含全部启用点位" : $" · 已勾选 {_selectedPoints.Count} 个点位";
@@ -221,6 +222,24 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
     }
 
     private sealed record DeviceScope(HashSet<Guid> DeviceIds);
+
+    internal void InspectSavedConfiguration()
+    {
+        _inspectionOnly = true;
+        SetReadOnlyView();
+        Text = "查看数据库写入组 · " + _source.Name;
+        foreach (var control in new Control[] { _name, _enabled, _connection, _mode, _schema, _table,
+            _tables, _interval, _maxAge, _goodOnly, _allPoints, listTablesButton, _loadColumns,
+            _createTable, previewButton, _switchPointMapping, _mappingLoadColumns, _matchFields })
+            control.Enabled = false;
+        _mapping.ReadOnly = true;
+        _pointList.ReadOnly = true;
+        UpdatePointSelection();
+        _status.Text = "正在采集：只读查看已保存配置，可切换页签、筛选和搜索点位。修改需先停止全部设备。";
+        _mappingHint.Text = "当前显示已保存的字段映射，不读取外部表结构、不创建表或写入数据。";
+        if (_source.Mode == DatabaseStorageMode.PointRows)
+            _mappingEmpty.Text = "标准点行模式使用固定字段，无需自定义映射。";
+    }
     private sealed record GroupChoice(string? Group, string Name) { public override string ToString() => Name; }
 
     private static MappingWriteMode WriteMode(DatabaseValueSource source) => source == OmittedSource

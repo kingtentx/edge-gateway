@@ -8,6 +8,12 @@ public sealed class GatewayCheckList : GatewayScrollPanel
     private readonly List<AntdUI.Checkbox> _rows = [];
     private readonly List<Label> _names = [];
     private bool _arranging;
+    private bool _readOnly;
+    public bool ReadOnly
+    {
+        get => _readOnly;
+        set { _readOnly = value; RenderRows(); }
+    }
     private int _selectedIndex = -1;
     public GatewayCheckList()
     {
@@ -34,6 +40,7 @@ public sealed class GatewayCheckList : GatewayScrollPanel
     public event ItemCheckEventHandler? ItemCheck;
     public void SetItemChecked(int index, bool value)
     {
+        if (ReadOnly) { RenderRows(); return; }
         var args = new ItemCheckEventArgs(index, value ? CheckState.Checked : CheckState.Unchecked,
             Items.Checked[index] ? CheckState.Checked : CheckState.Unchecked);
         ItemCheck?.Invoke(this, args);
@@ -99,6 +106,7 @@ public sealed class GatewayCheckList : GatewayScrollPanel
                 var bounds = GetItemRectangle(index);
                 var checkWidth = UiTheme.Scale(this, 34);
                 row.Checked = Items.Checked[index];
+                row.Enabled = !ReadOnly;
                 row.Bounds = new Rectangle(bounds.Left, bounds.Top, checkWidth, bounds.Height);
                 row.BackColor = index == SelectedIndex ? UiTheme.BlueSoft : Color.White;
                 name.Text = row.AccessibleName;

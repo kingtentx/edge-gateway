@@ -112,6 +112,7 @@ public partial class EditorDialog : DpiAwareForm
 
     private async Task ApplyAndAcceptAsync()
     {
+        if (_readOnlyView) throw new InvalidOperationException("当前为只读查看，不能保存配置。");
         _applying = true;
         _confirm.Enabled = _cancel.Enabled = Tabs.Enabled = false;
         UseWaitCursor = true;

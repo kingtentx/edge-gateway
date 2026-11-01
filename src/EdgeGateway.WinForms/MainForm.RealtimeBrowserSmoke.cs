@@ -60,6 +60,7 @@ public sealed partial class MainForm
                 }
             }
             Require(displayed.SetEquals(expected), "all-devices pagination omitted a device or point");
+            Require(_realtimePageView.PointSummaryText.Contains("11–16"), "page range did not follow pagination");
             pager.PageSize = 20; pager.Current = 1;
             fixture.Devices = [a, b]; fixture.DeviceGroups = [a.Group, b.Group, "空分组"];
             await CommitConfigurationAsync(fixture, replaceCloudDraft: true);
@@ -81,6 +82,11 @@ public sealed partial class MainForm
             _realtimeSearch.Text = "温度 03";
             Require(pager.Total == 1, "point name search");
             _realtimeSearch.Text = "missing"; Require(pager.Total == 0, "empty search");
+            Require(_realtimePageView.PointSummaryText.Contains("没有匹配"), "empty filter has no recovery hint");
+            _realtimePageView.clearFiltersButton.PerformClick();
+            Require(_realtimeDeviceId is null && pager.Total == 26 && pager.Current == 1 && _realtimeSearch.Text.Length == 0,
+                "clear filters did not restore all devices and first page");
+            SelectRealtimeDevice(a.Id); RefreshRealtime([]);
             _realtimeSearch.Clear();
             var time = DateTimeOffset.Now.AddMinutes(-1);
             var samples = a.Tags.Select(tag => new TelemetrySample(a.Id, a.Name, tag.Id, tag.Name, tag.Address,

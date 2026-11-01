@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**操作便利性：** 采集中可只读查看数据库连接、选点及映射；实时监控显示当前页范围，并提供清除筛选入口。[实现与验证边界](docs/ui-operation-convenience.md)。
+
 **实时监控全部设备：** 默认每页 20 条，显示当前结果的设备数、点位总数与翻页提示；更多点位仍可在底部分页查看。[说明与本次验证](docs/realtime-device-browser.md)。
 
 **数据库点位选择：** 写入组选点改为左侧分组/设备树、右侧复选框列表，支持搜索及跨范围保留勾选。Release 编译及隔离后台选点定向检查通过。[实现与 PostgreSQL 排查](docs/database-point-selection.md)。

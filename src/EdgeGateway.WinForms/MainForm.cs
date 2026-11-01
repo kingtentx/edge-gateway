@@ -739,6 +739,7 @@ public sealed partial class MainForm : DpiAwareForm
         _automaticSaveState.ForeColor = _dirty || _loggingDirty ? Color.FromArgb(180, 83, 9) : UiTheme.Muted;
         UpdateDeviceConfigurationCommands();
         UpdateSelectionCommands();
+        UpdateDatabaseCommands();
         UpdatePlatformCommands();
         UpdateLoggingCommands();
         UpdateHistoryQueryState();

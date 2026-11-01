@@ -8,9 +8,20 @@ internal sealed partial class RealtimePageView : UserControl
     internal GatewayInput PointSearch => pointSearch;
     internal GatewayTable RealtimeGrid => realtimeGrid;
     internal Control ToolbarHost => toolbarHost;
-    internal void UpdatePointSummary(int devices, int points)
+    private int _summaryDeviceCount;
+    internal string PointSummaryText => pointSummary.Text;
+    internal void UpdatePointSummary(int devices)
     {
-        var text = $"当前结果：{devices} 台设备，{points} 个点位；分页显示，可在底部翻页或调整每页条数。";
+        _summaryDeviceCount = devices;
+        UpdatePageSummary();
+    }
+    private void UpdatePageSummary()
+    {
+        var points = realtimeGridPagination.Total;
+        var first = points == 0 ? 0 : (realtimeGridPagination.Current - 1) * realtimeGridPagination.PageSize + 1;
+        var last = Math.Min(points, first + realtimeGridPagination.PageSize - 1);
+        var text = points == 0 ? "当前没有匹配的点位，可清除筛选后查看全部设备。"
+            : $"当前结果：{_summaryDeviceCount} 台设备，{points} 个点位；显示第 {first}–{last} 条。";
         if (pointSummary.Text != text) pointSummary.Text = text;
     }
     internal AntdUI.Splitter BrowserSplitter => browserSplitter;
@@ -22,6 +33,7 @@ internal sealed partial class RealtimePageView : UserControl
     {
         InitializeComponent();
         GridPagination.Attach(realtimeGrid, realtimeGridPagination, realtimeGridPaginationTotal, realtimeGridPaginationSize);
+        realtimeGridPagination.ValueChanged += (_, _) => UpdatePageSummary();
         browserSplitter.SizeChanged += (_, _) => ArrangeBrowser();
         browserSplitter.SplitterMoving += (_, _) => _movingSplitter = true;
         browserSplitter.SplitterMoved += (_, _) =>

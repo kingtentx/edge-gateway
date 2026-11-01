@@ -77,6 +77,25 @@ public sealed partial class MainForm
                 SaveEditorScreenshot(editor, "database-selection", size.Width == 640 ? "narrow" : "wide");
             }
             Check(RecordingSmokeJson(group) == original, "cancel changed source configuration");
+            editor.InspectSavedConfiguration();
+            var selectedBeforeInspection = list.Items.Checked.ToArray();
+            list.SetItemChecked(0, !list.Items.Checked[0]);
+            Check(list.ReadOnly && list.Enabled && selectedBeforeInspection.SequenceEqual(list.Items.Checked),
+                "read-only point inspection changed selection or disabled scrolling");
+            search.Text = "温度 1";
+            Check(list.Items.Count > 0 && list.ReadOnly && !all.Enabled && !visible.Enabled,
+                "read-only search lost mutation guards");
+            var applyCalled = false;
+            editor.SetApplyHandler(() => { applyCalled = true; return Task.CompletedTask; }, false, _ => { });
+            var rejected = false;
+            try { await editor.ApplyAndAcceptForSmokeAsync(); }
+            catch (InvalidOperationException) { rejected = true; }
+            Check(rejected && !applyCalled && editor.SmokeMapping.ReadOnly, "inspection allowed save or mapping edit");
+            SaveEditorScreenshot(editor, "database-selection", "inspection");
+            using var connectionView = new DatabaseConnectionDialog(connection, _application);
+            connectionView.InspectSavedConfiguration();
+            Check(connectionView.SmokeInputs.All(input => !input.Enabled), "connection inspection allows editing");
+            Check(RecordingSmokeJson(group) == original, "inspection changed saved source");
         }
         finally { editor.Close(); }
         Console.WriteLine($"Database selection smoke passed: groups/devices, checkbox/keyboard, visible selection, search, draft isolation, scrolling and width round trip; DeviceDpi={DeviceDpi}.");

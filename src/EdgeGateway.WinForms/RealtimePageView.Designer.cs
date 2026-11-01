@@ -36,6 +36,7 @@ internal sealed partial class RealtimePageView
     internal Label pointSearchCaption = null!;
     internal InputFrame pointSearchSurface = null!;
     internal AntdUI.Button writeButton = null!;
+    internal GatewayButton clearFiltersButton = null!;
 
     private AntdUI.Pagination realtimeGridPagination = null!;
     private Label realtimeGridPaginationTotal = null!;
@@ -386,6 +387,13 @@ realtimeGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         writeButton.Cursor = Cursors.Hand;
         writeButton.Margin = new Padding(0, 0, 8, 6);
         toolbarHost.Controls.Add(writeButton);
+        clearFiltersButton = new GatewayButton();
+        clearFiltersButton.Name = "RealtimeClearFilters";
+        clearFiltersButton.Text = "清除筛选";
+        clearFiltersButton.AutoSize = true;
+        clearFiltersButton.MinimumSize = new Size(88, 38);
+        clearFiltersButton.Margin = new Padding(0, 0, 8, 6);
+        toolbarHost.Controls.Add(clearFiltersButton);
         ResumeLayout(false);
     }
 

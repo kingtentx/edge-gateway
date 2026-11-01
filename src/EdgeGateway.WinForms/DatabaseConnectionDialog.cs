@@ -9,7 +9,8 @@ internal sealed partial class DatabaseConnectionDialog : EditorDialog
     private readonly IGatewayApplication _application;
     private bool _testing;
     internal DatabaseConnectionConfiguration Value { get; private set; } = null!;
-    internal IEnumerable<Control> SmokeInputs => new Control[] { _name, _enabled, _provider, _host, _port, _database, _username, _password, _tls, _connectTimeout, _commandTimeout, _batch, _flush, _capacity, _capacityMb, _retryAttempts };
+    private IEnumerable<Control> ConnectionInputs => new Control[] { _name, _enabled, _provider, _host, _port, _database, _username, _password, _tls, _connectTimeout, _commandTimeout, _batch, _flush, _capacity, _capacityMb, _retryAttempts };
+    internal IEnumerable<Control> SmokeInputs => ConnectionInputs;
 
     public DatabaseConnectionDialog() : base("数据库连接", "配置外部数据库连接与批次。")
     { _source = new(); _application = null!; InitializeComponent(); }
@@ -54,6 +55,15 @@ internal sealed partial class DatabaseConnectionDialog : EditorDialog
         value.ConnectionTimeoutSeconds = (int)_connectTimeout.Value; value.CommandTimeoutSeconds = (int)_commandTimeout.Value;
         value.BatchSize = (int)_batch.Value; value.FlushIntervalMs = (int)_flush.Value; value.QueueCapacityRows = (int)_capacity.Value; value.QueueCapacityMb = (int)_capacityMb.Value; value.MaxRetryAttempts = (int)_retryAttempts.Value;
         return value;
+    }
+
+    internal void InspectSavedConfiguration()
+    {
+        SetReadOnlyView();
+        Text = "查看数据库连接 · " + _source.Name;
+        foreach (var input in ConnectionInputs) input.Enabled = false;
+        testConnectionButton.Enabled = false;
+        _testResult.Text = "正在采集：当前为已保存配置的只读快照。修改数据库设置需先停止全部设备。";
     }
 
     private async Task TestAsync()
