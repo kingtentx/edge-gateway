@@ -3,10 +3,10 @@ using Microsoft.Data.Sqlite;
 
 namespace EdgeGateway.DataAccess;
 
-/// <summary>Functional schema. JSON schema 3 is an exchange contract; SQLite layout version 7 is independent.</summary>
+/// <summary>Functional schema. JSON schema 3 is an exchange contract; SQLite layout version 8 is independent.</summary>
 internal static class RelationalConfiguration
 {
-    internal const int StorageVersion = 7;
+    internal const int StorageVersion = 8;
     private const string Slot = "slot TEXT NOT NULL";
     private const string SnapshotForeignKey = "FOREIGN KEY(slot) REFERENCES configuration_snapshots(slot) ON DELETE CASCADE ON UPDATE CASCADE";
     private const string Singleton = "PRIMARY KEY(slot), " + SnapshotForeignKey;
@@ -66,6 +66,11 @@ internal static class RelationalConfiguration
         Slot + ", group_id TEXT NOT NULL, position INTEGER NOT NULL CHECK(position>=0)", "PRIMARY KEY(slot,group_id,position), UNIQUE(slot,group_id,\"column\"), " + GroupForeignKey + ", FOREIGN KEY(slot,tag_id) REFERENCES tags(slot,id)",
         nameof(DatabaseColumnMapping.Column), nameof(DatabaseColumnMapping.Source), nameof(DatabaseColumnMapping.TagId), nameof(DatabaseColumnMapping.FieldType), nameof(DatabaseColumnMapping.ConstantValue));
 
+    private static readonly ConfigurationTable<DatabasePointSelectionRule> SelectionRules = new("database_point_rules",
+        Slot + ", group_id TEXT NOT NULL", "PRIMARY KEY(slot,group_id), " + GroupForeignKey + ", FOREIGN KEY(slot,device_id) REFERENCES devices(slot,id)",
+        nameof(DatabasePointSelectionRule.Mode), nameof(DatabasePointSelectionRule.DeviceId), nameof(DatabasePointSelectionRule.GroupName));
+    internal static string SelectionRulesTableSql => SelectionRules.CreateSql;
+
     internal const string ParameterMetadataTableSql = """
         CREATE TABLE device_parameter_metadata (
             slot TEXT NOT NULL, device_id TEXT NOT NULL, name TEXT NOT NULL,
@@ -92,6 +97,7 @@ internal static class RelationalConfiguration
         Tags.CreateSql +
         Databases.CreateSql +
         Groups.CreateSql +
+        SelectionRules.CreateSql +
         Columns.CreateSql +
         ParameterMetadataTableSql +
         """
@@ -166,6 +172,7 @@ internal static class RelationalConfiguration
             var group = configuration.DatabaseWriteGroups[i];
             var id = group.Id.ToString("D");
             Add(Groups, group, ("position", i));
+            Add(SelectionRules, group.Selection, ("group_id", id));
             for (var j = 0; j < group.TagIds.Count; j++)
             {
                 var tag = group.TagIds[j].ToString("D");
@@ -238,6 +245,7 @@ internal static class RelationalConfiguration
         configuration.DatabaseWriteGroups = Groups.Read(connection, transaction, slot, "position");
         foreach (var group in configuration.DatabaseWriteGroups)
         {
+            group.Selection = SelectionRules.Read(connection, transaction, slot, "group_id", ("group_id", group.Id.ToString("D"))).SingleOrDefault() ?? new();
             group.Columns = Columns.Read(connection, transaction, slot, "position", ("group_id", group.Id.ToString("D")));
             using var command = connection.CreateCommand();
             command.Transaction = transaction;

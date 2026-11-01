@@ -5,6 +5,30 @@ namespace EdgeGateway.Tests.Application;
 public sealed partial class GatewayApplicationTests
 {
     [Fact]
+    public async Task RenamingGroupPreservesLiveDeviceAndUpdatesPausedDynamicRoute()
+    {
+        await using var h = await Harness.CreateAsync();
+        var device = h.App.GetConfiguration().Devices.Single(item => item.Id == h.A.Id);
+        device.Group = "Line"; await h.App.UpdateDeviceAsync(device);
+        var connection = new DatabaseConnectionConfiguration { Enabled = false };
+        var group = new DatabaseWriteGroupConfiguration { ConnectionId = connection.Id, Enabled = false,
+            Selection = new() { Mode = DatabasePointSelectionMode.Group, GroupName = "Line" } };
+        await h.App.ApplyDatabaseSettingsAsync([connection], [group]);
+        await h.App.StartDeviceAsync(device.Id);
+        await Until(() => h.App.GetLatest().Count > 0);
+        var result = await h.App.SaveDeviceGroupAsync("Line", "Renamed");
+        Assert.Empty(result.Restarted); Assert.Empty(result.Stopped);
+        Assert.True(h.App.IsDeviceRunning(device.Id));
+        Assert.Equal(1, h.Factory.Created[device.Id]);
+        var saved = await h.App.ReadSavedConfigurationAsync();
+        Assert.Equal("Renamed", saved.Devices.Single(item => item.Id == device.Id).Group);
+        Assert.Equal("Renamed", Assert.Single(saved.DatabaseWriteGroups).Selection.GroupName);
+        await h.App.StopAsync();
+        await h.App.DeleteDeviceAsync(device.Id);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.DeleteDeviceGroupAsync("Renamed"));
+    }
+
+    [Fact]
     public async Task DeviceGroupsAddedByLiveDeviceEditsDoNotRestartOtherDevices()
     {
         await using var h = await Harness.CreateAsync();
@@ -64,8 +88,13 @@ public sealed partial class GatewayApplicationTests
         h.Configurations.FailSave = false;
         await h.App.SaveDeviceGroupAsync("Line A", "Renamed");
         await h.App.StartDeviceAsync(h.A.Id);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.SaveDeviceGroupAsync(null, "Running"));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.DeleteDeviceGroupAsync("Line B"));
+        await Until(() => h.App.GetLatest().Count > 0);
+        await h.App.SaveDeviceGroupAsync(null, "Running");
+        await h.App.DeleteDeviceGroupAsync("Line B");
+        Assert.True(h.App.IsDeviceRunning(h.A.Id));
+        Assert.Equal(1, h.Factory.Created[h.A.Id]);
+        Assert.Contains("Running", (await h.App.ReadSavedConfigurationAsync()).DeviceGroups);
+        Assert.DoesNotContain("Line B", h.App.GetConfiguration().DeviceGroups);
     }
 
     [Fact]

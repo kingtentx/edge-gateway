@@ -32,6 +32,30 @@ public enum DatabaseValueSource
     TagId, TagName, Address, Unit, Error, RecordTime, EventId, Constant
 }
 public enum DatabaseFieldType { Auto, Text, Int64, Decimal, Double, Boolean, Timestamp }
+public enum DatabasePointSelectionMode { Points, Device, Group }
+
+public sealed class DatabasePointSelectionRule
+{
+    public DatabasePointSelectionMode Mode { get; set; }
+    public Guid? DeviceId { get; set; }
+    public string GroupName { get; set; } = "";
+}
+
+public static class DatabasePointSelection
+{
+    public static HashSet<Guid> Resolve(DatabaseWriteGroupConfiguration group, IReadOnlyList<DeviceConfiguration> devices)
+    {
+        var explicitIds = group.TagIds.ToHashSet();
+        return devices.Where(device => device.Enabled && (group.Selection.Mode switch
+        {
+            DatabasePointSelectionMode.Device => device.Id == group.Selection.DeviceId,
+            DatabasePointSelectionMode.Group => string.Equals(device.Group, group.Selection.GroupName, StringComparison.OrdinalIgnoreCase),
+            _ => true
+        })).SelectMany(device => device.Tags).Where(tag => tag.Enabled &&
+            (group.Selection.Mode != DatabasePointSelectionMode.Points || explicitIds.Count == 0 || explicitIds.Contains(tag.Id)))
+            .Select(tag => tag.Id).ToHashSet();
+    }
+}
 
 public sealed class DatabaseConnectionConfiguration
 {
@@ -65,6 +89,7 @@ public sealed class DatabaseWriteGroupConfiguration
     public string Table { get; set; } = "gateway_point";
     // In PointRows/PointMapping an empty selection means all enabled points, independent of MQTT UploadEnabled.
     public List<Guid> TagIds { get; set; } = [];
+    public DatabasePointSelectionRule Selection { get; set; } = new();
     public List<DatabaseColumnMapping> Columns { get; set; } = [];
     // ColumnMapping emits complete, sufficiently fresh snapshots at this maximum frequency.
     public int WriteIntervalMs { get; set; } = 1000;
@@ -88,6 +113,8 @@ public sealed record DatabaseTableInfo(string Schema, string Name)
 public sealed record DatabaseColumnInfo(string Name, string DataType, bool IsNullable,
     bool HasDefault = false, bool IsGenerated = false);
 public sealed record DatabaseConnectionTestResult(bool Success, string Message, string? ServerVersion = null);
+public sealed record DatabaseWriteGroupStatus(Guid GroupId, bool IsAccepting, bool IsDraining,
+    long WrittenRows, DateTimeOffset? LastSuccess, string? Error);
 public sealed record DatabaseWriteRow(string EventId, DateTimeOffset RecordedAt, IReadOnlyDictionary<string, object?> Values);
 public sealed record ExternalDatabaseStatus(Guid ConnectionId, string Name, bool Enabled, long QueuedRows,
     long WrittenRows, long DroppedRows, long FailedBatches, long SkippedRows,

@@ -21,7 +21,9 @@ public sealed partial class GatewayApplication
         // Capture after remote I/O; do not label a snapshot taken before a long schema request as fresh.
         candidate = GetConfiguration();
         var active = candidate.Devices.Where(device => device.Enabled && IsDeviceRunning(device.Id)).Select(device => device.Id).ToHashSet();
-        var enabled = candidate.Devices.Where(device => device.Enabled).SelectMany(device => device.Tags.Where(tag => tag.Enabled)).Select(tag => tag.Id).ToHashSet();
+        var enabled = groupDraft.Mode == DatabaseStorageMode.ColumnMapping
+            ? candidate.Devices.Where(device => device.Enabled).SelectMany(device => device.Tags.Where(tag => tag.Enabled)).Select(tag => tag.Id).ToHashSet()
+            : DatabasePointSelection.Resolve(groupDraft, candidate.Devices);
         return DatabaseWriteInspector.Inspect(connectionDraft, groupDraft, columns, GetLatest().ToDictionary(sample => sample.TagId), enabled, active, DateTimeOffset.UtcNow);
     }
 

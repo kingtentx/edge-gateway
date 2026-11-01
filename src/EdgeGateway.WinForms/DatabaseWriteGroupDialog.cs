@@ -13,9 +13,34 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
     private readonly IReadOnlyList<DatabaseUiText.PointItem> _points;
     private readonly HashSet<Guid> _selectedPoints;
     private readonly IReadOnlyList<DeviceConfiguration> _devices = [];
+    private readonly IReadOnlyList<string> _deviceGroups = [];
     private HashSet<Guid>? _visibleDeviceIds;
     private bool _bindingSelection;
     private bool _inspectionOnly;
+    private sealed record RuleTarget(Guid? DeviceId, string GroupName, string Text) { public override string ToString() => Text; }
+    private bool DynamicSelection => ruleMode.SelectedIndex > 0;
+    private DatabasePointSelectionRule CaptureRule() => new()
+    {
+        Mode = (DatabasePointSelectionMode)Math.Max(0, ruleMode.SelectedIndex),
+        DeviceId = ruleMode.SelectedIndex == 1 ? (ruleTarget.SelectedItem as RuleTarget)?.DeviceId : null,
+        GroupName = ruleMode.SelectedIndex == 2 ? (ruleTarget.SelectedItem as RuleTarget)?.GroupName ?? "" : ""
+    };
+    private HashSet<Guid> ResolvedRulePoints() => DatabasePointSelection.Resolve(new() { Selection = CaptureRule() }, _devices);
+
+    private void BindRuleTargets()
+    {
+        var choices = ruleMode.SelectedIndex == 1
+            ? _devices.Select(device => new RuleTarget(device.Id, "", device.Name)).ToArray()
+            : _devices.Select(device => device.Group).Concat(_deviceGroups).Concat(_source.Selection.Mode == DatabasePointSelectionMode.Group ? new[] { _source.Selection.GroupName } : Array.Empty<string>()).Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(group => new RuleTarget(null, group, string.IsNullOrWhiteSpace(group) ? "未分组" : group)).ToArray();
+        ruleTarget.DataSource = choices;
+        var index = Array.FindIndex(choices, target => ruleMode.SelectedIndex == 1
+            ? target.DeviceId == _source.Selection.DeviceId : target.GroupName == _source.Selection.GroupName);
+        if (index >= 0) ruleTarget.SelectedIndex = index;
+        ruleTarget.Enabled = !_inspectionOnly && DynamicSelection;
+        _allPoints.Enabled = !_inspectionOnly && !DynamicSelection;
+        BindPoints();
+    }
     private IReadOnlyList<DatabaseColumnInfo> _columns = [];
     private string? _metadataKey;
     private bool _loading, _bindingPoints, _bindingTable;
@@ -31,13 +56,13 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
     { _source = new(); _connections = []; _points = []; _selectedPoints = []; _application = null!; InitializeComponent(); }
 
     internal DatabaseWriteGroupDialog(DatabaseWriteGroupConfiguration configuration,
-        IReadOnlyList<DatabaseConnectionConfiguration> connections, IReadOnlyList<DeviceConfiguration> devices, IGatewayApplication application)
-        : base("数据库写入组", "标准点行保存每个采样结果；自定义字段映射使用已有业务表。保存前需停止全部设备。")
+        IReadOnlyList<DatabaseConnectionConfiguration> connections, IReadOnlyList<DeviceConfiguration> devices, IGatewayApplication application, IReadOnlyList<string>? deviceGroups = null)
+        : base("数据库写入组", "标准点行保存每个采样结果；自定义字段映射使用已有业务表。修改已有目标前，请暂停相关写入组并等待排空，设备可继续采集。")
     {
         ConfigureWindow(new Size(1024, 680), new Size(604, 481));
         _source = GatewayJson.Clone(configuration); _connections = GatewayJson.Clone(connections); _application = application;
         _selectedPoints = _source.TagIds.ToHashSet();
-        _devices = GatewayJson.Clone(devices);
+        _devices = GatewayJson.Clone(devices); _deviceGroups = deviceGroups?.ToArray() ?? [];
         _points = devices.SelectMany(device => device.Tags.Select(tag => new DatabaseUiText.PointItem(tag.Id,
             device.Name + " / " + tag.Name + (!device.Enabled || !tag.Enabled ? "（未启用）" : "")))).ToArray();
         InitializeComponent();
@@ -111,6 +136,11 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         _groupFilter.SelectedIndexChanged += (_, _) => BindDeviceTree();
         BindDeviceTree();
 
+        ruleMode.Items.AddRange(new object[] { "手动选择 / 全部启用点位", "指定设备的启用点位", "指定分组的启用点位" });
+        ruleMode.SelectedIndexChanged += (_, _) => BindRuleTargets();
+        ruleTarget.SelectedIndexChanged += (_, _) => BindPoints();
+        ruleMode.SelectedIndex = (int)_source.Selection.Mode;
+
         mappingLayout.SizeChanged += (_, _) =>
         {
             foreach (var label in new[] { _mappingHint, _mappingStatus })
@@ -151,16 +181,27 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         _interval.Enabled = !standard && !pointMapping; _maxAge.Enabled = _goodOnly.Enabled = !standard;
         _goodOnly.Text = pointMapping ? "仅写入质量为 Good 的采样" : "仅在关联点位全部为 Good 时写入整行";
         _pointTab.Enabled = standard || pointMapping; _mapping.Enabled = !standard;
+        ruleMode.Enabled = !_inspectionOnly && (standard || pointMapping);
         _mapping.Columns["Point"].Visible = !pointMapping;
-        _mappingHint.Text = standard ? "当前为标准点行模式，字段固定。已有业务表请切换为自定义逐点，再读取字段。"
-            : pointMapping ? "选择写入方式：采样取值、手动常量或不写入。自动转换按目标字段类型处理；自增字段自动跳过。"
-            : "选择写入方式；采样来源按需绑定点位，手动常量无需点位。不写入时使用数据库默认值或 NULL。";
+        UpdateHistoryCapability();
         _mappingEmpty.Visible = _mapping.Rows.Count == 0;
         _mappingEmpty.Text = standard ? "已有自定义表？点击上方“使用自定义逐点映射”。"
             : "尚未读取表字段。\n请先在“写入设置”选择数据库和表名，\n再点击上方“读取 / 刷新字段”。";
         if (_mappingEmpty.Visible) _mappingEmpty.BringToFront();
         foreach (GatewayTableRow row in _mapping.Rows) UpdateMappingRow(row);
     }
+    private void UpdateHistoryCapability()
+    {
+        if (_mode.SelectedItem is not DatabaseStorageMode mode) return;
+        var columns = CaptureMappings(false, endEdit: false).ToList();
+        foreach (var mapping in columns.Where(mapping => mapping.FieldType == DatabaseFieldType.Auto))
+            if (_columns.FirstOrDefault(column => column.Name == mapping.Column) is { } column)
+                mapping.FieldType = DatabaseMappingTools.InferFieldType(column.DataType);
+        var reason = DatabaseHistoryMapping.GetUnavailableReason(new() { Mode = mode, Columns = columns });
+        _mappingHint.Text = (mode == DatabaseStorageMode.PointRows ? "标准点行字段固定。" : "采样字段选择来源，常量手动填写，生成列不写入。")
+            + " 历史查询：" + (reason ?? "当前映射支持按设备、点位和时间查询；仍需目标表可访问。");
+    }
+
     private void BindDeviceTree()
     {
         var group = (_groupFilter.SelectedItem as GroupChoice)?.Group;
@@ -190,14 +231,18 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         try
         {
             var items = new List<(object Item, bool IsChecked)>();
+            var dynamicPoints = DynamicSelection ? ResolvedRulePoints() : null;
             var search = _pointSearch.Text.Trim();
-            foreach (var device in _devices.Where(device => _visibleDeviceIds is null || _visibleDeviceIds.Contains(device.Id)))
+            var rule = CaptureRule();
+            foreach (var device in _devices.Where(device => (_visibleDeviceIds is null || _visibleDeviceIds.Contains(device.Id))
+                && (rule.Mode == DatabasePointSelectionMode.Points || rule.Mode == DatabasePointSelectionMode.Device && device.Id == rule.DeviceId
+                    || rule.Mode == DatabasePointSelectionMode.Group && string.Equals(device.Group, rule.GroupName, StringComparison.OrdinalIgnoreCase))))
             foreach (var tag in device.Tags.Where(tag => search.Length == 0 || tag.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
                 || tag.Address.Contains(search, StringComparison.OrdinalIgnoreCase) || device.Name.Contains(search, StringComparison.OrdinalIgnoreCase)))
             {
                 var text = tag.Name + " · " + tag.Address + " · " + device.Name + (!device.Enabled || !tag.Enabled ? "（未启用）" : "");
                 items.Add((new DatabaseUiText.PointItem(tag.Id, text),
-                    _allPoints.Checked ? device.Enabled && tag.Enabled : _selectedPoints.Contains(tag.Id)));
+                    dynamicPoints is not null ? dynamicPoints.Contains(tag.Id) : _allPoints.Checked ? device.Enabled && tag.Enabled : _selectedPoints.Contains(tag.Id)));
             }
             _pointList.Items.Replace(items);
         }
@@ -207,21 +252,30 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
 
     private void UpdatePointSelection()
     {
+        _allPoints.Visible = _visiblePoints.Visible = !DynamicSelection;
+        pointPane.RowStyles[1].Height = DynamicSelection ? 0 : UiTheme.Scale(pointPane, 34);
         _bindingSelection = true;
         try
         {
             var visible = _pointList.Items.Cast<DatabaseUiText.PointItem>().ToArray();
-            var count = _allPoints.Checked ? _pointList.Items.Checked.Count(value => value) : visible.Count(point => _selectedPoints.Contains(point.Id));
-            _pointList.Enabled = _inspectionOnly || !_allPoints.Checked;
-            _visiblePoints.Enabled = !_inspectionOnly && !_allPoints.Checked && visible.Length > 0;
+            var count = DynamicSelection || _allPoints.Checked ? _pointList.Items.Checked.Count(value => value) : visible.Count(point => _selectedPoints.Contains(point.Id));
+            _pointList.ReadOnly = _inspectionOnly || DynamicSelection;
+            _pointList.Enabled = _inspectionOnly || DynamicSelection || !_allPoints.Checked;
+            _visiblePoints.Enabled = !_inspectionOnly && !DynamicSelection && !_allPoints.Checked && visible.Length > 0;
             _visiblePoints.CheckState = count == 0 ? CheckState.Unchecked : count == visible.Length ? CheckState.Checked : CheckState.Indeterminate;
             _pointCount.Text = visible.Length == 0 ? "没有匹配的点位" : $"当前 {visible.Length} 个点位";
-            _pointCount.Text += _allPoints.Checked ? " · 自动包含全部启用点位" : $" · 已勾选 {_selectedPoints.Count} 个点位";
+            _pointCount.Text += DynamicSelection ? $" · 规则包含 {ResolvedRulePoints().Count} 个启用点位，后续新增自动纳入"
+                : _allPoints.Checked ? " · 自动包含全部启用点位" : $" · 已勾选 {_selectedPoints.Count} 个点位";
         }
         finally { _bindingSelection = false; }
     }
 
     private sealed record DeviceScope(HashSet<Guid> DeviceIds);
+
+    internal void ShowCopyGuidance()
+    {
+        _status.Text = "已复制为未启用的新组。请核对目标表、重新选择设备/分组或逐字段绑定点位；读取字段并检查预览后再启用。原写入组继续工作。";
+    }
 
     internal void InspectSavedConfiguration()
     {
@@ -230,12 +284,12 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         Text = "查看数据库写入组 · " + _source.Name;
         foreach (var control in new Control[] { _name, _enabled, _connection, _mode, _schema, _table,
             _tables, _interval, _maxAge, _goodOnly, _allPoints, listTablesButton, _loadColumns,
-            _createTable, previewButton, _switchPointMapping, _mappingLoadColumns, _matchFields })
+            _createTable, previewButton, _switchPointMapping, _mappingLoadColumns, _matchFields, ruleMode, ruleTarget })
             control.Enabled = false;
         _mapping.ReadOnly = true;
         _pointList.ReadOnly = true;
         UpdatePointSelection();
-        _status.Text = "正在采集：只读查看已保存配置，可切换页签、筛选和搜索点位。修改需先停止全部设备。";
+        _status.Text = "正在采集：只读查看已保存配置，可切换页签、筛选和搜索点位。修改前请暂停此写入组并等待排空。";
         _mappingHint.Text = "当前显示已保存的字段映射，不读取外部表结构、不创建表或写入数据。";
         if (_source.Mode == DatabaseStorageMode.PointRows)
             _mappingEmpty.Text = "标准点行模式使用固定字段，无需自定义映射。";
@@ -302,6 +356,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
                 UpdateMappingRow(row);
             }
             finally { _updatingMapping = false; }
+            UpdateHistoryCapability();
             if (_mapping.ContainsFocus && _mapping.CurrentRow == row
                 && _mapping.Columns[e.ColumnIndex].Name is "Include" or "Source"
                 && row.Cells["Source"].Value is DatabaseValueSource.Constant)
@@ -338,6 +393,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
             }
         }
         finally { _bindingMappings = false; }
+        UpdateHistoryCapability();
         _mappingEmpty.Visible = _mapping.Rows.Count == 0;
     }
 
@@ -357,9 +413,9 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         _mapping.InvalidateCell(row.Cells["Constant"]);
     }
 
-    private IReadOnlyList<DatabaseColumnMapping> CaptureMappings(bool validate)
+    private IReadOnlyList<DatabaseColumnMapping> CaptureMappings(bool validate, bool endEdit = true)
     {
-        if (!_mapping.EndEdit()) throw new EditorValidationException("字段映射输入无效，请完成当前单元格编辑。", _mapping);
+        if (endEdit && !_mapping.EndEdit()) throw new EditorValidationException("字段映射输入无效，请完成当前单元格编辑。", _mapping);
         var mappings = new List<DatabaseColumnMapping>();
         var pointMapping = _mode.SelectedItem is DatabaseStorageMode.PointMapping;
         foreach (GatewayTableRow row in _mapping.Rows)
@@ -415,6 +471,7 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
             }
         }
         finally { _bindingMappings = false; }
+        UpdateHistoryCapability();
         UpdateMode();
         var selected = _mapping.Rows.Cast<GatewayTableRow>().FirstOrDefault(row => (row.Tag as DatabaseColumnInfo)?.Name == selectedName);
         if (selected is not null && selectedColumn is not null && _mapping.Columns[selectedColumn].Visible)
@@ -482,8 +539,10 @@ internal sealed partial class DatabaseWriteGroupDialog : EditorDialog
         value.ConnectionId = CurrentConnection().Id; value.Mode = (DatabaseStorageMode)_mode.SelectedItem!;
         var table = CurrentTable(); value.Schema = table.Schema; value.Table = table.Name;
         value.WriteIntervalMs = (int)_interval.Value; value.MaxSampleAgeMs = (int)_maxAge.Value; value.RequireGoodQuality = _goodOnly.Checked;
-        value.TagIds = _allPoints.Checked ? [] : _selectedPoints.ToList();
-        if (value.Mode != DatabaseStorageMode.ColumnMapping && !_allPoints.Checked && value.TagIds.Count == 0)
+        value.Selection = value.Mode == DatabaseStorageMode.ColumnMapping ? new() : CaptureRule();
+        if (DynamicSelection && ruleTarget.SelectedItem is null) throw new EditorValidationException("请选择动态选点的设备或分组。", ruleTarget);
+        value.TagIds = DynamicSelection || _allPoints.Checked ? [] : _selectedPoints.ToList();
+        if (value.Mode != DatabaseStorageMode.ColumnMapping && !DynamicSelection && !_allPoints.Checked && value.TagIds.Count == 0)
             throw new EditorValidationException("请选择至少一个点位，或勾选“全部启用点位”。", _allPoints);
         if (value.Mode == DatabaseStorageMode.PointRows)
         {

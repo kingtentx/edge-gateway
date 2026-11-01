@@ -5,6 +5,12 @@ namespace EdgeGateway.WinForms;
 
 internal static class DatabaseUiText
 {
+    internal static string Selection(DatabaseWriteGroupConfiguration group, IReadOnlyList<DeviceConfiguration> devices) => group.Selection.Mode switch
+    {
+        DatabasePointSelectionMode.Device => "动态设备：" + (devices.FirstOrDefault(device => device.Id == group.Selection.DeviceId)?.Name ?? "设备不存在"),
+        DatabasePointSelectionMode.Group => "动态分组：" + (string.IsNullOrWhiteSpace(group.Selection.GroupName) ? "未分组" : group.Selection.GroupName),
+        _ => group.TagIds.Count == 0 ? "全部启用点位（含后续新增）" : $"手动选择 {group.TagIds.Count} 个点位"
+    };
     internal static DatabaseWriteGroupConfiguration NewWriteGroup(Guid connectionId, IReadOnlyList<DatabaseWriteGroupConfiguration> groups)
     {
         var draft = new DatabaseWriteGroupConfiguration { ConnectionId = connectionId };

@@ -49,6 +49,10 @@ internal sealed partial class DatabaseWriteGroupDialog
     private TabPage _pointTab = null!;
     private TableLayoutPanel selection = null!;
     private AntdUI.Checkbox _allPoints = null!;
+    private TableLayoutPanel ruleToolbar = null!;
+    private Label ruleModeLabel = null!, ruleTargetLabel = null!;
+    private ComboBox ruleMode = null!, ruleTarget = null!;
+    private InputFrame ruleModeSurface = null!, ruleTargetSurface = null!;
     private TableLayoutPanel pointBrowser = null!;
     private TableLayoutPanel devicePane = null!;
     private ComboBox _groupFilter = null!;
@@ -78,6 +82,8 @@ internal sealed partial class DatabaseWriteGroupDialog
     private GatewayGridSelectColumn _mappingColumnFieldType = null!;
     private GatewayTableColumn _mappingColumnConstant = null!;
     private Label _mappingEmpty = null!;
+
+    private TableLayoutPanel ruleModeField = null!, ruleTargetField = null!;
 
     private void InitializeComponent()
     {
@@ -567,7 +573,8 @@ internal sealed partial class DatabaseWriteGroupDialog
         selection.Margin = Padding.Empty;
         selection.Padding = new Padding(8);
         selection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        selection.RowCount = 2;
+        selection.RowCount = 3;
+        selection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         selection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         selection.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         _allPoints = new AntdUI.Checkbox();
@@ -576,7 +583,37 @@ internal sealed partial class DatabaseWriteGroupDialog
         _allPoints.Dock = DockStyle.Top;
         _allPoints.Height = 36;
         _allPoints.Margin = new Padding(0, 0, 0, 8);
-        selection.Controls.Add(_allPoints, 0, 0);
+        selection.Controls.Add(_allPoints, 0, 1);
+        ruleToolbar = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, Margin = Padding.Empty };
+        ruleToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        ruleToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        ruleToolbar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        ruleToolbar.AutoSize = true;
+        ruleToolbar.Dock = DockStyle.Fill;
+        ruleModeLabel = new Label { Text = "包含方式", AutoSize = true, Margin = new Padding(0, 8, 8, 0) };
+        ruleTargetLabel = new Label { Text = "规则目标", AutoSize = true, Margin = new Padding(8, 8, 8, 0) };
+        ruleMode = new ComboBox { Name = "DatabaseSelectionMode", Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+        ruleTarget = new ComboBox { Name = "DatabaseSelectionTarget", Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+        ruleModeSurface = new InputFrame { Width = 240, Margin = new Padding(0, 0, 8, 6) };
+        ruleTargetSurface = new InputFrame { Width = 240, Margin = new Padding(0, 0, 8, 6) };
+        ruleModeSurface.Controls.Add(ruleMode);
+        ruleTargetSurface.Controls.Add(ruleTarget);
+        ruleModeField = new FilterFieldPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, RowCount = 1, Margin = new Padding(0, 0, 12, 6) };
+        ruleTargetField = new FilterFieldPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, RowCount = 1, Margin = new Padding(0, 0, 0, 6) };
+        ruleModeField.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        ruleModeField.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        ruleTargetField.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        ruleTargetField.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        ruleModeLabel.Margin = ruleTargetLabel.Margin = new Padding(0, 0, 8, 0);
+        ruleModeLabel.Dock = ruleTargetLabel.Dock = DockStyle.Fill;
+        ruleModeLabel.AutoSizeMode = ruleTargetLabel.AutoSizeMode = AntdUI.TAutoSize.Width;
+        ruleModeLabel.TextAlign = ruleTargetLabel.TextAlign = ContentAlignment.MiddleLeft;
+        ruleModeSurface.Anchor = ruleTargetSurface.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        ruleModeSurface.Margin = ruleTargetSurface.Margin = Padding.Empty;
+        ruleModeField.Controls.Add(ruleModeLabel, 0, 0); ruleModeField.Controls.Add(ruleModeSurface, 1, 0);
+        ruleTargetField.Controls.Add(ruleTargetLabel, 0, 0); ruleTargetField.Controls.Add(ruleTargetSurface, 1, 0);
+        ruleToolbar.Controls.Add(ruleModeField, 0, 0); ruleToolbar.Controls.Add(ruleTargetField, 1, 0);
+        selection.Controls.Add(ruleToolbar, 0, 0);
 
         pointBrowser = new TableLayoutPanel();
         pointBrowser.Name = "DatabasePointBrowser";
@@ -587,7 +624,7 @@ internal sealed partial class DatabaseWriteGroupDialog
         pointBrowser.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
         pointBrowser.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
         pointBrowser.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        selection.Controls.Add(pointBrowser, 0, 1);
+        selection.Controls.Add(pointBrowser, 0, 2);
 
         devicePane = new TableLayoutPanel();
         devicePane.Name = "DatabaseDevicePane";

@@ -123,7 +123,8 @@ public sealed partial class MainForm
         var access = _configuration.Devices.SelectMany(device => device.Tags.Select(tag =>
             (Key: (device.Id, tag.Id), Text: tag.Writable ? "读 / 写" : "只读"))).ToDictionary(item => item.Key, item => item.Text);
         var rows = _realtimeDisplay.Update(_configuration.Devices, states, samples)
-            .Where(point => (!_realtimeDeviceId.HasValue || point.Sample.DeviceId == _realtimeDeviceId)
+            .Where(point => (!_realtimePageView.anomaliesOnly.Checked || !point.HasSample || point.Sample.Quality != SampleQuality.Good)
+                && (!_realtimeDeviceId.HasValue || point.Sample.DeviceId == _realtimeDeviceId)
                 && (_realtimeSelectedGroup is null || string.Equals(devices[point.Sample.DeviceId].Group, _realtimeSelectedGroup, StringComparison.OrdinalIgnoreCase))
                 && (search.Length == 0 || point.Sample.TagName.Contains(search, StringComparison.OrdinalIgnoreCase)
                     || point.Sample.Address.Contains(search, StringComparison.OrdinalIgnoreCase)))

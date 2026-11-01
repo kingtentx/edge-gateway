@@ -40,10 +40,17 @@ public sealed partial class MainForm
         _realtimeGrid.CellFormatting += SampleCellFormatting;
         _realtimeGrid.SelectionChanged += (_, _) => UpdateWriteButton();
         _realtimeSearch.TextChanged += (_, _) => RefreshRealtime(_application.GetLatest());
+        _realtimePageView.anomaliesOnly.CheckedChanged += (_, _) => RefreshRealtime(_application.GetLatest());
+        _realtimePageView.detailsButton.Click += async (_, _) =>
+        {
+            if (_realtimeGrid.CurrentRow?.DataBoundItem is SampleRow row) await ShowDataRoutesAsync(row.Sample.DeviceId, row.Sample.TagId);
+            else SetFooter("请先选择点位。");
+        };
         _writeButton = _realtimePageView.writeButton;
         _writeButton.Click += async (_, _) => await RunBusyAsync(WritePointAsync);
         _realtimePageView.clearFiltersButton.Click += (_, _) =>
         {
+            _realtimePageView.anomaliesOnly.Checked = false;
             _realtimeSearch.Clear();
             _realtimePageView.GroupSelector.SelectedIndex = 0;
             SelectRealtimeDevice(null);
@@ -76,6 +83,8 @@ public sealed partial class MainForm
         _historyExport = _historyPageView.exportButton;
         _historyExport.Click += async (_, _) => await RunBusyAsync(ExportHistoryAsync);
         _historyPageView.recentButton.Click += (_, _) => { _historyTo.Value = DateTime.Now; _historyFrom.Value = DateTime.Now.AddHours(-1); };
+        _historyPageView.quarterHourButton.Click += (_, _) => { _historyTo.Value = DateTime.Now; _historyFrom.Value = _historyTo.Value.AddMinutes(-15); };
+        _historyPageView.dayButton.Click += (_, _) => { _historyTo.Value = DateTime.Now; _historyFrom.Value = _historyTo.Value.AddDays(-1); };
         _historyDevice.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
         _historyTag.SelectedIndexChanged += (_, _) => UpdateHistoryQueryState();
         _historyFrom.ValueChanged += (_, _) => UpdateHistoryQueryState();

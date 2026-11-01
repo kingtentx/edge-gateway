@@ -33,7 +33,8 @@ public sealed partial class GatewayRuntime
             var errors = ConfigurationValidator.Validate(next, _registry);
             if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors));
             if (_running && !RuntimeGlobalSettingsEqual(_configuration, next))
-                throw new InvalidOperationException("设备运行期间可以修改设备、点位与日志；修改网关、平台或数据库设置，请先停止全部设备。");
+                throw new InvalidOperationException("修改网关、平台或通信通道设置，请先停止全部设备。");
+            await _dataSink.ValidateConfigurationChangeAsync(next, cancellationToken).ConfigureAwait(false);
             if (_configuration.Mqtt.Platform != next.Mqtt.Platform)
             {
                 await _store.InitializeAsync(cancellationToken).ConfigureAwait(false);
@@ -48,7 +49,9 @@ public sealed partial class GatewayRuntime
             var updated = next.Devices.Where(device => previousDevices.TryGetValue(device.Id, out var previous)
                 && !ConfigurationValuesEqual(previous, device)).Select(device => device.Id).ToArray();
             var removed = _configuration.Devices.Where(device => !nextDevices.ContainsKey(device.Id)).Select(device => device.Id).ToArray();
-            var affected = updated.Concat(removed).ToHashSet();
+            // Group membership is display/routing metadata; it does not own a driver resource.
+            var runtimeUpdated = updated.Where(id => !ConfigurationValuesEqual(previousDevices[id], nextDevices[id], nameof(DeviceConfiguration.Group))).ToArray();
+            var affected = runtimeUpdated.Concat(removed).ToHashSet();
             var sessions = _sessions.Values.Where(session => affected.Contains(session.Configuration.Id)).ToArray();
             var restarted = sessions.Where(session => nextDevices.TryGetValue(session.Configuration.Id, out var device) && device.Enabled)
                 .Select(session => session.Configuration.Id).ToArray();
@@ -89,7 +92,7 @@ public sealed partial class GatewayRuntime
                 _deviceGenerations.TryRemove(deviceId, out _);
                 _communicationStatistics.TryRemove(deviceId, out _);
             }
-            foreach (var deviceId in added.Concat(updated))
+            foreach (var deviceId in added.Concat(runtimeUpdated))
             {
                 var device = nextDevices[deviceId];
                 foreach (var tag in device.Tags) _alarmStates.TryRemove(tag.Id, out _);
@@ -118,7 +121,12 @@ public sealed partial class GatewayRuntime
         // Device edits may register their group names while other devices collect.
         // This catalog is descriptive metadata, not a shared runtime resource.
         left.DeviceGroups = []; right.DeviceGroups = [];
+        foreach (var channel in left.Channels.Concat(right.Channels)) { channel.Name = ""; channel.Description = ""; }
+        left.Channels = left.Channels.OrderBy(channel => channel.Id).ToList();
+        right.Channels = right.Channels.OrderBy(channel => channel.Id).ToList();
         left.Logging = new(); right.Logging = new();
+        left.Databases = []; right.Databases = [];
+        left.DatabaseWriteGroups = []; right.DatabaseWriteGroups = [];
         return ConfigurationValuesEqual(left, right);
     }
 

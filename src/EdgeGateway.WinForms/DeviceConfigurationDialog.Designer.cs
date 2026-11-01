@@ -105,10 +105,10 @@ internal sealed partial class DeviceConfigurationDialog
         _enabled.Margin = new Padding(0, 3, 0, 5);
         _enabled.AutoSize = true;
         _enabled.MinimumSize = new Size(0, 32);
-        _enabled.Text = "启用设备";
+        _enabled.Text = "允许采集";
         _enabledLabel = new Label();
         _enabledLabel.Name = "_enabledLabel";
-        _enabledLabel.Text = "启用状态";
+        _enabledLabel.Text = "允许采集";
         _enabledLabel.AutoSize = true;
         _enabledLabel.Dock = DockStyle.Fill;
         _enabledLabel.ForeColor = UiTheme.Ink;
@@ -117,7 +117,7 @@ internal sealed partial class DeviceConfigurationDialog
         _enabledLabel.Padding = new Padding(0, 4, 14, 4);
         _enabledLabel.Margin = new Padding(0, 3, 0, 5);
         _enabledLabel.TextAlign = ContentAlignment.MiddleLeft;
-        _enabled.AccessibleName = "启用状态";
+        _enabled.AccessibleName = "允许采集";
         _enabled.TabIndex = 1;
         acquisition.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         acquisition.Controls.Add(_enabledLabel, 0, 1);
@@ -348,7 +348,7 @@ internal sealed partial class DeviceConfigurationDialog
         acquisition.Controls.Add(_timeoutSurface, 1, 9);
         acquisitionHint4 = new Label();
         acquisitionHint4.Name = "acquisitionHint4";
-        acquisitionHint4.Text = "启用设备后可在列表中启动采集；更换驱动不会自动转换已有点位，请核对点位地址与方法。";
+        acquisitionHint4.Text = "允许采集后仍需在列表启动；保存新设备不会自动启动。更换驱动不会自动转换已有点位，请核对点位地址与方法。";
         acquisitionHint4.AutoSize = true;
         acquisitionHint4.Dock = DockStyle.Fill;
         acquisitionHint4.ForeColor = UiTheme.Muted;

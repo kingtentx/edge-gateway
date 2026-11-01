@@ -1,14 +1,14 @@
 # SQLite 按功能保存配置
 
-更新：2026-10-27。
+更新：2026-11-01。
 
-原实现只有整份配置的 `configuration_versions.payload` JSON，以及内容重叠的 `driver_plugins`、`driver_catalog`。网关名称等单字段不能直接查询，设备、点位、外部连接和映射之间也没有数据库关联约束。本次改为 **18 张关系表**，固定字段按 `TEXT`、`INTEGER`、`REAL` 保存，使用 SQLite `STRICT` 表；没有配置 JSON / payload 列。
+原实现只有整份配置的 `configuration_versions.payload` JSON，以及内容重叠的 `driver_plugins`、`driver_catalog`。网关名称等单字段不能直接查询，设备、点位、外部连接和映射之间也没有数据库关联约束。本次改为 **按功能拆分的关系表**，固定字段按 `TEXT`、`INTEGER`、`REAL` 保存，使用 SQLite `STRICT` 表；没有配置 JSON / payload 列。
 
 ## 软件职责
 
 WinForms 仍通过 `IGatewayApplication` 提交配置；Application 在最新配置上构建候选，Service 校验并通过生命周期锁协调设备。只有 DataAccess 负责表结构和 SQL，Hosting 负责创建及释放配置存储。模型、驱动契约、设备采集和外部数据库 SQL 不因内部存储变化而改变。
 
-模型及 JSON 导入/导出继续使用 **schema 3**，数据库物理结构单独使用 **`PRAGMA user_version=7`**。二者含义不同。版本 5 及更早的配置数据库、未知版本及含已有表但未声明版本的数据库都会明确拒绝，不改写其内容、不自动清空、不迁移。开发部署需使用新的空数据目录；本轮没有打开、删除或修改用户现有运行数据库。
+模型及 JSON 导入/导出继续使用 **schema 3**，数据库物理结构单独使用 **`PRAGMA user_version=8`**。二者含义不同。版本 5 及更早的配置数据库、未知版本及含已有表但未声明版本的数据库都会明确拒绝，不改写其内容、不自动清空、不迁移。开发部署需使用新的空数据目录；本轮没有打开、删除或修改用户现有运行数据库。
 
 ## 功能表
 
@@ -86,3 +86,6 @@ erDiagram
 2026-10-30：物理版本 7 新增 device_parameter_metadata（slot、device_id、name、display_name、type_name、description），与设备及当前/上一份快照共用事务和级联外键。保存名称、类型与说明；驱动运行值仍由强类型连接字段和 device_properties 提供，JSON schema 保持 3。默认参数显示信息为空字典，没有覆盖时使用驱动声明。旧版数据库继续明确拒绝，禁止自动清空或隐式迁移。
 
 2026-10-30 用户最新限定例外：为解决现有版本 6 配置启动失败，允许仅 6→7 备份升级。由 SQLite Backup API 生成旁置备份，事务新增参数信息表并更新版本号，失败回滚。旧设备/点位及配置保留；不扩展至其他版本。见 [启动修复](configuration-v6-startup-fix.md)。
+
+
+2026-11-01 用户明确授权 7→8：SQLite Backup API 创建含已提交 WAL 的独立备份；事务中检查原版本/完整性并新增 `database_point_rules`，更新版本，失败回滚。规则表保存 slot、group_id、mode、device_id、group_name，以写入组和设备稳定 ID 建外键；非动态设备模式 device_id 必须为空。旧 7 无规则时缺省为 Points，已有选点语义不变。6 可先执行已授权 6→7，再独立备份执行 7→8。JSON schema 仍为 3；其他旧版不迁移。见 [本轮功能与验收](function-optimization-progress.md)。

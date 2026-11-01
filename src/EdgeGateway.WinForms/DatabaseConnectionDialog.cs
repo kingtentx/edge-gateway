@@ -16,7 +16,7 @@ internal sealed partial class DatabaseConnectionDialog : EditorDialog
     { _source = new(); _application = null!; InitializeComponent(); }
 
     internal DatabaseConnectionDialog(DatabaseConnectionConfiguration configuration, IGatewayApplication application)
-        : base("数据库连接", "配置采集数据的外部数据库；直接输入密码并随连接配置保存。保存前需停止全部设备。")
+        : base("数据库连接", "配置采集数据的外部数据库；直接输入密码并随连接配置保存。修改已有目标前，请暂停相关写入组并等待排空，设备可继续采集。")
     {
         _source = GatewayJson.Clone(configuration); _application = application;
         InitializeComponent();
@@ -63,7 +63,7 @@ internal sealed partial class DatabaseConnectionDialog : EditorDialog
         Text = "查看数据库连接 · " + _source.Name;
         foreach (var input in ConnectionInputs) input.Enabled = false;
         testConnectionButton.Enabled = false;
-        _testResult.Text = "正在采集：当前为已保存配置的只读快照。修改数据库设置需先停止全部设备。";
+        _testResult.Text = "正在采集：当前为已保存配置的只读快照。修改前请暂停此连接的写入组并等待排空。";
     }
 
     private async Task TestAsync()

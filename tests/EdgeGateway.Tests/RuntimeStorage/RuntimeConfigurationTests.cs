@@ -7,6 +7,33 @@ namespace EdgeGateway.Tests.RuntimeStorage;
 public sealed partial class RuntimeTests
 {
     [Fact]
+    public async Task GroupAndChannelMetadataDoNotRestartOrClearSamplesButTimingChangesAreRejected()
+    {
+        await using var harness = new Harness();
+        var device = harness.Config.Devices[0];
+        harness.Config.DeviceGroups = ["old"];
+        device.Group = "old";
+        var channel = new ChannelConfiguration { Name = "old", InterRequestDelayMs = 1 };
+        harness.Config.Channels = [channel]; device.ChannelId = channel.Id;
+        harness.Runtime.Configure(harness.Config);
+        await harness.Runtime.StartAsync();
+        await Until(() => harness.Runtime.GetLatest().Count == 1);
+        var candidate = CopyConfiguration(harness.Config);
+        candidate.DeviceGroups = ["new"]; candidate.Devices[0].Group = "new";
+        candidate.Channels[0].Name = "new"; candidate.Channels[0].Description = "description";
+        var store = new RecordingConfigurationStore(harness.Config);
+        var result = await harness.Runtime.ApplyConfigurationAsync(candidate, store);
+        Assert.Empty(result.Restarted); Assert.Empty(result.Stopped);
+        Assert.Single(harness.Runtime.GetLatest());
+        Assert.Equal(DeviceState.Running, Assert.Single(harness.Runtime.GetDeviceStatuses()).State);
+        Assert.Equal(1, harness.Factory.CreationsByDevice[device.Id]);
+        candidate.Channels[0].InterRequestDelayMs = 200;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => harness.Runtime.ApplyConfigurationAsync(candidate, store));
+        Assert.Equal(1, (await store.LoadAsync()).Channels[0].InterRequestDelayMs);
+        Assert.True(harness.Runtime.IsDeviceRunning(device.Id));
+    }
+
+    [Fact]
     public async Task EditingAddingAndDeletingStoppedDevicesPreservesTheRunningPeerAndSharedServices()
     {
         await using var harness = new Harness();

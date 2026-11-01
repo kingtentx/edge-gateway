@@ -231,6 +231,7 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     public TelemetrySample? GetLatestSample(Guid tagId) => _latest.GetValueOrDefault(tagId);
     public IReadOnlyList<DeviceRuntimeStatus> GetDeviceStatuses() => _statuses.Values.OrderBy(s => s.DeviceName).ToArray();
     public IReadOnlyList<ExternalDatabaseStatus> GetDatabaseStatuses() => _dataSink.GetStatuses();
+    public IReadOnlyList<DatabaseWriteGroupStatus> GetDatabaseGroupStatuses() => _dataSink.GetGroupStatuses();
 
     /// <summary>Compatibility submission-only API. Successful completion does not confirm readback; failures retain their exception types.</summary>
     public Task WriteAsync(Guid deviceId, Guid tagId, string engineeringValue, CancellationToken cancellationToken = default) =>

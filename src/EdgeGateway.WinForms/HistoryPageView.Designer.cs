@@ -66,6 +66,8 @@ internal sealed partial class HistoryPageView
     private ComboBox historyGridPaginationSize = null!;
     private TableLayoutPanel historyGridPaginationBar = null!;
     private Panel historyGridPageHost = null!;
+    internal GatewayButton quarterHourButton = null!, dayButton = null!;
+
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
@@ -719,6 +721,9 @@ historyGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         recentButton.Cursor = Cursors.Hand;
         recentButton.Margin = new Padding(0, 0, 8, 6);
         toolbarHost.Controls.Add(recentButton);
+        quarterHourButton = new GatewayButton { Name = "HistoryQuarterHour", Text = "最近 15 分钟", AutoSize = true, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
+        dayButton = new GatewayButton { Name = "HistoryDay", Text = "最近 24 小时", AutoSize = true, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
+        toolbarHost.Controls.Add(quarterHourButton); toolbarHost.Controls.Add(dayButton);
         exportButton = new GatewayButton();
         exportButton.Name = "exportButton";
         exportButton.Text = "导出查询结果";

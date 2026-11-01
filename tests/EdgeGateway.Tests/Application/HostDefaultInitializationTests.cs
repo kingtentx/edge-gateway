@@ -70,7 +70,7 @@ public sealed class HostDefaultInitializationTests : IDisposable
         using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={Database};Pooling=False"))
         {
             connection.Open(); using var command = connection.CreateCommand();
-            command.CommandText = "DROP TABLE device_parameter_metadata; PRAGMA user_version=6;"; command.ExecuteNonQuery();
+            command.CommandText = "DROP TABLE database_point_rules; DROP TABLE device_parameter_metadata; PRAGMA user_version=6;"; command.ExecuteNonQuery();
         }
         await using (var host = await Start())
         {

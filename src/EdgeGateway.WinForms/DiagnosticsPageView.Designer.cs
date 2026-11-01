@@ -20,6 +20,9 @@ internal sealed partial class DiagnosticsPageView
     internal AntdUI.Button refreshButton = null!;
     internal AntdUI.Button exportButton = null!;
 
+    internal GatewayButton clearScopeButton = null!;
+    internal Label scopeLabel = null!;
+
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
@@ -157,6 +160,9 @@ diagnosticsGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         exportButton.Margin = new Padding(0, 0, 8, 6);
         exportButton.Cursor = Cursors.Hand;
         toolbarHost.Controls.Add(exportButton);
+        clearScopeButton = new GatewayButton { Name = "DiagnosticsClearScope", Text = "全部设备", AutoSize = true, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
+        scopeLabel = new Label { Name = "DiagnosticsScope", Text = "全部设备与公共输出", AutoSize = true, Height = 38 };
+        toolbarHost.Controls.Add(clearScopeButton); toolbarHost.Controls.Add(scopeLabel);
         ResumeLayout(false);
     }
 

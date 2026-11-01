@@ -59,6 +59,8 @@ internal sealed partial class DatabasePageView
     private ComboBox groupsGridPaginationSize = null!;
     private TableLayoutPanel groupsGridPaginationBar = null!;
     private Panel groupsGridPageHost = null!;
+    internal GatewayButton copyGroup = null!;
+
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
@@ -611,6 +613,8 @@ groupsGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         previewGroup.Margin = new Padding(0, 0, 8, 6);
         previewGroup.Cursor = Cursors.Hand;
         groupsToolbarHost.Controls.Add(previewGroup);
+        copyGroup = new GatewayButton { Name = "CopyDatabaseMapping", Text = "复制为新写入组", AutoSize = true, MinimumSize = new Size(140, 38), Margin = new Padding(0, 0, 8, 6) };
+        groupsToolbarHost.Controls.Add(copyGroup);
         ResumeLayout(false);
     }
 

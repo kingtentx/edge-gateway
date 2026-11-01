@@ -53,7 +53,7 @@ internal sealed partial class ConfigurationCatalogDialog : DpiAwareForm
         addButton.Enabled = editable;
         editButton.Enabled = editable && Selected is not null;
         deleteButton.Enabled = editable && Selected is { DeviceCount: 0 };
-        statusLabel.Text = !_canEdit() ? "请停止全部设备后进行新增、编辑或删除。"
+        statusLabel.Text = !_canEdit() ? "当前正在处理其他操作，请稍后重试。"
             : Selected is { DeviceCount: > 0 } ? "所选项目正在被设备引用；请先修改设备配置，再删除。"
             : $"共 {catalogGridPagination.Total} 项；双击行可编辑，修改后自动保存。";
     }

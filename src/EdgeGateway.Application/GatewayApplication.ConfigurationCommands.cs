@@ -131,8 +131,11 @@ public sealed partial class GatewayApplication
                 candidate.DeviceGroups[index] = next;
                 foreach (var device in candidate.Devices.Where(device => string.Equals(device.Group, originalName, StringComparison.OrdinalIgnoreCase)))
                     device.Group = next;
+                foreach (var group in candidate.DatabaseWriteGroups.Where(group => group.Selection.Mode == DatabasePointSelectionMode.Group
+                    && string.Equals(group.Selection.GroupName, originalName, StringComparison.OrdinalIgnoreCase)))
+                    group.Selection.GroupName = next;
             }
-        }, cancellationToken, requireStopped: true);
+        }, cancellationToken);
     }
 
     public Task<ConfigurationApplyResult> DeleteDeviceGroupAsync(string name, CancellationToken cancellationToken = default) =>
@@ -140,10 +143,13 @@ public sealed partial class GatewayApplication
         {
             if (candidate.Devices.Any(device => string.Equals(device.Group, name, StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException("该分组仍有设备，请先修改设备分组后再删除。");
+            if (candidate.DatabaseWriteGroups.Any(group => group.Selection.Mode == DatabasePointSelectionMode.Group
+                && string.Equals(group.Selection.GroupName, name, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("该分组仍被动态选点规则引用，请先修改相关写入组。");
             var index = candidate.DeviceGroups.FindIndex(group => string.Equals(group, name, StringComparison.OrdinalIgnoreCase));
             if (index < 0) throw new InvalidOperationException("分组不存在，请刷新列表。");
             candidate.DeviceGroups.RemoveAt(index);
-        }, cancellationToken, requireStopped: true);
+        }, cancellationToken);
 
     private static void IncludeDeviceGroups(GatewayConfiguration candidate)
     {
@@ -163,7 +169,7 @@ public sealed partial class GatewayApplication
             if (!isNew && index < 0) throw new InvalidOperationException("通道不存在。");
             if (isNew) candidate.Channels.Add(draft);
             else candidate.Channels[index] = draft;
-        }, cancellationToken, requireStopped: true);
+        }, cancellationToken);
     }
 
     public Task<ConfigurationApplyResult> DeleteChannelAsync(Guid channelId, CancellationToken cancellationToken = default) =>
@@ -174,7 +180,7 @@ public sealed partial class GatewayApplication
             if (candidate.Devices.Any(device => device.ChannelId == channelId))
                 throw new InvalidOperationException("该通道仍有设备，请先迁移设备到其他通道或独立通信。");
             candidate.Channels.Remove(channel);
-        }, cancellationToken, requireStopped: true);
+        }, cancellationToken);
 
     public Task<ConfigurationApplyResult> ApplyGlobalSettingsAsync(GatewayConfiguration draft,
         ConfigurationApplyOptions? options = null, CancellationToken cancellationToken = default)

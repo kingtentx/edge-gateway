@@ -29,7 +29,7 @@ public sealed class ConfigurationUpgradeTests : IDisposable
             await store.SaveDriverPluginAsync(new("fixture", "测试插件", "1.0.0", "Fixture.Driver", new string('A', 64), "已加载"));
         }
         using var connection = Open();
-        Execute(connection, "DROP TABLE device_parameter_metadata; PRAGMA user_version=6;");
+        Execute(connection, "DROP TABLE database_point_rules; DROP TABLE device_parameter_metadata; PRAGMA user_version=6;");
         return configuration;
     }
     [Fact]
@@ -56,7 +56,7 @@ public sealed class ConfigurationUpgradeTests : IDisposable
         Assert.Equal("升级后编辑", (await reopened.LoadAsync()).Devices[0].ParameterMetadata["Endpoint"].Description);
         Assert.Null(reopened.UpgradeBackupPath);
         Assert.Single(Directory.GetFiles(_root, "*.v6-backup-*.db"));
-        Assert.Equal(7L, Scalar(wal, "PRAGMA user_version"));
+        Assert.Equal(8L, Scalar(wal, "PRAGMA user_version"));
     }
     [Fact]
     public async Task FailedUpgradeRollsBackVersionAndRetainsBackupAndConfiguration()
@@ -71,4 +71,40 @@ public sealed class ConfigurationUpgradeTests : IDisposable
         Assert.Equal("当前配置", Scalar(check, "SELECT name FROM gateway_settings WHERE slot='current'"));
     }
     public void Dispose() { try { Directory.Delete(_root, true); } catch { } }
+
+    [Fact]
+    public async Task VersionSevenUpgradePreservesWalAndRuleRoundTrip()
+    {
+        var original = DemoConfiguration.Create();
+        var connection = new DatabaseConnectionConfiguration(); original.Databases.Add(connection);
+        var group = new DatabaseWriteGroupConfiguration { ConnectionId = connection.Id };
+        original.DatabaseWriteGroups.Add(group);
+        await using (var store = new SqliteConfigurationStore(DatabasePath)) await store.SaveAsync(original);
+        using var wal = Open();
+        Execute(wal, "DROP TABLE database_point_rules; PRAGMA user_version=7; PRAGMA wal_autocheckpoint=0; UPDATE gateway_settings SET name='WAL7' WHERE slot='current';");
+        await using var upgraded = new SqliteConfigurationStore(DatabasePath);
+        var loaded = await upgraded.LoadAsync();
+        Assert.Equal("WAL7", loaded.Name);
+        Assert.Equal(original.Devices.Select(device => device.Id), loaded.Devices.Select(device => device.Id));
+        Assert.Equal(DatabasePointSelectionMode.Points, loaded.DatabaseWriteGroups[0].Selection.Mode);
+        Assert.Equal(8L, Scalar(wal, "PRAGMA user_version"));
+        using var backup = new SqliteConnection($"Data Source={upgraded.UpgradeBackupPath};Mode=ReadOnly;Pooling=False");
+        backup.Open(); Assert.Equal(7L, Scalar(backup, "PRAGMA user_version"));
+        Assert.Equal("WAL7", Scalar(backup, "SELECT name FROM gateway_settings WHERE slot='current'"));
+        loaded.DatabaseWriteGroups[0].Selection = new() { Mode = DatabasePointSelectionMode.Device, DeviceId = loaded.Devices[0].Id };
+        await upgraded.SaveAsync(loaded);
+        Assert.Equal(loaded.Devices[0].Id, (await upgraded.LoadAsync()).DatabaseWriteGroups[0].Selection.DeviceId);
+    }
+
+    [Fact]
+    public async Task VersionSevenConflictRollsBackAndRetainsBackup()
+    {
+        await using (var store = new SqliteConfigurationStore(DatabasePath)) await store.SaveAsync(DemoConfiguration.Create());
+        using var connection = Open();
+        Execute(connection, "PRAGMA user_version=7;"); // Existing table conflicts with the migration.
+        await using var upgraded = new SqliteConfigurationStore(DatabasePath);
+        await Assert.ThrowsAsync<InvalidDataException>(() => upgraded.LoadAsync());
+        Assert.Equal(7L, Scalar(connection, "PRAGMA user_version"));
+        Assert.Single(Directory.GetFiles(_root, "*.v7-backup-*.db"));
+    }
 }

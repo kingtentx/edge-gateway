@@ -11,6 +11,59 @@ namespace EdgeGateway.Tests.RuntimeStorage;
 public sealed class AcquisitionDataServiceTests
 {
     [Fact]
+    public async Task PausedGroupDrainsWhileOtherGroupKeepsWritingAndCannotRetargetInflightCall()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration);
+        var first = AddPointGroup(configuration, connection, "first"); first.TagIds = [configuration.Devices[0].Tags[0].Id];
+        var second = AddPointGroup(configuration, connection, "second"); second.TagIds = [configuration.Devices[0].Tags[1].Id];
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var connector = new Connector { OnWrite = async (_, group, _, token) =>
+        { if (group.Id == first.Id) { entered.TrySetResult(); await release.Task.WaitAsync(token); } } };
+        await using var sink = await Start(configuration, connector);
+        try
+        {
+            await sink.AppendAsync([Sample(configuration, 0, 1)]); await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var changed = GatewayJson.Clone(configuration); changed.DatabaseWriteGroups[0].Table = "other_target";
+            await Assert.ThrowsAsync<InvalidOperationException>(() => sink.ValidateConfigurationChangeAsync(changed));
+            var paused = GatewayJson.Clone(configuration); paused.DatabaseWriteGroups[0].Enabled = false;
+            await sink.ValidateConfigurationChangeAsync(paused); sink.UpdateConfiguration(paused);
+            Assert.True(sink.GetGroupStatuses().Single(status => status.GroupId == first.Id).IsDraining);
+            changed = GatewayJson.Clone(paused); changed.DatabaseWriteGroups[0].Table = "other_target";
+            await Assert.ThrowsAsync<InvalidOperationException>(() => sink.ValidateConfigurationChangeAsync(changed));
+            await sink.AppendAsync([Sample(configuration, 0, 2), Sample(configuration, 1, 3)]);
+            await Until(() => connector.Writes.Any(write => write.GroupId == second.Id));
+            release.TrySetResult();
+            await Until(() => !sink.GetGroupStatuses().Single(status => status.GroupId == first.Id).IsDraining);
+            await sink.ValidateConfigurationChangeAsync(changed); sink.UpdateConfiguration(changed);
+            changed.DatabaseWriteGroups[0].Enabled = true;
+            await sink.ValidateConfigurationChangeAsync(changed); sink.UpdateConfiguration(changed);
+            await sink.AppendAsync([Sample(configuration, 0, 4)]);
+            await Until(() => connector.Writes.Count(write => write.GroupId == first.Id) == 2);
+            Assert.DoesNotContain(connector.Writes.Where(write => write.GroupId == first.Id).SelectMany(write => write.Rows),
+                row => Equals(row.Values.GetValueOrDefault("value_text"), "2"));
+        }
+        finally { release.TrySetResult(); }
+    }
+
+    [Fact]
+    public async Task DynamicDeviceRuleIncludesNewPointsWithoutRestartingWriter()
+    {
+        var configuration = Configuration(); var connection = AddConnection(configuration);
+        var group = AddPointGroup(configuration, connection);
+        group.Selection = new() { Mode = DatabasePointSelectionMode.Device, DeviceId = configuration.Devices[0].Id };
+        var connector = new Connector(); await using var sink = await Start(configuration, connector);
+        var next = GatewayJson.Clone(configuration);
+        next.Devices[0].Tags.Add(new() { Name = "later", Address = "later" });
+        await sink.ValidateConfigurationChangeAsync(next); sink.UpdateConfiguration(next);
+        await sink.AppendAsync([Sample(next, next.Devices[0].Tags.Count - 1, 12)]);
+        await Until(() => connector.Writes.Count == 1);
+        Assert.Single(connector.Writes.Single().Rows);
+        group.Selection = new() { Mode = DatabasePointSelectionMode.Group, GroupName = "empty" };
+        Assert.Empty(DatabasePointSelection.Resolve(group, configuration.Devices));
+    }
+
+    [Fact]
     public async Task DefaultOutputIsSampleLoggingWithoutAnyDatabaseWrites()
     {
         var configuration = Configuration();
@@ -502,6 +555,13 @@ public sealed class AcquisitionDataServiceTests
                 await Until(async () => (await spool.GetStatisticsAsync()).PendingRows == 1);
                 await sink.StopAsync();
                 Assert.Equal(1, (await spool.GetStatisticsAsync()).PendingRows);
+                var changed = GatewayJson.Clone(configuration); changed.DatabaseWriteGroups[0].Table = "new_target";
+                await Assert.ThrowsAsync<InvalidOperationException>(() => sink.ValidateConfigurationChangeAsync(changed));
+                changed.DatabaseWriteGroups.Clear();
+                await Assert.ThrowsAsync<InvalidOperationException>(() => sink.ValidateConfigurationChangeAsync(changed));
+                var paused = GatewayJson.Clone(configuration); paused.DatabaseWriteGroups[0].Enabled = false;
+                await sink.ValidateConfigurationChangeAsync(paused); sink.UpdateConfiguration(paused);
+                await sink.ValidateConfigurationChangeAsync(configuration); // identical target can recover backlog
             }
 
             await using (var spool = new SqliteAcquisitionSpool(spoolPath))

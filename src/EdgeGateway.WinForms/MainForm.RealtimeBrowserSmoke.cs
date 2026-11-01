@@ -178,6 +178,12 @@ public sealed partial class MainForm
                 Require(splitter.SplitterDistance == expectedDistance, "refresh reset splitter");
                 SaveEditorScreenshot(this, "realtime-browser", width == 1008 ? "narrow" : "wide");
             }
+            _realtimePageView.anomaliesOnly.Checked = true;
+            RefreshRealtime(_application.GetLatest());
+            Require(_realtimeGrid.Rows.All(row => ((SampleRow)row.DataBoundItem!).Sample.Quality != SampleQuality.Good), "anomaly filter retained good samples");
+            _realtimePageView.clearFiltersButton.PerformClick();
+            Require(!_realtimePageView.anomaliesOnly.Checked && GridPagination.GetPager(_realtimeGrid).Total == 26, "clear filters did not restore all points");
+            await SmokeDataRoutesAsync(a.Id, a.Tags[0].Id);
             Console.WriteLine($"RealtimeBrowser smoke passed: DeviceDpi={DeviceDpi}; groups, tree, point search, unsampled points, offline retention/quality, simulator stop/restart, write guard, page/selection and width round trip. Status icons, official splitter drag and width retention passed. No hardware or external database.");
         }
         finally

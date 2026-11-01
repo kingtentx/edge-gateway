@@ -21,7 +21,7 @@ public sealed partial class GatewayApplication
         var connectionDrafts = GatewayJson.Clone(connections).ToList();
         var groupDrafts = GatewayJson.Clone(groups).ToList();
         return ChangeAsync(candidate => { candidate.Databases = connectionDrafts; candidate.DatabaseWriteGroups = groupDrafts; },
-            cancellationToken, requireStopped: true);
+            cancellationToken);
     }
 
     public Task<DatabaseConnectionTestResult> TestDatabaseConnectionAsync(DatabaseConnectionConfiguration connection, CancellationToken cancellationToken = default) =>
@@ -58,6 +58,9 @@ public sealed partial class GatewayApplication
         ThrowIfDisposed();
         return _runtime.GetDatabaseStatuses();
     }
+
+    public IReadOnlyList<DatabaseWriteGroupStatus> GetDatabaseGroupStatuses()
+    { ThrowIfDisposed(); return _runtime.GetDatabaseGroupStatuses(); }
 
     public GatewayLoggingStatus GetLoggingStatus()
     {

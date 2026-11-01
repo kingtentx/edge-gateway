@@ -34,6 +34,66 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
     private const long MaxSnapshotBytes = 64L * 1024 * 1024;
     private Dictionary<Guid, ConnectionState> _connections = [];
     private GroupWorker[] _workers = [];
+    private readonly List<GroupWorker> _retiring = [];
+
+    private static bool Same<T>(T first, T second) => JsonSerializer.Serialize(first, GatewayJson.Options) == JsonSerializer.Serialize(second, GatewayJson.Options);
+    private static bool OnlyDisabled(DatabaseWriteGroupConfiguration before, DatabaseWriteGroupConfiguration after)
+    { var copy = GatewayJson.Clone(before); copy.Enabled = false; return !after.Enabled && Same(copy, after); }
+    private static bool OnlyDisabled(DatabaseConnectionConfiguration before, DatabaseConnectionConfiguration after)
+    { var copy = GatewayJson.Clone(before); copy.Enabled = false; return !after.Enabled && Same(copy, after); }
+
+    // Runtime serializes validation, persistence and application under its lifecycle lock.
+    // Keep the synchronous guard in UpdateConfiguration as well: no caller may replace
+    // a live worker or create a second writer while an old call is still running.
+    private Guid[] CheckWorkerChanges(GatewayConfiguration configuration)
+    {
+        var changedConnections = _configuration.Databases.Where(old => !configuration.Databases.Any(next => next.Id == old.Id && Same(old, next))).ToArray();
+        var affected = _configuration.DatabaseWriteGroups.Where(old => changedConnections.Any(connection => connection.Id == old.ConnectionId)
+            || !configuration.DatabaseWriteGroups.Any(next => next.Id == old.Id && Same(old, next))).ToArray();
+        var check = new List<Guid>();
+        foreach (var old in affected)
+        {
+            var next = configuration.DatabaseWriteGroups.FirstOrDefault(group => group.Id == old.Id);
+            var connection = _configuration.Databases.First(item => item.Id == old.ConnectionId);
+            var nextConnection = configuration.Databases.FirstOrDefault(item => item.Id == old.ConnectionId);
+            var pauseOnly = next is not null && nextConnection is not null &&
+                ((OnlyDisabled(old, next) && Same(connection, nextConnection)) || (Same(old, next) && OnlyDisabled(connection, nextConnection)));
+            if (pauseOnly) continue;
+            if (_running && old.Enabled && connection.Enabled)
+                throw new InvalidOperationException($"请先暂停写入组“{old.Name}”，等待已有数据排空后再修改；设备可以继续采集。");
+            if (_workers.Concat(_retiring).Any(worker => worker.Group.Id == old.Id && !worker.Task.IsCompleted))
+                throw new InvalidOperationException($"写入组“{old.Name}”仍在排空或等待原数据库调用退出，请稍后重试。");
+            check.Add(old.Id);
+        }
+        if (connector is null && configuration.DatabaseWriteGroups.Any(group => group.Enabled && configuration.Databases.Any(connection => connection.Id == group.ConnectionId && connection.Enabled)))
+            throw new InvalidOperationException("宿主未提供外部数据库连接器。");
+        return check.ToArray();
+    }
+
+    public async Task ValidateConfigurationChangeAsync(GatewayConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        Guid[] inspect;
+        GatewayConfiguration before;
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            inspect = CheckWorkerChanges(configuration);
+            before = _configuration; // Immutable owned snapshot; never reread after awaiting spool I/O.
+        }
+        if (_spool is not null)
+            foreach (var id in inspect)
+                if ((await _spool.ReadPendingAsync(id, 1, cancellationToken).ConfigureAwait(false)).Count > 0)
+                {
+                    var old = before.DatabaseWriteGroups.Single(group => group.Id == id);
+                    var next = configuration.DatabaseWriteGroups.FirstOrDefault(group => group.Id == id);
+                    var copy = GatewayJson.Clone(old); copy.Enabled = next?.Enabled ?? false;
+                    var oldConnection = before.Databases.Single(connection => connection.Id == old.ConnectionId);
+                    var nextConnection = configuration.Databases.FirstOrDefault(connection => connection.Id == old.ConnectionId);
+                    var connectionCopy = GatewayJson.Clone(oldConnection); connectionCopy.Enabled = nextConnection?.Enabled ?? false;
+                    if (next is null || nextConnection is null || !Same(copy, next) || !Same(connectionCopy, nextConnection))
+                        throw new InvalidOperationException($"写入组“{old.Name}”有待补传数据。请恢复原目标完成补传后再修改，不会清空或改投旧数据。");
+                }
+    }
     private CancellationTokenSource? _shutdown;
     private CancellationTokenSource? _tickerCancellation;
     private Task _ticker = Task.CompletedTask;
@@ -50,16 +110,34 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_running && (JsonSerializer.Serialize(next.Databases, GatewayJson.Options) != JsonSerializer.Serialize(_configuration.Databases, GatewayJson.Options)
-                || JsonSerializer.Serialize(next.DatabaseWriteGroups, GatewayJson.Options) != JsonSerializer.Serialize(_configuration.DatabaseWriteGroups, GatewayJson.Options)))
-                throw new InvalidOperationException("请先停止全部设备，再修改数据库设置。");
+            CheckWorkerChanges(next);
+            if (_running) ReconcileDatabaseWorkers(next);
             _configuration = next;
             _enabledTags = next.Devices.Where(device => device.Enabled)
                 .SelectMany(device => device.Tags.Where(tag => tag.Enabled).Select(tag => (tag.Id, DeviceId: device.Id)))
                 .ToDictionary(pair => pair.Id, pair => pair.DeviceId);
             foreach (var id in _latest.Keys.Where(id => !_enabledTags.ContainsKey(id)).ToArray()) RemoveCached(id);
+            foreach (var worker in _workers) worker.SelectPoints(next.Devices);
         }
         if (log is IConfigurableGatewayLog configurable) configurable.ApplyConfiguration(next.Logging);
+    }
+
+    // Called only after runtime validation and atomic configuration persistence, under _sync.
+    private void ReconcileDatabaseWorkers(GatewayConfiguration next)
+    {
+        _retiring.RemoveAll(worker => worker.Task.IsCompleted);
+        var keep = _workers.Where(worker => next.DatabaseWriteGroups.Any(group => group.Id == worker.Group.Id && group.Enabled && Same(group, worker.Group))
+            && next.Databases.Any(connection => connection.Id == worker.State.Configuration.Id && connection.Enabled && Same(connection, worker.State.Configuration))).ToArray();
+        foreach (var worker in _workers.Except(keep))
+        { worker.Complete(); _retiring.Add(worker); }
+        _connections = next.Databases.ToDictionary(connection => connection.Id, connection =>
+            _connections.TryGetValue(connection.Id, out var state) && Same(state.Configuration, connection) ? state : new ConnectionState(connection, log));
+        var created = next.DatabaseWriteGroups.Where(group => group.Enabled && _connections[group.ConnectionId].Configuration.Enabled && !keep.Any(worker => worker.Group.Id == group.Id))
+            .Select(group => new GroupWorker(group, _connections[group.ConnectionId], connector!, _shutdown!.Token, _spool, log)).ToArray();
+        foreach (var worker in created) { worker.SelectPoints(next.Devices); worker.Start(); }
+        _workers = keep.Concat(created).ToArray();
+        _mappedTags = _workers.SelectMany(worker => worker.RequiredTags).ToHashSet();
+        foreach (var tagId in _latest.Keys.Where(id => !_mappedTags.Contains(id)).ToArray()) RemoveCached(tagId);
     }
 
     public void SetDeviceActive(Guid deviceId, bool active)
@@ -88,7 +166,8 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
                 if (_running) return;
-                if (_workers.Any(worker => !worker.Task.IsCompleted)) throw new InvalidOperationException("上一次数据库操作尚未退出，请等待其超时后再启动。");
+                if (_workers.Concat(_retiring).Any(worker => !worker.Task.IsCompleted)) throw new InvalidOperationException("上一次数据库操作尚未退出，请等待其超时后再启动。");
+                _retiring.Clear();
                 if (connector is null && _configuration.DatabaseWriteGroups.Any(group => group.Enabled && _configuration.Databases.Any(connection => connection.Id == group.ConnectionId && connection.Enabled)))
                     throw new InvalidOperationException("宿主未提供外部数据库连接器。");
                 _shutdown?.Dispose();
@@ -101,7 +180,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                     .Select(group => new GroupWorker(group, _connections[group.ConnectionId], connector!, _shutdown.Token, _spool, log)).ToArray();
                 _mappedTags = _workers.SelectMany(worker => worker.RequiredTags).ToHashSet();
                 _running = true;
-                foreach (var worker in _workers) worker.Start();
+                foreach (var worker in _workers) { worker.SelectPoints(_configuration.Devices); worker.Start(); }
                 _ticker = Task.Run(() => TickAsync(_tickerCancellation.Token));
             }
         }
@@ -219,6 +298,19 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                 ? state.Snapshot(connection.Enabled) : new ExternalDatabaseStatus(connection.Id, connection.Name, connection.Enabled, 0, 0, 0, 0, 0, null, null, false)).ToArray();
     }
 
+    public IReadOnlyList<DatabaseWriteGroupStatus> GetGroupStatuses()
+    {
+        lock (_sync)
+            return _configuration.DatabaseWriteGroups.Select(group =>
+            {
+                var active = _workers.FirstOrDefault(worker => worker.Group.Id == group.Id);
+                var retiring = _retiring.LastOrDefault(worker => worker.Group.Id == group.Id);
+                var state = active?.State ?? retiring?.State ?? _connections.GetValueOrDefault(group.ConnectionId);
+                return state?.GroupSnapshot(group.Id, _running && active is not null && !active.Task.IsCompleted, retiring is not null && !retiring.Task.IsCompleted || !_running && active is not null && !active.Task.IsCompleted)
+                    ?? new DatabaseWriteGroupStatus(group.Id, false, false, 0, null, null);
+            }).ToArray();
+    }
+
     public async Task StopAsync()
     {
         await _lifecycle.WaitAsync().ConfigureAwait(false);
@@ -232,7 +324,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
                 _tickerCancellation!.Cancel();
                 _activeDevices.Clear();
                 foreach (var worker in _workers) worker.Complete();
-                tasks = _workers.Select(worker => worker.Task).ToArray();
+                tasks = _workers.Concat(_retiring).Select(worker => worker.Task).ToArray();
             }
             await _ticker.ConfigureAwait(false);
             var all = Task.WhenAll(tasks);
@@ -255,7 +347,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
         {
             _disposed = true;
             _tickerCancellation?.Dispose();
-            if (_workers.All(worker => worker.Task.IsCompleted)) _shutdown?.Dispose();
+            if (_workers.Concat(_retiring).All(worker => worker.Task.IsCompleted)) _shutdown?.Dispose();
         }
     }
 
@@ -268,6 +360,8 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
         private int _inFlight;
         private double _lastWriteMilliseconds;
         private readonly Dictionary<Guid, string> _errors = [];
+        private readonly Dictionary<Guid, long> _groupWritten = [];
+        private readonly Dictionary<Guid, DateTimeOffset> _groupLastSuccess = [];
         private bool _connected;
         private bool _stopped;
         private long _nextWarning;
@@ -281,7 +375,9 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
             }
         }
         public void Release(int rows, long bytes) { lock (_gate) { _queued -= rows; _bytes -= bytes; } }
-        public void Success(Guid groupId, int rows) { lock (_gate) { _written += rows; _lastSuccess = DateTimeOffset.UtcNow; _errors.Remove(groupId); _connected = !_stopped && _errors.Count == 0; } }
+        public void Success(Guid groupId, int rows) { lock (_gate) { _written += rows; _lastSuccess = DateTimeOffset.UtcNow; _groupWritten[groupId] = _groupWritten.GetValueOrDefault(groupId) + rows; _groupLastSuccess[groupId] = _lastSuccess.Value; _errors.Remove(groupId); _connected = !_stopped && _errors.Count == 0; } }
+        public DatabaseWriteGroupStatus GroupSnapshot(Guid id, bool accepting, bool draining)
+        { lock (_gate) return new(id, accepting, draining, _groupWritten.GetValueOrDefault(id), _groupLastSuccess.TryGetValue(id, out var time) ? time : null, _errors.GetValueOrDefault(id)); }
         public void Failure(Guid groupId, string error) { lock (_gate) { _failed++; _lastFailure = DateTimeOffset.UtcNow; _connected = false; _errors[groupId] = error; Warn(error); } }
         public void Drop(Guid groupId, int rows, string error) { lock (_gate) { _dropped += rows; _errors[groupId] = error; _connected = false; Warn(error); } }
         public void Skip(Guid groupId, string error) { lock (_gate) { _skipped++; _errors[groupId] = error; _connected = false; Warn(error); } }
@@ -324,7 +420,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
         private readonly IAcquisitionSpool? _spool;
         private readonly IGatewayLog _log;
         private readonly Channel<QueuedRow> _queue;
-        private readonly HashSet<Guid> _selected;
+        private HashSet<Guid> _selected;
         private long _nextBatchTicks;
         public DatabaseWriteGroupConfiguration Group { get; }
         public ConnectionState State { get; }
@@ -343,7 +439,8 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
             _queue = Channel.CreateBounded<QueuedRow>(new BoundedChannelOptions(state.Configuration.QueueCapacityRows)
                 { SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
         }
-        public bool Accepts(Guid tagId) => _selected.Count == 0 || _selected.Contains(tagId);
+        public void SelectPoints(IReadOnlyList<DeviceConfiguration> devices) => _selected = DatabasePointSelection.Resolve(Group, devices);
+        public bool Accepts(Guid tagId) => _selected.Contains(tagId);
         public void Start() => Task = System.Threading.Tasks.Task.Run(RunAsync);
         public void Complete() => _queue.Writer.TryComplete();
         public void Enqueue(DatabaseWriteRow row)

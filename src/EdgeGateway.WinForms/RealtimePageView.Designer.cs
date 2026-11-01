@@ -43,6 +43,9 @@ internal sealed partial class RealtimePageView
     private ComboBox realtimeGridPaginationSize = null!;
     private TableLayoutPanel realtimeGridPaginationBar = null!;
     private Panel realtimeGridPageHost = null!;
+    internal AntdUI.Checkbox anomaliesOnly = null!;
+    internal GatewayButton detailsButton = null!;
+
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
@@ -394,6 +397,10 @@ realtimeGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         clearFiltersButton.MinimumSize = new Size(88, 38);
         clearFiltersButton.Margin = new Padding(0, 0, 8, 6);
         toolbarHost.Controls.Add(clearFiltersButton);
+        anomaliesOnly = new AntdUI.Checkbox { Name = "RealtimeAnomaliesOnly", Text = "仅异常 / 未采样", AutoSizeMode = AntdUI.TAutoSize.Auto, Height = 38, Margin = new Padding(0, 0, 8, 6) };
+        detailsButton = new GatewayButton { Name = "RealtimePointDetails", Text = "点位详情与去向", AutoSize = true, MinimumSize = new Size(140, 38), Margin = new Padding(0, 0, 8, 6) };
+        toolbarHost.Controls.Add(anomaliesOnly);
+        toolbarHost.Controls.Add(detailsButton);
         ResumeLayout(false);
     }
 

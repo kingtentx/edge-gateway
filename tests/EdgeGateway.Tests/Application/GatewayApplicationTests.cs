@@ -383,21 +383,25 @@ public sealed partial class GatewayApplicationTests
     }
 
     [Fact]
-    public async Task DatabaseSettingsRequireStoppedDevicesAndMergeIntoLatestConfiguration()
+    public async Task PausedDatabaseSettingsMergeWithoutInterruptingCollection()
     {
         await using var h = await Harness.CreateAsync();
         var connection = new DatabaseConnectionConfiguration { Name = "reporting", Enabled = false };
         var group = new DatabaseWriteGroupConfiguration { Name = "points", ConnectionId = connection.Id };
         await h.App.StartDeviceAsync(h.A.Id);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.ApplyDatabaseSettingsAsync([connection], [group]));
-        Assert.Empty(h.App.GetConfiguration().Databases);
-        await h.App.StopAsync();
+        await h.App.ApplyDatabaseSettingsAsync([connection], [group]);
+        Assert.True(h.App.IsDeviceRunning(h.A.Id));
+        Assert.Single(h.App.GetConfiguration().Databases);
         var added = Device("added after opening editor");
         await h.App.AddDeviceAsync(added);
         await h.App.ApplyDatabaseSettingsAsync([connection], [group]);
         Assert.Contains(h.App.GetConfiguration().Devices, device => device.Id == added.Id);
         Assert.Equal(connection.Id, Assert.Single(h.App.GetConfiguration().Databases).Id);
         Assert.Equal(group.Id, Assert.Single((await h.App.ReadSavedConfigurationAsync()).DatabaseWriteGroups).Id);
+        h.Configurations.FailSave = true; connection.Name = "rejected change";
+        await Assert.ThrowsAsync<IOException>(() => h.App.ApplyDatabaseSettingsAsync([connection], [group]));
+        Assert.Equal("reporting", Assert.Single(h.App.GetConfiguration().Databases).Name);
+        Assert.True(h.App.IsDeviceRunning(h.A.Id));
     }
     [Fact]
     public async Task DatabaseMappingSaveRejectsDuplicateNamesAndAllowsEditingTheSameGroup()

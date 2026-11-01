@@ -100,6 +100,7 @@ public interface IGatewayApplication : IAsyncDisposable
     Task CreateDatabasePointTableAsync(DatabaseConnectionConfiguration connection, DatabaseTableInfo table, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<TelemetrySample>> QueryExternalHistoryAsync(Guid groupId, HistoryQuery query, CancellationToken cancellationToken = default);
     IReadOnlyList<ExternalDatabaseStatus> GetDatabaseStatuses();
+    IReadOnlyList<DatabaseWriteGroupStatus> GetDatabaseGroupStatuses();
     GatewayLoggingStatus GetLoggingStatus();
     Task<DatabaseWritePreview> PreviewDatabaseWriteAsync(DatabaseConnectionConfiguration connection, DatabaseWriteGroupConfiguration group, CancellationToken cancellationToken = default);
     Task<GatewayLogQueryResult> QueryLogFilesAsync(GatewayLogQuery query, CancellationToken cancellationToken = default);

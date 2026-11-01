@@ -62,6 +62,7 @@ public sealed partial class MainForm
             }
             UpdateDeviceCheckSummary(); _deviceGrid.RepaintRows();
         };
+        _devicesPageView.routesButton.Click += async (_, _) => await ShowDataRoutesAsync(SelectedDevice()?.Id, null);
         _devicesPageView.deviceBatchButton.Bind(BuildDeviceBatchMenu, exception => ShowError(exception.Message));
         _configurationCommands.Add(_devicesPageView.deviceBatchButton);
         _deviceGrid.DataBindingComplete += (_, _) => UpdateDeviceConfigurationCommands();
@@ -155,6 +156,7 @@ public sealed partial class MainForm
             new("ImportTags", "导入当前设备点位 Excel…", () => ImportTagsAsync(deviceId), Device, "请先选择设备"),
             new("ExportTags", "导出当前设备点位 Excel…", () => RunBusyAsync(() => ExportTagsAsync(deviceId: deviceId)), Device, "请先选择设备"),
             new("TagTemplate", "下载点位 Excel 模板…", () => RunBusyAsync(() => ExportTagsAsync(template: true)), CanEdit),
+            new("TagRoutes", "点位详情与数据去向…", () => ShowDataRoutesAsync(deviceId, tagId), Tag, "请先选择点位"),
             new("ClearTagSearch", "清除点位筛选", () => { _tagSearch.Clear(); return Task.CompletedTask; }, () => CanEdit() && _tagSearch.TextLength > 0, SeparateBefore: true),
             new("DeleteTag", "删除所选点位…", () => DeleteTagAsync(deviceId, tagId), Tag, "请先选择点位", SeparateBefore: true, Dangerous: true)
         ];

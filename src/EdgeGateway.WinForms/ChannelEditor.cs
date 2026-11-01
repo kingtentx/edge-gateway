@@ -14,6 +14,7 @@ internal sealed partial class ChannelEditor : EditorDialog
         _name.Text = value.Name; _description.Text = value.Description;
         _delay.Value = Math.Clamp(value.InterRequestDelayMs, 0, 60000);
     }
+    internal void RestrictToMetadata() { _delay.Enabled = false; _delay.AccessibleDescription = "采集中仅可修改名称和说明；通信间隔调整须先停止全部设备。"; }
     protected override void Commit()
     {
         Value.Name = Required(_name, "通道名称");

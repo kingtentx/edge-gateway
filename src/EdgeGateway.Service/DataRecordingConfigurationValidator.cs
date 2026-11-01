@@ -52,6 +52,22 @@ public static partial class DataRecordingConfigurationValidator
             else if (!groupNames.Add(group.Name.Trim())) errors.Add($"{label} 名称已存在，请在“写入设置”中使用其他名称。");
             if (!connections.ContainsKey(group.ConnectionId)) errors.Add($"{label} 引用了不存在的数据库连接。");
             if (!Enum.IsDefined(group.Mode)) errors.Add($"{label} 存储模式无效。");
+            if (group.Selection is null || !Enum.IsDefined(group.Selection.Mode))
+                errors.Add($"{label} 点位选择规则无效。");
+            else
+            {
+                if (group.Selection.GroupName is null) errors.Add($"{label} 分组名称不能为 null。");
+                if (group.Selection.Mode != DatabasePointSelectionMode.Points && group.TagIds?.Count > 0)
+                    errors.Add($"{label} 动态选点不能同时保存手动点位，请清除手动选择。");
+                if (group.Selection.Mode != DatabasePointSelectionMode.Device && group.Selection.DeviceId is not null)
+                    errors.Add($"{label} 非设备规则不能保留设备标识。");
+                if (group.Selection.Mode == DatabasePointSelectionMode.Device && !(configuration.Devices ?? []).Any(device => device.Id == group.Selection.DeviceId))
+                    errors.Add($"{label} 选择的设备不存在，请先修改写入规则。");
+                if (group.Selection.Mode == DatabasePointSelectionMode.Group && !configuration.DeviceGroups.Concat((configuration.Devices ?? []).Select(device => device.Group)).Contains(group.Selection.GroupName, StringComparer.OrdinalIgnoreCase))
+                    errors.Add($"{label} 选择的设备分组不存在，请先修改写入规则。");
+                if (group.Mode == DatabaseStorageMode.ColumnMapping && group.Selection.Mode != DatabasePointSelectionMode.Points)
+                    errors.Add($"{label} 固定点位整行模式不能使用动态选点。");
+            }
             if (!IsIdentifier(group.Table) || (!string.IsNullOrEmpty(group.Schema) && !IsIdentifier(group.Schema)))
                 errors.Add($"{label} 的表名和 schema 须为字母/下划线开头的字母、数字或下划线，UTF-8 不超过 63 字节；请分别填写，不接受 SQL 表达式。");
             if (group.TagIds is null || group.Columns is null) { errors.Add($"{label} 点位或字段列表不能为 null。"); continue; }

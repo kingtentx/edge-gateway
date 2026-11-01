@@ -61,6 +61,8 @@ internal sealed partial class DevicesPageView
     private ComboBox deviceGridPaginationSize = null!;
     private TableLayoutPanel deviceGridPaginationBar = null!;
     private Panel deviceGridPageHost = null!;
+    internal GatewayButton routesButton = null!;
+
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
@@ -392,7 +394,7 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         deviceGridColumnEnabled = new GatewayTableColumn();
         deviceGridColumnEnabled.Name = "deviceGridColumnEnabled";
         deviceGridColumnEnabled.DataPropertyName = "Enabled";
-        deviceGridColumnEnabled.HeaderText = "启用";
+        deviceGridColumnEnabled.HeaderText = "允许采集";
         deviceGridColumnEnabled.MinimumWidth = 68;
         deviceGridColumnEnabled.FillWeight = 72;
         deviceGridColumnEnabled.SortMode = DataGridViewColumnSortMode.NotSortable;
@@ -675,6 +677,8 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         deviceBatchButton.Padding = new Padding(10, 4, 10, 4);
         deviceBatchButton.Margin = new Padding(0, 0, 8, 6);
         deviceToolbarHost.Controls.Add(deviceBatchButton);
+        routesButton = new GatewayButton { Name = "DeviceDataRoutes", Text = "数据去向", AutoSize = true, MinimumSize = new Size(100, 38), Margin = new Padding(0, 0, 8, 6) };
+        deviceToolbarHost.Controls.Add(routesButton);
         deviceToolbarHost.Controls.Add(deviceSummaryLabel);
         ResumeLayout(false);
     }

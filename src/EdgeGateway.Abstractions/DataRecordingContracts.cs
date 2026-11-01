@@ -17,12 +17,14 @@ public interface IExternalDatabaseConnector
 
 public interface IAcquisitionDataSink : IAsyncDisposable
 {
+    Task ValidateConfigurationChangeAsync(GatewayConfiguration configuration, CancellationToken cancellationToken = default) => Task.CompletedTask;
     void UpdateConfiguration(GatewayConfiguration configuration);
     void SetDeviceActive(Guid deviceId, bool active);
     Task StartAsync(CancellationToken cancellationToken = default);
     Task AppendAsync(IReadOnlyList<TelemetrySample> samples, CancellationToken cancellationToken = default);
     Task StopAsync();
     IReadOnlyList<ExternalDatabaseStatus> GetStatuses();
+    IReadOnlyList<DatabaseWriteGroupStatus> GetGroupStatuses() => [];
 }
 
 public interface IConfigurableGatewayLog : IGatewayLog

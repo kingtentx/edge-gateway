@@ -98,6 +98,38 @@ public sealed partial class MainForm
             Check(RecordingSmokeJson(group) == original, "inspection changed saved source");
         }
         finally { editor.Close(); }
+        using (var dynamicEditor = new DatabaseWriteGroupDialog(group, [connection], [first, second], _application, ["空分组"]))
+        {
+            dynamicEditor.Show(this);
+            try
+            {
+                var tabs = Descendants(dynamicEditor).OfType<TabControl>().First();
+                tabs.SelectedTab = tabs.TabPages.Cast<TabPage>().Single(tab => tab.Text == "点位选择");
+                var mode = CapabilityControl<ComboBox>(dynamicEditor, "DatabaseSelectionMode");
+                var target = CapabilityControl<ComboBox>(dynamicEditor, "DatabaseSelectionTarget");
+                mode.SelectedIndex = 1; target.SelectedIndex = 0;
+                var draft = dynamicEditor.CommitForSmoke();
+                Check(draft.Selection.Mode == DatabasePointSelectionMode.Device && draft.Selection.DeviceId == first.Id && draft.TagIds.Count == 0, "dynamic device rule was not saved");
+                Check(DatabasePointSelection.Resolve(draft, [first, second]).SetEquals(first.Tags.Select(tag => tag.Id)), "dynamic rule includes other device");
+                mode.SelectedIndex = 2; target.SelectedIndex = 1;
+                draft = dynamicEditor.CommitForSmoke();
+                Check(draft.Selection.Mode == DatabasePointSelectionMode.Group && draft.Selection.DeviceId is null
+                    && DatabasePointSelection.Resolve(draft, [first, second]).SetEquals(second.Tags.Select(tag => tag.Id)), "dynamic group rule was not saved");
+                target.SelectedIndex = 2;
+                Check(DatabasePointSelection.Resolve(dynamicEditor.CommitForSmoke(), [first, second]).Count == 0, "empty dynamic group expanded to all points");
+                target.SelectedIndex = 1;
+                dynamicEditor.ClientSize = new Size(UiTheme.Scale(dynamicEditor, 640), UiTheme.Scale(dynamicEditor, 480));
+                await Task.Delay(100); PerformLayoutRecursively(dynamicEditor);
+                BringIntoViewAndAssert(mode, "dynamic selection mode"); BringIntoViewAndAssert(target, "dynamic selection target");
+                Check(Math.Abs(mode.PointToScreen(Point.Empty).Y - target.PointToScreen(Point.Empty).Y) <= 2, "selection filters are stacked instead of side by side");
+                Check(dynamicEditor.SmokePointList.Items.Count == 1, "dynamic preview shows unrelated devices");
+                Check(dynamicEditor.SmokePointList.Height >= UiTheme.Scale(dynamicEditor, 72), "dynamic rules squeezed point rows out of narrow window");
+                SaveEditorScreenshot(dynamicEditor, "database-selection", "dynamic-rule");
+                dynamicEditor.InspectSavedConfiguration();
+                Check(!mode.Enabled && !target.Enabled, "dynamic inspection permits mutation");
+            }
+            finally { dynamicEditor.Close(); }
+        }
         Console.WriteLine($"Database selection smoke passed: groups/devices, checkbox/keyboard, visible selection, search, draft isolation, scrolling and width round trip; DeviceDpi={DeviceDpi}.");
         static void Check(bool condition, string detail)
         { if (!condition) throw new InvalidOperationException("Database point selection: " + detail); }

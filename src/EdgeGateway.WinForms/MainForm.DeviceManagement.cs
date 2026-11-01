@@ -101,12 +101,12 @@ public sealed partial class MainForm
     private Task<Guid?> EditChannelAsync(bool add, Guid? selectedChannelId = null, Form? owner = null)
     {
         if (!CanEdit()) return Task.FromResult<Guid?>(null);
-        if (_application.IsRunning) { SetFooter("请停止全部设备后维护通信通道；设备与点位仍可独立编辑。"); return Task.FromResult<Guid?>(null); }
         var channelId = selectedChannelId ?? (_deviceChannelFilter.SelectedItem as ChannelChoice)?.Id;
         var channel = add ? new ChannelConfiguration { Name = UniqueCatalogName("通道", _configuration.Channels.Select(c => c.Name)) }
             : _configuration.Channels.FirstOrDefault(c => c.Id == channelId);
         if (channel is null) { SetFooter("请在通道筛选中选择要编辑的具体通道。"); return Task.FromResult<Guid?>(null); }
         using var editor = new ChannelEditor(Clone(channel));
+        if (_application.IsRunning) editor.RestrictToMetadata();
         BindEditorApply(editor, null, async () =>
         {
             var applied = await _application.UpsertChannelAsync(editor.Value, add);

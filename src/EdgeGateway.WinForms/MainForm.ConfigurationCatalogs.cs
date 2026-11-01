@@ -21,11 +21,11 @@ public sealed partial class MainForm
         dialog.Bind(groups ? "分组管理" : "通道管理", () => groups
             ? DeviceGroupNames().Select(name => new ConfigurationCatalogRow(name, name,
                 _configuration.Devices.Count(d => string.Equals(d.Group, name, StringComparison.OrdinalIgnoreCase)),
-                "重命名同步更新设备；空分组会保留")).ToArray()
+                "重命名不重启采集；动态写入引用须先暂停")).ToArray()
             : _configuration.Channels.Select(channel => new ConfigurationCatalogRow(channel.Id.ToString(), channel.Name,
                 _configuration.Devices.Count(d => d.ChannelId == channel.Id),
                 $"间隔 {channel.InterRequestDelayMs} ms · {channel.Description}")).ToArray(),
-            () => CanEdit() && !_application.IsRunning,
+            () => CanEdit(),
             async target =>
             {
                 if (!groups)
