@@ -78,17 +78,13 @@ public sealed partial class MainForm
                 $"{status?.InFlightBatches ?? 0} 批 / {status?.LastWriteMilliseconds ?? 0:F1} ms");
         }).ToArray();
         GridViewState.UpdateRows(_databaseGrid, rows, row => row.Id, connectionId);
-        var groupStates = _application.GetDatabaseGroupStatuses().ToDictionary(state => state.GroupId);
         var groups = _configuration.DatabaseWriteGroups.Select(group => new DatabaseGroupRow(group.Id, group.Name,
             _configuration.Databases.FirstOrDefault(connection => connection.Id == group.ConnectionId)?.Name ?? "连接不存在",
             DatabaseUiText.Mode(group.Mode), new DatabaseTableInfo(group.Schema, group.Table).ToString(),
             group.Selection.Mode != DatabasePointSelectionMode.Points ? DatabaseUiText.Selection(group, _configuration.Devices)
                 : group.Mode == DatabaseStorageMode.ColumnMapping ? $"{group.Columns.Count} 个字段"
                 : (group.TagIds.Count == 0 ? "全部启用点位" : $"{group.TagIds.Count} 个点位")
-                    + (group.Mode == DatabaseStorageMode.PointMapping ? $" / {group.Columns.Count} 个映射字段" : ""),
-            groupStates.TryGetValue(group.Id, out var state) && state.IsDraining ? "正在排空，设备继续采集" + (state.Error is null ? "" : " · " + state.Error)
-                : !GroupIsEnabled(group.Id) ? "已暂停写入" : state?.Error is not null ? "写入异常：" + state.Error
-                : state?.IsAccepting == true ? $"接收写入 · 成功 {state.WrittenRows} 行" : "等待设备采集")).ToArray();
+                    + (group.Mode == DatabaseStorageMode.PointMapping ? $" / {group.Columns.Count} 个映射字段" : ""))).ToArray();
         GridViewState.UpdateRows(_databaseGroupGrid, groups, row => row.Id, groupId);
         foreach (GatewayTableRow row in _databaseGrid.Rows) if (row.DataBoundItem is DatabaseConnectionRow data) row.Cells["Error"].ToolTipText = data.Error;
     }
@@ -211,5 +207,5 @@ public sealed partial class MainForm
         using var dialog = new DatabasePreviewDialog(preview); dialog.ShowDialog(this);
     }
     private sealed record DatabaseConnectionRow(Guid Id, string Name, string Provider, string Target, string State, long Queued, long Written, string Dropped, string Error, string Load, string Retry, string Duration);
-    private sealed record DatabaseGroupRow(Guid Id, string Name, string Connection, string Mode, string Table, string Selection, string Enabled);
+    private sealed record DatabaseGroupRow(Guid Id, string Name, string Connection, string Mode, string Table, string Selection);
 }
