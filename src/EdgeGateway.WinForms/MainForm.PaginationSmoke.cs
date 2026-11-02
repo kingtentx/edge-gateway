@@ -9,6 +9,7 @@ public sealed partial class MainForm
         if (!_smokeTest || _application.IsRunning) throw new InvalidOperationException("Pagination requires an isolated stopped host.");
         _refreshTimer.Stop();
         var original = Clone(_configuration);
+        var originalSize = Size;
         static AntdUI.Pagination Pager(GatewayTable grid) => GridPagination.GetPager(grid);
         static void Require(bool condition, string message)
         { if (!condition) throw new InvalidOperationException(message); }
@@ -139,8 +140,31 @@ public sealed partial class MainForm
             Require(exportedMessages.Order().SequenceEqual(Enumerable.Range(0, 23).Select(i => $"pagination-event-{i:000}")),
                 "Log export omitted records from other pages.");
             SaveEditorScreenshot(this, "pagination", "logs-unpaged");
+            foreach (var width in new[] { originalSize.Width, MinimumSize.Width }.Distinct())
+            {
+                Size = new Size(width, originalSize.Height);
+                foreach (var target in new[] {
+                    ("devices", _deviceGrid, -1), ("realtime", _realtimeGrid, -1), ("history", _historyGrid, -1),
+                    ("database", _databaseGrid, 0), ("database", _databaseGroupGrid, 1), ("logs", _sampleArchive.Grid, 1) })
+                {
+                    ShowPage(target.Item1);
+                    if (target.Item1 == "database") _databaseTabs.SelectedIndex = target.Item3;
+                    if (target.Item1 == "logs") _logTabs.SelectedTab = _sampleArchive.Page;
+                    await Task.Delay(80); PerformLayoutRecursively(this);
+                    var page = _pages[target.Item1];
+                    var pageFooter = Pager(target.Item2).Parent!;
+                    var bounds = pageFooter.RectangleToScreen(pageFooter.ClientRectangle);
+                    var pageBounds = page.RectangleToScreen(page.ClientRectangle);
+                    Require(pageFooter.Visible && Math.Abs(bounds.Bottom - (pageBounds.Bottom - page.Padding.Bottom)) <= UiTheme.Scale(page, 2),
+                        $"Pagination is not fixed at page bottom: {target.Item1}/{target.Item3}, footer={bounds}, page={pageBounds}.");
+                    Require(Math.Abs(bounds.Left - pageBounds.Left - page.Padding.Left) <= UiTheme.Scale(page, 2)
+                        && Math.Abs(bounds.Right - pageBounds.Right + page.Padding.Right) <= UiTheme.Scale(page, 2),
+                        $"Pagination does not span page content width: {target.Item1}/{target.Item3}.");
+                    SaveEditorScreenshot(this, "pagination", $"bottom-{target.Item1}-{target.Item3}-{width}");
+                }
+            }
             Console.WriteLine($"Pagination smoke passed: DeviceDpi={DeviceDpi}; page navigation, page size, stable device/tag IDs, final-page deletion, empty results, realtime refresh, complete history CSV and log JSONL.");
         }
-        finally { await CommitConfigurationAsync(original, replaceCloudDraft: true); }
+        finally { Size = originalSize; await CommitConfigurationAsync(original, replaceCloudDraft: true); }
     }
 }

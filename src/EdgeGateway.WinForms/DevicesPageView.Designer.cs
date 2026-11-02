@@ -257,10 +257,10 @@ deviceGrid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.Ink;
         deviceGridPaginationBar.Controls.Add(deviceGridPaginationTotal, 1, 0);
         deviceGridPaginationBar.Controls.Add(deviceGridPaginationSize, 2, 0);
         deviceGridPaginationBar.Controls.Add(deviceGridPagination, 3, 0);
-        deviceGridPageHost.Controls.Add(deviceGridPaginationBar);
         contentLayout.Controls.Add(deviceGridPageHost, 0, 4);
         pageViewport.Controls.Add(contentLayout);
         Controls.Add(pageViewport);
+        Controls.Add(deviceGridPaginationBar);
 
         contentLayout.ResumeLayout(false);
         contentLayout.PerformLayout();

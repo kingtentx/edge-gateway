@@ -240,3 +240,5 @@ dotnet test tests/EdgeGateway.Tests/EdgeGateway.Tests.csproj -c Release --no-bui
 - 2026-11-01 按钮一致性补充：新增普通 GatewayButton 不能只声明 AutoSize/MinimumSize，须在 Designer 同时声明 Height=38、Padding=(10,4,10,4)，同一工具栏保持一致 Margin。可见边框由尺寸和内边距共同决定，文字不同允许宽度不同。检查同排真实 ReadRectangle 高度/对齐，不能仅核对按钮类名。见 docs/ui-button-size-consistency.md。
 
 - 2026-11-01 启停按钮高度补充：用户要求略增高度，使用 SetRect 在既有行内留白中增加 4 逻辑像素可见高度，保留上下各至少 2 逻辑像素间距；不改变 GetSize 的行高测量。
+
+- 2026-11-02 用户要求一级菜单分页栏统一固定在内容区底部、操作状态栏上方并整组靠右；分页宿主在 Designer 声明，独立于设备/采样滚动内容及实时左右分栏，不能运行时重新挂载固定控件。历史与数据库页签遵循相同底部位置，弹窗本次不调整。见 docs/ui-pagination.md。

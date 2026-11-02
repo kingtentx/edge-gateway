@@ -811,11 +811,11 @@ internal sealed partial class LogArchivePageView
         archivePaginationBar.Controls.Add(archivePaginationTotal, 1, 0);
         archivePaginationBar.Controls.Add(archivePaginationSize, 2, 0);
         archivePaginationBar.Controls.Add(archivePagination, 3, 0);
-        GridPageHost.Controls.Add(archivePaginationBar);
         contentLayout.Controls.Add(GridPageHost, 0, 3);
         pageViewport = new AntdUI.Panel { Dock = DockStyle.Fill, AutoScroll = true, Name = "ArchiveViewport" };
         pageViewport.Controls.Add(contentLayout);
         this.Controls.Add(pageViewport);
+        Controls.Add(archivePaginationBar);
         this.AutoScaleMode = AutoScaleMode.Inherit;
 
         this.BackColor = Color.White;

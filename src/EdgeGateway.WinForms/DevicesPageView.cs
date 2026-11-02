@@ -56,7 +56,7 @@ internal sealed partial class DevicesPageView : UserControl
             contentLayout.PerformLayout();
             var fixedHeight = titleLabel.Height + titleLabel.Margin.Vertical
                 + descriptionLabel.Height + descriptionLabel.Margin.Vertical
-                + deviceToolbarHost.Height + deviceFiltersHost.Height + deviceGridPagination.Parent!.Height;
+                + deviceToolbarHost.Height + deviceFiltersHost.Height;
             var minimumHeight = fixedHeight + UiTheme.Scale(this, 220);
             pageViewport.AutoScrollMinSize = new Size(0, minimumHeight);
             contentLayout.SetBounds(pageViewport.AutoScrollPosition.X, pageViewport.AutoScrollPosition.Y,
