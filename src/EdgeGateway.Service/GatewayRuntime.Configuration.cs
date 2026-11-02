@@ -34,7 +34,7 @@ public sealed partial class GatewayRuntime
             var errors = ConfigurationValidator.Validate(next, _registry);
             if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors));
             if (_running && !RuntimeGlobalSettingsEqual(_configuration, next))
-                throw new InvalidOperationException("修改网关标识、名称、自动启动或通信通道结构，请先停止全部设备；平台连接与上报设置可运行中应用。");
+                throw new InvalidOperationException("修改通信通道结构，请先停止全部设备；平台与系统页面设置可运行中应用。");
             await _dataSink.ValidateConfigurationChangeAsync(next, cancellationToken).ConfigureAwait(false);
 
             var previousDevices = _configuration.Devices.ToDictionary(device => device.Id);
@@ -147,8 +147,13 @@ public sealed partial class GatewayRuntime
         left.Logging = new(); right.Logging = new();
         left.Databases = []; right.Databases = [];
         left.DatabaseWriteGroups = []; right.DatabaseWriteGroups = [];
-        // Northbound tasks have an independent lifecycle; gateway identity and
-        // channel structure remain protected while device sessions are running.
+        // Gateway metadata does not own a device session. GatewayId changes use
+        // the platform lifecycle above; AutoStart affects the next host startup.
+        left.GatewayId = right.GatewayId;
+        left.Name = right.Name;
+        left.AutoStart = right.AutoStart;
+        // Northbound tasks have an independent lifecycle; channel structure
+        // remains protected while device sessions are running.
         left.Mqtt = new(); right.Mqtt = new();
         left.PublishIntervalMs = right.PublishIntervalMs;
         left.ReportMode = right.ReportMode;

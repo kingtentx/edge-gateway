@@ -79,10 +79,21 @@ public sealed partial class MainForm
                 }
             }
             ((TextBox)_cloudFields["name"]).Text = _configuration.Name + " draft";
+            ((TextBox)_cloudFields["gatewayId"]).Text = "hot-ui-gateway";
+            ((CheckBox)_cloudFields["autoStart"]).Checked = true;
+            ((TextBox)_cloudFields["deviceType"]).Text = "mixed-platform-draft";
             UpdateCommands();
-            Check(!_cloudApply.Enabled, "gateway changes bypassed device-stop protection");
+            Check(_cloudApply.Enabled, "gateway draft blocked platform apply");
+            _cloudApply.PerformClick();
+            await WaitFor(() => !_busy && !_dirty);
+            var saved = await _application.ReadSavedConfigurationAsync();
+            Check(saved.GatewayId == "hot-ui-gateway" && saved.AutoStart && saved.Name.EndsWith(" draft")
+                && saved.Mqtt.PlatformDeviceType == "mixed-platform-draft", "mixed gateway/platform draft was not persisted");
+            timestamp = _application.GetLatest()[0].Timestamp;
+            await WaitFor(() => _application.GetLatest()[0].Timestamp > timestamp);
             Check(_application.IsDeviceRunning(fixture.Devices[0].Id), "device stopped during maintenance");
-            Console.WriteLine($"PlatformLifecycle smoke passed: DeviceDpi={DeviceDpi}; hot apply, failed save retains draft, independent start/stop, saved settings isolation, gateway guard, all platform tabs wide/narrow; local refused connection only.");
+            SaveEditorScreenshot(this, "platform-lifecycle", "mixed-draft-applied");
+            Console.WriteLine($"PlatformLifecycle smoke passed: DeviceDpi={DeviceDpi}; hot apply, failed save retains draft, independent start/stop, saved settings isolation, mixed gateway/platform hot apply, all platform tabs wide/narrow; local refused connection only.");
         }
         finally
         {

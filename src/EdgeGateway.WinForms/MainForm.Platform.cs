@@ -109,18 +109,13 @@ public sealed partial class MainForm
     private void UpdatePlatformCommands()
     {
         if (_cloudApply is null || _cloudReset is null) return;
-        var gatewayChanged = CloudDraft.GatewayId != _configuration.GatewayId || CloudDraft.Name != _configuration.Name
-            || CloudDraft.AutoStart != _configuration.AutoStart;
-        var requiresStop = _application.IsRunning && gatewayChanged;
         var platformRunning = _application.GetTelemetryStatus().Running;
         _platformPageView.StartPlatformButton.Enabled = CanEdit() && _configuration.Mqtt.Enabled && !platformRunning;
         _platformPageView.StopPlatformButton.Enabled = CanEdit() && (platformRunning || _application.IsMqttConnected);
-        _cloudApply.Enabled = CanEdit() && _dirty && !requiresStop;
+        _cloudApply.Enabled = CanEdit() && _dirty;
         _cloudReset.Enabled = CanEdit() && _dirty;
         var state = platformRunning ? (_application.IsMqttConnected ? "平台已连接。" : "平台连接任务运行中。") : "平台已停止。";
-        _cloudApplyState.Text = state + (requiresStop
-            ? "网关标识、名称或自动启动有修改，请停止全部设备后应用；仅修改平台连接、上报或远程控制可直接应用。"
-            : _dirty ? "有未应用的修改，应用后更新平台设置，设备采集继续。启动平台使用已保存设置。"
+        _cloudApplyState.Text = state + (_dirty ? "有未应用的修改，可直接应用，设备采集继续。启动平台使用已保存设置。"
             : "设置已应用。平台可独立启动/停止，停止期间不生成新上报，已入队消息保留。");
         _cloudApplyState.ForeColor = _dirty ? UiTheme.Warning : UiTheme.Muted;
         var platform = CloudDraft.Mqtt.Platform;

@@ -114,15 +114,13 @@ public sealed partial class MainForm
 
             ShowPage("cloud");
             ((TextBox)_cloudFields["name"]).Text = _configuration.Name + " 未应用草稿";
-            Check(_dirty && _cloudFields["name"].Enabled && _cloudReset.Enabled && !_cloudApply.Enabled,
-                "running devices blocked draft editing/reset or allowed global application.");
+            Check(_dirty && _cloudFields["name"].Enabled && _cloudReset.Enabled && _cloudApply.Enabled,
+                "running devices blocked gateway draft editing/reset/apply.");
             await DeviceRowActionAsync(b, DeviceStopColumnName);
             await DeviceRowActionAsync(b, DeviceStartColumnName);
             Check(_application.IsDeviceRunning(b) && _dirty, "unapplied platform draft still blocks starting B.");
-            var rejected = false;
-            try { await ApplyCloudSettingsAsync(); }
-            catch (InvalidOperationException) { rejected = true; }
-            Check(rejected && _application.IsDeviceRunning(a) && _application.IsDeviceRunning(b), "global settings were applied while devices ran.");
+            await ApplyCloudSettingsAsync();
+            Check(!_dirty && _application.IsDeviceRunning(a) && _application.IsDeviceRunning(b), "gateway settings interrupted acquisition.");
             ResetCloudDraft(); BindCloudFields();
 
             stamp = Latest(a);

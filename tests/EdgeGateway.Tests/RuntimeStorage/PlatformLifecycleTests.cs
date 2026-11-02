@@ -5,6 +5,37 @@ namespace EdgeGateway.Tests.RuntimeStorage;
 public sealed partial class RuntimeTests
 {
     [Fact]
+    public async Task GatewayFieldsHotApplyPreserveSessionsAndOldMessagesWhileNewMessagesUseNewIdentity()
+    {
+        await using var h = new Harness();
+        var peer = AddSecondDevice(h);
+        h.Config.Mqtt.Enabled = true; h.Config.PublishIntervalMs = 100;
+        h.Runtime.Configure(h.Config);
+        var store = new RecordingConfigurationStore(h.Config);
+        var device = h.Config.Devices[0];
+        await h.Runtime.StartDeviceAsync(device.Id);
+        await Until(() => h.Runtime.GetLatest().Count > 0);
+        await h.Runtime.StopPlatformAsync();
+        await h.Store.EnqueueAsync("edge/edge-001/telemetry", "old-identity-payload", 100);
+        var oldMessage = h.Store.Outbox.Values.Single(message => message.Payload == "old-identity-payload");
+        var next = CopyConfiguration(h.Config);
+        next.GatewayId = "hot-gateway"; next.Name = "运行中更名"; next.AutoStart = true;
+        var result = await h.Runtime.ApplyConfigurationAsync(next, store);
+        Assert.Empty(result.Restarted); Assert.Empty(result.Stopped);
+        Assert.False(h.Runtime.IsDeviceRunning(peer.Id));
+        Assert.False(h.Runtime.GetTelemetryStatus().Running);
+        Assert.Equal(oldMessage, h.Store.Outbox[oldMessage.Id]);
+        var persisted = await store.LoadAsync();
+        Assert.Equal(next.GatewayId, persisted.GatewayId); Assert.Equal(next.Name, persisted.Name); Assert.True(persisted.AutoStart);
+        await h.Runtime.StartPlatformAsync();
+        await Until(() => h.Publisher.Messages.Any(message => message.Topic == "edge/hot-gateway/telemetry"));
+        Assert.Contains(h.Publisher.Messages, message => message.Topic == "edge/edge-001/telemetry" && message.Payload == "old-identity-payload");
+        Assert.Equal(1, h.Factory.CreationsByDevice[device.Id]);
+        Assert.Equal(0, h.Factory.Disposals);
+        Assert.False(h.Runtime.IsDeviceRunning(peer.Id));
+    }
+
+    [Fact]
     public async Task PlatformHotApplyAndManualStopPreserveDeviceAndOutputWorkers()
     {
         await using var h = new Harness();

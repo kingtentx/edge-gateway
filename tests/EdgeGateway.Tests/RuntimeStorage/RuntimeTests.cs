@@ -524,12 +524,14 @@ public sealed partial class RuntimeTests
         public int Disconnections;
         public ConcurrentBag<string> Payloads { get; } = [];
         public ConcurrentBag<string> ClientIds { get; } = [];
+        public ConcurrentBag<(string Topic, string Payload)> Messages { get; } = [];
         public Task PublishAsync(MqttConfiguration settings, string topic, string payload, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref Attempts);
             if (Fail) throw new IOException("broker unavailable");
             Payloads.Add(payload);
             ClientIds.Add(settings.ClientId);
+            Messages.Add((topic, payload));
             return Task.CompletedTask;
         }
         public Task DisconnectAsync(CancellationToken cancellationToken = default)
