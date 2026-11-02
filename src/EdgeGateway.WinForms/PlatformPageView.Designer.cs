@@ -28,6 +28,8 @@ internal sealed partial class PlatformPageView
     private Label draftState = null!;
     private AntdUI.Button applyButton = null!;
     private AntdUI.Button resetButton = null!;
+    private AntdUI.Button startPlatformButton = null!;
+    private AntdUI.Button stopPlatformButton = null!;
     private AntdUI.Button manageDriversButton = null!;
     private GatewaySwitch mqttEnabledInput = null!;
     private ComboBox platformInput = null!;
@@ -153,6 +155,8 @@ internal sealed partial class PlatformPageView
         draftState = new Label();
         applyButton = new GatewayButton();
         resetButton = new GatewayButton();
+        startPlatformButton = new GatewayButton();
+        stopPlatformButton = new GatewayButton();
         manageDriversButton = new GatewayButton();
         mqttEnabledInput = new GatewaySwitch();
         platformInput = new ComboBox();
@@ -907,6 +911,22 @@ internal sealed partial class PlatformPageView
         resetButton.Cursor = Cursors.Hand;
         resetButton.Margin = new Padding(0, 0, 8, 6);
         resetButton.TabIndex = 1;
+        startPlatformButton.Name = "StartPlatform";
+        startPlatformButton.Text = "启动平台";
+        startPlatformButton.Height = 38;
+        startPlatformButton.Padding = new Padding(10, 4, 10, 4);
+        startPlatformButton.AutoSize = true;
+        startPlatformButton.MinimumSize = new Size(110, 38);
+        startPlatformButton.Margin = new Padding(0, 0, 8, 6);
+        startPlatformButton.TabIndex = 2;
+        stopPlatformButton.Name = "StopPlatform";
+        stopPlatformButton.Text = "停止平台";
+        stopPlatformButton.Height = 38;
+        stopPlatformButton.Padding = new Padding(10, 4, 10, 4);
+        stopPlatformButton.AutoSize = true;
+        stopPlatformButton.MinimumSize = new Size(110, 38);
+        stopPlatformButton.Margin = new Padding(0, 0, 8, 6);
+        stopPlatformButton.TabIndex = 3;
         // Explicit design-time control hierarchy; runtime binding does not reparent it.
         platformInputSurface = new InputFrame();
         platformInputSurface.Name = "platformInputSurface";
@@ -1187,6 +1207,8 @@ internal sealed partial class PlatformPageView
         platformTabs.TabPages.Add(gatewayTab);
         actionPanel.Controls.Add(applyButton);
         actionPanel.Controls.Add(resetButton);
+        actionPanel.Controls.Add(startPlatformButton);
+        actionPanel.Controls.Add(stopPlatformButton);
         applyBar.Controls.Add(draftState, 0, 0);
         applyBar.Controls.Add(actionPanel, 0, 1);
         contentLayout.Controls.Add(titleLabel, 0, 0);

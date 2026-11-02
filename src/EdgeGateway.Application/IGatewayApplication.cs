@@ -76,6 +76,8 @@ public interface IGatewayApplication : IAsyncDisposable
     Task<byte[]> ReadTagWorkbookAsync(string path, CancellationToken cancellationToken = default);
     Task ExportTagWorkbookAsync(string path, Guid? deviceId = null, bool template = false, CancellationToken cancellationToken = default);
     Task StartAsync(CancellationToken cancellationToken = default);
+    Task StartPlatformAsync(CancellationToken cancellationToken = default);
+    Task StopPlatformAsync(CancellationToken cancellationToken = default);
     Task StartDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default);
     Task StopDeviceAsync(Guid deviceId);
     Task StopAsync();

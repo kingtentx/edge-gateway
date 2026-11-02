@@ -10,7 +10,7 @@ using EdgeGateway.Service;
 
 namespace EdgeGateway.Tests.Integration;
 
-public sealed class MqttRpcTransportTests
+public sealed partial class MqttRpcTransportTests
 {
     [Fact]
     public async Task SubscribesReceivesCommandRejectsRetainedAndPublishesReplyWithPubAck()

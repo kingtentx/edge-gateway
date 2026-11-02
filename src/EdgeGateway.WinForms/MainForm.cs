@@ -274,6 +274,15 @@ public sealed partial class MainForm : DpiAwareForm
             }
             _allowClose = true; Close(); return;
         }
+        if (PlatformLifecycleSmoke)
+        {
+            try { await SmokePlatformLifecycleAsync(); }
+            catch (Exception exception)
+            {
+                SmokeTestFailed = true; TrySaveSmokeFailure(this, "platform-lifecycle-failed"); Console.Error.WriteLine(exception);
+            }
+            _allowClose = true; Close(); return;
+        }
         if (_buttonAppearanceSmoke)
         {
             try { await SmokeButtonAppearanceAsync(); }

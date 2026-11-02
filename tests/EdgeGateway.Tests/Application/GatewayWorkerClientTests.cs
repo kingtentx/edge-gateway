@@ -10,6 +10,18 @@ namespace EdgeGateway.Tests.Application;
 
 public sealed class GatewayWorkerClientTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PlatformLifecycleCommandsSurviveWorkerIpc(bool start)
+    {
+        await using var server = new PipeFixture(null);
+        var proxy = server.CreateProxy<IGatewayApplication>();
+        if (start) await proxy.StartPlatformAsync(); else await proxy.StopPlatformAsync();
+        var request = await server.Request;
+        Assert.Equal(start ? nameof(IGatewayApplication.StartPlatformAsync) : nameof(IGatewayApplication.StopPlatformAsync),
+            request.GetProperty("Method").GetString());
+    }
     public interface IAsyncProbe
     {
         ValueTask<StoreStatistics> ReadAsync(CancellationToken cancellationToken = default);

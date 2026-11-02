@@ -21,7 +21,7 @@ public sealed partial class GatewayRuntime
             {
                 Enabled = _configuration.Mqtt.Enabled && _configuration.Mqtt.RpcEnabled,
                 AllowRemoteWrite = _configuration.Mqtt.AllowRemoteWrite,
-                Subscribed = _running && _publisher.IsConnected && _rpcStatus.Subscribed,
+                Subscribed = _platformRunning && _publisher.IsConnected && _rpcStatus.Subscribed,
                 DroppedMessages = (_publisher as IMqttRpcTransport)?.DroppedMessages ?? 0,
                 Error = string.Join("；", new[] { _rpcConnectionError, _rpcStatus.Error }.Where(error => !string.IsNullOrEmpty(error))) is { Length: > 0 } combined ? combined : null
             };

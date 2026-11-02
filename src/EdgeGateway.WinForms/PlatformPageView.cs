@@ -59,6 +59,8 @@ internal sealed partial class PlatformPageView : UserControl
     internal Label DraftState => draftState;
     internal AntdUI.Button ApplyButton => applyButton;
     internal AntdUI.Button ResetButton => resetButton;
+    internal AntdUI.Button StartPlatformButton => startPlatformButton;
+    internal AntdUI.Button StopPlatformButton => stopPlatformButton;
     internal AntdUI.Button ManageDriversButton => manageDriversButton;
 
     protected override void OnHandleCreated(EventArgs e)

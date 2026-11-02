@@ -22,7 +22,7 @@ public sealed partial class GatewayRuntime
             return _telemetryStatus with
             {
                 Enabled = configuration.Mqtt.Enabled,
-                Running = _running && configuration.Mqtt.Enabled,
+                Running = _platformRunning,
                 PersistenceError = errors.Length == 0 ? null : string.Join("；", errors)
             };
         }

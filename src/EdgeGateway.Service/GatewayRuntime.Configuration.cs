@@ -14,7 +14,8 @@ public sealed partial class GatewayRuntime
     /// its normal status, log and reconnect policy, without reverting the saved settings.
     /// </summary>
     public async Task<ConfigurationApplyResult> ApplyConfigurationAsync(GatewayConfiguration candidate,
-        IConfigurationStore configurationStore, CancellationToken cancellationToken = default)
+        IConfigurationStore configurationStore, CancellationToken cancellationToken = default,
+        Func<CancellationToken, Task>? beforeSave = null)
     {
         ArgumentNullException.ThrowIfNull(candidate);
         ArgumentNullException.ThrowIfNull(configurationStore);
@@ -33,15 +34,8 @@ public sealed partial class GatewayRuntime
             var errors = ConfigurationValidator.Validate(next, _registry);
             if (errors.Count > 0) throw new InvalidDataException("配置检查未通过：" + Environment.NewLine + string.Join(Environment.NewLine, errors));
             if (_running && !RuntimeGlobalSettingsEqual(_configuration, next))
-                throw new InvalidOperationException("修改网关、平台或通信通道设置，请先停止全部设备。");
+                throw new InvalidOperationException("修改网关标识、名称、自动启动或通信通道结构，请先停止全部设备；平台连接与上报设置可运行中应用。");
             await _dataSink.ValidateConfigurationChangeAsync(next, cancellationToken).ConfigureAwait(false);
-            if (_configuration.Mqtt.Platform != next.Mqtt.Platform)
-            {
-                await _store.InitializeAsync(cancellationToken).ConfigureAwait(false);
-                var statistics = await _store.GetStatisticsAsync(cancellationToken).ConfigureAwait(false);
-                if (statistics.OutboxCount > 0)
-                    throw new InvalidOperationException($"仍有 {statistics.OutboxCount} 条原平台报文待补传。请先使用原平台设置补传完成，再切换接入平台。");
-            }
 
             var previousDevices = _configuration.Devices.ToDictionary(device => device.Id);
             var nextDevices = next.Devices.ToDictionary(device => device.Id);
@@ -59,7 +53,32 @@ public sealed partial class GatewayRuntime
 
             // Hold the same lock used by start/stop across the atomic save. A failed or
             // cancelled write must not stop a driver, erase a sample, or publish a draft.
-            await configurationStore.SaveAsync(Clone(next), cancellationToken).ConfigureAwait(false);
+            var platformChanged = !PlatformSettingsEqual(_configuration, next);
+            var platformWasRunning = _platformRunning;
+            // Quiesce producer, sender and RPC before checking the outbox and saving.
+            // Otherwise a new old-target message can appear after confirmation.
+            if (platformChanged)
+            {
+                await _store.InitializeAsync(cancellationToken).ConfigureAwait(false);
+                await StopPlatformCoreAsync().ConfigureAwait(false);
+            }
+            try
+            {
+                if (_configuration.Mqtt.Platform != next.Mqtt.Platform)
+                {
+                    var statistics = await _store.GetStatisticsAsync(cancellationToken).ConfigureAwait(false);
+                    if (statistics.OutboxCount > 0)
+                        throw new InvalidOperationException($"仍有 {statistics.OutboxCount} 条原平台报文待补传。请先使用原平台设置补传完成，再切换接入平台。");
+                }
+                if (beforeSave is not null) await beforeSave(cancellationToken).ConfigureAwait(false);
+                await configurationStore.SaveAsync(Clone(next), cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // No durable change: restart the saved platform settings, not the draft.
+                if (platformChanged && platformWasRunning) StartPlatformCore();
+                throw;
+            }
 
             // Persistence is now committed. Do not observe the caller's cancellation
             // again: the live model must finish catching up with the durable model.
@@ -80,6 +99,7 @@ public sealed partial class GatewayRuntime
             }
 
             _configuration = next;
+            if (platformChanged && (platformWasRunning || _running || _platformIndependent)) StartPlatformCore();
             _dataSink.UpdateConfiguration(next);
             if (!_running) _channels.Clear();
             foreach (var sample in _latest.Where(pair => affected.Contains(pair.Value.DeviceId)))
@@ -127,6 +147,13 @@ public sealed partial class GatewayRuntime
         left.Logging = new(); right.Logging = new();
         left.Databases = []; right.Databases = [];
         left.DatabaseWriteGroups = []; right.DatabaseWriteGroups = [];
+        // Northbound tasks have an independent lifecycle; gateway identity and
+        // channel structure remain protected while device sessions are running.
+        left.Mqtt = new(); right.Mqtt = new();
+        left.PublishIntervalMs = right.PublishIntervalMs;
+        left.ReportMode = right.ReportMode;
+        left.HeartbeatIntervalMs = right.HeartbeatIntervalMs;
+        left.MaxOutboxMessages = right.MaxOutboxMessages;
         return ConfigurationValuesEqual(left, right);
     }
 

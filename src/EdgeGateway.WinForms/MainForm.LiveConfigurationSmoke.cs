@@ -47,7 +47,8 @@ public sealed partial class MainForm
             // platform-draft command must stay usable while A is collecting.
             Check(!_loggingDirty, "the running fixture unexpectedly inherited a logging draft.");
             var disabled = _stoppedConfigurationCommands.Concat(new Control[]
-                { _cloudFields["typeKey"], _cloudFields["platformGatewayId"], _cloudReset,
+                { _cloudFields["typeKey"], _cloudFields["platformGatewayId"], _cloudReset, _cloudApply,
+                    _platformPageView.StartPlatformButton, _platformPageView.StopPlatformButton,
                     _loggingApply, _loggingReset }).ToHashSet();
             foreach (var control in _configurationCommands)
                 Check(control.Enabled == !disabled.Contains(control),

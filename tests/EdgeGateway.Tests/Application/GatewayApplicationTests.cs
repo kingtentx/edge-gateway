@@ -161,7 +161,7 @@ public sealed partial class GatewayApplicationTests
     }
 
     [Fact]
-    public async Task GlobalDraftKeepsLaterDeviceAndChannelChangesAndCannotApplyWhileRunning()
+    public async Task GlobalDraftKeepsLaterChangesAndOnlyGatewayChangesRequireStoppedDevices()
     {
         await using var h = await Harness.CreateAsync();
         var oldDraft = h.App.GetConfiguration();
@@ -183,6 +183,12 @@ public sealed partial class GatewayApplicationTests
         Assert.Contains(applied.Devices, device => device.Id == added.Id && device.ChannelId == channel.Id);
         await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.DeleteChannelAsync(channel.Id));
         await h.App.StartDeviceAsync(h.A.Id);
+        oldDraft.Mqtt.ClientId = "live-client";
+        await h.App.ApplyGlobalSettingsAsync(oldDraft);
+        Assert.Equal("live-client", h.App.GetConfiguration().Mqtt.ClientId);
+        Assert.Equal(3, h.App.GetConfiguration().Devices.Count);
+        Assert.Equal(1, h.Factory.Created[h.A.Id]);
+        oldDraft.Name = "blocked gateway rename";
         await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.ApplyGlobalSettingsAsync(oldDraft));
         await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.UpsertChannelAsync(new() { Name = "运行期间通道" }, true));
         await Assert.ThrowsAsync<InvalidOperationException>(() => h.App.ReplaceConfigurationAsync(applied));

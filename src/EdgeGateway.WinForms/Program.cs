@@ -12,6 +12,7 @@ internal static class Program
         ApplicationConfiguration.Initialize();
         System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
         var buttonAppearanceSmoke = args.Contains("--smoke-button-appearance", StringComparer.OrdinalIgnoreCase);
+        var platformLifecycleSmoke = args.Contains("--smoke-platform-lifecycle", StringComparer.OrdinalIgnoreCase);
         var surfacesListsOnly = args.Contains("--smoke-surfaces-lists", StringComparer.OrdinalIgnoreCase);
         var surfacesSmoke = surfacesListsOnly || args.Contains("--smoke-surfaces", StringComparer.OrdinalIgnoreCase);
         var scrollbarsSmoke = args.Contains("--smoke-scrollbars", StringComparer.OrdinalIgnoreCase);
@@ -37,7 +38,7 @@ internal static class Program
         var liveLogsSmoke = args.Contains("--smoke-live-logs", StringComparer.OrdinalIgnoreCase);
         var loggingSmoke = liveLogsSmoke || args.Contains("--smoke-logging", StringComparer.OrdinalIgnoreCase);
         var workbookSmoke = args.Contains("--smoke-workbooks", StringComparer.OrdinalIgnoreCase);
-        var smokeTest = realtimeBrowserSmoke || buttonAppearanceSmoke || formWidthsSmoke || historySourcesSmoke || paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
+        var smokeTest = platformLifecycleSmoke || realtimeBrowserSmoke || buttonAppearanceSmoke || formWidthsSmoke || historySourcesSmoke || paginationSmoke || navigationSmoke || pageRefreshSmoke || databaseRefreshSmoke || loggingSmoke || workbookSmoke || layoutMatrix || databaseMappingSmoke || serverResourcesSmoke || args.Contains("--smoke-test", StringComparer.OrdinalIgnoreCase);
         var screenshotIndex = Array.FindIndex(args, x => x.Equals("--screenshot", StringComparison.OrdinalIgnoreCase));
         var screenshotPath = screenshotIndex >= 0 && screenshotIndex + 1 < args.Length ? args[screenshotIndex + 1] : null;
         var runtimeRoot = smokeTest
@@ -93,6 +94,7 @@ internal static class Program
             window.RowDensitySmoke = rowDensitySmoke;
             window.DeviceColumnsSmoke = deviceColumnsSmoke;
             window.DeviceBatchSmoke = deviceBatchSmoke;
+            window.PlatformLifecycleSmoke = platformLifecycleSmoke;
             window.DriverParametersSmoke = driverParametersSmoke;
             window.DialogTitlesSmoke = dialogTitlesSmoke;
             window.OverviewScrollSmoke = overviewScrollSmoke;

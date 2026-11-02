@@ -55,7 +55,7 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_running) throw new InvalidOperationException("请先停止采集再应用配置。");
+            if (_running || _platformRunning) throw new InvalidOperationException("请先停止采集和平台连接再初始化配置。");
             var errors = ConfigurationValidator.Validate(configuration, _registry);
             if (errors.Count > 0) throw new ArgumentException(string.Join(Environment.NewLine, errors), nameof(configuration));
             _configuration = Clone(configuration);
@@ -118,12 +118,9 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
         _acquisitionChannel = Channel.CreateBounded<IReadOnlyList<TelemetrySample>>(new BoundedChannelOptions(256)
         { SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait });
         var reader = _acquisitionChannel.Reader;
-        var token = _runCancellation.Token;
         _running = true;
         _acquisitionTask = Task.Run(() => ProcessAcquisitionAsync(reader));
-        _sharedWorkers = _configuration.Mqtt.Enabled
-            ? [Task.Run(() => QueueTelemetryAsync(token)), Task.Run(() => SendOutboxAsync(token)), Task.Run(() => RunPlatformSessionAsync(token))]
-            : [];
+        StartPlatformCore();
     }
 
     // Called only while holding _lifecycle, after shared services have started.
@@ -171,10 +168,16 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
 
     private async Task StopCoreAsync()
     {
-        if (_runCancellation is null) return;
+        _platformIndependent = false;
+        if (_runCancellation is null)
+        {
+            await StopPlatformCoreAsync().ConfigureAwait(false);
+            return;
+        }
         var sessions = _sessions.Values.ToArray();
         foreach (var session in sessions) session.RequestStop();
         _runCancellation.Cancel();
+        _platformCancellation?.Cancel();
         // Cancel every device before waiting, so one slow driver does not delay cancellation of others.
         foreach (var session in sessions) await FinishDeviceStopAsync(session).ConfigureAwait(false);
         _sessions.Clear();
@@ -204,9 +207,6 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
     private async Task StopSharedServicesAsync()
     {
         _runCancellation?.Cancel();
-        try { await Task.WhenAll(_sharedWorkers).ConfigureAwait(false); }
-        catch (OperationCanceledException) { }
-        catch (Exception ex) { _log.Write(GatewayLogLevel.Error, $"停止上报任务时发生错误：{ex.Message}"); }
         // Only the last device closes the channel. Accepted samples from every device
         // is drained while stopping one of several devices leaves this consumer alive.
         _acquisitionChannel?.Writer.TryComplete();
@@ -214,13 +214,11 @@ public sealed partial class GatewayRuntime : IAsyncDisposable
         await _dataSink.StopAsync().ConfigureAwait(false);
         try
         {
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            await _publisher.DisconnectAsync(timeout.Token).ConfigureAwait(false);
+            if (!_platformIndependent) await StopPlatformCoreAsync().ConfigureAwait(false);
         }
         catch (Exception ex) { _log.Write(GatewayLogLevel.Warning, $"断开 MQTT 时发生错误：{ex.Message}"); }
         _runCancellation?.Dispose();
         _runCancellation = null;
-        _sharedWorkers = [];
         _acquisitionTask = null;
         _acquisitionChannel = null;
         _running = false;

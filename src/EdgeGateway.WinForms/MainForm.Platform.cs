@@ -86,25 +86,42 @@ public sealed partial class MainForm
             RebindConfigurationViews();
         };
         _cloudApply.Click += async (_, _) => await RunBusyAsync(ApplyCloudSettingsAsync);
+        _platformPageView.StartPlatformButton.Click += async (_, _) => await RunBusyAsync(async () =>
+        {
+            await _application.StartPlatformAsync();
+            SetFooter("已按保存的设置启动平台任务；连接状态请查看通信诊断，未应用草稿保持不变。");
+        });
+        _platformPageView.StopPlatformButton.Click += async (_, _) => await RunBusyAsync(async () =>
+        {
+            await _application.StopPlatformAsync();
+            SetFooter("平台已停止，未确认消息保留；设备采集和数据库写入继续。");
+        });
         _cloudReset.Click += (_, _) =>
         {
             if (!CanEdit()) return;
             ResetCloudDraft(); BindCloudFields(); UpdateCommands();
             SetFooter("平台设置已恢复为上次保存的内容。");
         };
-        _configurationCommands.AddRange([_cloudApply, _cloudReset]);
-        _stoppedConfigurationCommands.Add(_cloudApply);
+        _configurationCommands.AddRange([_cloudApply, _cloudReset, _platformPageView.StartPlatformButton, _platformPageView.StopPlatformButton]);
         return _platformPageView;
     }
 
     private void UpdatePlatformCommands()
     {
         if (_cloudApply is null || _cloudReset is null) return;
-        _cloudApply.Enabled = CanEdit() && _dirty && !_application.IsRunning;
+        var gatewayChanged = CloudDraft.GatewayId != _configuration.GatewayId || CloudDraft.Name != _configuration.Name
+            || CloudDraft.AutoStart != _configuration.AutoStart;
+        var requiresStop = _application.IsRunning && gatewayChanged;
+        var platformRunning = _application.GetTelemetryStatus().Running;
+        _platformPageView.StartPlatformButton.Enabled = CanEdit() && _configuration.Mqtt.Enabled && !platformRunning;
+        _platformPageView.StopPlatformButton.Enabled = CanEdit() && (platformRunning || _application.IsMqttConnected);
+        _cloudApply.Enabled = CanEdit() && _dirty && !requiresStop;
         _cloudReset.Enabled = CanEdit() && _dirty;
-        _cloudApplyState.Text = _application.IsRunning
-            ? (_dirty ? "有未应用的修改。请先停止全部设备，再应用设置；当前采集继续使用已保存配置。" : "当前有设备运行，可编辑草稿；应用全局设置前需停止全部设备。")
-            : _dirty ? "有未应用的修改。点击“应用设置”后生效。" : "设置已应用。修改后可在此应用或重置。";
+        var state = platformRunning ? (_application.IsMqttConnected ? "平台已连接。" : "平台连接任务运行中。") : "平台已停止。";
+        _cloudApplyState.Text = state + (requiresStop
+            ? "网关标识、名称或自动启动有修改，请停止全部设备后应用；仅修改平台连接、上报或远程控制可直接应用。"
+            : _dirty ? "有未应用的修改，应用后更新平台设置，设备采集继续。启动平台使用已保存设置。"
+            : "设置已应用。平台可独立启动/停止，停止期间不生成新上报，已入队消息保留。");
         _cloudApplyState.ForeColor = _dirty ? UiTheme.Warning : UiTheme.Muted;
         var platform = CloudDraft.Mqtt.Platform;
         foreach (var key in new[] { "topic", "rpcRequest", "rpcResponse" })
@@ -123,7 +140,7 @@ public sealed partial class MainForm
 
     private async Task ApplyCloudSettingsAsync()
     {
-        if (_application.IsRunning || _closing) throw new InvalidOperationException("请先停止全部运行设备，再应用平台设置。");
+        if (_closing) throw new InvalidOperationException("窗口正在关闭，请稍后应用设置。");
         if (!_dirty || _cloudDraft is null) return;
         // Device changes may have been committed since this draft was opened.
         // Apply only global/platform settings to the latest saved device collection.

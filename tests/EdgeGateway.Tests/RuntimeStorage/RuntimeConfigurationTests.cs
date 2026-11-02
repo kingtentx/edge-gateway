@@ -138,7 +138,7 @@ public sealed partial class RuntimeTests
         await Until(() => harness.Runtime.GetLatest().Count == 1);
         var invalid = CopyConfiguration(harness.Config); invalid.Devices[0].PollIntervalMs = 0;
         await Assert.ThrowsAsync<InvalidDataException>(() => harness.Runtime.ApplyConfigurationAsync(invalid, configurationStore));
-        var platform = CopyConfiguration(harness.Config); platform.Mqtt.Enabled = true;
+        var platform = CopyConfiguration(harness.Config); platform.GatewayId = "changed-gateway";
         await Assert.ThrowsAsync<InvalidOperationException>(() => harness.Runtime.ApplyConfigurationAsync(platform, configurationStore));
         Assert.Equal(0, configurationStore.SaveAttempts);
         configurationStore.SaveFailure = new IOException("磁盘无法写入");

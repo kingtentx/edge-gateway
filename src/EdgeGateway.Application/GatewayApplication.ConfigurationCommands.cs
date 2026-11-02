@@ -196,7 +196,7 @@ public sealed partial class GatewayApplication
             candidate.ReportMode = settings.ReportMode;
             candidate.HeartbeatIntervalMs = settings.HeartbeatIntervalMs;
             candidate.Mqtt = settings.Mqtt;
-        }, cancellationToken, options, requireStopped: true);
+        }, cancellationToken, options);
     }
 
     private async Task<ConfigurationApplyResult> ChangeAsync(Action<GatewayConfiguration> change, CancellationToken cancellationToken,

@@ -2,7 +2,7 @@
 param(
     [string]$Executable = 'src/EdgeGateway.WinForms/bin/Release/net8.0-windows/EdgeGateway.WinForms.exe',
     [string]$OutputDirectory = ('artifacts/ui-background-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [ValidateSet('Full', 'Scrollbars', 'Surfaces', 'SurfaceLists', 'OverviewScroll', 'DatabaseSelection', 'DialogTitles', 'DriverParameters', 'DeviceBatch', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'RealtimeBrowser', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
+    [ValidateSet('Full', 'PlatformLifecycle', 'Scrollbars', 'Surfaces', 'SurfaceLists', 'OverviewScroll', 'DatabaseSelection', 'DialogTitles', 'DriverParameters', 'DeviceBatch', 'DeviceColumns', 'LiveLogs', 'DpiConfirmation', 'DpiRoundTrip', 'RowDensity', 'ButtonAppearance', 'FormWidths', 'RealtimeBrowser', 'HistorySources', 'Pagination', 'Navigation', 'PageRefresh', 'DatabaseRefresh', 'DatabaseMapping', 'ServerResources', 'Workbooks', 'Logging', 'UiRedesign')][string]$Scenario = 'Full',
     [ValidateRange(1, 3600)][int]$TimeoutSeconds = 900
 )
 
@@ -131,6 +131,7 @@ namespace EdgeGateway {
                     Attributes = attributes
                 };
                 var arguments = scenario == "UiRedesign" ? " --smoke-test --screenshot "
+                    : scenario == "PlatformLifecycle" ? " --smoke-platform-lifecycle --screenshot "
                     : scenario == "ButtonAppearance" ? " --smoke-button-appearance --screenshot "
                     : scenario == "Scrollbars" ? " --smoke-scrollbars --screenshot "
                     : scenario == "SurfaceLists" ? " --smoke-surfaces-lists --screenshot "
@@ -206,6 +207,14 @@ $code = [EdgeGateway.BackgroundUiSmoke]::Run($applicationPath, $repositoryRoot, 
 if ($code -ne 0) {
     Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log')
     throw "Background WinForms smoke failed: $code"
+}
+if ($Scenario -eq 'PlatformLifecycle') {
+    $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw
+    $errorText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stderr.log') -Raw
+    if (-not [string]::IsNullOrWhiteSpace($errorText)) { throw 'PlatformLifecycle smoke wrote errors.' }
+    if ($outputText -notmatch 'PlatformLifecycle smoke passed:') { throw 'PlatformLifecycle completion marker is missing.' }
+    Write-Output "PlatformLifecycle smoke passed: $outputRoot"
+    exit 0
 }
 if ($Scenario -eq 'ButtonAppearance') {
     $outputText = Get-Content -LiteralPath (Join-Path $outputRoot 'ui-smoke.stdout.log') -Raw

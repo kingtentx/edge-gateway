@@ -136,10 +136,10 @@ public sealed partial class GatewayApplication : IGatewayApplication
     {
         var errors = ValidateConfiguration(next);
         if (errors.Count > 0) throw InvalidConfiguration(errors);
-        await VerifyDestinationConfirmationAsync(next, options, cancellationToken).ConfigureAwait(false);
         // The runtime owns the save/session transaction. Do not publish the caller's draft
         // before it succeeds, nor observe caller cancellation after its durable commit.
-        var result = await _runtime.ApplyConfigurationAsync(next, _configurationStore, cancellationToken).ConfigureAwait(false);
+        var result = await _runtime.ApplyConfigurationAsync(next, _configurationStore, cancellationToken,
+            token => VerifyDestinationConfirmationAsync(next, options, token)).ConfigureAwait(false);
         _configuration = next;
         _configurationPersisted = true;
         _configurationVersion++;
@@ -162,6 +162,25 @@ public sealed partial class GatewayApplication : IGatewayApplication
 
     public Task StartAsync(CancellationToken cancellationToken = default) => StartCoreAsync(null, cancellationToken);
     public Task StartDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default) => StartCoreAsync(deviceId, cancellationToken);
+
+    public async Task StartPlatformAsync(CancellationToken cancellationToken = default)
+    {
+        await _commands.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfDisposed();
+            if (!_configurationPersisted) await ApplyCoreAsync(GatewayJson.Clone(_configuration), null, cancellationToken).ConfigureAwait(false);
+            await _runtime.StartPlatformAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally { _commands.Release(); }
+    }
+
+    public async Task StopPlatformAsync(CancellationToken cancellationToken = default)
+    {
+        await _commands.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { ThrowIfDisposed(); await _runtime.StopPlatformAsync(cancellationToken).ConfigureAwait(false); }
+        finally { _commands.Release(); }
+    }
 
     private async Task StartCoreAsync(Guid? deviceId, CancellationToken cancellationToken)
     {
