@@ -81,8 +81,6 @@ public sealed partial class MainForm
         if (_diagnosticDeviceId.HasValue && !_configuration.Devices.Any(item => item.Id == _diagnosticDeviceId)) _diagnosticDeviceId = null;
         if (_diagnosticDeviceId is Guid deviceId)
             rows = rows.Where(row => !row.Key.StartsWith("device:", StringComparison.Ordinal) || row.Key.StartsWith($"device:{deviceId}:", StringComparison.Ordinal)).ToList();
-        _diagnosticsPageView.scopeLabel.Text = _diagnosticDeviceId is Guid selectedId
-            ? $"{_configuration.Devices.First(item => item.Id == selectedId).Name} 与公共输出" : "全部设备与公共输出";
         UpdateTelemetryDiagnosticRows(rows);
         foreach (GatewayTableRow row in _telemetryDiagnosticsGrid.Rows)
             if (row.DataBoundItem is DiagnosticRow data && row.Cells["Value"].ToolTipText != data.Value)
