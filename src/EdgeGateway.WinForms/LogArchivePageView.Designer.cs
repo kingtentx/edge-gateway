@@ -82,9 +82,8 @@ internal sealed partial class LogArchivePageView
         contentLayout.ColumnCount = 1;
         contentLayout.RowCount = 0;
         contentLayout.Margin = Padding.Empty;
-        contentLayout.Padding = new Padding(8);
         contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        contentLayout.Padding = new Padding(12);
+        contentLayout.Padding = new Padding(12, 12, 12, 0);
         contentLayout.RowCount = 4;
         filterBar = new WrappingToolbar();
         filterBar.Name = "filterBar";

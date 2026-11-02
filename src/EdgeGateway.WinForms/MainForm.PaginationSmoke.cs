@@ -155,6 +155,12 @@ public sealed partial class MainForm
                     var pageFooter = Pager(target.Item2).Parent!;
                     var bounds = pageFooter.RectangleToScreen(pageFooter.ClientRectangle);
                     var pageBounds = page.RectangleToScreen(page.ClientRectangle);
+                    var tableBounds = target.Item2.RectangleToScreen(target.Item2.ClientRectangle);
+                    Require(Math.Abs(tableBounds.Bottom - bounds.Top) <= 1,
+                        $"List-to-pagination gap differs: {target.Item1}/{target.Item3}, list={tableBounds}, footer={bounds}.");
+                    Require(pageFooter.Height == UiTheme.Scale(pageFooter, 36)
+                        && pageFooter.Padding.Top == UiTheme.Scale(pageFooter, 2) && pageFooter.Padding.Bottom == UiTheme.Scale(pageFooter, 2)
+                        && page.Padding.Bottom == UiTheme.Scale(page, 8), "Pagination footer spacing differs from the shared standard.");
                     Require(pageFooter.Visible && Math.Abs(bounds.Bottom - (pageBounds.Bottom - page.Padding.Bottom)) <= UiTheme.Scale(page, 2),
                         $"Pagination is not fixed at page bottom: {target.Item1}/{target.Item3}, footer={bounds}, page={pageBounds}.");
                     Require(Math.Abs(bounds.Left - pageBounds.Left - page.Padding.Left) <= UiTheme.Scale(page, 2)
@@ -162,6 +168,12 @@ public sealed partial class MainForm
                         $"Pagination does not span page content width: {target.Item1}/{target.Item3}.");
                     SaveEditorScreenshot(this, "pagination", $"bottom-{target.Item1}-{target.Item3}-{width}");
                 }
+                _logTabs.SelectedTab = _eventArchive.Page;
+                await Task.Delay(80); PerformLayoutRecursively(this);
+                var logPage = _pages["logs"];
+                var eventBottom = _eventArchive.Grid.RectangleToScreen(_eventArchive.Grid.ClientRectangle).Bottom;
+                Require(Math.Abs(eventBottom - logPage.RectangleToScreen(logPage.ClientRectangle).Bottom + logPage.Padding.Bottom) <= 1,
+                    "Unpaged event log retained an extra bottom gap.");
             }
             Console.WriteLine($"Pagination smoke passed: DeviceDpi={DeviceDpi}; page navigation, page size, stable device/tag IDs, final-page deletion, empty results, realtime refresh, complete history CSV and log JSONL.");
         }
