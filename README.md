@@ -1,5 +1,7 @@
 # Edge Gateway · .NET 8 WinForms 采集网关
 
+**JSON 中文输出：** 上报、配置导出及相关 JSON 输出直接保留中文，字段和协议结构保持原样。[范围与验证](docs/json-chinese-text.md)。
+
 **平台热维护（2026-11-02）：** 设备采集中可应用平台连接、上报与远程控制设置，支持独立启动/停止平台，保留未确认补传消息；实际连接与验证边界见 [平台热维护](docs/platform-hot-lifecycle.md)。
 
 

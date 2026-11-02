@@ -85,7 +85,7 @@ public sealed partial class MainForm
                     MessageSequence = _messageSequence, DroppedMessages = _droppedMessages,
                     RecentMessages = failure ? _messages.ToArray() : null
                 };
-                var json = JsonSerializer.Serialize(record);
+                var json = JsonSerializer.Serialize(record, EdgeGateway.Model.GatewayJson.TextOptions);
                 var size = Encoding.UTF8.GetByteCount(json) + 1;
                 _records++;
                 if (_writer is not null && _bytes + size <= MaximumBytes)
@@ -97,9 +97,9 @@ public sealed partial class MainForm
                 if (failure)
                 {
                     // Full ancestor/OpenForms/message evidence stays in the bounded artifact; native root state is also visible in CI output.
-                    Console.WriteLine("Focus native failure thread: " + JsonSerializer.Serialize(ReadThread(mainState.ThreadId)));
+                    Console.WriteLine("Focus native failure thread: " + JsonSerializer.Serialize(ReadThread(mainState.ThreadId), EdgeGateway.Model.GatewayJson.TextOptions));
                     foreach (var control in controls.Take(32))
-                        Console.WriteLine("Focus native failure control: " + JsonSerializer.Serialize(SnapshotControl(control)));
+                        Console.WriteLine("Focus native failure control: " + JsonSerializer.Serialize(SnapshotControl(control), EdgeGateway.Model.GatewayJson.TextOptions));
                 }
             }
             catch (Exception exception) { ReportError(exception); }

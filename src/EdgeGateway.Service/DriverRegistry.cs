@@ -349,7 +349,7 @@ public sealed class DriverRegistry : IDriverRegistry, IDriverPluginManager
     private static void CommitManifest(string path, PluginManifest manifest, Action persist)
     {
         var original = File.Exists(path) ? File.ReadAllText(path) : null;
-        WriteManifest(path, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        WriteManifest(path, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true, Encoder = GatewayJson.TextEncoder }));
         try { persist(); }
         catch
         {

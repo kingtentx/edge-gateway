@@ -132,7 +132,7 @@ public sealed class ConfigurationStoreTests : IDisposable
         var tables = new List<string>();
         while (reader.Read()) tables.Add(reader.GetString(0));
         Assert.Equal(new[] { "channels", "configuration_snapshots", "database_column_mappings", "database_connections",
-            "database_write_group_tags", "database_write_groups", "device_groups", "device_network_settings", "device_parameter_metadata", "device_properties",
+            "database_point_rules", "database_write_group_tags", "database_write_groups", "device_groups", "device_network_settings", "device_parameter_metadata", "device_properties",
             "device_serial_settings", "devices", "driver_registry", "gateway_settings", "logging_settings", "mqtt_settings",
             "rpc_settings", "tags", "telemetry_settings" }, tables);
     }

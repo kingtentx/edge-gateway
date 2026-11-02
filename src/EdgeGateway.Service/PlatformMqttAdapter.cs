@@ -211,7 +211,7 @@ public static class PlatformMqttAdapter
         MqttPlatform.ThingsPanel => Json(request.ReplyTopic, new
         { result = result.success ? 0 : 1, message = result.error ?? result.status, errcode = result.success ? null : result.status,
             method = request.Method, ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), data = result }),
-        MqttPlatform.IoTSharp => Json(request.ReplyTopic, new { DeviceId = request.Device, Method = request.Method, ResponseId = request.Id, Data = JsonSerializer.Serialize(result) }),
+        MqttPlatform.IoTSharp => Json(request.ReplyTopic, new { DeviceId = request.Device, Method = request.Method, ResponseId = request.Id, Data = JsonSerializer.Serialize(result, GatewayJson.TextOptions) }),
         _ => Json(request.ReplyTopic, new { id = request.WireId, device = request.Device, data = result })
     };
 
@@ -234,7 +234,7 @@ public static class PlatformMqttAdapter
     private static bool ValidSegment(string text) => !string.IsNullOrWhiteSpace(text) && text.Length <= 200 && text.IndexOfAny(['/', '+', '#', '\0']) < 0;
     private static bool ValidTopic(string text) => !string.IsNullOrWhiteSpace(text) && Encoding.UTF8.GetByteCount(text) <= 4000 && text.IndexOfAny(['+', '#', '\0']) < 0;
     private static string Expand(string topic, string gatewayId) => topic.Replace("{gatewayId}", gatewayId, StringComparison.Ordinal);
-    private static MqttOutboundMessage Json(string topic, object payload) => new(topic, JsonSerializer.Serialize(payload));
+    private static MqttOutboundMessage Json(string topic, object payload) => new(topic, JsonSerializer.Serialize(payload, GatewayJson.TextOptions));
 }
 
 public sealed record PlatformRpcRequest(MqttPlatform Platform, string Id, object WireId, string Device,

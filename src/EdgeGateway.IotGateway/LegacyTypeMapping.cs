@@ -7,7 +7,7 @@ namespace EdgeGateway.IotGateway;
 
 internal static class LegacyTypeMapping
 {
-    private static readonly JsonSerializerOptions NativeObjectOptions = new() { IncludeFields = true };
+    private static readonly JsonSerializerOptions NativeObjectOptions = new() { IncludeFields = true, Encoder = EdgeGateway.Model.GatewayJson.TextEncoder };
     public static DataTypeEnum ToLegacy(TagDataType type) => type switch
     {
         TagDataType.Boolean => DataTypeEnum.Bool, TagDataType.Bit => DataTypeEnum.Bit,

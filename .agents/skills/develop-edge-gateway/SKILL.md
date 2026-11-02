@@ -5,6 +5,8 @@ description: 为 .NET 8 WinForms 工业采集网关实现和审查分层架构�
 
 # .NET 8 WinForms 采集网关开发规范
 
+2026-11-02 JSON 输出要求：中文名称、字符串值与错误说明直接输出 UTF-8 中文，公共编码器使用 GatewayJson.TextEncoder；协议沿用 TextOptions 的默认字段/枚举契约，配置沿用 Options。必要的引号/反斜杠/控制字符转义保留，不对 JSON 成品做 Unicode 替换，不重写已有补传消息或改变稳定去重/目标指纹算法。见 docs/json-chinese-text.md。
+
 ## 1. 确立边界与基线
 
 先阅读仓库 `README.md`、`AGENTS.md`、[项目架构](../../../docs/architecture.md) 和实际代码。比较参考项目时，阅读 [结构参考](references/architecture.md)，固定参考提交。以用户要求的 `.NET 8 + WinForms` 为技术基线，不因上游升级到 .NET 10 而修改目标框架。

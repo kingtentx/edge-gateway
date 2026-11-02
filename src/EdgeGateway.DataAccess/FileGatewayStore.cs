@@ -182,7 +182,7 @@ public sealed class FileGatewayStore(string directory) : IGatewayStore, IRpcComm
 
     private static void WriteRecord<T>(string path, T value, bool replace, CancellationToken cancellationToken)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new StateRecord<T>(1, value));
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new StateRecord<T>(1, value), GatewayJson.TextOptions);
         var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {

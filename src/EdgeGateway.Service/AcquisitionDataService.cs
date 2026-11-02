@@ -197,7 +197,7 @@ public sealed class AcquisitionDataService : IAcquisitionDataSink
             {
                 if (log is IConfigurableGatewayLog configurable) configurable.WriteSample(sample);
                 else if (_configuration.Logging.LogAcquisitionSamples && _configuration.Logging.MinimumLevel <= GatewayLogLevel.Information)
-                    log.Write(GatewayLogLevel.Information, "采集 " + JsonSerializer.Serialize(sample));
+                    log.Write(GatewayLogLevel.Information, "采集 " + JsonSerializer.Serialize(sample, GatewayJson.TextOptions));
                 if (!_enabledTags.TryGetValue(sample.TagId, out var deviceId) || deviceId != sample.DeviceId) continue;
                 if (_workers.Length == 0) continue;
                 if (!SamplePayloadBudget.TryEstimate(sample, out var sampleBytes))

@@ -895,7 +895,7 @@ public sealed partial class MainForm : DpiAwareForm
         float number => number.ToString("G7", CultureInfo.InvariantCulture),
         DateTime timestamp => timestamp.ToString("O", CultureInfo.InvariantCulture),
         DateTimeOffset timestamp => timestamp.ToString("O", CultureInfo.InvariantCulture),
-        JsonElement element => element.ValueKind == JsonValueKind.String ? element.GetString() ?? "" : element.GetRawText(),
+        JsonElement element => element.ValueKind == JsonValueKind.String ? element.GetString() ?? "" : JsonSerializer.Serialize(element, GatewayJson.TextOptions),
         string text => text,
         System.Collections.IEnumerable structured => JsonSerializer.Serialize(structured, GatewayJson.Options),
         _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? "—"

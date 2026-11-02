@@ -151,7 +151,7 @@ public sealed partial class GatewayLog
                 string Text(string name)
                 {
                     var value = Field(name);
-                    return value.ValueKind switch { JsonValueKind.Undefined or JsonValueKind.Null => "", JsonValueKind.String => value.GetString() ?? "", _ => value.GetRawText() };
+                    return value.ValueKind switch { JsonValueKind.Undefined or JsonValueKind.Null => "", JsonValueKind.String => value.GetString() ?? "", _ => JsonSerializer.Serialize(value, GatewayJson.TextOptions) };
                 }
                 var qualityField = Field("quality");
                 var quality = qualityField.ValueKind == JsonValueKind.Number ? (SampleQuality)qualityField.GetInt32()
@@ -200,7 +200,7 @@ public sealed partial class GatewayLog
                     {
                         writer.NewLine = "\r\n";
                         var header = JsonSerializer.Serialize(new { kind = "export", query = result.Query, count = result.Entries.Count,
-                            partial = result.IsPartial, scannedBytes = result.ScannedBytes, warnings = result.Warnings });
+                            partial = result.IsPartial, scannedBytes = result.ScannedBytes, warnings = result.Warnings }, GatewayJson.TextOptions);
                         await writer.WriteLineAsync((csv ? ArchiveCsvLine("查询说明", header) : header).AsMemory(), cancellationToken).ConfigureAwait(false);
                         if (csv)
                             await writer.WriteLineAsync(ArchiveCsvLine("时间（采集服务器）", "类别", "级别", "设备标识", "设备名称", "点位标识", "点位名称", "地址",

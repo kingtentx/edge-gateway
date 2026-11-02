@@ -80,7 +80,7 @@ public sealed class SqliteAcquisitionSpool : IAcquisitionSpool
         var identity = groupId.ToString("N") + "|" + string.Join("|", rows.Select(row => row.EventId));
         var batchId = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
         var created = DateTimeOffset.UtcNow;
-        var payload = JsonSerializer.Serialize(rows.Select(EncodeRow).ToArray());
+        var payload = JsonSerializer.Serialize(rows.Select(EncodeRow).ToArray(), GatewayJson.TextOptions);
         var bytes = System.Text.Encoding.UTF8.GetByteCount(payload);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try

@@ -674,7 +674,7 @@ public sealed partial class MainForm
             Cases = results
         };
         File.WriteAllText(Path.Combine(directory, "layout-matrix.json"), JsonSerializer.Serialize(report,
-            new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+            new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase, Encoder = EdgeGateway.Model.GatewayJson.TextEncoder }));
     }
 
     private sealed class LayoutCaseResult

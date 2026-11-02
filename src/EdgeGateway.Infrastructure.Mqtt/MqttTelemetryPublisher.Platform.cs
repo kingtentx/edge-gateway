@@ -119,7 +119,7 @@ public sealed partial class MqttTelemetryPublisher
     private async Task DisconnectCloudDeviceAsync(string name, CancellationToken cancellationToken)
     {
         if (!_cloudConnectedDevices.Contains(name)) return;
-        await PublishWireMessageAsync("gateway/disconnect", JsonSerializer.Serialize(new { device = name }), cancellationToken).ConfigureAwait(false);
+        await PublishWireMessageAsync("gateway/disconnect", JsonSerializer.Serialize(new { device = name }, GatewayJson.TextOptions), cancellationToken).ConfigureAwait(false);
         _cloudConnectedDevices.Remove(name);
     }
 

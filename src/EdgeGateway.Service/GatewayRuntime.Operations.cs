@@ -344,7 +344,7 @@ public sealed partial class GatewayRuntime
         new(device.Id, device.Name, tag.Id, tag.Name, tag.Address, null, null,
             cancelled ? SampleQuality.Uncertain : SampleQuality.Bad, DateTimeOffset.UtcNow, tag.Unit, error);
 
-    private static string AuditText(string? value) => JsonSerializer.Serialize(value is { Length: > 512 } ? value[..512] + "…" : value);
+    private static string AuditText(string? value) => JsonSerializer.Serialize(value is { Length: > 512 } ? value[..512] + "…" : value, GatewayJson.TextOptions);
 
     private static bool OperationValuesMatch(TagConfiguration tag, object? expected, object? actual, WriteVerificationOptions options)
     {

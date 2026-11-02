@@ -21,6 +21,7 @@ public class GatewayWorkerClient : DispatchProxy
     private string _pipeName = "";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
+        Encoder = EdgeGateway.Model.GatewayJson.TextEncoder,
         PropertyNameCaseInsensitive = true,
         Converters = { new UntypedObjectConverter() }
     };
