@@ -96,6 +96,7 @@ internal sealed partial class LoggingPageView
         logTabs = new EditorLayout.EditorTabs();
         logTabs.Name = "LoggingTabs";
         logTabs.Dock = DockStyle.Fill;
+        logTabs.Margin = Padding.Empty;
 
         settingsTab = new TabPage("日志设置");
         settingsTab.Name = "LoggingSettingsTab";
@@ -653,10 +654,12 @@ internal sealed partial class LoggingPageView
         eventView = new LogArchivePageView();
         eventView.Name = "eventView";
         eventView.Dock = DockStyle.Fill;
+        eventView.Margin = Padding.Empty;
         eventLogsTab.Controls.Add(eventView);
         sampleView = new LogArchivePageView();
         sampleView.Name = "sampleView";
         sampleView.Dock = DockStyle.Fill;
+        sampleView.Margin = Padding.Empty;
         sampleLogsTab.Controls.Add(sampleView);
         settingsFields.RowCount = 17;
         ResumeLayout(false);
